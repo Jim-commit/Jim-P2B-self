@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>总代仓储装车中台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans p-4">
+  <div class="max-w-4xl mx-auto space-y-4">
+    <!-- 头部 -->
+    <header class="bg-indigo-800 text-white p-4 rounded-xl shadow flex justify-between items-center">
+      <div>
+        <h1 class="text-lg font-bold">超级总代 · 仓配波次调度中台</h1>
+        <p class="text-xs text-indigo-200">按路线汇总小店碎单，生成卡车总装车表</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <select id="route-select" class="bg-indigo-900 border border-indigo-700 text-white text-xs px-3 py-1.5 rounded-lg outline-none">
+          <option value="城东A线">城东A线</option>
+          <option value="城西B线">城西B线</option>
+        </select>
+        <button onclick="loadWaveData()" class="bg-white text-indigo-800 text-xs px-3 py-1.5 rounded-lg font-bold shadow-sm">
+          生成装车总单
+        </button>
+      </div>
+    </header>
+
+    <!-- 仓库波次装车汇总表 -->
+    <div class="bg-white p-4 rounded-xl shadow border border-slate-200">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-sm font-bold text-slate-800">📦 仓库总拣货汇总表 (波次单)</h2>
+        <button onclick="window.print()" class="text-xs text-indigo-600 font-bold border border-indigo-200 px-2.5 py-1 rounded">打印拣货单</button>
+      </div>
+      <table class="w-full text-left text-xs">
+        <thead class="bg-slate-50 border-b border-slate-200">
+          <tr>
+            <th class="p-2.5">条形码</th>
+            <th class="p-2.5">商品名称</th>
+            <th class="p-2.5">包装规格</th>
+            <th class="p-2.5 text-right">装车总数</th>
+          </tr>
+        </thead>
+        <tbody id="wave-table-body" class="divide-y divide-slate-100">
+          <tr><td colspan="4" class="p-4 text-center text-slate-400">点击右上角“生成装车总单”刷新数据</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 门店授信与欠款监管表 -->
+    <div class="bg-white p-4 rounded-xl shadow border border-slate-200">
+      <h2 class="text-sm font-bold text-slate-800 mb-3">💰 辖区门店欠款与授信红线监控</h2>
+      <div id="store-debt-list" class="divide-y divide-slate-100 text-xs">
+        <div class="p-4 text-center text-slate-400">数据加载中...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://pzkszmbjktnpbutfhzko.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_mRyykwNHu1vD6zx-wJWi1A_EQXSh8Sz';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function loadWaveData() {
+      const route = document.getElementById('route-select').value;
+      const { data, error } = await supabase.rpc('get_route_wave_summary', { p_route_name: route });
+      const tbody = document.getElementById('wave-table-body');
+      
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">该路线当前暂无待装车订单</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map(it => `
+        <tr>
+          <td class="p-2.5 font-mono text-[11px] text-slate-500">${it.barcode}</td>
+          <td class="p-2.5 font-bold text-slate-800">${it.product_name}</td>
+          <td class="p-2.5 text-slate-500">${it.unit}</td>
+          <td class="p-2.5 text-right font-bold text-indigo-700 text-sm">${it.total_qty}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadStores() {
+      const { data: stores } = await supabase.from('store').select('*');
+      const container = document.getElementById('store-debt-list');
+      if (!stores || stores.length === 0) {
+        container.innerHTML = '<div class="p-4 text-center text-slate-400">暂无门店</div>';
+        return;
+      }
+      container.innerHTML = stores.map(s => `
+        <div class="py-2.5 flex justify-between items-center">
+          <div>
+            <div class="font-bold text-slate-800">${s.name} <span class="text-slate-400 font-normal">(${s.contact_name})</span></div>
+            <div class="text-[11px] text-slate-400 mt-0.5">${s.route_name} \vert{} 电话: ${s.phone}</div>
+          </div>
+          <div class="text-right">
+            <div class="font-bold ${s.current_debt > (s.credit_limit * 0.8) ? 'text-red-600' : 'text-slate-700'}">
+              欠款: ¥${s.current_debt}
+            </div>
+            <div class="text-[10px] text-slate-400">授信额度: ¥${s.credit_limit}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    loadWaveData();
+    loadStores();
+  </script>
+</body>
+</html>

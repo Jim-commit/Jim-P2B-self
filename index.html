@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>便利店/商超订货端</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans select-none pb-28">
+  <div class="max-w-md mx-auto p-3 space-y-3">
+    <!-- 弱网/离线提示栏 -->
+    <div id="net-status-bar" class="hidden bg-amber-500 text-white text-xs px-3 py-1.5 rounded-lg flex justify-between items-center font-bold">
+      <span id="net-status-text">⚠️ 离线模式，订单暂存手机本地</span>
+      <span id="offline-count-badge" class="bg-white text-amber-700 px-1.5 py-0.5 rounded text-[10px]">0 条暂存</span>
+    </div>
+
+    <!-- 顶部门店信息栏 -->
+    <div class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
+      <div>
+        <span class="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded">进货门店</span>
+        <h2 id="store-title" class="text-base font-bold mt-1 text-slate-900">读取中...</h2>
+        <p id="store-debt-info" class="text-xs text-slate-500 mt-0.5">路线：-- | 核对账期中...</p>
+      </div>
+      <button onclick="quickRepeat()" class="bg-amber-500 active:bg-amber-600 text-white font-bold text-xs px-3 py-2 rounded-lg shadow-sm">
+        ⚡ 照上次来一单
+      </button>
+    </div>
+
+    <!-- 扫码/条码进货框 -->
+    <div class="bg-white p-2.5 rounded-xl shadow-sm border border-slate-200 flex gap-2">
+      <input type="text" id="barcode-input" placeholder="输入条码或用扫描枪扫码" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-indigo-500">
+      <button onclick="scanBarcode()" class="bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg">扫码加购</button>
+    </div>
+
+    <!-- 帮着卖：厂家直补爆款营销 -->
+    <div class="bg-gradient-to-r from-red-500 to-orange-500 text-white p-3 rounded-xl shadow-sm flex justify-between items-center">
+      <div>
+        <span class="bg-white text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded">厂家直补·贴店门</span>
+        <h3 class="font-bold text-xs mt-1">金龙鱼食用油 5L (配A4红字海报)</h3>
+        <p class="text-[11px] text-red-100">进价 ¥198/箱，建议群售价 ¥59.9，净赚 ¥10.4</p>
+      </div>
+      <button onclick="copyGroupPromo()" class="bg-white text-red-600 font-bold text-xs px-2.5 py-1.5 rounded-lg shadow active:scale-95">
+        一键发群接龙
+      </button>
+    </div>
+
+    <!-- 常购商品列表 -->
+    <div class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200">
+      <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">常购补货清单</div>
+      <div id="product-list" class="divide-y divide-slate-100">
+        <div class="p-4 text-center text-slate-400 text-xs">商品目录加载中...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部固定下单栏 -->
+  <div class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 p-3 max-w-md mx-auto flex justify-between items-center z-50 shadow-lg">
+    <div>
+      <div class="text-[11px] text-slate-400">次日早 9:00 送达</div>
+      <div class="text-lg font-bold text-indigo-700">合计：<span id="order-total">¥0.00</span></div>
+    </div>
+    <button onclick="submitOrder()" class="bg-emerald-600 active:bg-emerald-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow">
+      确认提交订单
+    </button>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://pzkszmbjktnpbutfhzko.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_mRyykwNHu1vD6zx-wJWi1A_EQXSh8Sz';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let products = [];
+    let currentStore = null;
+    let cart = {};
+    let idb = null;
+
+    // 初始化 IndexedDB 本地弱网缓存
+    function initIndexedDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('b2b_offline_db', 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('products')) db.createObjectStore('products', { keyPath: 'id' });
+          if (!db.objectStoreNames.contains('offline_orders')) db.createObjectStore('offline_orders', { keyPath: 'client_temp_id' });
+        };
+        req.onsuccess = (e) => { idb = e.target.result; resolve(idb); };
+        req.onerror = (e) => reject(e);
+      });
+    }
+
+    async function cacheProducts(items) {
+      if (!idb) return;
+      const tx = idb.transaction('products', 'readwrite');
+      items.forEach(it => tx.objectStore('products').put(it));
+    }
+
+    async function getLocalProducts() {
+      if (!idb) return [];
+      return new Promise((resolve) => {
+        const req = idb.transaction('products', 'readonly').objectStore('products').getAll();
+        req.onsuccess = () => resolve(req.result || []);
+      });
+    }
+
+    async function saveOfflineOrder(payload) {
+      const tx = idb.transaction('offline_orders', 'readwrite');
+      payload.client_temp_id = 'OFF_' + Date.now();
+      tx.objectStore('offline_orders').put(payload);
+      updateOfflineUI();
+    }
+
+    async function getOfflineOrders() {
+      return new Promise((resolve) => {
+        const req = idb.transaction('offline_orders', 'readonly').objectStore('offline_orders').getAll();
+        req.onsuccess = () => resolve(req.result || []);
+      });
+    }
+
+    async function syncOfflineOrders() {
+      if (!navigator.onLine) return;
+      const list = await getOfflineOrders();
+      if (list.length === 0) return;
+      for (const item of list) {
+        try {
+          const { error } = await supabase.rpc('submit_b2b_order', { p_store_id: item.store_id, p_items: item.items });
+          if (!error) {
+            idb.transaction('offline_orders', 'readwrite').objectStore('offline_orders').delete(item.client_temp_id);
+          }
+        } catch(e) {}
+      }
+      updateOfflineUI();
+    }
+
+    async function updateOfflineUI() {
+      const list = await getOfflineOrders();
+      const badge = document.getElementById('offline-count-badge');
+      const bar = document.getElementById('net-status-bar');
+      if (list.length > 0 || !navigator.onLine) {
+        bar.classList.remove('hidden');
+        badge.innerText = `${list.length} 条待重放`; } else { bar.classList.add('hidden'); } }  window.addEventListener('online', () => syncOfflineOrders()); window.addEventListener('offline', () => updateOfflineUI());  async function init() { await initIndexedDB(); const urlParams = new URLSearchParams(window.location.search); const openid = urlParams.get('openid') \vert{}\vert{} 'wx_test_mock_openid_123';  if (navigator.onLine) { const { data: storeData } = await supabase.from('store').select('*').eq('wechat_openid', openid).single(); currentStore = storeData; const { data: prodData } = await supabase.from('product').select('*'); products = prodData \vert{}\vert{} []; if (products.length > 0) cacheProducts(products); } else { products = await getLocalProducts(); currentStore = { id: 1, name: '利民便利店 (本地离线)', route_name: '城东A线', credit_limit: 3000, current_debt: 450, price_tier: 'TIER_1' }; }  if (currentStore) { document.getElementById('store-title').innerText = `${currentStore.name} (${currentStore.contact_name \vert{}\vert{} '老板'})`; document.getElementById('store-debt-info').innerText = `路线：${currentStore.route_name} | 当前欠款：¥${currentStore.current_debt} / 授信：¥${currentStore.credit_limit}`;
+      }
+      renderProducts();
+      updateOfflineUI();
+    }
+
+    function renderProducts() {
+      const container = document.getElementById('product-list');
+      if (products.length === 0) {
+        container.innerHTML = '<div class="p-4 text-center text-slate-400 text-xs">暂无商品目录</div>';
+        return;
+      }
+      container.innerHTML = products.map(p => `
+        <div class="py-2.5 flex justify-between items-center">
+          <div>
+            <div class="font-bold text-sm text-slate-800">${p.name}</div>
+            <div class="text-[11px] text-slate-400">${p.spec} \vert{} 条码: ${p.barcode}</div>
+            <div class="text-sm font-bold text-indigo-600 mt-0.5">¥${p.tier_1_price} <span class="text-[10px] text-slate-400 font-normal">/${p.pack_unit}</span></div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="changeQty(${p.id}, -1)" class="w-7 h-7 rounded bg-slate-100 active:bg-slate-200 text-slate-700 font-bold">-</button>
+            <span id="qty-${p.id}" class="w-6 text-center font-bold text-sm">0</span>
+            <button onclick="changeQty(${p.id}, 1)" class="w-7 h-7 rounded bg-indigo-50 active:bg-indigo-100 text-indigo-700 font-bold">+</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function changeQty(id, delta) {
+      cart[id] = (cart[id] || 0) + delta;
+      if (cart[id] < 0) cart[id] = 0;
+      document.getElementById(`qty-${id}`).innerText = cart[id];
+      calcTotal();
+    }
+
+    function calcTotal() {
+      let total = 0;
+      products.forEach(p => {
+        if (cart[p.id]) total += cart[p.id] * p.tier_1_price;
+      });
+      document.getElementById('order-total').innerText = '¥' + total.toFixed(2);
+    }
+
+    function scanBarcode() {
+      const code = document.getElementById('barcode-input').value.trim();
+      const match = products.find(p => p.barcode === code);
+      if (match) {
+        changeQty(match.id, 1);
+        document.getElementById('barcode-input').value = '';
+      } else {
+        alert('未检索到此条码，请核对商品！');
+      }
+    }
+
+    function quickRepeat() {
+      cart = { 1: 3, 2: 2, 3: 1 };
+      products.forEach(p => {
+        const el = document.getElementById(`qty-${p.id}`); if (el) el.innerText = cart[p.id] \vert{}\vert{} 0; }); calcTotal(); alert('已自动填入上次常购订单：纯净水3箱、可乐2箱、牛肉面1箱'); }  function copyGroupPromo() { const text = `【社区福利拼团】金龙鱼食用调和油 5L 厂家直供补贴价只需 ¥59.9/桶！限量到店提货，接龙开始：\n1. 张阿姨 1桶\n2. 李老师 1桶`; navigator.clipboard.writeText(text).then(() => alert('接龙文案已复制！可直接粘贴至业主微信群。')); }  async function submitOrder() { const items = []; products.forEach(p => { if (cart[p.id] > 0) { items.push({ product_id: p.id, name: p.name, barcode: p.barcode, pack_unit: p.pack_unit, price: p.tier_1_price, quantity: cart[p.id] }); } }); if (items.length === 0) return alert('订货清单不能为空！');  if (!navigator.onLine) { await saveOfflineOrder({ store_id: currentStore.id, items }); alert('当前处于离线状态，订单已暂存手机！恢复联网后将自动同步总代。'); cart = {}; renderProducts(); calcTotal(); return; }  const { data, error } = await supabase.rpc('submit_b2b_order', { p_store_id: currentStore.id, p_items: items });  if (error) { alert(error.message); } else { alert(`订货提交成功！单号: ${data.order_no}，已通知总代排产。`);
+        cart = {};
+        renderProducts();
+        calcTotal();
+        init();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
