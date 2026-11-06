@@ -5,36 +5,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>司机配送随车核销端</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans p-3 pb-16">
   <div class="max-w-md mx-auto space-y-3">
-    <!-- 头部路线指示 -->
     <header class="bg-slate-800 text-white p-3.5 rounded-xl shadow flex justify-between items-center">
       <div>
         <h1 class="text-base font-bold">配送工单 · 城东A线</h1>
-        <p class="text-xs text-slate-400">到达门店后核对货物并点击核销</p>
+        <p class="text-xs text-slate-400">核对实收，支持损耗备注并自动登记对账流水</p>
       </div>
       <button onclick="loadOrders()" class="bg-slate-700 text-white text-xs px-2.5 py-1.5 rounded-lg">刷新工单</button>
     </header>
 
-    <!-- 门店送货工单列表 -->
     <div id="driver-orders" class="space-y-3">
       <div class="p-6 text-center text-slate-400 text-xs">正在载入配送任务...</div>
     </div>
   </div>
 
-  <script>
-    const SUPABASE_URL = 'https://pzkszmbjktnpbutfhzko.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_mRyykwNHu1vD6zx-wJWi1A_EQXSh8Sz';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <script type="module">
+    import { supabase } from '/src/lib/supabase.js';
 
-    async function loadOrders() {
+    window.loadOrders = async function() {
       const { data: orders } = await supabase.from('orders').select('*').order('id', { ascending: false });
       const container = document.getElementById('driver-orders');
 
       if (!orders || orders.length === 0) {
-        container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">今日该路线暂无待送货订单</div>';
+        container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">今日暂无待配送订单</div>';
         return;
       }
 
@@ -46,53 +41,74 @@
               <div class="text-xs text-slate-400 mt-0.5">单号: ${o.order_no}</div>
             </div>
             <span class="text-xs px-2 py-0.5 rounded font-bold ${o.status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}">
-              ${o.status === 'DELIVERED' ? '已送达' : '待送达'}
+              ${o.status === 'DELIVERED' ? '已送达' : '待配送'}
             </span>
           </div>
 
-          <div class="bg-slate-50 p-2 rounded-lg flex justify-between items-center text-xs">
-            <span class="text-slate-500">本单金额:</span>
-            <span class="font-bold text-sm text-indigo-700">¥${o.total_amount}</span>
+          <div class="bg-slate-50 p-2.5 rounded-lg space-y-1.5 text-xs">
+            <div class="flex justify-between">
+              <span class="text-slate-500">应收金额:</span>
+              <span class="font-bold text-indigo-700">¥${o.total_amount}</span>
+            </div>
+            ${o.status !== 'DELIVERED' ? `
+              <div class="flex items-center gap-2 pt-1 border-t border-slate-200">
+                <span class="text-slate-500">实收金额:</span>
+                <input type="number" id="actual-amt-${o.id}" value="${o.total_amount}" class="flex-1 bg-white border border-slate-300 rounded px-2 py-1 text-xs font-bold text-slate-800">
+              </div>
+              <input type="text" id="reject-reason-${o.id}" placeholder="如有损耗/少件请在此输入原因" class="w-full bg-white border border-slate-200 rounded px-2 py-1 text-[11px]">
+            ` : `
+              <div class="flex justify-between text-slate-500">
+                <span>实收金额:</span>
+                <span class="font-bold text-slate-800">¥${o.actual_amount || o.total_amount}</span>
+              </div>
+              ${o.reject_reason ? `<div class="text-red-500 text-[10px]">备注: ${o.reject_reason}</div>` : ''}
+            `}
           </div>
 
           ${o.status !== 'DELIVERED' ? `
             <div class="flex gap-2 pt-1">
-              <button onclick="deliverOrder(${o.id}, ${o.store_id}, ${o.total_amount}, 'CASH')" class="flex-1 bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg shadow-sm">
-                💵 现结并签收
+              <button onclick="handleSettle(${o.id}, 'CASH')" class="flex-1 bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg shadow-sm">
+                💵 现金收讫
               </button>
-              <button onclick="deliverOrder(${o.id}, ${o.store_id}, ${o.total_amount}, 'CREDIT')" class="flex-1 bg-slate-700 active:bg-slate-800 text-white font-bold text-xs py-2 rounded-lg shadow-sm">
+              <button onclick="handleSettle(${o.id}, 'WECHAT')" class="flex-1 bg-teal-600 active:bg-teal-700 text-white font-bold text-xs py-2 rounded-lg shadow-sm">
+                📱 微信转账
+              </button>
+              <button onclick="handleSettle(${o.id}, 'CREDIT')" class="flex-1 bg-slate-700 active:bg-slate-800 text-white font-bold text-xs py-2 rounded-lg shadow-sm">
                 📝 挂账签收
               </button>
             </div>
           ` : `
-            <div class="text-[11px] text-slate-400 text-center font-bold py-1">
-              ✓ 货款已核销 (${o.pay_status === 'PAID' ? '现结已清' : '记入挂账'})
+            <div class="text-[11px] text-slate-400 text-center font-bold py-0.5">
+              ✓ 货款对账已结清 (${o.pay_status === 'PAID' ? '现结入账' : '已入挂账'})
             </div>
           `}
         </div>
       `).join('');
-    }
+    };
 
-    async function deliverOrder(orderId, storeId, amount, payType) {
-      const payStatus = payType === 'CASH' ? 'PAID' : 'UNPAID';
-      
-      // 更新订单状态
-      await supabase.from('orders').update({ status: 'DELIVERED', pay_status: payStatus }).eq('id', orderId);
+    window.handleSettle = async function(orderId, payMethod) {
+      const actualAmt = parseFloat(document.getElementById(`actual-amt-${orderId}`).value);
+      const reason = document.getElementById(`reject-reason-${orderId}`).value.trim();
 
-      // 若现场现结，从小店欠款中减除
-      if (payType === 'CASH') {
-        const { data: st } = await supabase.from('store').select('current_debt').eq('id', storeId).single();
-        if (st) {
-          const updatedDebt = Math.max(0, st.current_debt - amount);
-          await supabase.from('store').update({ current_debt: updatedDebt }).eq('id', storeId);
-        }
+      if (isNaN(actualAmt) || actualAmt < 0) return alert('请输入有效的实收金额！');
+
+      const { data, error } = await supabase.rpc('deliver_and_settle_order', {
+        p_order_id: orderId,
+        p_pay_method: payMethod,
+        p_actual_amount: actualAmt,
+        p_reject_reason: reason || null,
+        p_operator: '送货司机'
+      });
+
+      if (error) {
+        alert(error.message);
+      } else {
+        alert('核销成功，已自动登记正式对账流水！');
+        window.loadOrders();
       }
+    };
 
-      alert('核销成功！');
-      loadOrders();
-    }
-
-    loadOrders();
+    window.loadOrders();
   </script>
 </body>
 </html>
