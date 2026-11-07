@@ -1,12 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-// 从 Vercel 注入的环境变量或本地 .env 读取
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || window.ENV_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || window.ENV_SUPABASE_ANON_KEY;
 
-// 动态提取当前总代/租户标识 (多仓/多总代隔离)
+// 动态提取当前总代租户参数（不设静默默认值）
 const urlParams = new URLSearchParams(window.location.search);
-const currentTenant = urlParams.get('tenant') || 'BJ_HQ';
+export const currentTenant = urlParams.get('tenant');
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -15,7 +14,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'x-tenant-id': currentTenant,
+      // 若无租户参数，注入非法标识，确保后端 RLS 拦截
+      'x-tenant-id': currentTenant || 'NO_TENANT_SPECIFIED',
     },
   },
 });
