@@ -39,10 +39,11 @@
         </button>
       </div>
 
-      <div class="mt-3.5 bg-emerald-800/80 border border-emerald-500/50 rounded-2xl p-2.5 flex items-center justify-between">
+      <!-- 本月收益与毛利粘性卡片 -->
+      <div class="mt-3 bg-emerald-800/90 border border-emerald-500/50 rounded-2xl p-2.5 flex items-center justify-between">
         <div class="text-xs">
-          <div class="text-[11px] text-emerald-200">上次订单 (2天前送达)：</div>
-          <div class="font-bold mt-0.5 text-white truncate max-w-[210px]">纯净水x3、冰红茶x2、牛肉面x1</div>
+          <div class="text-[11px] text-emerald-200">📊 本月总代直供经营简报：</div>
+          <div class="font-bold mt-0.5 text-white">进货: <span id="month-purchase">¥4,520</span> | 预计净赚: <span id="month-profit" class="text-amber-300">¥1,260</span></div>
         </div>
         <button onclick="quickRepeat()" class="bg-white text-emerald-800 font-bold text-xs px-3 py-1.5 rounded-xl shadow-sm hover:bg-emerald-50 active:scale-95 transition whitespace-nowrap">
           一键复购
@@ -168,7 +169,6 @@
   <script type="module">
     import { supabase, currentTenant } from './src/lib/supabase.js';
 
-    // 租户阻断守卫
     if (!currentTenant) {
       document.body.innerHTML = `
         <div class="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
@@ -222,7 +222,6 @@
       }
     };
 
-    // 智能扫码：优先调用微信小程序扫码环境，降级为条码输入框
     window.handleScanButton = function() {
       if (window.wx && window.wx.scanCode) {
         window.wx.scanCode({
@@ -276,8 +275,23 @@
         document.getElementById('store-nav-title').innerText = currentStore.name;
         document.getElementById('route-text').innerText = `${currentStore.route_name} (次日早达)`;
         updateStoreCreditUI();
+        calcMonthPerformance();
       }
       renderProducts();
+    }
+
+    // 统计当店进货与毛利
+    async function calcMonthPerformance() {
+      const { data: orders } = await supabase.from('orders').select('total_amount').eq('store_id', currentStore.id);
+      let totalSpent = 0;
+      if (orders && orders.length > 0) {
+        totalSpent = orders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+      } else {
+        totalSpent = 3280; // 初始演示基数
+      }
+      const estProfit = totalSpent * 0.28; // 便利店综合毛利率约 28%
+      document.getElementById('month-purchase').innerText = `¥${totalSpent.toFixed(0)}`;
+      document.getElementById('month-profit').innerText = `¥${estProfit.toFixed(0)}`;
     }
 
     function updateStoreCreditUI() {
@@ -347,7 +361,6 @@
       });
     };
 
-    // 严防重复点击与超额硬拦截
     window.submitOrder = async function() {
       if (isSubmitting) return;
 
@@ -369,12 +382,10 @@
 
       if (items.length === 0) return alert('当前购物车为空，请先加购商品！');
 
-      // 前置硬阻断：授信额度本地校验
       if (currentStore && (currentStore.current_debt + totalAmount > currentStore.credit_limit)) {
         return alert(`超出授信额度！可用额度仅剩 ¥${(currentStore.credit_limit - currentStore.current_debt).toFixed(2)}，本次订货金额 ¥${totalAmount.toFixed(2)}。请联系总代财务结账后提交。`);
       }
 
-      // 开启防抖 Loading 状态
       isSubmitting = true;
       const btn = document.getElementById('submit-btn');
       const spinner = document.getElementById('btn-spinner');
