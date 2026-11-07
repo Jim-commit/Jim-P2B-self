@@ -55,29 +55,34 @@
               <span class="text-emerald-700">🧾</span> 往期送货单据与对账
             </button>
 
-            <!-- 实用 2：供货商资质与迎检背书 (新增) -->
+            <!-- 实用 2：极简保真查验与批次报告 -->
+            <button onclick="openTraceVerifyModal()" class="w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700 transition">
+              <span class="text-emerald-700">🔍</span> 商品批次与保真质检单
+            </button>
+
+            <!-- 实用 3：供货商资质与迎检背书 -->
             <button onclick="openSupplierLicenseModal()" class="w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700 transition">
               <span class="text-blue-700">🏛️</span> 供货商资质与食安背书
             </button>
 
-            <!-- 实用 3：专属服务窗口与联系人 (新增) -->
+            <!-- 实用 4：专属服务窗口与各岗电话 -->
             <button onclick="openServiceWindowModal()" class="w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700 transition">
               <span class="text-teal-700">📇</span> 专属服务窗口与各岗电话
             </button>
 
-            <!-- 实用 4：缺货登记/找货捎话 (新增) -->
+            <!-- 实用 5：缺货登记/找货捎话 -->
             <button onclick="openDemandRequestModal()" class="w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700 transition">
               <span class="text-rose-700">📝</span> 缺货登记 · 捎话找货
             </button>
 
             <div class="border-t border-stone-100 my-1"></div>
 
-            <!-- 实用 5：周转筐与押金备忘 -->
+            <!-- 实用 6：周转筐与押金备忘 -->
             <button onclick="openCratesModal()" class="w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700 transition">
               <span class="text-amber-700">📦</span> 周转筐与押金容器备忘
             </button>
 
-            <!-- 实用 6：单件毛利速算器 -->
+            <!-- 实用 7：单件毛利速算器 -->
             <button onclick="openMarginCalcModal()" class="w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700 transition">
               <span class="text-indigo-700">🧮</span> 单件进价与毛利速算
             </button>
@@ -225,15 +230,35 @@
         </div>
       </div>
 
-      <!-- 弹性公约卡片 -->
-      <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 p-3.5 rounded-3xl text-xs text-emerald-950 flex items-start gap-3">
-        <span class="text-xl">🤝</span>
-        <div class="space-y-1">
-          <div class="font-bold text-emerald-900 text-xs">和气生财 · 熟客买卖底气</div>
-          <p class="text-[11px] text-emerald-800/90 leading-relaxed">
-            <b>不压您血汗钱：</b>街坊要几桶就给师傅报几桶，不逼您压一屋子货。<br>
-            <b>邻里绝不受委屈：</b>街坊拿回去若有磕碰或者不对心思，尽管给邻居换，转天跟车师傅随车给咱结清抵扣，绝不让掌柜两头作难。
-          </p>
+      <!-- 【方案 A 替换落地】：下期想带什么货？掌柜许愿直通总代 -->
+      <div class="bg-white rounded-3xl p-4 border border-stone-200/70 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-2.5">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-1.5">
+            <span class="text-sm">💡</span>
+            <span class="font-bold text-xs text-stone-800">下期社区福利想推啥？</span>
+          </div>
+          <span class="text-[10px] text-stone-400">轻点选货 · 总代提前排车</span>
+        </div>
+        <p class="text-[11px] text-stone-500 leading-relaxed">
+          街坊们平时爱问什么，随手点选投个票，票多总代直接找厂家砍直供补贴：
+        </p>
+        <div class="grid grid-cols-2 gap-2 pt-0.5">
+          <button onclick="voteNextProduct('🥛 伊利金典/纯牛奶整箱')" class="p-2.5 bg-stone-50 hover:bg-emerald-50 hover:border-emerald-200 border border-stone-200/80 rounded-2xl text-left active:scale-95 transition">
+            <div class="font-bold text-xs text-stone-800">🥛 纯牛奶整箱</div>
+            <div class="text-[10px] text-stone-400 mt-0.5">早点高频，家家要喝</div>
+          </button>
+          <button onclick="voteNextProduct('🧻 维达/心相印抽纸整箱')" class="p-2.5 bg-stone-50 hover:bg-emerald-50 hover:border-emerald-200 border border-stone-200/80 rounded-2xl text-left active:scale-95 transition">
+            <div class="font-bold text-xs text-stone-800">🧻 品牌抽纸连包</div>
+            <div class="text-[10px] text-stone-400 mt-0.5">日耗刚需，群里好拼</div>
+          </button>
+          <button onclick="voteNextProduct('🍵 东方树叶茉莉花茶整箱')" class="p-2.5 bg-stone-50 hover:bg-emerald-50 hover:border-emerald-200 border border-stone-200/80 rounded-2xl text-left active:scale-95 transition">
+            <div class="font-bold text-xs text-stone-800">🍵 东方树叶无糖茶</div>
+            <div class="text-[10px] text-stone-400 mt-0.5">年轻人整箱搬走</div>
+          </button>
+          <button onclick="voteNextProduct('🌾 优质小町米/长粒香大米')" class="p-2.5 bg-stone-50 hover:bg-emerald-50 hover:border-emerald-200 border border-stone-200/80 rounded-2xl text-left active:scale-95 transition">
+            <div class="font-bold text-xs text-stone-800">🌾 东北优质袋装米</div>
+            <div class="text-[10px] text-stone-400 mt-0.5">米油搭配，熟客最爱</div>
+          </button>
         </div>
       </div>
     </section>
@@ -279,7 +304,51 @@
 
   </div>
 
-  <!-- 【新增弹窗 A】：供货商资质与食安背书（迎检出示模式） -->
+  <!-- 【弹窗 1】：极简保真查验与批次报告 -->
+  <div id="trace-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-800">🔍 正品出厂批次查验</h3>
+          <p class="text-[10px] text-stone-400">大厂原封配齐 · 留底单据随时核对</p>
+        </div>
+        <button onclick="closeTraceModal()" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
+      </div>
+
+      <div class="bg-stone-50 border border-stone-200/80 p-3 rounded-2xl space-y-2 text-xs">
+        <div class="flex justify-between">
+          <span class="text-stone-500">主供货品：</span>
+          <b class="text-stone-800">金龙鱼 黄金比例调和油 5L</b>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-stone-500">在店出厂批号：</span>
+          <b class="text-emerald-800 font-mono">YH-20261012-A03</b>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-stone-500">厂家出厂检验：</span>
+          <span class="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">✓ 合格出库（附留存底单）</span>
+        </div>
+        <div class="flex justify-between text-[11px] text-stone-400 pt-1 border-t border-stone-200/60">
+          <span>原厂直调：益海嘉里工厂</span>
+          <span>配送：总代专属车队</span>
+        </div>
+      </div>
+
+      <div class="bg-emerald-50/70 border border-emerald-200 p-3 rounded-2xl text-[11px] text-emerald-900 space-y-1">
+        <div class="font-bold">店门口安心挑看公约：</div>
+        <p class="leading-relaxed text-emerald-800">
+          1. 瓶身批号与系统台账一致，支持扫包装防伪码。<br>
+          2. 如对油色、封口存疑，现场直接退换，随车师傅原价结回。
+        </p>
+      </div>
+
+      <button onclick="closeTraceModal()" class="w-full bg-[#064e3b] text-white text-xs font-bold py-2.5 rounded-2xl shadow active:scale-95 transition">
+        核对无误，关闭
+      </button>
+    </div>
+  </div>
+
+  <!-- 【弹窗 2】：供货商资质与食安背书 -->
   <div id="supplier-license-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -321,7 +390,7 @@
     </div>
   </div>
 
-  <!-- 【新增弹窗 B】：专属服务窗口与联系人 -->
+  <!-- 【弹窗 3】：专属服务窗口与联系人 -->
   <div id="service-window-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -333,7 +402,6 @@
       </div>
 
       <div class="space-y-2 text-xs">
-        <!-- 岗位 1：随车师傅 -->
         <div class="p-3 bg-stone-50 border border-stone-200/80 rounded-2xl flex justify-between items-center">
           <div>
             <div class="font-bold text-stone-800">🚚 随车跟车师傅 (城东A线)</div>
@@ -344,7 +412,6 @@
           </a>
         </div>
 
-        <!-- 岗位 2：大客户经理 -->
         <div class="p-3 bg-stone-50 border border-stone-200/80 rounded-2xl flex justify-between items-center">
           <div>
             <div class="font-bold text-stone-800">👔 片区专属业务经理 (老张)</div>
@@ -355,7 +422,6 @@
           </a>
         </div>
 
-        <!-- 岗位 3：财务查账专线 -->
         <div class="p-3 bg-stone-50 border border-stone-200/80 rounded-2xl flex justify-between items-center">
           <div>
             <div class="font-bold text-stone-800">🧾 总代财务与对账窗口</div>
@@ -373,7 +439,7 @@
     </div>
   </div>
 
-  <!-- 【新增弹窗 C】：缺货登记 · 捎话找货 -->
+  <!-- 【弹窗 4】：缺货登记 · 捎话找货 -->
   <div id="demand-request-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -414,7 +480,7 @@
     </div>
   </div>
 
-  <!-- 【往期对账弹窗】 -->
+  <!-- 【弹窗 5】：往期往来单据与签收明细 -->
   <div id="statements-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -435,7 +501,7 @@
     </div>
   </div>
 
-  <!-- 【周转筐弹窗】 -->
+  <!-- 【弹窗 6】：周转筐与押金容器登记 -->
   <div id="crates-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -479,7 +545,7 @@
     </div>
   </div>
 
-  <!-- 【毛利速算器弹窗】 -->
+  <!-- 【弹窗 7】：整箱进价换算与毛利速算器 -->
   <div id="calc-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -529,7 +595,7 @@
     </div>
   </div>
 
-  <!-- 【店门花纸定制弹窗】 -->
+  <!-- 【店门花纸定制工作台】 -->
   <div id="poster-studio-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-4 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       
@@ -637,10 +703,8 @@
     let isSubmitting = false;
     let groupSoldCount = 14;
 
-    // 掌柜周转筐本地暂存
     let cratesInStore = parseInt(localStorage.getItem('crates_count') || '6');
 
-    // 当前花纸编辑状态
     let posterState = {
       title: '金龙鱼 黄金比例食用调和油 5L',
       subTitle: '大厂正规批次 · 街坊随心挑看',
@@ -672,7 +736,17 @@
       if (backdrop) backdrop.classList.add('hidden');
     };
 
-    // 【新增实用工具 A】：供货商资质与食安背书弹窗
+    // 【弹窗 1 控制】：极简保真查验
+    window.openTraceVerifyModal = function() {
+      window.closeStoreMenu();
+      document.getElementById('trace-modal').classList.remove('hidden');
+    };
+
+    window.closeTraceModal = function() {
+      document.getElementById('trace-modal').classList.add('hidden');
+    };
+
+    // 【弹窗 2 控制】：供货商资质与食安背书
     window.openSupplierLicenseModal = function() {
       window.closeStoreMenu();
       const corpNameEl = document.getElementById('license-corp-name');
@@ -688,7 +762,7 @@
       document.getElementById('supplier-license-modal').classList.add('hidden');
     };
 
-    // 【新增实用工具 B】：专属服务窗口弹窗
+    // 【弹窗 3 控制】：专属服务窗口
     window.openServiceWindowModal = function() {
       window.closeStoreMenu();
       document.getElementById('service-window-modal').classList.remove('hidden');
@@ -698,7 +772,7 @@
       document.getElementById('service-window-modal').classList.add('hidden');
     };
 
-    // 【新增实用工具 C】：缺货登记 · 捎话找货
+    // 【弹窗 4 控制】：缺货登记 · 捎话找货
     window.openDemandRequestModal = function() {
       window.closeStoreMenu();
       document.getElementById('demand-request-modal').classList.remove('hidden');
@@ -715,7 +789,6 @@
 
       if (!name) return alert('烦请写一下想找的货品名字或规格！');
 
-      // 组装并发送缺货提醒给总代老板微信
       const desp = `### 门店缺货与找货需求登记\n- **发起门店**：${currentStore ? currentStore.name : '合作小店'}\n- **所属干线**：${currentStore ? currentStore.route_name : '配送线路'}\n- **急需商品**：**${name}**\n- **预估进货量**：${qty || '按整箱进'}\n- **掌柜留言**：${note || '有现货请师傅随车捎上'}`;
       sendWechatNotice(`📝 缺货登记：${name} (${currentStore ? currentStore.name : ''})`, desp);
 
@@ -726,7 +799,16 @@
       window.closeDemandRequestModal();
     };
 
-    // 【往期对账单列表】
+    // 【方案 A 核心动作】：下期推品投票/许愿
+    window.voteNextProduct = function(productName) {
+      const storeName = currentStore ? currentStore.name : '小店掌柜';
+      const desp = `### 门店下期社区动销选品意向\n- **推荐门店**：${storeName}\n- **意向商品**：**${productName}**\n- **建议行动**：该品类在社区熟客呼声高，请总代采购向厂家申请整车直供政策。`;
+      sendWechatNotice(`💡 动销选品投票：${productName} (${storeName})`, desp);
+
+      alert(`收到！已帮您将【${productName}】列入总代下期直供备货备选名单，票多就安排厂家调配！`);
+    };
+
+    // 【弹窗 5 控制】：往期对账单列表
     window.showHistoryStatements = async function() {
       window.closeStoreMenu();
       const modal = document.getElementById('statements-modal');
@@ -771,7 +853,7 @@
       document.getElementById('statements-modal').classList.add('hidden');
     };
 
-    // 【周转筐记录】
+    // 【弹窗 6 控制】：周转筐记录
     window.openCratesModal = function() {
       window.closeStoreMenu();
       document.getElementById('crates-count').innerText = `${cratesInStore} 个`;
@@ -789,7 +871,7 @@
       document.getElementById('crates-count').innerText = `${cratesInStore} 个`;
     };
 
-    // 【单件毛利速算】
+    // 【弹窗 7 控制】：单件毛利速算
     window.openMarginCalcModal = function() {
       window.closeStoreMenu();
       document.getElementById('calc-modal').classList.remove('hidden');
