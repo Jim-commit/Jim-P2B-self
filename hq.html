@@ -127,7 +127,7 @@
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-slate-800">📦 總代直供現貨庫管理</h2>
-            <span class="text-[11px] text-slate-400">發布自家現貨品項、制定批發價與庫存數量</span>
+            <span class="text-[11px] text-slate-400">發布商品與定價（此處批發價即為銷售終端所看到的進貨價）</span>
           </div>
           <button onclick="window.openAddProductModal()" class="text-xs bg-[#064e3b] text-white font-bold px-3 py-1.5 rounded-xl shadow active:scale-95 transition">
             + 上架新商品
@@ -140,7 +140,7 @@
               <th class="p-2.5">商品 ID</th>
               <th class="p-2.5">商品名稱</th>
               <th class="p-2.5">箱規/包裝</th>
-              <th class="p-2.5">批發進價</th>
+              <th class="p-2.5">供貨價 (終端可見)</th>
               <th class="p-2.5">現有庫存</th>
               <th class="p-2.5 text-right">操作</th>
             </tr>
@@ -373,18 +373,20 @@
       }
     };
 
-    // --- 發布新商品 (精準捕捉報錯，成功後自動停在商品分頁) ---
+    // --- 發布新商品 (終端價格完全對齊 + 補齊 tier_2_price 容錯) ---
     window.openAddProductModal = async function() {
       const name = prompt('請輸入要發布的商品名稱：');
       if (!name || !name.trim()) return;
-      const price = prompt('請輸入批發價 (元/箱)：', '150');
+      const price = prompt('請輸入供貨價/批發價 (元/箱，終端掌櫃將按此價格進貨)：', '150');
       if (!price || isNaN(price)) return alert('請輸入有效金額！');
       const spec = prompt('請輸入包裝規格：', '4桶/箱') || '整箱';
 
+      const unitPrice = parseFloat(price);
       const newProduct = {
         tenant_id: currentAgent,
         name: name.trim(),
-        tier_1_price: parseFloat(price),
+        tier_1_price: unitPrice, // 銷售終端掌櫃看到的進貨價
+        tier_2_price: unitPrice, // 兜底賦值，防止資料庫非空限制報錯
         pack_unit: '箱',
         spec: spec.trim(),
         stock: 999
@@ -398,7 +400,7 @@
         return;
       }
 
-      alert(`🎉 商品【${name.trim()}】已成功發布！`);
+      alert(`🎉 商品【${name.trim()}】已成功發布！供貨價 ¥${unitPrice}/箱 已生效。`);
       window.switchTab('products'); // 確保停留在商品管理 Tab
       window.loadHQData(); // 重新整理商品清單
     };
