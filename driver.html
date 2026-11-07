@@ -11,7 +11,7 @@
     <header class="bg-slate-800 text-white p-3.5 rounded-xl shadow flex justify-between items-center">
       <div>
         <h1 class="text-base font-bold">配送工单 · 城东A线</h1>
-        <p class="text-xs text-slate-400">核对实收，支持手写签名与电子交接凭证</p>
+        <p class="text-xs text-slate-400">核对实收，支持手写签名与自动微信通知</p>
       </div>
       <button onclick="loadOrders()" class="bg-slate-700 text-white text-xs px-2.5 py-1.5 rounded-lg">刷新工单</button>
     </header>
@@ -41,6 +41,7 @@
 
   <script type="module">
     import { supabase, currentTenant } from './src/lib/supabase.js';
+    import { sendWechatNotice } from './src/lib/notify.js';
 
     if (!currentTenant) {
       document.body.innerHTML = `
@@ -60,6 +61,7 @@
       throw new Error('未指定总代租户，拒绝核销。');
     }
 
+    let loadedOrders = [];
     let activeOrderId = null;
     let activePayMethod = null;
     let canvas, ctx, isDrawing = false;
@@ -68,6 +70,7 @@
       const { data: orders, error } = await supabase.from('orders').select('*').order('id', { ascending: false });
       const container = document.getElementById('driver-orders');
 
+      loadedOrders = orders || [];
       if (!orders || orders.length === 0) {
         container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">今日暂无待配送订单</div>';
         return;
@@ -126,7 +129,6 @@
       `).join('');
     };
 
-    // 签名画布控制
     function initCanvas() {
       canvas = document.getElementById('sign-canvas');
       ctx = canvas.getContext('2d');
@@ -170,13 +172,14 @@
       if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
 
+    // 核心核销结算函数（含自动推送微信通知）
     window.confirmSettleWithSign = async function() {
       const actualAmt = parseFloat(document.getElementById(`actual-amt-${activeOrderId}`).value);
       const reason = document.getElementById(`reject-reason-${activeOrderId}`).value.trim();
 
       if (isNaN(actualAmt) || actualAmt < 0) return alert('请输入有效的实收金额！');
 
-      const signBase64 = canvas.toDataURL('image/png');
+      const targetOrder = loadedOrders.find(it => it.id === activeOrderId);
       const finalRemark = reason ? `${reason} (已电子签名)` : '已电子签名验收';
 
       const { data, error } = await supabase.rpc('deliver_and_settle_order', {
@@ -190,7 +193,17 @@
       if (error) {
         alert(error.message);
       } else {
-        alert('核销成功！凭证流水已实时登账。');
+        // 异步触发财务/老板个人微信服务通知
+        const storeName = targetOrder ? targetOrder.store_name : '辖区门店';
+        const orderNo = targetOrder ? targetOrder.order_no : '未知单号';
+        const methodText = activePayMethod === 'CASH' ? '现钞收讫' : (activePayMethod === 'WECHAT' ? '微信扫码转账' : '挂账赊销确认');
+        
+        const noticeTitle = `💰 实收账款入账：${storeName} (¥${actualAmt.toFixed(2)})`;
+        const noticeDesp = `### 司机送达现场收款通知\n- **结款门店**：${storeName}\n- **收款金额**：¥${actualAmt.toFixed(2)}\n- **结账方式**：${methodText}\n- **关联合同单号**：\`${orderNo}\`\n- **现场核验**：门店老板已在司机手持终端手写签名验收\n- **损耗与备注**：${finalRemark}\n\n[👉 点击打开总代中台查验对账流水](https://goods-lucky.vercel.app/hq.html?tenant=${currentTenant})`;
+
+        sendWechatNotice(noticeTitle, noticeDesp);
+
+        alert('核销成功！实收流水已实时登账并已触发微信通知。');
         window.closeSignModal();
         window.loadOrders();
       }
