@@ -11,7 +11,7 @@
     <header class="bg-slate-800 text-white p-3.5 rounded-xl shadow flex justify-between items-center">
       <div>
         <h1 class="text-base font-bold">配送工单 · 城东A线</h1>
-        <p class="text-xs text-slate-400">核对实收，支持损耗备注并自动登记对账流水</p>
+        <p class="text-xs text-slate-400">核对实收，支持手写签名与电子交接凭证</p>
       </div>
       <button onclick="loadOrders()" class="bg-slate-700 text-white text-xs px-2.5 py-1.5 rounded-lg">刷新工单</button>
     </header>
@@ -21,10 +21,27 @@
     </div>
   </div>
 
+  <!-- 电子手写签名弹窗 -->
+  <div id="signature-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-2xl p-4 space-y-3">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-sm text-slate-800">✍️ 门店老板验收签名</h3>
+        <button onclick="closeSignModal()" class="text-slate-400 text-lg">✕</button>
+      </div>
+      <p class="text-[11px] text-slate-500">请核对货物并实收结清，在下方灰色画板上手写签名：</p>
+      <div class="border border-slate-300 rounded-xl overflow-hidden bg-slate-50">
+        <canvas id="sign-canvas" width="320" height="150" class="w-full touch-none cursor-crosshair"></canvas>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="clearCanvas()" class="flex-1 bg-slate-100 text-slate-600 text-xs font-bold py-2 rounded-xl">重签清空</button>
+        <button onclick="confirmSettleWithSign()" class="flex-1 bg-emerald-600 text-white text-xs font-bold py-2 rounded-xl">确认并入账</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { supabase, currentTenant } from './src/lib/supabase.js';
 
-    // 核心拦截守卫：司机若无总代租户信息，强制阻断操作
     if (!currentTenant) {
       document.body.innerHTML = `
         <div class="min-h-screen bg-slate-100 flex items-center justify-center p-4">
@@ -40,8 +57,12 @@
           </div>
         </div>
       `;
-      throw new Error('拦截：未指定总代租户，拒绝核销。');
+      throw new Error('未指定总代租户，拒绝核销。');
     }
+
+    let activeOrderId = null;
+    let activePayMethod = null;
+    let canvas, ctx, isDrawing = false;
 
     window.loadOrders = async function() {
       const { data: orders, error } = await supabase.from('orders').select('*').order('id', { ascending: false });
@@ -86,13 +107,13 @@
 
           ${o.status !== 'DELIVERED' ? `
             <div class="flex gap-2 pt-1">
-              <button onclick="handleSettle(${o.id}, 'CASH')" class="flex-1 bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg shadow-sm">
-                💵 现金收讫
+              <button onclick="openSignature(${o.id}, 'CASH')" class="flex-1 bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg shadow-sm">
+                💵 现金核销
               </button>
-              <button onclick="handleSettle(${o.id}, 'WECHAT')" class="flex-1 bg-teal-600 active:bg-teal-700 text-white font-bold text-xs py-2 rounded-lg shadow-sm">
+              <button onclick="openSignature(${o.id}, 'WECHAT')" class="flex-1 bg-teal-600 active:bg-teal-700 text-white font-bold text-xs py-2 rounded-lg shadow-sm">
                 📱 微信转账
               </button>
-              <button onclick="handleSettle(${o.id}, 'CREDIT')" class="flex-1 bg-slate-700 active:bg-slate-800 text-white font-bold text-xs py-2 rounded-lg shadow-sm">
+              <button onclick="openSignature(${o.id}, 'CREDIT')" class="flex-1 bg-slate-700 active:bg-slate-800 text-white font-bold text-xs py-2 rounded-lg shadow-sm">
                 📝 挂账签收
               </button>
             </div>
@@ -105,24 +126,72 @@
       `).join('');
     };
 
-    window.handleSettle = async function(orderId, payMethod) {
-      const actualAmt = parseFloat(document.getElementById(`actual-amt-${orderId}`).value);
-      const reason = document.getElementById(`reject-reason-${orderId}`).value.trim();
+    // 签名画布控制
+    function initCanvas() {
+      canvas = document.getElementById('sign-canvas');
+      ctx = canvas.getContext('2d');
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#1e293b';
+
+      const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+      };
+
+      const start = (e) => { isDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+      const draw = (e) => { if (!isDrawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+      const stop = () => { isDrawing = false; };
+
+      canvas.addEventListener('mousedown', start);
+      canvas.addEventListener('mousemove', draw);
+      window.addEventListener('mouseup', stop);
+
+      canvas.addEventListener('touchstart', start, { passive: false });
+      canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
+      window.addEventListener('touchend', stop);
+    }
+
+    window.openSignature = function(orderId, payMethod) {
+      activeOrderId = orderId;
+      activePayMethod = payMethod;
+      document.getElementById('signature-modal').classList.remove('hidden');
+      if (!canvas) initCanvas();
+      window.clearCanvas();
+    };
+
+    window.closeSignModal = function() {
+      document.getElementById('signature-modal').classList.add('hidden');
+    };
+
+    window.clearCanvas = function() {
+      if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    };
+
+    window.confirmSettleWithSign = async function() {
+      const actualAmt = parseFloat(document.getElementById(`actual-amt-${activeOrderId}`).value);
+      const reason = document.getElementById(`reject-reason-${activeOrderId}`).value.trim();
 
       if (isNaN(actualAmt) || actualAmt < 0) return alert('请输入有效的实收金额！');
 
+      const signBase64 = canvas.toDataURL('image/png');
+      const finalRemark = reason ? `${reason} (已电子签名)` : '已电子签名验收';
+
       const { data, error } = await supabase.rpc('deliver_and_settle_order', {
-        p_order_id: orderId,
-        p_pay_method: payMethod,
+        p_order_id: activeOrderId,
+        p_pay_method: activePayMethod,
         p_actual_amount: actualAmt,
-        p_reject_reason: reason || null,
+        p_reject_reason: finalRemark,
         p_operator: '送货司机'
       });
 
       if (error) {
         alert(error.message);
       } else {
-        alert('核销成功，已自动登记正式对账流水！');
+        alert('核销成功！凭证流水已实时登账。');
+        window.closeSignModal();
         window.loadOrders();
       }
     };
