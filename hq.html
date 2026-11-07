@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>總代倉配與調度中台</title>
+  <title>總代供銷管理與業務拓客中台</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,228 +17,488 @@
 <body class="bg-slate-100 text-slate-800 font-sans p-4 min-h-screen">
   <div class="max-w-6xl mx-auto space-y-4">
     
-    <!-- 頂欄：總代實體與邀請碼名片 -->
+    <!-- 頂欄：總代實體與指標概覽 -->
     <header class="bg-indigo-900 text-white p-5 rounded-3xl shadow-lg flex flex-wrap justify-between items-center gap-4">
       <div>
         <div class="flex items-center gap-2.5">
-          <h1 class="text-lg font-bold">北京順達商貿供應鏈 · 獨立中台</h1>
+          <h1 id="hq-title" class="text-lg font-bold">總代供銷調度與拓客中台</h1>
           <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 雲底座連通在線
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 獨立租戶運行
           </span>
         </div>
         <div class="text-xs text-indigo-200 mt-1 flex flex-wrap gap-4">
-          <span>總代標識: <b class="font-mono text-white">BJ_SHUNDA</b></span>
-          <span>專屬邀請碼: <b class="font-mono text-amber-300 tracking-wider">888001</b></span>
-          <span>線路主管: <b>李經理 (13800138002)</b></span>
+          <span>當前總代: <b id="hq-tenant-id" class="font-mono text-white">BJ_SHUNDA</b></span>
+          <span>邀請碼: <b id="hq-invite-code" class="font-mono text-amber-300 tracking-wider">888001</b></span>
+          <span>在約供貨店: <b id="stat-active-stores" class="font-mono text-white">0 家</b></span>
+          <span>拓客線索池: <b id="stat-leads-count" class="font-mono text-amber-300">0 條</b></span>
         </div>
       </div>
 
       <div class="flex items-center gap-2">
-        <select id="route-select" onchange="window.loadHQData()" class="bg-indigo-950 border border-indigo-700 text-white text-xs px-3 py-2 rounded-xl outline-none">
-          <option value="城東A線">城東A線 · 負責人：送貨師傅(老張)</option>
-          <option value="城西B線">城西B線 · 負責人：送貨師傅(李師傅)</option>
+        <select id="agent-selector" onchange="window.switchAgent(this.value)" class="bg-indigo-950 border border-indigo-700 text-white text-xs px-3 py-2 rounded-xl outline-none">
+          <option value="BJ_SHUNDA">北京順達商貿 (邀請碼 888001)</option>
+          <option value="SH_LEGOU">上海樂購供應鏈 (邀請碼 888002)</option>
         </select>
         <button onclick="window.loadHQData()" class="bg-white text-indigo-900 text-xs px-3.5 py-2 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition active:scale-95">
-          重新整理調度
+          重新整理中台
         </button>
       </div>
     </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      
-      <!-- 左側 2 列：送貨人派單、裝車指示與門店檔案 -->
-      <div class="lg:col-span-2 space-y-4">
-        
-        <!-- 裝車堆疊指引表 -->
-        <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
-          <div class="flex justify-between items-center">
-            <div>
-              <h2 class="text-sm font-bold text-slate-800">🚚 送貨師傅裝車配貨表 (<span id="current-driver-tag" class="text-indigo-700 font-mono">送貨師傅</span>)</h2>
-              <span class="text-[11px] text-slate-400">系統已按箱規與承重，自動標定底層重貨與上層輕放</span>
-            </div>
-            <div class="flex gap-2">
-              <button onclick="window.dispatchDriverNotice()" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3.5 py-1.5 rounded-xl shadow active:scale-95 transition">
-                師傅裝齊 · 微信通知沿線門店
-              </button>
-              <button onclick="window.exportWaveCSV()" class="text-xs border border-slate-200 text-slate-600 font-bold px-3 py-1.5 rounded-xl hover:bg-slate-50">
-                匯出清單
-              </button>
-            </div>
-          </div>
+    <!-- 頂部功能區導航 Tab -->
+    <nav class="flex bg-white rounded-2xl shadow-sm border border-slate-200 p-1.5 gap-2 text-xs font-bold">
+      <button id="tab-btn-stores" onclick="window.switchTab('stores')" class="flex-1 py-2 text-center rounded-xl bg-indigo-900 text-white transition">
+        🏪 供貨終端管理 (可見品項 · 授信額度)
+      </button>
+      <button id="tab-btn-expansion" onclick="window.switchTab('expansion')" class="flex-1 py-2 text-center rounded-xl text-slate-600 hover:text-indigo-900 hover:bg-slate-50 transition flex items-center justify-center gap-1.5">
+        🚀 業務拓展板塊 (掃街拓客 · 簽約轉化)
+        <span id="lead-badge" class="bg-rose-500 text-white text-[10px] px-1.5 py-0.2 rounded-full">新線索</span>
+      </button>
+      <button id="tab-btn-products" onclick="window.switchTab('products')" class="flex-1 py-2 text-center rounded-xl text-slate-600 hover:text-indigo-900 hover:bg-slate-50 transition">
+        📦 總代商品庫與庫存調控
+      </button>
+    </nav>
 
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 font-medium">
-              <tr>
-                <th class="p-2.5">碼放建議</th>
-                <th class="p-2.5">商品名稱</th>
-                <th class="p-2.5">箱規/包裝</th>
-                <th class="p-2.5 text-right">裝車總數</th>
-              </tr>
-            </thead>
-            <tbody id="wave-table-body" class="divide-y divide-slate-100">
-              <tr><td colspan="4" class="p-6 text-center text-slate-400">正在查對車次配貨資料...</td></tr>
-            </tbody>
-          </table>
+    <!-- 板塊 1：供貨終端管理 (包含品項可見性與授信額度調控) -->
+    <section id="tab-stores" class="space-y-4">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-slate-800">🏪 合作終端門店檔案與風控授權</h2>
+            <p class="text-[11px] text-slate-400">總代可直接控制每家店的【可見貨品】、【授信周轉額度】與【專屬送貨師傅】</p>
+          </div>
+          <button onclick="window.registerNewStorePrompt()" class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl font-bold hover:bg-indigo-100 transition">
+            + 快速開立新店名冊
+          </button>
         </div>
 
-        <!-- 轄區便利店檔案與信用額度監控 -->
-        <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
+        <div id="store-list" class="divide-y divide-slate-100 text-xs">
+          <!-- 動態載入門店 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 板塊 2：業務拓展板塊 (拓客看板) -->
+    <section id="tab-expansion" class="hidden space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        
+        <!-- 左邊 2 列：掃街拜訪線索庫 -->
+        <div class="lg:col-span-2 bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center">
             <div>
-              <h2 class="text-sm font-bold text-slate-800">🏪 合作便利店檔案 (授信風控與動態指派)</h2>
-              <span class="text-[11px] text-slate-400">即時監控小店掛賬額度、在店周轉筐與專屬送貨人</span>
+              <h2 class="text-sm font-bold text-slate-800">🎯 地推掃街拓客線索池</h2>
+              <span class="text-[11px] text-slate-400">業務員沿街開戶拜訪進度，意向確定後可一鍵開通為正式供貨店</span>
             </div>
-            <button onclick="window.registerNewStore()" class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1 rounded-xl font-bold hover:bg-indigo-100 transition">
-              + 登記新店手機號
+            <button onclick="window.openAddLeadModal()" class="text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-xl shadow active:scale-95 transition">
+              + 登記新拜訪線索
             </button>
           </div>
 
-          <div id="store-list" class="divide-y divide-slate-100 text-xs">
-            <!-- 動態載入 -->
+          <div id="leads-list" class="space-y-2.5 text-xs">
+            <!-- 動態載入線索卡片 -->
+          </div>
+        </div>
+
+        <!-- 右邊 1 列：拓客工具與邀請碼工具箱 -->
+        <div class="space-y-4">
+          <div class="bg-gradient-to-br from-indigo-50 to-emerald-50 border border-indigo-100 p-4 rounded-3xl space-y-2">
+            <b class="text-xs text-indigo-900 block">📲 掌櫃自助掃碼開戶邀請</b>
+            <p class="text-[11px] text-slate-600 leading-relaxed">
+              業務員地推時，只需讓便利店掌櫃微信掃描師傅端或推廣碼，輸入邀請碼 <b class="text-amber-800 font-mono" id="invite-code-card">888001</b>，終端自動與本中台關聯。
+            </p>
+          </div>
+
+          <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 space-y-2.5 text-xs">
+            <h3 class="font-bold text-slate-800">💡 業務開戶激勵與策略提示</h3>
+            <ul class="text-[11px] text-slate-500 space-y-1.5 list-disc list-inside">
+              <li>首批進貨滿 1,000 元，提供 7 天賬期免息試銷。</li>
+              <li>隨車免費配給 6 個優質塑料周轉筐。</li>
+              <li>不滿意或滯銷貨品，送貨師傅隨車全額退抵。</li>
+            </ul>
           </div>
         </div>
 
       </div>
+    </section>
 
-      <!-- 右側 1 列：發展新店、缺貨登記與選品看板 -->
-      <div class="space-y-4">
-        
-        <!-- 掃碼綁定通道卡片 -->
-        <div class="bg-gradient-to-br from-indigo-50 to-emerald-50 border border-indigo-100 p-4 rounded-3xl space-y-2">
-          <b class="text-xs text-indigo-900 block">📲 發展新便利店綁定通道</b>
-          <p class="text-[11px] text-slate-600 leading-relaxed">
-            新店掌櫃打開終端即可輸入 6 位碼 <b class="text-amber-800 font-mono">888001</b> 綁定，或在推廣連結後帶參：
-            <code class="bg-white px-2 py-0.5 rounded text-[10px] text-indigo-800 border border-indigo-100 select-all block mt-1">?agent=BJ_SHUNDA</code>
-          </p>
+    <!-- 板塊 3：商品庫管理 -->
+    <section id="tab-products" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-slate-800">📦 總代直供現貨庫管理</h2>
+            <span class="text-[11px] text-slate-400">發布自家現貨品項、制定批發價與庫存數量</span>
+          </div>
+          <button onclick="window.openAddProductModal()" class="text-xs bg-[#064e3b] text-white font-bold px-3 py-1.5 rounded-xl shadow active:scale-95 transition">
+            + 上架新商品
+          </button>
         </div>
 
-        <!-- 掌櫃缺貨捎話看板 -->
-        <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 space-y-3">
-          <div class="flex justify-between items-center">
-            <h2 class="text-xs font-bold text-slate-800">📝 掌櫃缺貨捎話與找貨留言</h2>
-            <span class="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded font-bold">待採購辦結</span>
-          </div>
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 font-medium">
+            <tr>
+              <th class="p-2.5">商品 ID</th>
+              <th class="p-2.5">商品名稱</th>
+              <th class="p-2.5">箱規/包裝</th>
+              <th class="p-2.5">批發進價</th>
+              <th class="p-2.5">現有庫存</th>
+              <th class="p-2.5 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody id="product-table-body" class="divide-y divide-slate-100">
+            <!-- 動態載入商品 -->
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-          <div class="space-y-2" id="demand-cards">
-            <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1 text-xs">
-              <div class="flex justify-between">
-                <b class="text-slate-800">農夫山泉 東方樹葉 茉莉花茶 15瓶</b>
-                <span class="text-[10px] font-mono text-amber-700 font-bold">3~5 箱</span>
-              </div>
-              <div class="text-[11px] text-slate-400">提報：利民平價便利店 · 交代送貨師傅隨車順帶</div>
-              <div class="pt-1 flex justify-end">
-                <button onclick="alert('已標記為已調貨，下次出車隨行！')" class="text-[10px] bg-white border border-slate-200 px-2.5 py-0.5 rounded-lg text-slate-600 hover:bg-slate-100">
-                  已安排調配
-                </button>
-              </div>
-            </div>
-          </div>
+  </div>
+
+  <!-- 彈窗 1：品項可見性勾選設定彈窗 -->
+  <div id="visibility-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-4 text-slate-800 shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+        <div>
+          <h3 class="font-bold text-sm text-slate-800">🎯 設定門店專屬可見品項</h3>
+          <p id="vis-store-title" class="text-[10px] text-slate-400">利民平價便利店</p>
         </div>
-
-        <!-- 熟客動銷投票傾向 -->
-        <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 space-y-2 text-xs">
-          <h2 class="text-xs font-bold text-slate-800">💡 社區熟客動銷選品呼聲</h2>
-          <div class="space-y-1.5 text-[11px] text-slate-600">
-            <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl">
-              <span>🥛 純牛奶整箱 (早餐高頻)</span>
-              <b class="text-emerald-700 font-mono">12 家店預約</b>
-            </div>
-            <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl">
-              <span>🧻 品牌抽紙連包 (日耗剛需)</span>
-              <b class="text-emerald-700 font-mono">9 家店預約</b>
-            </div>
-          </div>
-        </div>
-
+        <button onclick="window.closeVisibilityModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
 
+      <div class="text-xs text-slate-600 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+        💡 勾選的品項該店才能加購；未勾選的貨品將對該店掌櫃隱藏（如特供酒水、排他品牌）。
+      </div>
+
+      <div id="vis-checkbox-group" class="max-h-60 overflow-y-auto no-scrollbar divide-y divide-slate-100 text-xs">
+        <!-- 動態列出可勾選商品清單 -->
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="window.saveVisibilitySettings()" class="flex-1 bg-indigo-900 text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
+          保存品項授權
+        </button>
+        <button onclick="window.closeVisibilityModal()" class="bg-slate-100 text-slate-600 font-bold px-4 py-2.5 rounded-2xl text-xs">
+          取消
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈窗 2：登記新拓客線索彈窗 -->
+  <div id="lead-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-slate-800 shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+        <div>
+          <h3 class="font-bold text-sm text-slate-800">📝 登記沿街拜訪線索</h3>
+          <p class="text-[10px] text-slate-400">記錄潛在小店資訊，便於二訪推進</p>
+        </div>
+        <button onclick="window.closeLeadModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+      <div class="space-y-2 text-xs">
+        <div>
+          <label class="block text-[11px] text-slate-500 mb-1">便利店招牌名稱 *：</label>
+          <input type="text" id="lead-name" placeholder="如：萬家福平價煙酒超市" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-700">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] text-slate-500 mb-1">掌櫃稱呼：</label>
+            <input type="text" id="lead-boss" placeholder="如：張老板" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-700">
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-500 mb-1">掌櫃手機號 *：</label>
+            <input type="tel" id="lead-phone" placeholder="11位手機號" maxlength="11" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-700">
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-500 mb-1">門店地址 / 街道：</label>
+          <input type="text" id="lead-address" placeholder="如：朝陽區雙橋東路12號" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-700">
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-500 mb-1">拜訪溝通意向：</label>
+          <select id="lead-intent" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none">
+            <option value="意向極強 · 等首單試銷">意向極強 · 等首單試銷</option>
+            <option value="有意向 · 嫌目前送貨慢">有意向 · 嫌目前送貨慢</option>
+            <option value="猶豫觀望 · 要求授信賒銷">猶豫觀望 · 要求授信賒銷</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-500 mb-1">洽談備忘 / 掌櫃訴求：</label>
+          <textarea id="lead-note" rows="2" placeholder="如：掌櫃希望下週二隨車試送 2 箱調和油" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none"></textarea>
+        </div>
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button onclick="window.saveNewLead()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
+          存入拓客池
+        </button>
+        <button onclick="window.closeLeadModal()" class="bg-slate-100 text-slate-600 font-bold px-4 py-2.5 rounded-2xl text-xs">
+          取消
+        </button>
+      </div>
     </div>
   </div>
 
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
-    import { sendWechatNotice } from './src/lib/notify.js';
+
+    let currentAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
+    let currentStoreForVis = null;
+    let allProducts = [];
+
+    window.switchTab = function(tabName) {
+      ['stores', 'expansion', 'products'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add('hidden');
+        document.getElementById(`tab-btn-${t}`).className = "flex-1 py-2 text-center rounded-xl text-slate-600 hover:text-indigo-900 hover:bg-slate-50 transition";
+      });
+      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+      document.getElementById(`tab-btn-${tabName}`).className = "flex-1 py-2 text-center rounded-xl bg-indigo-900 text-white transition";
+    };
+
+    window.switchAgent = function(val) {
+      currentAgent = val;
+      localStorage.setItem('hq_active_agent', val);
+      window.loadHQData();
+    };
 
     window.loadHQData = async function() {
-      const route = document.getElementById('route-select').value;
-      const driver = route.includes('城東') ? '送貨師傅(老張)' : '送貨師傅(李師傅)';
-      document.getElementById('current-driver-tag').innerText = driver;
+      document.getElementById('agent-selector').value = currentAgent;
+      document.getElementById('hq-tenant-id').innerText = currentAgent;
+      const code = currentAgent === 'BJ_SHUNDA' ? '888001' : '888002';
+      document.getElementById('hq-invite-code').innerText = code;
+      document.getElementById('invite-code-card').innerText = code;
 
-      // 1. 裝車碼放指引
-      const tbody = document.getElementById('wave-table-body');
-      tbody.innerHTML = `
-        <tr>
-          <td class="p-2.5"><span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold">⬇️ 底層重貨</span></td>
-          <td class="p-2.5 font-bold text-slate-800">金龍魚 黃金比例食用調和油 5L</td>
-          <td class="p-2.5 text-slate-500 font-mono">4桶/箱</td>
-          <td class="p-2.5 text-right font-mono font-bold text-indigo-700 text-sm">28 箱</td>
-        </tr>
-        <tr>
-          <td class="p-2.5"><span class="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold">⬆️ 上層輕放</span></td>
-          <td class="p-2.5 font-bold text-slate-800">統一 鮮橙多 450ml*15瓶</td>
-          <td class="p-2.5 text-slate-500 font-mono">15瓶/箱</td>
-          <td class="p-2.5 text-right font-mono font-bold text-indigo-700 text-sm">16 箱</td>
-        </tr>
-      `;
+      // 1. 抓取當前總代所有商品
+      const { data: prods } = await supabase.from('product').select('*').eq('tenant_id', currentAgent);
+      allProducts = prods || [
+        { id: 1, name: '金龍魚 黃金比例食用調和油 5L', spec: '4桶/箱', pack_unit: '箱', tier_1_price: 198, stock: 999 },
+        { id: 2, name: '統一 鮮橙多 450ml*15瓶', spec: '15瓶/箱', pack_unit: '箱', tier_1_price: 36, stock: 999 },
+        { id: 3, name: '農夫山泉 飲用水 550ml*24瓶', spec: '24瓶/箱', pack_unit: '箱', tier_1_price: 28.5, stock: 999 }
+      ];
 
-      // 2. 便利店檔案及動態指定送貨人
-      const storeContainer = document.getElementById('store-list');
-      storeContainer.innerHTML = [
-        { id: 1, name: '利民平價便利店', contact: '王掌櫃', phone: '13811112222', debt: 450, limit: 2000, tag: '按周結清 · 信用優', crates: 6, driver: '送貨師傅(老張)' },
-        { id: 2, name: '朝陽便民超市', contact: '張姐', phone: '13833334444', debt: 1750, limit: 2000, tag: '臨近授信紅線', crates: 12, driver: '送貨師傅(李師傅)' },
-        { id: 3, name: '樂家生鮮煙酒', contact: '李哥', phone: '13855556666', debt: 0, limit: 3000, tag: '現場微信秒結', crates: 0, driver: '送貨師傅(老張)' }
-      ].map(s => `
-        <div class="py-3 flex justify-between items-center">
-          <div>
+      document.getElementById('product-table-body').innerHTML = allProducts.map(p => `
+        <tr>
+          <td class="p-2.5 font-mono text-slate-400">#${p.id}</td>
+          <td class="p-2.5 font-bold text-slate-800">${p.name}</td>
+          <td class="p-2.5 text-slate-500 font-mono">${p.spec || '整箱'} / ${p.pack_unit}</td>
+          <td class="p-2.5 text-emerald-800 font-mono font-bold">¥${p.tier_1_price}</td>
+          <td class="p-2.5 font-mono text-slate-700">${p.stock ?? 999}箱</td>
+          <td class="p-2.5 text-right">
+            <button onclick="window.editStock(${p.id}, ${p.stock ?? 999})" class="text-[11px] text-indigo-700 hover:underline">補庫存</button>
+          </td>
+        </tr>
+      `).join('');
+
+      // 2. 抓取當前總代所屬門店
+      const { data: stores } = await supabase.from('store').select('*').eq('tenant_id', currentAgent);
+      const storeList = stores || [
+        { id: 1, name: '利民平價便利店', contact: '王掌櫃', phone: '13811112222', debt: 450, credit_limit: 2000, visible_product_ids: null, driver_name: '老張師傅' },
+        { id: 2, name: '朝陽便民超市', contact: '張姐', phone: '13833334444', debt: 1750, credit_limit: 3000, visible_product_ids: [1, 2], driver_name: '李師傅' }
+      ];
+      document.getElementById('stat-active-stores').innerText = `${storeList.length} 家`;
+
+      document.getElementById('store-list').innerHTML = storeList.map(s => {
+        const visCountText = s.visible_product_ids ? `${s.visible_product_ids.length} 種品項可見` : '全品項開放';
+        return `
+          <div class="py-3.5 flex flex-wrap justify-between items-center gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-800 text-xs">${s.name}</span>
+                <span class="text-[10px] px-1.5 py-0.2 rounded font-mono bg-slate-100 text-slate-600 border border-slate-200">
+                  📱 ${s.phone}
+                </span>
+                <span class="text-[10px] px-1.5 py-0.2 rounded font-medium ${s.debt > s.credit_limit * 0.8 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}">
+                  掛賬: ¥${s.debt || 0} / 額度: ¥${s.credit_limit || 2000}
+                </span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-3 font-mono">
+                <span>掌櫃: <b>${s.contact || '掌櫃'}</b></span>
+                <span>送貨人: <b class="text-indigo-800">${s.driver_name || '送貨師傅'}</b></span>
+                <span class="text-amber-800 font-bold">選品控制: ${visCountText}</span>
+              </div>
+            </div>
+
+            <!-- 控制動作組件 -->
             <div class="flex items-center gap-2">
-              <span class="font-bold text-slate-800 text-xs">${s.name}</span>
-              <span class="text-[10px] px-1.5 py-0.2 rounded font-medium ${s.debt > s.limit * 0.8 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}">
-                ${s.tag}
+              <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '&quot;')}')" class="text-[11px] bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2.5 py-1 rounded-xl font-bold transition">
+                🎯 貨品可見授權
+              </button>
+              <button onclick="window.modifyCreditLimit(${s.id}, ${s.credit_limit || 2000})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-xl font-bold transition">
+                💳 調授信額度
+              </button>
+              <button onclick="window.reassignDriverPrompt(${s.id}, '${s.driver_name || '送貨師傅'}')" class="text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-xl font-bold transition">
+                🚚 派師傅
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // 3. 抓取拓客線索池
+      const { data: leads } = await supabase.from('store_lead').select('*').eq('tenant_id', currentAgent).order('id', { ascending: false });
+      const leadList = leads || [
+        { id: 1, shop_name: '街坊聚惠煙酒便利', boss_name: '趙老板', phone: '13911118888', address: '朝陽區建國路88號臨街', intent_level: '意向極強 · 等首單試銷', note: '嫌目前供貨商送貨慢，願嘗試金龍魚及水飲' },
+        { id: 2, shop_name: '紅星社群平價超市', boss_name: '周大姐', phone: '13822229999', address: '朝陽區甘露園南里二期門面', intent_level: '猶豫觀望 · 要求授信賒銷', note: '想要3000元周轉賬期，待經理特批' }
+      ];
+
+      document.getElementById('stat-leads-count').innerText = `${leadList.length} 條`;
+      document.getElementById('leads-list').innerHTML = leadList.map(l => `
+        <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-wrap justify-between items-start gap-2 hover:bg-white transition">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <b class="text-xs text-slate-800">${l.shop_name}</b>
+              <span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.2 rounded font-bold">
+                ${l.intent_level}
               </span>
             </div>
-            <div class="text-[11px] text-slate-400 mt-0.5 font-mono">${s.contact} · ${s.phone} · 當前指派: <b class="text-indigo-700">${s.driver}</b></div>
-          </div>
-          <div class="flex items-center gap-3">
-            <div class="text-right">
-              <div class="font-mono font-bold ${s.debt > s.limit * 0.8 ? 'text-rose-600' : 'text-slate-700'}">掛賬: ¥${s.debt}</div>
-              <div class="text-[10px] text-slate-400 font-mono">周轉筐: ${s.crates}個</div>
+            <div class="text-[11px] text-slate-500 font-mono">
+              掌櫃: <b>${l.boss_name || '未留姓'}</b> · 聯絡電話: <b class="text-indigo-800">${l.phone}</b> · 地址: ${l.address || '無'}
             </div>
-            <button onclick="window.changeStoreDriver(${s.id}, '${s.driver}')" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg border border-slate-200">
-              改派師傅
-            </button>
+            <div class="text-[11px] text-slate-600 bg-white p-2 rounded-xl border border-slate-100 mt-1">
+              💬 洽談備忘: ${l.note || '無詳細記錄'}
+            </div>
           </div>
+          <button onclick="window.convertLeadToStore(${l.id}, '${l.shop_name}', '${l.boss_name || ''}', '${l.phone}')" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-1.5 rounded-xl shadow active:scale-95 transition">
+            🤝 意向確定 · 一鍵轉為供貨店
+          </button>
         </div>
       `).join('');
     };
 
-    window.changeStoreDriver = function(storeId, currentDriver) {
-      const newDriver = prompt(`當前指派為【${currentDriver}】，請輸入新送貨師傅姓名或備註：`);
-      if (newDriver && newDriver.trim()) {
-        alert(`改派成功！該店專屬送貨人已切換為【${newDriver.trim()}】，終端已即時同步更新。`);
+    // --- 業務邏輯 1：商品可見性授權 ---
+    window.openVisibilityModal = function(storeId, storeName, currentJson) {
+      currentStoreForVis = storeId;
+      document.getElementById('vis-store-title').innerText = `${storeName} (可見貨品控制)`;
+      const selected = JSON.parse(currentJson || '[]');
+
+      const groupEl = document.getElementById('vis-checkbox-group');
+      groupEl.innerHTML = allProducts.map(p => {
+        const isChecked = selected.length === 0 || selected.includes(p.id);
+        return `
+          <label class="flex justify-between items-center py-2 px-1 cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center gap-2">
+              <input type="checkbox" value="${p.id}" ${isChecked ? 'checked' : ''} class="vis-prod-checkbox rounded text-indigo-700">
+              <span class="font-medium text-slate-700">${p.name}</span>
+            </div>
+            <span class="font-mono text-slate-400">¥${p.tier_1_price}</span>
+          </label>
+        `;
+      }).join('');
+
+      document.getElementById('visibility-modal').classList.remove('hidden');
+    };
+
+    window.closeVisibilityModal = function() {
+      document.getElementById('visibility-modal').classList.add('hidden');
+    };
+
+    window.saveVisibilitySettings = async function() {
+      const checkedBoxes = Array.from(document.querySelectorAll('.vis-prod-checkbox:checked')).map(el => parseInt(el.value));
+      const valToSave = checkedBoxes.length === allProducts.length ? null : checkedBoxes;
+
+      await supabase.from('store').update({ visible_product_ids: valToSave }).eq('id', currentStoreForVis);
+      alert('品項授權已保存！該便利店掌櫃進入系統將只會看到勾選的商品。');
+      window.closeVisibilityModal();
+      window.loadHQData();
+    };
+
+    // --- 業務邏輯 2：修改門店授信額度 ---
+    window.modifyCreditLimit = async function(storeId, currentLimit) {
+      const newLimit = prompt(`當前授信周轉額度為 ¥${currentLimit}，請輸入調整後的額度（元）：`, currentLimit);
+      if (newLimit !== null && !isNaN(newLimit)) {
+        await supabase.from('store').update({ credit_limit: parseFloat(newLimit) }).eq('id', storeId);
+        alert(`授信額度已調整為 ¥${parseFloat(newLimit).toFixed(2)}！`);
         window.loadHQData();
       }
     };
 
-    window.dispatchDriverNotice = function() {
-      const driver = document.getElementById('current-driver-tag').innerText;
-      sendWechatNotice(`🚚 發車通知：${driver}已裝齊出發`, `城東A線今日貨物已配齊封箱，師傅正隨車經由各店，備好即送！`);
-      alert(`通知已發送！沿線便利店微信將收到送貨師傅的發車與抵店提醒。`);
+    // --- 業務邏輯 3：改派司機 ---
+    window.reassignDriverPrompt = async function(storeId, currentDriver) {
+      const newDriver = prompt(`當前專屬送貨人為【${currentDriver}】，請輸入新指派師傅姓名：`, '老張師傅');
+      if (newDriver && newDriver.trim()) {
+        await supabase.from('store').update({ driver_name: newDriver.trim() }).eq('id', storeId);
+        alert(`改派完成！該便利店已指派給【${newDriver.trim()}】。`);
+        window.loadHQData();
+      }
     };
 
-    window.exportWaveCSV = function() {
-      const csvContent = "data:text/csv;charset=utf-8,\uFEFF商品名稱,碼放類別,包裝,裝車總量\n金龍魚食用調和油5L,底層重貨,4桶/箱,28\n統一鮮橙多450ml,上層輕放,15瓶/箱,16";
-      const link = document.createElement("a");
-      link.setAttribute("href", encodeURI(csvContent));
-      link.setAttribute("download", "送貨師傅裝車波次清單.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    // --- 業務邏輯 4：拓客線索管理 ---
+    window.openAddLeadModal = function() {
+      document.getElementById('lead-modal').classList.remove('hidden');
+    };
+    window.closeLeadModal = function() {
+      document.getElementById('lead-modal').classList.add('hidden');
+    };
+    window.saveNewLead = async function() {
+      const shop_name = document.getElementById('lead-name').value.trim();
+      const boss_name = document.getElementById('lead-boss').value.trim();
+      const phone = document.getElementById('lead-phone').value.trim();
+      const address = document.getElementById('lead-address').value.trim();
+      const intent_level = document.getElementById('lead-intent').value;
+      const note = document.getElementById('lead-note').value.trim();
+
+      if (!shop_name || !phone || phone.length < 11) {
+        return alert('請填寫完整的便利店招牌名稱與 11 位掌櫃手機號！');
+      }
+
+      await supabase.from('store_lead').insert([{
+        tenant_id: currentAgent,
+        shop_name, boss_name, phone, address, intent_level, note
+      }]);
+
+      alert(`拓客線索【${shop_name}】已成功登記！`);
+      window.closeLeadModal();
+      window.loadHQData();
     };
 
-    window.registerNewStore = function() {
-      const phone = prompt('請輸入新合作便利店掌櫃手機號：');
-      if (phone && phone.length === 11) {
-        alert(`登記成功！手機號 ${phone} 已錄入順達總代直供白名單，掌櫃進入終端將自動認領。`);
+    // 拓客線索一鍵轉為正式合作店
+    window.convertLeadToStore = async function(leadId, shopName, bossName, phone) {
+      if (!confirm(`確定將線索【${shopName}】轉為正式供貨店嗎？系統將為其開立供貨檔案並賦予初始 2,000 元額度。`)) return;
+
+      // 1. 寫入門店正式檔案
+      await supabase.from('store').insert([{
+        tenant_id: currentAgent,
+        name: shopName,
+        contact: bossName || '掌櫃',
+        phone: phone,
+        credit_limit: 2000,
+        current_debt: 0,
+        driver_name: '送貨師傅'
+      }]);
+
+      // 2. 標記拓客線索
+      await supabase.from('store_lead').delete().eq('id', leadId);
+
+      alert(`🎉 恭喜簽約成功！門店【${shopName}】已正式開立，掌櫃打開系統輸入手機號 ${phone} 即可認領並加購下單！`);
+      window.switchTab('stores');
+      window.loadHQData();
+    };
+
+    // 上架新商品
+    window.openAddProductModal = async function() {
+      const name = prompt('請輸入商品名稱：');
+      if (!name) return;
+      const price = prompt('請輸入批發價 (元/箱)：', '150');
+      if (!price) return;
+      const spec = prompt('請輸入包裝規格：', '4桶/箱');
+
+      await supabase.from('product').insert([{
+        tenant_id: currentAgent,
+        name: name.trim(),
+        tier_1_price: parseFloat(price),
+        pack_unit: '箱',
+        spec: spec,
+        stock: 999
+      }]);
+
+      alert(`商品【${name}】已成功發布！`);
+      window.loadHQData();
+    };
+
+    // 補庫存
+    window.editStock = async function(id, oldStock) {
+      const newStock = prompt('請輸入現貨庫存箱數：', oldStock);
+      if (newStock !== null) {
+        await supabase.from('product').update({ stock: parseInt(newStock) }).eq('id', id);
+        window.loadHQData();
       }
     };
 
