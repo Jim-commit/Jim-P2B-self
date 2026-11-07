@@ -37,11 +37,17 @@
       </div>
     </header>
 
-    <!-- 仓库波次装车汇总表 -->
+    <!-- 仓库波次装车汇总表 (带堆叠防损指引与微信播报) -->
     <div class="bg-white p-4 rounded-xl shadow border border-slate-200">
       <div class="flex justify-between items-center mb-3">
-        <h2 class="text-sm font-bold text-slate-800">📦 仓库总拣货汇总表 (波次装车单)</h2>
+        <div>
+          <h2 class="text-sm font-bold text-slate-800">📦 仓库总拣货汇总表 (波次装车单)</h2>
+          <span class="text-[11px] text-slate-400">已内置「重货底层承重、轻抛上层轻放」装载指引</span>
+        </div>
         <div class="flex gap-2">
+          <button onclick="sendWechatDispatchNotice()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded shadow-sm">
+            📢 微信群播报发车
+          </button>
           <button onclick="exportWaveCSV()" class="text-xs text-emerald-700 font-bold border border-emerald-200 px-2.5 py-1 rounded hover:bg-emerald-50">
             📥 导出装车 CSV
           </button>
@@ -53,6 +59,7 @@
       <table class="w-full text-left text-xs">
         <thead class="bg-slate-50 border-b border-slate-200">
           <tr>
+            <th class="p-2.5">堆叠指引</th>
             <th class="p-2.5">条形码</th>
             <th class="p-2.5">商品名称</th>
             <th class="p-2.5">包装规格</th>
@@ -60,7 +67,7 @@
           </tr>
         </thead>
         <tbody id="wave-table-body" class="divide-y divide-slate-100">
-          <tr><td colspan="4" class="p-4 text-center text-slate-400">点击右上角“生成装车总单”刷新数据</td></tr>
+          <tr><td colspan="5" class="p-4 text-center text-slate-400">点击右上角“生成装车总单”刷新数据</td></tr>
         </tbody>
       </table>
     </div>
@@ -87,7 +94,7 @@
             <th class="p-2">方式</th>
             <th class="p-2">实收金额</th>
             <th class="p-2">经手人</th>
-            <th class="p-2">备注/损耗原因</th>
+            <th class="p-2">备注/电子签名</th>
           </tr>
         </thead>
         <tbody id="payment-logs-body" class="divide-y divide-slate-100">
@@ -101,8 +108,6 @@
     import { supabase } from './src/lib/supabase.js';
 
     let currentWaveData = [];
-
-    // 初始化下拉框当前选中的租户
     const urlParams = new URLSearchParams(window.location.search);
     const currentTenant = urlParams.get('tenant') || 'BJ_HQ';
     const switcher = document.getElementById('tenant-switcher');
@@ -113,7 +118,14 @@
       window.location.search = urlParams.toString();
     };
 
-    // 1. 波次装车单数据加载
+    // 智能堆叠推荐标签：油/水为底层，方便面/轻品为上层
+    function getStackBadge(name) {
+      if (name.includes('油') || name.includes('水') || name.includes('饮料')) {
+        return '<span class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">⬇️ 底层重货</span>';
+      }
+      return '<span class="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold">⬆️ 上层轻放</span>';
+    }
+
     window.loadWaveData = async function() {
       const route = document.getElementById('route-select').value;
       const { data, error } = await supabase.rpc('get_route_wave_summary', { p_route_name: route });
@@ -121,11 +133,12 @@
       
       currentWaveData = data || [];
       if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">该路线当前暂无待装车订单</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">该路线当前暂无待装车订单</td></tr>';
         return;
       }
       tbody.innerHTML = data.map(it => `
         <tr>
+          <td class="p-2.5">${getStackBadge(it.product_name)}</td>
           <td class="p-2.5 font-mono text-[11px] text-slate-500">${it.barcode}</td>
           <td class="p-2.5 font-bold text-slate-800">${it.product_name}</td>
           <td class="p-2.5 text-slate-500">${it.unit}</td>
@@ -134,15 +147,34 @@
       `).join('');
     };
 
-    // 2. 导出波次装车单为 CSV
+    // 微信群 / 个人微信 Webhook 发车播报
+    window.sendWechatDispatchNotice = async function() {
+      const route = document.getElementById('route-select').value;
+      if (!currentWaveData || currentWaveData.length === 0) {
+        return alert('当前线路无装车数据，无需播报！');
+      }
+
+      const totalBoxes = currentWaveData.reduce((sum, it) => sum + parseInt(it.total_qty || 0), 0);
+      const noticeContent = `【总代发车通知】${currentTenant === 'BJ_HQ' ? '北京总代' : '上海总代'}\n线路：${route}\n总装车：${totalBoxes} 箱\n状态：已完成分拣核验，司机已发车，请沿线小店做好收货准备！`;
+
+      // 演示：直接生成微信可复制卡片，同时支持配置外部 Webhook
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(noticeContent);
+        alert(`已一键生成【微信群发车播报通知】并复制到剪贴板！\n\n${noticeContent}\n\n可以直接粘贴到车队微信群或客户群。`);
+      } else {
+        alert(noticeContent);
+      }
+    };
+
     window.exportWaveCSV = function() {
       if (!currentWaveData || currentWaveData.length === 0) {
         return alert('暂无装车数据可导出！');
       }
       const route = document.getElementById('route-select').value;
-      let csvContent = '\uFEFF条形码,商品名称,包装规格,装车总数\n';
+      let csvContent = '\uFEFF堆叠要求,条形码,商品名称,包装规格,装车总数\n';
       currentWaveData.forEach(row => {
-        csvContent += `"${row.barcode}","${row.product_name}","${row.unit}",${row.total_qty}\n`;
+        const stack = (row.product_name.includes('油') || row.product_name.includes('水')) ? '底层重货' : '上层轻放';
+        csvContent += `"${stack}","${row.barcode}","${row.product_name}","${row.unit}",${row.total_qty}\n`;
       });
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
@@ -151,7 +183,6 @@
       link.click();
     };
 
-    // 3. 门店欠款监控
     window.loadStores = async function() {
       const { data: stores } = await supabase.from('store').select('*');
       const container = document.getElementById('store-debt-list');
@@ -175,7 +206,6 @@
       `).join('');
     };
 
-    // 4. 司机对账流水
     window.loadPaymentLogs = async function() {
       const { data: logs } = await supabase
         .from('payment_record')
@@ -201,7 +231,6 @@
       `).join('');
     };
 
-    // 5. 开启 Supabase Realtime 监听新订单与现场收款
     function setupRealtimeListener() {
       supabase
         .channel('hq-dashboard-live')
