@@ -183,7 +183,7 @@
   <script type="module">
     import { supabase, currentTenant } from './src/lib/supabase.js';
     import { sendWechatNotice } from './src/lib/notify.js';
-    import { initIndexedDB, cacheProducts, getLocalProducts, saveOfflineOrder, clearOfflineOrder, getOfflineOrders, getSavedAgent, saveAgent } from './src/lib/offline.js';
+    import { initIndexedDB, cacheProducts, getLocalProducts, saveOfflineOrder, clearOfflineOrder, getOfflineOrders } from './src/lib/offline.js';
     import './src/modules/tools.js';
     import { initPosterStudio } from './src/modules/poster.js';
 
@@ -195,6 +195,11 @@
     }
 
     let products = [], currentStore = null, cart = {}, isSubmitting = false;
+
+    // 自包含本地存储方法，解耦 offline.js 依赖
+    const getSavedAgent = () => localStorage.getItem('active_agent') || '';
+    const saveAgent = (agent) => localStorage.setItem('active_agent', agent);
+
     const urlParams = new URLSearchParams(window.location.search);
     let activeAgent = urlParams.get('agent') || urlParams.get('tenant') || getSavedAgent();
     if (!activeAgent) setTimeout(() => window.openModal('bind-agent-modal'), 300);
@@ -203,16 +208,18 @@
     window.bindByCode = function() {
       const code = document.getElementById('bind-input-code').value.trim();
       if (!code) return alert('请输入总代 6 位邀请码！');
-      saveAgent(code === '888002' || code.includes('SH') ? 'SH_LEGOU' : 'BJ_SHUNDA');
-      alert('绑定成功！'); window.location.search = `?agent=${getSavedAgent()}`;
+      const targetAgent = (code === '888002' || code.includes('SH')) ? 'SH_LEGOU' : 'BJ_SHUNDA';
+      saveAgent(targetAgent);
+      alert('绑定成功！'); window.location.search = `?agent=${targetAgent}`;
     };
 
     window.bindByPhone = async function() {
       const phone = document.getElementById('bind-input-phone').value.trim();
       if (!phone || phone.length < 11) return alert('请输入 11 位店主手机号！');
       const { data: store } = await supabase.from('store').select('*').eq('phone', phone).maybeSingle();
-      saveAgent(store ? store.tenant_id : 'BJ_SHUNDA');
-      alert('认领成功！'); window.location.search = `?agent=${getSavedAgent()}`;
+      const targetAgent = store ? store.tenant_id : 'BJ_SHUNDA';
+      saveAgent(targetAgent);
+      alert('认领成功！'); window.location.search = `?agent=${targetAgent}`;
     };
 
     window.toggleStoreMenu = function(e) {
