@@ -45,7 +45,7 @@
       </div>
     </header>
 
-    <!-- 頂部三大模組導航切換 Tab -->
+    <!-- 頂部三大模組導航切換 Tab (帶記憶功能) -->
     <nav class="flex bg-white rounded-2xl shadow-sm border border-slate-200 p-1.5 gap-2 text-xs font-bold">
       <button id="tab-btn-stores" onclick="window.switchTab('stores')" class="flex-1 py-2 text-center rounded-xl bg-indigo-900 text-white transition">
         🏪 供貨終端管理 (可見品項 · 授信額度)
@@ -67,7 +67,6 @@
             <h2 class="text-sm font-bold text-slate-800">🏪 合作終端門店檔案與風控授權</h2>
             <p class="text-[11px] text-slate-400">總代可直接控制每家店的【可見貨品】、【授信周轉額度】與【專屬送貨人】</p>
           </div>
-          <!-- 修正：直接呼叫 window.registerNewStore() -->
           <button onclick="window.registerNewStore()" class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl font-bold hover:bg-indigo-100 transition active:scale-95">
             + 快速開立新店名冊
           </button>
@@ -245,7 +244,9 @@
     let currentStoreForVis = null;
     let allProducts = [];
 
+    // 切換 Tab 並自動記憶至本地，解決重新整理跳轉問題
     window.switchTab = function(tabName) {
+      localStorage.setItem('hq_active_tab', tabName);
       ['stores', 'expansion', 'products'].forEach(t => {
         document.getElementById(`tab-${t}`).classList.add('hidden');
         document.getElementById(`tab-btn-${t}`).className = "flex-1 py-2 text-center rounded-xl text-slate-600 hover:text-indigo-900 hover:bg-slate-50 transition";
@@ -267,104 +268,151 @@
       document.getElementById('hq-invite-code').innerText = code;
       document.getElementById('invite-code-card').innerText = code;
 
-      // 1. 抓取當前總代所有商品
-      const { data: prods } = await supabase.from('product').select('*').eq('tenant_id', currentAgent);
-      allProducts = prods || [
-        { id: 1, name: '金龍魚 黃金比例食用調和油 5L', spec: '4桶/箱', pack_unit: '箱', tier_1_price: 198, stock: 999 },
-        { id: 2, name: '統一 鮮橙多 450ml*15瓶', spec: '15瓶/箱', pack_unit: '箱', tier_1_price: 36, stock: 999 },
-        { id: 3, name: '農夫山泉 飲用水 550ml*24瓶', spec: '24瓶/箱', pack_unit: '箱', tier_1_price: 28.5, stock: 999 }
-      ];
+      // 1. 抓取當前總代所有商品（真實查詢，不覆蓋空清單）
+      const { data: prods, error: prodErr } = await supabase.from('product').select('*').eq('tenant_id', currentAgent);
+      allProducts = prods || [];
 
-      document.getElementById('product-table-body').innerHTML = allProducts.map(p => `
-        <tr>
-          <td class="p-2.5 font-mono text-slate-400">#${p.id}</td>
-          <td class="p-2.5 font-bold text-slate-800">${p.name}</td>
-          <td class="p-2.5 text-slate-500 font-mono">${p.spec || '整箱'} / ${p.pack_unit}</td>
-          <td class="p-2.5 text-emerald-800 font-mono font-bold">¥${p.tier_1_price}</td>
-          <td class="p-2.5 font-mono text-slate-700">${p.stock ?? 999}箱</td>
-          <td class="p-2.5 text-right">
-            <button onclick="window.editStock(${p.id}, ${p.stock ?? 999})" class="text-[11px] text-indigo-700 hover:underline">補庫存</button>
-          </td>
-        </tr>
-      `).join('');
+      if (allProducts.length === 0) {
+        document.getElementById('product-table-body').innerHTML = `
+          <tr><td colspan="6" class="p-8 text-center text-slate-400">當前總代庫房暫無商品，點擊右上角「+ 上架新商品」即可發布。</td></tr>
+        `;
+      } else {
+        document.getElementById('product-table-body').innerHTML = allProducts.map(p => `
+          <tr>
+            <td class="p-2.5 font-mono text-slate-400">#${p.id}</td>
+            <td class="p-2.5 font-bold text-slate-800">${p.name}</td>
+            <td class="p-2.5 text-slate-500 font-mono">${p.spec || '整箱'} / ${p.pack_unit || '箱'}</td>
+            <td class="p-2.5 text-emerald-800 font-mono font-bold">¥${p.tier_1_price}</td>
+            <td class="p-2.5 font-mono text-slate-700">${p.stock ?? 999}箱</td>
+            <td class="p-2.5 text-right">
+              <button onclick="window.editStock(${p.id}, ${p.stock ?? 999})" class="text-[11px] text-indigo-700 hover:underline">補庫存</button>
+            </td>
+          </tr>
+        `).join('');
+      }
 
       // 2. 抓取當前總代所屬門店
       const { data: stores } = await supabase.from('store').select('*').eq('tenant_id', currentAgent);
-      const storeList = stores || [
-        { id: 1, name: '利民平價便利店', contact: '王掌櫃', phone: '13811112222', debt: 450, credit_limit: 2000, visible_product_ids: null, driver_name: '老張師傅' },
-        { id: 2, name: '朝陽便民超市', contact: '張姐', phone: '13833334444', debt: 1750, credit_limit: 3000, visible_product_ids: [1, 2], driver_name: '李師傅' }
-      ];
+      const storeList = stores || [];
       document.getElementById('stat-active-stores').innerText = `${storeList.length} 家`;
 
-      document.getElementById('store-list').innerHTML = storeList.map(s => {
-        const visCountText = s.visible_product_ids ? `${s.visible_product_ids.length} 種品項可見` : '全品項開放';
-        return `
-          <div class="py-3.5 flex flex-wrap justify-between items-center gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="font-bold text-slate-800 text-xs">${s.name}</span>
-                <span class="text-[10px] px-1.5 py-0.2 rounded font-mono bg-slate-100 text-slate-600 border border-slate-200">
-                  📱 ${s.phone}
-                </span>
-                <span class="text-[10px] px-1.5 py-0.2 rounded font-medium ${s.debt > s.credit_limit * 0.8 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}">
-                  掛賬: ¥${s.debt || 0} / 額度: ¥${s.credit_limit || 2000}
-                </span>
-              </div>
-              <div class="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-3 font-mono">
-                <span>掌櫃: <b>${s.contact || '掌櫃'}</b></span>
-                <span>專屬送貨人: <b class="text-indigo-800">${s.driver_name || '送貨師傅'}</b></span>
-                <span class="text-amber-800 font-bold">選品控制: ${visCountText}</span>
-              </div>
-            </div>
-
-            <!-- 控制動作組件 -->
-            <div class="flex items-center gap-2">
-              <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '&quot;')}')" class="text-[11px] bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2.5 py-1 rounded-xl font-bold transition">
-                🎯 貨品可見授權
-              </button>
-              <button onclick="window.modifyCreditLimit(${s.id}, ${s.credit_limit || 2000})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-xl font-bold transition">
-                💳 調授信額度
-              </button>
-              <button onclick="window.reassignDriverPrompt(${s.id}, '${s.driver_name || '送貨師傅'}')" class="text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-xl font-bold transition">
-                🚚 派師傅
-              </button>
-            </div>
-          </div>
+      if (storeList.length === 0) {
+        document.getElementById('store-list').innerHTML = `
+          <div class="p-8 text-center text-slate-400">暫無合作供貨店，可點擊右上角「+ 快速開立新店名冊」或由拓客池轉入。</div>
         `;
-      }).join('');
+      } else {
+        document.getElementById('store-list').innerHTML = storeList.map(s => {
+          const visCountText = s.visible_product_ids ? `${s.visible_product_ids.length} 種品項可見` : '全品項開放';
+          return `
+            <div class="py-3.5 flex flex-wrap justify-between items-center gap-3">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-slate-800 text-xs">${s.name}</span>
+                  <span class="text-[10px] px-1.5 py-0.2 rounded font-mono bg-slate-100 text-slate-600 border border-slate-200">
+                    📱 ${s.phone}
+                  </span>
+                  <span class="text-[10px] px-1.5 py-0.2 rounded font-medium ${s.debt > s.credit_limit * 0.8 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}">
+                    掛賬: ¥${s.current_debt || 0} / 額度: ¥${s.credit_limit || 2000}
+                  </span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-3 font-mono">
+                  <span>掌櫃: <b>${s.contact || '掌櫃'}</b></span>
+                  <span>專屬送貨人: <b class="text-indigo-800">${s.driver_name || '送貨師傅'}</b></span>
+                  <span class="text-amber-800 font-bold">選品控制: ${visCountText}</span>
+                </div>
+              </div>
+
+              <!-- 控制動作組件 -->
+              <div class="flex items-center gap-2">
+                <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '&quot;')}')" class="text-[11px] bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2.5 py-1 rounded-xl font-bold transition">
+                  🎯 貨品可見授權
+                </button>
+                <button onclick="window.modifyCreditLimit(${s.id}, ${s.credit_limit || 2000})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-xl font-bold transition">
+                  💳 調授信額度
+                </button>
+                <button onclick="window.reassignDriverPrompt(${s.id}, '${s.driver_name || '送貨師傅'}')" class="text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-xl font-bold transition">
+                  🚚 派師傅
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
 
       // 3. 抓取拓客線索池
       const { data: leads } = await supabase.from('store_lead').select('*').eq('tenant_id', currentAgent).order('id', { ascending: false });
-      const leadList = leads || [
-        { id: 1, shop_name: '街坊聚惠煙酒便利', boss_name: '趙老板', phone: '13911118888', address: '朝陽區建國路88號臨街', intent_level: '意向極強 · 等首單試銷', note: '嫌目前供貨商送貨慢，願嘗試金龍魚及水飲' },
-        { id: 2, shop_name: '紅星社群平價超市', boss_name: '周大姐', phone: '13822229999', address: '朝陽區甘露園南里二期門面', intent_level: '猶豫觀望 · 要求授信賒銷', note: '想要3000元周轉賬期，待經理特批' }
-      ];
+      const leadList = leads || [];
 
       document.getElementById('stat-leads-count').innerText = `${leadList.length} 條`;
-      document.getElementById('leads-list').innerHTML = leadList.map(l => `
-        <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-wrap justify-between items-start gap-2 hover:bg-white transition">
-          <div class="space-y-1">
-            <div class="flex items-center gap-2">
-              <b class="text-xs text-slate-800">${l.shop_name}</b>
-              <span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.2 rounded font-bold">
-                ${l.intent_level}
-              </span>
+      if (leadList.length === 0) {
+        document.getElementById('leads-list').innerHTML = `
+          <div class="p-8 text-center text-slate-400">拓客池暫無登記線索，業務員掃街時點擊右上角即可隨時登記。</div>
+        `;
+      } else {
+        document.getElementById('leads-list').innerHTML = leadList.map(l => `
+          <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-wrap justify-between items-start gap-2 hover:bg-white transition">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <b class="text-xs text-slate-800">${l.shop_name}</b>
+                <span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.2 rounded font-bold">
+                  ${l.intent_level}
+                </span>
+              </div>
+              <div class="text-[11px] text-slate-500 font-mono">
+                掌櫃: <b>${l.boss_name || '未留姓'}</b> · 聯絡電話: <b class="text-indigo-800">${l.phone}</b> · 地址: ${l.address || '無'}
+              </div>
+              <div class="text-[11px] text-slate-600 bg-white p-2 rounded-xl border border-slate-100 mt-1">
+                💬 洽談備忘: ${l.note || '無詳細記錄'}
+              </div>
             </div>
-            <div class="text-[11px] text-slate-500 font-mono">
-              掌櫃: <b>${l.boss_name || '未留姓'}</b> · 聯絡電話: <b class="text-indigo-800">${l.phone}</b> · 地址: ${l.address || '無'}
-            </div>
-            <div class="text-[11px] text-slate-600 bg-white p-2 rounded-xl border border-slate-100 mt-1">
-              💬 洽談備忘: ${l.note || '無詳細記錄'}
-            </div>
+            <button onclick="window.convertLeadToStore(${l.id}, '${l.shop_name}', '${l.boss_name || ''}', '${l.phone}')" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-1.5 rounded-xl shadow active:scale-95 transition">
+              🤝 意向確定 · 一鍵轉為供貨店
+            </button>
           </div>
-          <button onclick="window.convertLeadToStore(${l.id}, '${l.shop_name}', '${l.boss_name || ''}', '${l.phone}')" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-1.5 rounded-xl shadow active:scale-95 transition">
-            🤝 意向確定 · 一鍵轉為供貨店
-          </button>
-        </div>
-      `).join('');
+        `).join('');
+      }
     };
 
-    // --- 核心實作：快速開立新店名冊 ---
+    // --- 發布新商品 (精準捕捉報錯，成功後自動停在商品分頁) ---
+    window.openAddProductModal = async function() {
+      const name = prompt('請輸入要發布的商品名稱：');
+      if (!name || !name.trim()) return;
+      const price = prompt('請輸入批發價 (元/箱)：', '150');
+      if (!price || isNaN(price)) return alert('請輸入有效金額！');
+      const spec = prompt('請輸入包裝規格：', '4桶/箱') || '整箱';
+
+      const newProduct = {
+        tenant_id: currentAgent,
+        name: name.trim(),
+        tier_1_price: parseFloat(price),
+        pack_unit: '箱',
+        spec: spec.trim(),
+        stock: 999
+      };
+
+      const { data, error } = await supabase.from('product').insert([newProduct]).select();
+
+      if (error) {
+        alert('發布失敗：' + error.message);
+        console.error(error);
+        return;
+      }
+
+      alert(`🎉 商品【${name.trim()}】已成功發布！`);
+      window.switchTab('products'); // 確保停留在商品管理 Tab
+      window.loadHQData(); // 重新整理商品清單
+    };
+
+    // 補庫存
+    window.editStock = async function(id, oldStock) {
+      const newStock = prompt('請輸入現貨庫存箱數：', oldStock);
+      if (newStock !== null && !isNaN(newStock)) {
+        await supabase.from('product').update({ stock: parseInt(newStock) }).eq('id', id);
+        window.loadHQData();
+      }
+    };
+
+    // 快速開立新店名冊
     window.registerNewStore = async function() {
       const shopName = prompt('【快速開立新店名冊】請輸入便利店招牌名稱：', '新合作便利店');
       if (!shopName || !shopName.trim()) return;
@@ -378,7 +426,6 @@
       const credit = prompt('請設定初始授信周轉額度（元）：', '2000');
       const driver = prompt('請指派專屬送貨人：', '送貨師傅');
 
-      // 寫入 Supabase store 表
       const { error } = await supabase.from('store').insert([{
         tenant_id: currentAgent,
         name: shopName.trim(),
@@ -386,36 +433,42 @@
         phone: phone.trim(),
         credit_limit: credit ? parseFloat(credit) : 2000,
         current_debt: 0,
-        driver_name: driver ? driver.trim() : '送貨師傅'
+        driver_name: driver ? driver.trim() : '送貨師傅',
+        address: '臨街門面'
       }]);
 
       if (error) {
         alert('開立失敗：' + error.message);
       } else {
         alert(`🎉 門店【${shopName.trim()}】已成功開立！\n掌櫃在手機終端輸入手機號【${phone.trim()}】即可立即認領並採購。`);
+        window.switchTab('stores');
         window.loadHQData();
       }
     };
 
-    // --- 業務邏輯 1：商品可見性授權 ---
+    // 商品可見性授權
     window.openVisibilityModal = function(storeId, storeName, currentJson) {
       currentStoreForVis = storeId;
       document.getElementById('vis-store-title').innerText = `${storeName} (可見貨品控制)`;
       const selected = JSON.parse(currentJson || '[]');
 
       const groupEl = document.getElementById('vis-checkbox-group');
-      groupEl.innerHTML = allProducts.map(p => {
-        const isChecked = selected.length === 0 || selected.includes(p.id);
-        return `
-          <label class="flex justify-between items-center py-2 px-1 cursor-pointer hover:bg-slate-50">
-            <div class="flex items-center gap-2">
-              <input type="checkbox" value="${p.id}" ${isChecked ? 'checked' : ''} class="vis-prod-checkbox rounded text-indigo-700">
-              <span class="font-medium text-slate-700">${p.name}</span>
-            </div>
-            <span class="font-mono text-slate-400">¥${p.tier_1_price}</span>
-          </label>
-        `;
-      }).join('');
+      if (allProducts.length === 0) {
+        groupEl.innerHTML = '<div class="py-4 text-center text-slate-400">目前庫房尚無商品，請先發布商品。</div>';
+      } else {
+        groupEl.innerHTML = allProducts.map(p => {
+          const isChecked = selected.length === 0 || selected.includes(p.id);
+          return `
+            <label class="flex justify-between items-center py-2 px-1 cursor-pointer hover:bg-slate-50">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" value="${p.id}" ${isChecked ? 'checked' : ''} class="vis-prod-checkbox rounded text-indigo-700">
+                <span class="font-medium text-slate-700">${p.name}</span>
+              </div>
+              <span class="font-mono text-slate-400">¥${p.tier_1_price}</span>
+            </label>
+          `;
+        }).join('');
+      }
 
       document.getElementById('visibility-modal').classList.remove('hidden');
     };
@@ -434,7 +487,7 @@
       window.loadHQData();
     };
 
-    // --- 業務邏輯 2：修改門店授信額度 ---
+    // 修改門店授信額度
     window.modifyCreditLimit = async function(storeId, currentLimit) {
       const newLimit = prompt(`當前授信周轉額度為 ¥${currentLimit}，請輸入調整後的額度（元）：`, currentLimit);
       if (newLimit !== null && !isNaN(newLimit)) {
@@ -444,9 +497,9 @@
       }
     };
 
-    // --- 業務邏輯 3：改派司機 ---
+    // 改派司機
     window.reassignDriverPrompt = async function(storeId, currentDriver) {
-      const newDriver = prompt(`當前專屬送貨人為【${currentDriver}】，請輸入新指派師傅姓名：`, '老張師傅');
+      const newDriver = prompt(`當前專屬送貨人為【${currentDriver}】，請輸入新指派師傅姓名：`, '送貨師傅');
       if (newDriver && newDriver.trim()) {
         await supabase.from('store').update({ driver_name: newDriver.trim() }).eq('id', storeId);
         alert(`改派完成！該便利店已指派給【${newDriver.trim()}】。`);
@@ -454,7 +507,7 @@
       }
     };
 
-    // --- 業務邏輯 4：拓客線索管理 ---
+    // 拓客線索管理
     window.openAddLeadModal = function() {
       document.getElementById('lead-modal').classList.remove('hidden');
     };
@@ -473,32 +526,40 @@
         return alert('請填寫完整的便利店招牌名稱與 11 位掌櫃手機號！');
       }
 
-      await supabase.from('store_lead').insert([{
+      const { error } = await supabase.from('store_lead').insert([{
         tenant_id: currentAgent,
         shop_name, boss_name, phone, address, intent_level, note
       }]);
 
-      alert(`拓客線索【${shop_name}】已成功登記！`);
-      window.closeLeadModal();
-      window.loadHQData();
+      if (error) {
+        alert('登記失敗：' + error.message);
+      } else {
+        alert(`拓客線索【${shop_name}】已成功登記！`);
+        window.closeLeadModal();
+        window.switchTab('expansion');
+        window.loadHQData();
+      }
     };
 
-    // 拓客線索一鍵轉為正式合作店
+    // 拓客線索一鍵轉為正式供貨店
     window.convertLeadToStore = async function(leadId, shopName, bossName, phone) {
       if (!confirm(`確定將線索【${shopName}】轉為正式供貨店嗎？系統將為其開立供貨檔案並賦予初始 2,000 元額度。`)) return;
 
-      // 1. 寫入門店正式檔案
-      await supabase.from('store').insert([{
+      const { error: insErr } = await supabase.from('store').insert([{
         tenant_id: currentAgent,
         name: shopName,
         contact: bossName || '掌櫃',
         phone: phone,
         credit_limit: 2000,
         current_debt: 0,
-        driver_name: '送貨師傅'
+        driver_name: '送貨師傅',
+        address: '臨街門面'
       }]);
 
-      // 2. 移除拓客線索
+      if (insErr) {
+        return alert('轉入供貨店失敗：' + insErr.message);
+      }
+
       await supabase.from('store_lead').delete().eq('id', leadId);
 
       alert(`🎉 簽約成功！門店【${shopName}】已正式開立，掌櫃打開系統輸入手機號 ${phone} 即可認領並加購下單！`);
@@ -506,36 +567,9 @@
       window.loadHQData();
     };
 
-    // 上架新商品
-    window.openAddProductModal = async function() {
-      const name = prompt('請輸入商品名稱：');
-      if (!name) return;
-      const price = prompt('請輸入批發價 (元/箱)：', '150');
-      if (!price) return;
-      const spec = prompt('請輸入包裝規格：', '4桶/箱');
-
-      await supabase.from('product').insert([{
-        tenant_id: currentAgent,
-        name: name.trim(),
-        tier_1_price: parseFloat(price),
-        pack_unit: '箱',
-        spec: spec,
-        stock: 999
-      }]);
-
-      alert(`商品【${name}】已成功發布！`);
-      window.loadHQData();
-    };
-
-    // 補庫存
-    window.editStock = async function(id, oldStock) {
-      const newStock = prompt('請輸入現貨庫存箱數：', oldStock);
-      if (newStock !== null) {
-        await supabase.from('product').update({ stock: parseInt(newStock) }).eq('id', id);
-        window.loadHQData();
-      }
-    };
-
+    // 初始化時還原上次所在的 Tab
+    const savedTab = localStorage.getItem('hq_active_tab') || 'stores';
+    window.switchTab(savedTab);
     window.loadHQData();
   </script>
 </body>
