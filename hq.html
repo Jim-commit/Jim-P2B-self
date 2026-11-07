@@ -12,12 +12,12 @@
       <div>
         <h1 class="text-lg font-bold">超级总代 · 仓配波次与对账中台</h1>
         <div class="flex items-center gap-2 mt-1">
-  <span class="text-xs text-indigo-200">当前归属总代：</span>
-  <select id="tenant-switcher" onchange="switchTenant(this.value)" class="bg-indigo-900 border border-indigo-600 text-white text-xs px-2 py-0.5 rounded font-bold outline-none cursor-pointer">
-    <option value="BJ_HQ">北京顺达商贸 (BJ_HQ)</option>
-    <option value="SH_HQ">上海乐购供应链 (SH_HQ)</option>
-  </select>
-</div>
+          <span class="text-xs text-indigo-200">当前归属总代：</span>
+          <select id="tenant-switcher" onchange="switchTenant(this.value)" class="bg-indigo-900 border border-indigo-600 text-white text-xs px-2 py-0.5 rounded font-bold outline-none cursor-pointer">
+            <option value="BJ_HQ">北京顺达商贸 (BJ_HQ)</option>
+            <option value="SH_HQ">上海乐购供应链 (SH_HQ)</option>
+          </select>
+        </div>
       </div>
       <div class="flex items-center gap-2">
         <select id="route-select" class="bg-indigo-900 border border-indigo-700 text-white text-xs px-3 py-1.5 rounded-lg outline-none">
@@ -86,6 +86,7 @@
 
   <script type="module">
     import { supabase } from '/src/lib/supabase.js';
+
     // 初始化下拉框当前选中的租户
     const urlParams = new URLSearchParams(window.location.search);
     const currentTenant = urlParams.get('tenant') || 'BJ_HQ';
@@ -97,9 +98,6 @@
       urlParams.set('tenant', newTenant);
       window.location.search = urlParams.toString();
     };
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentTenant = urlParams.get('tenant') || 'BJ_HQ';
-    document.getElementById('tenant-label').innerText = `归属总代租户：${currentTenant}`;
 
     window.loadWaveData = async function() {
       const route = document.getElementById('route-select').value;
