@@ -24,7 +24,26 @@
       <div class="flex justify-between items-center text-xs pb-3 opacity-90 border-b border-emerald-600/50">
         <span class="font-mono font-bold">09:41</span>
         <span id="store-nav-title" class="font-bold text-sm tracking-wide">利民平价便利店</span>
-        <div class="bg-black/20 rounded-full px-2 py-0.5 border border-white/20 text-[10px]">••• ⭘</div>
+        
+        <!-- 右上角小店专属管家抽屉 -->
+        <div class="relative">
+          <button onclick="toggleStoreMenu()" class="bg-black/20 hover:bg-black/30 active:scale-95 transition rounded-full px-2.5 py-0.5 border border-white/20 text-[10px] tracking-wider cursor-pointer">
+            ••• ⭘
+          </button>
+          <div id="store-action-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-50 text-slate-800 space-y-1">
+            <div class="text-[10px] font-bold text-slate-400 px-2 py-1 uppercase tracking-wider">小店专属管家</div>
+            <button onclick="showRouteCutoff()" class="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 text-xs font-bold text-slate-700">
+              <span>⏰</span> 配车时效与截单时间
+            </button>
+            <button onclick="showHistoryStatements()" class="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 text-xs font-bold text-slate-700">
+              <span>🧾</span> 历史配货与签收对账
+            </button>
+            <div class="border-t border-slate-100 my-1"></div>
+            <a href="tel:13800138000" class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-emerald-50 text-xs font-bold text-emerald-700">
+              <span>📞</span> 呼叫线路专管业务员
+            </a>
+          </div>
+        </div>
       </div>
 
       <!-- 线路与授信资产透传 -->
@@ -88,7 +107,7 @@
       </div>
     </section>
 
-    <!-- Tab 2: 帮着卖 -->
+    <!-- Tab 2: 帮着卖 (赚差价) -->
     <section id="tab-sales" class="hidden p-3 space-y-3">
       <div class="bg-gradient-to-r from-red-600 to-amber-600 text-white p-3.5 rounded-2xl shadow-sm space-y-2">
         <div class="flex justify-between items-center">
@@ -177,7 +196,7 @@
     import { sendWechatNotice } from './src/lib/notify.js';
     import { initIndexedDB, cacheProducts, getLocalProducts, saveOfflineOrder, getOfflineOrders, clearOfflineOrder } from './src/lib/offline.js';
 
-    // 租户拦截守卫
+    // 1. 租户拦截守卫
     if (!currentTenant) {
       document.body.innerHTML = `
         <div class="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
@@ -204,6 +223,50 @@
     let cart = {};
     let isSubmitting = false;
 
+    // 2. 右上角抽屉工具箱逻辑
+    window.toggleStoreMenu = function() {
+      const menu = document.getElementById('store-action-menu');
+      if (menu) menu.classList.toggle('hidden');
+    };
+
+    window.addEventListener('click', function(e) {
+      const menu = document.getElementById('store-action-menu');
+      if (menu && !menu.contains(e.target) && !e.target.closest('button[onclick="toggleStoreMenu()"]')) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    window.showRouteCutoff = function() {
+      window.toggleStoreMenu();
+      const route = currentStore ? currentStore.route_name : '城东A线';
+      alert(`【${route} · 仓配排班须知】\n1. 截单时间：每晚 23:00 前提交次日送达。\n2. 送达时效：次日早 09:00 前随车配齐到店。\n3. 紧急加单：如遇急件请在 23:00 后直接电话联系跟车业务员。`);
+    };
+
+    window.showHistoryStatements = async function() {
+      window.toggleStoreMenu();
+      if (!currentStore) return alert('正在读取门店信息，请稍候...');
+      
+      const { data: historyOrders } = await supabase
+        .from('orders')
+        .select('order_no, total_amount, actual_amount, status, pay_status, created_at')
+        .eq('store_id', currentStore.id)
+        .order('id', { ascending: false })
+        .limit(5);
+
+      if (!historyOrders || historyOrders.length === 0) {
+        return alert('本店暂无历史对账单据');
+      }
+
+      const listStr = historyOrders.map(o => {
+        const time = new Date(o.created_at).toLocaleDateString();
+        const pay = o.pay_status === 'PAID' ? '已结清' : '挂账中';
+        return `• ${time} | 金额:¥${o.actual_amount || o.total_amount} (${pay})`;
+      }).join('\n');
+
+      alert(`【本店近 5 笔配货签收记录】\n${listStr}\n\n如对少件或货款有疑问，可随时联系专管业务员核实。`);
+    };
+
+    // 3. Tab 控制器
     window.switchTab = function(tabName) {
       const orderSec = document.getElementById('tab-order');
       const salesSec = document.getElementById('tab-sales');
@@ -231,6 +294,7 @@
       }
     };
 
+    // 4. 扫码兼容逻辑
     window.handleScanButton = function() {
       if (window.wx && window.wx.scanCode) {
         window.wx.scanCode({
@@ -274,7 +338,7 @@
       }
     };
 
-    // 离线订单重试同步逻辑
+    // 5. 离线重放
     async function syncOfflineOrders() {
       if (!navigator.onLine) return;
       const list = await getOfflineOrders();
@@ -305,6 +369,7 @@
     window.addEventListener('online', () => syncOfflineOrders());
     window.addEventListener('offline', () => updateOfflineUI());
 
+    // 6. 数据装载
     async function init() {
       await initIndexedDB();
 
@@ -410,6 +475,7 @@
       });
     };
 
+    // 7. 提交订单
     window.submitOrder = async function() {
       if (isSubmitting) return;
 
@@ -463,7 +529,7 @@
         if (error) {
           alert('下单失败: ' + error.message);
         } else {
-          // 非阻塞推送服务通知
+          // 异步推送老板微信服务通知
           const itemSummary = items.map(it => `* **${it.name}**：${it.quantity} ${it.pack_unit}`).join('\n');
           const noticeTitle = `📦 新订货：${currentStore.name} (¥${totalAmount.toFixed(2)})`;
           const noticeDesp = `### 收到门店新订货需求\n- **进货门店**：${currentStore.name} (${currentStore.contact_name || '负责人'})\n- **配送线路**：${currentStore.route_name}\n- **订货总额**：¥${totalAmount.toFixed(2)}\n- **订货单号**：\`${data.order_no}\`\n\n**进货明细清单：**\n${itemSummary}\n\n[👉 点击快速打开中台排产配货](https://goods-lucky.vercel.app/hq.html?tenant=${currentTenant})`;
