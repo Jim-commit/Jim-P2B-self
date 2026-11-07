@@ -172,7 +172,6 @@
       if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
 
-    // 核心核销结算函数（含自动推送微信通知）
     window.confirmSettleWithSign = async function() {
       const actualAmt = parseFloat(document.getElementById(`actual-amt-${activeOrderId}`).value);
       const reason = document.getElementById(`reject-reason-${activeOrderId}`).value.trim();
@@ -193,7 +192,6 @@
       if (error) {
         alert(error.message);
       } else {
-        // 异步触发财务/老板个人微信服务通知
         const storeName = targetOrder ? targetOrder.store_name : '辖区门店';
         const orderNo = targetOrder ? targetOrder.order_no : '未知单号';
         const methodText = activePayMethod === 'CASH' ? '现钞收讫' : (activePayMethod === 'WECHAT' ? '微信扫码转账' : '挂账赊销确认');
