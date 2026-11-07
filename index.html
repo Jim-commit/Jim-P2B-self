@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans select-none pb-28">
-  <div class="max-w-md mx-auto p-3 space-y-3">
+  <div id="main-app" class="max-w-md mx-auto p-3 space-y-3">
     <!-- 弱网/离线提示栏 -->
     <div id="net-status-bar" class="hidden bg-amber-500 text-white text-xs px-3 py-1.5 rounded-lg flex justify-between items-center font-bold">
       <span id="net-status-text">⚠️ 离线模式，订单暂存手机本地</span>
@@ -54,7 +54,7 @@
   </div>
 
   <!-- 底部固定下单栏 -->
-  <div class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 p-3 max-w-md mx-auto flex justify-between items-center z-50 shadow-lg">
+  <div id="footer-bar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 p-3 max-w-md mx-auto flex justify-between items-center z-50 shadow-lg">
     <div>
       <div class="text-[11px] text-slate-400">次日早 9:00 送达</div>
       <div class="text-lg font-bold text-indigo-700">合计：<span id="order-total">¥0.00</span></div>
@@ -65,7 +65,26 @@
   </div>
 
   <script type="module">
-    import { supabase } from '/src/lib/supabase.js';
+    import { supabase, currentTenant } from '/src/lib/supabase.js';
+
+    // 核心拦截守卫：若未指定租户参数，直接覆写界面并终止执行
+    if (!currentTenant) {
+      document.body.innerHTML = `
+        <div class="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+          <div class="bg-white p-6 rounded-2xl shadow max-w-xs w-full text-center space-y-3">
+            <div class="text-4xl">🏪</div>
+            <h2 class="text-base font-bold text-slate-800">未绑定供货总代</h2>
+            <p class="text-xs text-slate-500 leading-relaxed">当前访问链接无效或未指定服务机构。请联系总代业务员索取专用二维码重新进入。</p>
+            <div class="pt-2 border-t border-slate-100 space-y-2">
+              <span class="text-[11px] text-slate-400 block">测试入口快速接入：</span>
+              <a href="?tenant=BJ_HQ&openid=wx_test_mock_openid_123" class="block w-full bg-indigo-600 active:bg-indigo-700 text-white text-xs font-bold py-2 rounded-lg">北京总代入口</a>
+              <a href="?tenant=SH_HQ&openid=wx_test_mock_openid_123" class="block w-full bg-slate-800 active:bg-slate-900 text-white text-xs font-bold py-2 rounded-lg">上海总代入口</a>
+            </div>
+          </div>
+        </div>
+      `;
+      throw new Error('拦截：未指定租户身份，已终止加载。');
+    }
 
     const urlParams = new URLSearchParams(window.location.search);
     const currentOpenid = urlParams.get('openid') || 'wx_test_mock_openid_123';
