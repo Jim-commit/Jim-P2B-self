@@ -15,9 +15,9 @@
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans p-4 min-h-screen">
-  <div class="max-w-6xl mx-auto space-y-4">
+  <div class="max-w-7xl mx-auto space-y-4">
     
-    <!-- 頂欄：總代實體與核心運營指標 -->
+    <!-- 頂欄：總代身分與運營資料卡 -->
     <header class="bg-indigo-900 text-white p-5 rounded-3xl shadow-lg flex flex-wrap justify-between items-center gap-4">
       <div>
         <div class="flex items-center gap-2.5">
@@ -45,7 +45,7 @@
       </div>
     </header>
 
-    <!-- 頂部三大模組導航切換 Tab (帶記憶功能) -->
+    <!-- 模組切換導航 Tab -->
     <nav class="flex bg-white rounded-2xl shadow-sm border border-slate-200 p-1.5 gap-2 text-xs font-bold">
       <button id="tab-btn-stores" onclick="window.switchTab('stores')" class="flex-1 py-2 text-center rounded-xl bg-indigo-900 text-white transition">
         🏪 供貨終端管理 (可見品項 · 授信額度)
@@ -55,7 +55,7 @@
         <span id="lead-badge" class="bg-rose-500 text-white text-[10px] px-1.5 py-0.2 rounded-full">線索池</span>
       </button>
       <button id="tab-btn-products" onclick="window.switchTab('products')" class="flex-1 py-2 text-center rounded-xl text-slate-600 hover:text-indigo-900 hover:bg-slate-50 transition">
-        📦 總代商品庫與庫存調控
+        📦 總代商品庫 (彈性錄入 · 調價 · 庫存 · 下架)
       </button>
     </nav>
 
@@ -65,7 +65,7 @@
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-slate-800">🏪 合作終端門店檔案與風控授權</h2>
-            <p class="text-[11px] text-slate-400">總代可直接控制每家店的【可見貨品】、【授信周轉額度】與【專屬送貨人】</p>
+            <p class="text-[11px] text-slate-400">控制每家小店的【品項可見授權】、【授信周轉額度】與【專屬送貨人】</p>
           </div>
           <button onclick="window.registerNewStore()" class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl font-bold hover:bg-indigo-100 transition active:scale-95">
             + 快速開立新店名冊
@@ -78,11 +78,9 @@
       </div>
     </section>
 
-    <!-- 板塊 2：業務拓展板塊 (地推掃街拓客看板) -->
+    <!-- 板塊 2：業務拓展板塊 (地推拓客看板) -->
     <section id="tab-expansion" class="hidden space-y-4">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        
-        <!-- 左邊 2 列：掃街拜訪線索池 -->
         <div class="lg:col-span-2 bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center">
             <div>
@@ -93,13 +91,11 @@
               + 登記新拜訪線索
             </button>
           </div>
-
           <div id="leads-list" class="space-y-2.5 text-xs">
             <!-- 動態載入拓客線索 -->
           </div>
         </div>
 
-        <!-- 右邊 1 列：拓客策略與邀請碼工具箱 -->
         <div class="space-y-4">
           <div class="bg-gradient-to-br from-indigo-50 to-emerald-50 border border-indigo-100 p-4 rounded-3xl space-y-2">
             <b class="text-xs text-indigo-900 block">📲 掌櫃自助掃碼開戶邀請</b>
@@ -107,7 +103,6 @@
               業務員地推時，只需讓便利店掌櫃微信掃描師傅端或推廣碼，輸入邀請碼 <b class="text-amber-800 font-mono" id="invite-code-card">888001</b>，終端自動與本中台關聯。
             </p>
           </div>
-
           <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 space-y-2.5 text-xs">
             <h3 class="font-bold text-slate-800">💡 業務開戶激勵與策略提示</h3>
             <ul class="text-[11px] text-slate-500 space-y-1.5 list-disc list-inside">
@@ -117,19 +112,18 @@
             </ul>
           </div>
         </div>
-
       </div>
     </section>
 
-    <!-- 板塊 3：總代商品庫與庫存調控 (MDM 規範層級) -->
+    <!-- 板塊 3：總代商品庫 (彈性化全功能管理) -->
     <section id="tab-products" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
-            <h2 class="text-sm font-bold text-slate-800">📦 總代直供現貨庫管理 (主數據層級)</h2>
-            <span class="text-[11px] text-slate-400">大類 ➔ 小類 ➔ 國際條碼 ➔ 規格單位 ➔ 供貨價 (終端掌櫃進貨價)</span>
+            <h2 class="text-sm font-bold text-slate-800">📦 總代直供現貨庫管理 (彈性主數據)</h2>
+            <span class="text-[11px] text-slate-400">大類 ➔ 小類 ➔ 條碼 ➔ 規格單位 ➔ 供貨價 ➔ 主圖 ➔ 備註擴展欄位</span>
           </div>
-          <button onclick="window.openAddProductModal()" class="text-xs bg-[#064e3b] text-white font-bold px-3 py-1.5 rounded-xl shadow active:scale-95 transition">
+          <button onclick="window.openAddProductModal()" class="text-xs bg-[#064e3b] text-white font-bold px-3.5 py-1.5 rounded-xl shadow active:scale-95 transition">
             + 上架新商品
           </button>
         </div>
@@ -139,13 +133,15 @@
             <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 font-medium">
               <tr>
                 <th class="p-2.5">主圖</th>
+                <th class="p-2.5">狀態</th>
                 <th class="p-2.5">類別 (大類/小類)</th>
                 <th class="p-2.5">商品名稱</th>
                 <th class="p-2.5">國際條碼</th>
                 <th class="p-2.5">規格 / 單位</th>
-                <th class="p-2.5">供貨價 (終端可見)</th>
-                <th class="p-2.5">現有庫存</th>
-                <th class="p-2.5 text-right">操作</th>
+                <th class="p-2.5">供貨價 (終端所見)</th>
+                <th class="p-2.5">庫存</th>
+                <th class="p-2.5">備註 / 擴展屬性</th>
+                <th class="p-2.5 text-right">操作管理</th>
               </tr>
             </thead>
             <tbody id="product-table-body" class="divide-y divide-slate-100">
@@ -164,7 +160,7 @@
       <div class="flex justify-between items-center pb-2 border-b border-slate-100">
         <div>
           <h3 class="font-bold text-sm text-slate-800">🎯 設定門店專屬可見品項</h3>
-          <p id="vis-store-title" class="text-[10px] text-slate-400">利民平價便利店</p>
+          <p id="vis-store-title" class="text-[10px] text-slate-400">門店名稱</p>
         </div>
         <button onclick="window.closeVisibilityModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
@@ -174,7 +170,7 @@
       </div>
 
       <div id="vis-checkbox-group" class="max-h-60 overflow-y-auto no-scrollbar divide-y divide-slate-100 text-xs">
-        <!-- 動態列出可勾選商品清單 -->
+        <!-- 動態商品多選框 -->
       </div>
 
       <div class="flex gap-2 pt-2">
@@ -241,24 +237,25 @@
     </div>
   </div>
 
-  <!-- 彈窗 3：規範化商品發布表單 (含層級類別、相機實時掃碼、拍照上傳) -->
+  <!-- 彈窗 3：彈性商品發布/編輯表單 -->
   <div id="product-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3.5 text-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-slate-100">
         <div>
-          <h3 class="font-bold text-sm text-slate-800">📦 上架新商品 (MDM 標準主數據)</h3>
-          <p class="text-[10px] text-slate-400">大類 ➔ 小類 ➔ 條碼 ➔ 規格單位 ➔ 供貨價 ➔ 拍照主圖</p>
+          <h3 class="font-bold text-sm text-slate-800" id="prod-modal-title">📦 上架新商品 (彈性主數據)</h3>
+          <p class="text-[10px] text-slate-400">大類 ➔ 小類 ➔ 條碼 ➔ 規格單位 ➔ 供貨價 ➔ 拍照主圖 ➔ 備註自定義欄位</p>
         </div>
         <button onclick="window.closeAddProductModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
 
+      <input type="hidden" id="editing-prod-id" value="">
+
       <div class="space-y-3 text-xs">
-        <!-- 1. 大類與小類 (支援預置與自定義新增) -->
         <div class="grid grid-cols-2 gap-2.5 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
           <div>
             <div class="flex justify-between items-center mb-1">
               <label class="font-bold text-slate-700 text-[11px]">商品大類 *</label>
-              <button onclick="window.customAddCategory('main')" class="text-[10px] text-indigo-700 font-medium">+ 自定義大類</button>
+              <button type="button" onclick="window.customAddCategory('main')" class="text-[10px] text-indigo-700 font-medium hover:underline">+ 自定義大類</button>
             </div>
             <select id="prod-cat-main" onchange="window.onMainCategoryChange(this.value)" class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none font-medium">
               <option value="糧油調味">糧油調味</option>
@@ -271,7 +268,7 @@
           <div>
             <div class="flex justify-between items-center mb-1">
               <label class="font-bold text-slate-700 text-[11px]">商品小類 *</label>
-              <button onclick="window.customAddCategory('sub')" class="text-[10px] text-indigo-700 font-medium">+ 自定義小類</button>
+              <button type="button" onclick="window.customAddCategory('sub')" class="text-[10px] text-indigo-700 font-medium hover:underline">+ 自定義小類</button>
             </div>
             <select id="prod-cat-sub" class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none font-medium">
               <!-- 動態連動 -->
@@ -279,69 +276,85 @@
           </div>
         </div>
 
-        <!-- 2. 商品名稱與國際條碼 (支援相機掃碼與紅外掃碼槍) -->
         <div>
           <label class="block text-[11px] font-bold text-slate-700 mb-1">商品完整名稱 *：</label>
           <input type="text" id="prod-name" placeholder="例：金龍魚 黃金比例食用調和油 5L" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-indigo-700 font-medium">
         </div>
 
         <div>
-          <label class="block text-[11px] font-bold text-slate-700 mb-1">國際商品條碼 (EAN-13 / 69碼) *：</label>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">國際條碼 (EAN-13 / 69碼) *：</label>
           <div class="flex gap-2">
-            <input type="text" id="prod-barcode" placeholder="支援紅外掃碼槍直掃、相機掃描或手輸" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs outline-none focus:border-indigo-700">
-            <button onclick="window.triggerBarcodeScan()" class="bg-indigo-50 border border-indigo-200 text-indigo-800 text-[11px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 active:scale-95">
+            <input type="text" id="prod-barcode" placeholder="可掃碼槍掃入、鏡頭掃描或直接手輸" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs outline-none focus:border-indigo-700">
+            <button type="button" onclick="window.triggerBarcodeScan()" class="bg-indigo-50 border border-indigo-200 text-indigo-800 text-[11px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 active:scale-95">
               📷 鏡頭掃碼
             </button>
           </div>
         </div>
 
-        <!-- 3. 規格、計量單位與現有庫存 -->
         <div class="grid grid-cols-3 gap-2">
           <div>
-            <label class="block text-[11px] text-slate-500 mb-1">箱規規格：</label>
+            <label class="block text-[11px] text-slate-500 mb-1">包裝規格：</label>
             <input type="text" id="prod-spec" placeholder="例：4桶/箱" value="整箱裝" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
           </div>
           <div>
-            <label class="block text-[11px] text-slate-500 mb-1">包裝單位：</label>
-            <input type="text" id="prod-unit" placeholder="例：箱 / 件" value="箱" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+            <label class="block text-[11px] text-slate-500 mb-1">計量單位：</label>
+            <input type="text" id="prod-unit" placeholder="例：箱 / 件 / 提" value="箱" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
           </div>
           <div>
-            <label class="block text-[11px] text-slate-500 mb-1">現有庫存 (箱)：</label>
+            <label class="block text-[11px] text-slate-500 mb-1">現有庫存：</label>
             <input type="number" id="prod-stock" value="999" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono text-xs outline-none">
           </div>
         </div>
 
-        <!-- 4. 供貨價 (終端所見進貨價) -->
         <div class="bg-emerald-50/80 border border-emerald-200 p-3 rounded-2xl">
-          <label class="block text-[11px] font-bold text-emerald-900 mb-1">供貨價 / 批發價 (元/箱，終端掌櫃進貨所見價格) *：</label>
+          <label class="block text-[11px] font-bold text-emerald-900 mb-1">供貨價 / 批發價 (元/單位，終端進貨價) *：</label>
           <div class="relative">
             <span class="absolute left-3 top-2 font-mono text-emerald-800 font-bold">¥</span>
             <input type="number" step="0.1" id="prod-price" placeholder="0.00" class="w-full bg-white border border-emerald-300 rounded-xl pl-7 pr-3 py-1.5 font-mono font-bold text-sm text-emerald-900 outline-none focus:border-emerald-600">
           </div>
-          <span class="text-[10px] text-emerald-700/80 mt-1 block">此價格將即時同步至銷售終端進貨介面與毛利速算器。</span>
+          <span class="text-[10px] text-emerald-700/80 mt-1 block">此價格修改後將即時同步至銷售終端。</span>
         </div>
 
-        <!-- 5. 商品主圖 (拍照上傳 / 相簿選擇 + 自動壓縮) -->
         <div>
-          <label class="block text-[11px] font-bold text-slate-700 mb-1">商品主圖 (拍照實拍或相冊上傳) *：</label>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">商品主圖 (拍照實拍或相冊選圖) *：</label>
           <div class="flex items-center gap-3">
             <div id="image-preview-box" class="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden text-slate-400 text-xs">
               無圖
             </div>
-            <div class="space-y-1">
+            <div class="flex flex-wrap gap-2">
               <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 inline-block active:scale-95 transition">
-                📷 拍照 / 選擇圖片
-                <input type="file" id="prod-image-input" accept="image/*" capture="environment" onchange="window.handleImageUpload(event)" class="hidden">
+                📷 相機實拍
+                <input type="file" accept="image/*" capture="environment" onchange="window.handleImageUpload(event)" class="hidden">
               </label>
-              <span class="text-[10px] text-slate-400 block">支援相機實拍、包裝正面照片，前端自動優化壓縮展示</span>
+              <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 inline-block active:scale-95 transition">
+                🖼️ 相冊選圖
+                <input type="file" accept="image/*" onchange="window.handleImageUpload(event)" class="hidden">
+              </label>
+              <button type="button" onclick="window.clearProductImage()" class="text-rose-600 text-[11px] hover:underline self-center">清除主圖</button>
             </div>
           </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">商品備註說明 (選填)：</label>
+          <input type="text" id="prod-remark" placeholder="例：新批次包裝，原箱附帶宣傳物料，常溫保存" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-indigo-700">
+        </div>
+
+        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
+          <div class="flex justify-between items-center">
+            <label class="font-bold text-slate-700 text-[11px]">彈性自定義屬性欄位：</label>
+            <button type="button" onclick="window.addCustomFieldInput()" class="text-[10px] text-indigo-700 font-bold hover:underline">+ 增加欄位</button>
+          </div>
+          <div id="custom-fields-container" class="space-y-1.5">
+            <!-- 動態擴展屬性 -->
+          </div>
+          <span class="text-[10px] text-slate-400 block">如：保質期=12個月、產地=黑龍江、溫層=常溫</span>
         </div>
       </div>
 
       <div class="flex gap-2.5 pt-2 border-t border-slate-100">
         <button onclick="window.submitProductForm()" class="flex-1 bg-[#064e3b] hover:bg-[#065f46] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
-          確認上架並同步至銷售終端
+          保存商品並同步生效
         </button>
         <button onclick="window.closeAddProductModal()" class="bg-slate-100 text-slate-600 font-bold px-4 py-2.5 rounded-2xl text-xs">
           取消
@@ -350,7 +363,7 @@
     </div>
   </div>
 
-  <!-- 彈窗 4：相機實時掃碼檢測浮層 -->
+  <!-- 彈窗 4：相機實時掃碼浮層 -->
   <div id="scanner-modal" class="hidden fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
     <div class="relative w-full max-w-sm rounded-3xl overflow-hidden bg-black flex flex-col items-center">
       <video id="scanner-video" class="w-full h-72 object-cover rounded-2xl"></video>
@@ -372,7 +385,6 @@
     let videoStream = null;
     let scanInterval = null;
 
-    // 大類與小類主數據庫 (支援動態擴展)
     const categoryTree = {
       '糧油調味': ['食用油', '大米/麵粉', '調味品/醬油', '火鍋蘸料'],
       '酒水飲料': ['瓶裝包裝水', '碳酸/即飲茶', '啤酒/白酒', '果汁飲料'],
@@ -381,7 +393,6 @@
       '乳品烘焙': ['常溫純奶', '酸奶飲品', '麵包糕點']
     };
 
-    // 切換 Tab 並自動記憶
     window.switchTab = function(tabName) {
       localStorage.setItem('hq_active_tab', tabName);
       ['stores', 'expansion', 'products'].forEach(t => {
@@ -406,7 +417,7 @@
 
     window.customAddCategory = function(type) {
       if (type === 'main') {
-        const newMain = prompt('請輸入自定義大類名稱（如：冷藏低溫、地方特產）：');
+        const newMain = prompt('請輸入自定義大類名稱（如：地方特產、低溫冷藏）：');
         if (newMain && newMain.trim()) {
           const mainSelect = document.getElementById('prod-cat-main');
           if (!categoryTree[newMain.trim()]) categoryTree[newMain.trim()] = ['常規小類'];
@@ -433,19 +444,27 @@
       }
     };
 
-    // 原生條碼掃描（調用後置相機）
+    window.addCustomFieldInput = function(k = '', v = '') {
+      const container = document.getElementById('custom-fields-container');
+      const row = document.createElement('div');
+      row.className = 'flex gap-2 items-center custom-field-row';
+      row.innerHTML = `
+        <input type="text" placeholder="欄位名 (如保質期)" value="${k}" class="field-key w-1/3 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none">
+        <input type="text" placeholder="屬性值 (如12個月)" value="${v}" class="field-val flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none">
+        <button type="button" onclick="this.parentElement.remove()" class="text-rose-500 font-bold px-1.5 hover:bg-rose-50 rounded">✕</button>
+      `;
+      container.appendChild(row);
+    };
+
     window.triggerBarcodeScan = async function() {
       if (!('BarcodeDetector' in window)) {
-        const code = prompt('當前瀏覽器暫不支持實時鏡頭識碼，請輸入條碼或用掃碼槍直接掃入：');
+        const code = prompt('當前環境不支援鏡頭自動掃碼，請直接輸入條碼或用掃碼槍掃入：');
         if (code && code.trim()) document.getElementById('prod-barcode').value = code.trim();
         return;
       }
-
       try {
         const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a'] });
-        videoStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
-        });
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         const video = document.getElementById('scanner-video');
         video.srcObject = videoStream;
         await video.play();
@@ -462,7 +481,7 @@
           } catch (e) {}
         }, 500);
       } catch (err) {
-        const code = prompt('未能啟動相機。請手動輸入國際條碼：');
+        const code = prompt('未能啟動相機，請直接手動輸入國際條碼：');
         if (code && code.trim()) document.getElementById('prod-barcode').value = code.trim();
       }
     };
@@ -476,7 +495,6 @@
       document.getElementById('scanner-modal').classList.add('hidden');
     };
 
-    // 圖片拍照/上傳並 Canvas 壓縮
     window.handleImageUpload = function(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -511,6 +529,11 @@
       reader.readAsDataURL(file);
     };
 
+    window.clearProductImage = function() {
+      uploadedImageBase64 = '';
+      document.getElementById('image-preview-box').innerHTML = '無圖';
+    };
+
     window.loadHQData = async function() {
       document.getElementById('agent-selector').value = currentAgent;
       document.getElementById('hq-tenant-id').innerText = currentAgent;
@@ -518,31 +541,67 @@
       document.getElementById('hq-invite-code').innerText = code;
       document.getElementById('invite-code-card').innerText = code;
 
-      // 1. 抓取規範化商品數據 (含大類、小類、條碼、圖片)
-      const { data: prods } = await supabase.from('product').select('*').eq('tenant_id', currentAgent);
+      // 1. 抓取商品數據
+      const { data: prods } = await supabase.from('product').select('*').eq('tenant_id', currentAgent).order('id', { ascending: false });
       allProducts = prods || [];
 
       if (allProducts.length === 0) {
         document.getElementById('product-table-body').innerHTML = `
-          <tr><td colspan="8" class="p-8 text-center text-slate-400">當前總代倉庫暫未上架商品，點擊右上角「+ 上架新商品」即可發布。</td></tr>
+          <tr><td colspan="10" class="p-8 text-center text-slate-400">當前總代倉庫暫未上架商品，點擊右上角「+ 上架新商品」即可發布。</td></tr>
         `;
       } else {
         document.getElementById('product-table-body').innerHTML = allProducts.map(p => {
           const imgTag = p.image_url 
-            ? `<img src="${p.image_url}" class="w-8 h-8 rounded-lg object-cover border border-slate-200">`
-            : `<div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-[9px] text-slate-400">無圖</div>`;
+            ? `<img src="${p.image_url}" class="w-9 h-9 rounded-xl object-cover border border-slate-200 shadow-sm cursor-pointer" onclick="window.previewFullImage('${p.image_url}')">`
+            : `<div class="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[9px] text-slate-400">無圖</div>`;
           const catText = `${p.category_main || '常規'} / ${p.category_sub || '常規'}`;
+          const isOff = (p.status === 'inactive');
+          const statusTag = isOff 
+            ? `<span class="bg-slate-100 text-slate-500 border border-slate-300 text-[10px] px-2 py-0.5 rounded-full font-bold">已下架</span>`
+            : `<span class="bg-emerald-50 text-emerald-800 border border-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-bold">在售</span>`;
+
+          const customFields = p.custom_fields || {};
+          const customTags = Object.entries(customFields).map(([k, v]) => `
+            <span class="inline-block bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.2 rounded text-[10px] mr-1">${k}:${v}</span>
+          `).join('');
+
           return `
-            <tr>
+            <tr class="${isOff ? 'opacity-60 bg-slate-50/50' : 'hover:bg-slate-50/60'} transition">
               <td class="p-2.5">${imgTag}</td>
+              <td class="p-2.5">${statusTag}</td>
               <td class="p-2.5 text-slate-600 font-medium">${catText}</td>
-              <td class="p-2.5 font-bold text-slate-800">${p.name}</td>
-              <td class="p-2.5 font-mono text-slate-500">${p.barcode || '無條碼'}</td>
+              <td class="p-2.5 font-bold text-slate-800">
+                ${p.name}
+                <div class="text-[10px] text-slate-400 font-normal mt-0.5">ID: #${p.id}</div>
+              </td>
+              <td class="p-2.5 font-mono text-slate-600 cursor-pointer hover:underline" onclick="window.editBarcode(${p.id}, '${p.barcode || ''}')">
+                ${p.barcode || '<span class="text-slate-300">點擊補條碼</span>'}
+              </td>
               <td class="p-2.5 text-slate-500 font-mono">${p.spec || '整箱'} / ${p.pack_unit || '箱'}</td>
-              <td class="p-2.5 text-emerald-800 font-mono font-bold">¥${p.tier_1_price}</td>
-              <td class="p-2.5 font-mono text-slate-700">${p.stock ?? 999}箱</td>
-              <td class="p-2.5 text-right">
-                <button onclick="window.editStock(${p.id}, ${p.stock ?? 999})" class="text-[11px] text-indigo-700 hover:underline">補庫存</button>
+              <td class="p-2.5 font-mono font-bold text-emerald-800">
+                <span class="cursor-pointer hover:bg-emerald-50 px-1 py-0.5 rounded border border-transparent hover:border-emerald-200" onclick="window.quickEditPrice(${p.id}, ${p.tier_1_price})">
+                  ¥${p.tier_1_price} ✏️
+                </span>
+              </td>
+              <td class="p-2.5 font-mono text-slate-700">
+                <span class="cursor-pointer hover:bg-slate-100 px-1 py-0.5 rounded border border-transparent hover:border-slate-300" onclick="window.quickEditStock(${p.id}, ${p.stock ?? 999})">
+                  ${p.stock ?? 999}箱 ✏️
+                </span>
+              </td>
+              <td class="p-2.5 text-[11px] text-slate-500 max-w-xs truncate" title="${p.remark || ''}">
+                <div>${p.remark || '<span class="text-slate-300">無備註</span>'}</div>
+                <div class="mt-0.5">${customTags}</div>
+              </td>
+              <td class="p-2.5 text-right space-x-1.5">
+                <button onclick="window.toggleProductStatus(${p.id}, '${p.status || 'active'}')" class="text-[11px] font-bold ${isOff ? 'text-emerald-700 hover:underline' : 'text-amber-700 hover:underline'}">
+                  ${isOff ? '上架' : '下架'}
+                </button>
+                <button onclick="window.openEditProductModal(${p.id})" class="text-[11px] text-indigo-700 font-bold hover:underline">
+                  詳情
+                </button>
+                <button onclick="window.deleteProduct(${p.id}, '${p.name}')" class="text-[11px] text-rose-600 font-bold hover:underline">
+                  刪除
+                </button>
               </td>
             </tr>
           `;
@@ -596,7 +655,7 @@
         }).join('');
       }
 
-      // 3. 抓取拓客線索池
+      // 3. 抓取拓客線索
       const { data: leads } = await supabase.from('store_lead').select('*').eq('tenant_id', currentAgent).order('id', { ascending: false });
       const leadList = leads || [];
 
@@ -630,14 +689,99 @@
       }
     };
 
-    // --- 打開/關閉商品完整發布表單 ---
+    window.quickEditPrice = async function(id, oldPrice) {
+      const newPrice = prompt(`【供貨價即時調整】\n原供貨價：¥${oldPrice}\n請輸入最新供貨價（元/單位）：`, oldPrice);
+      if (newPrice !== null && !isNaN(newPrice) && parseFloat(newPrice) > 0) {
+        const p = parseFloat(newPrice);
+        await supabase.from('product').update({ tier_1_price: p, tier_2_price: p }).eq('id', id);
+        window.loadHQData();
+      }
+    };
+
+    window.quickEditStock = async function(id, oldStock) {
+      const newStock = prompt(`【現貨庫存手動錄入】\n原庫存：${oldStock}箱\n請輸入最新庫存箱數：`, oldStock);
+      if (newStock !== null && !isNaN(newStock) && parseInt(newStock) >= 0) {
+        await supabase.from('product').update({ stock: parseInt(newStock) }).eq('id', id);
+        window.loadHQData();
+      }
+    };
+
+    window.editBarcode = async function(id, oldBarcode) {
+      const newCode = prompt(`【國際條碼更新】\n可使用掃碼槍掃入或手動輸入 13 位條碼：`, oldBarcode);
+      if (newCode !== null) {
+        await supabase.from('product').update({ barcode: newCode.trim() }).eq('id', id);
+        window.loadHQData();
+      }
+    };
+
+    window.toggleProductStatus = async function(id, currentStatus) {
+      const targetStatus = currentStatus === 'inactive' ? 'active' : 'inactive';
+      const promptText = targetStatus === 'inactive' 
+        ? '確定要下架此商品嗎？下架後終端掌櫃將無法在進貨貨單中看到該商品。' 
+        : '確定重新上架此商品嗎？';
+      if (!confirm(promptText)) return;
+
+      await supabase.from('product').update({ status: targetStatus }).eq('id', id);
+      window.loadHQData();
+    };
+
+    window.deleteProduct = async function(id, name) {
+      if (!confirm(`⚠️ 確定要徹底刪除商品【${name}】嗎？此操作不可逆！`)) return;
+      await supabase.from('product').delete().eq('id', id);
+      window.loadHQData();
+    };
+
     window.openAddProductModal = function() {
+      document.getElementById('prod-modal-title').innerText = '📦 上架新商品 (彈性主數據)';
+      document.getElementById('editing-prod-id').value = '';
       uploadedImageBase64 = '';
       document.getElementById('image-preview-box').innerHTML = '無圖';
       document.getElementById('prod-name').value = '';
       document.getElementById('prod-barcode').value = '';
       document.getElementById('prod-price').value = '';
+      document.getElementById('prod-stock').value = '999';
+      document.getElementById('prod-spec').value = '整箱裝';
+      document.getElementById('prod-unit').value = '箱';
+      document.getElementById('prod-remark').value = '';
+      document.getElementById('custom-fields-container').innerHTML = '';
       window.onMainCategoryChange(document.getElementById('prod-cat-main').value);
+      document.getElementById('product-modal').classList.remove('hidden');
+    };
+
+    window.openEditProductModal = function(id) {
+      const p = allProducts.find(x => x.id === id);
+      if (!p) return;
+
+      document.getElementById('prod-modal-title').innerText = `✏️ 編輯商品 #${p.id} - ${p.name}`;
+      document.getElementById('editing-prod-id').value = p.id;
+      
+      if (p.category_main) {
+        document.getElementById('prod-cat-main').value = p.category_main;
+        window.onMainCategoryChange(p.category_main);
+        if (p.category_sub) document.getElementById('prod-cat-sub').value = p.category_sub;
+      }
+      document.getElementById('prod-name').value = p.name || '';
+      document.getElementById('prod-barcode').value = p.barcode || '';
+      document.getElementById('prod-price').value = p.tier_1_price || '';
+      document.getElementById('prod-stock').value = p.stock ?? 999;
+      document.getElementById('prod-spec').value = p.spec || '整箱裝';
+      document.getElementById('prod-unit').value = p.pack_unit || '箱';
+      document.getElementById('prod-remark').value = p.remark || '';
+
+      uploadedImageBase64 = p.image_url || '';
+      if (uploadedImageBase64) {
+        document.getElementById('image-preview-box').innerHTML = `<img src="${uploadedImageBase64}" class="w-full h-full object-cover">`;
+      } else {
+        document.getElementById('image-preview-box').innerHTML = '無圖';
+      }
+
+      const container = document.getElementById('custom-fields-container');
+      container.innerHTML = '';
+      const customFields = p.custom_fields || {};
+      for (const [k, v] of Object.entries(customFields)) {
+        window.addCustomFieldInput(k, v);
+      }
+
       document.getElementById('product-modal').classList.remove('hidden');
     };
 
@@ -645,21 +789,30 @@
       document.getElementById('product-modal').classList.add('hidden');
     };
 
-    // --- 提交主數據商品 ---
     window.submitProductForm = async function() {
+      const editId = document.getElementById('editing-prod-id').value;
       const cat_main = document.getElementById('prod-cat-main').value;
       const cat_sub = document.getElementById('prod-cat-sub').value;
       const name = document.getElementById('prod-name').value.trim();
       const barcode = document.getElementById('prod-barcode').value.trim();
       const spec = document.getElementById('prod-spec').value.trim() || '整箱裝';
       const pack_unit = document.getElementById('prod-unit').value.trim() || '箱';
-      const stock = parseInt(document.getElementById('prod-stock').value) || 999;
+      const stock = parseInt(document.getElementById('prod-stock').value) || 0;
       const price = parseFloat(document.getElementById('prod-price').value);
+      const remark = document.getElementById('prod-remark').value.trim();
 
-      if (!name) return alert('請填寫商品完整名稱！');
+      if (!name) return alert('請填寫商品名稱！');
       if (isNaN(price) || price <= 0) return alert('請填寫有效的供貨批發價格！');
 
-      const newProduct = {
+      const custom_fields = {};
+      const rows = document.querySelectorAll('.custom-field-row');
+      rows.forEach(r => {
+        const k = r.querySelector('.field-key').value.trim();
+        const v = r.querySelector('.field-val').value.trim();
+        if (k) custom_fields[k] = v;
+      });
+
+      const prodPayload = {
         tenant_id: currentAgent,
         category_main: cat_main,
         category_sub: cat_sub,
@@ -668,35 +821,34 @@
         spec: spec,
         pack_unit: pack_unit,
         stock: stock,
-        tier_1_price: price, // 銷售終端進貨價
-        tier_2_price: price, // 容錯兜底
-        image_url: uploadedImageBase64
+        tier_1_price: price,
+        tier_2_price: price,
+        image_url: uploadedImageBase64,
+        remark: remark,
+        custom_fields: custom_fields
       };
 
-      const { error } = await supabase.from('product').insert([newProduct]);
+      let error = null;
+      if (editId) {
+        const res = await supabase.from('product').update(prodPayload).eq('id', editId);
+        error = res.error;
+      } else {
+        prodPayload.status = 'active';
+        const res = await supabase.from('product').insert([prodPayload]);
+        error = res.error;
+      }
 
       if (error) {
-        alert('上架失敗：' + error.message);
-        console.error(error);
+        alert('保存失敗：' + error.message);
         return;
       }
 
-      alert(`🎉 商品【${name}】已成功上架！\n層級：${cat_main} / ${cat_sub}\n供貨價：¥${price}/${pack_unit} 已同步生效。`);
+      alert(`🎉 商品【${name}】保存成功！已即時同步生效。`);
       window.closeAddProductModal();
       window.switchTab('products');
       window.loadHQData();
     };
 
-    // 補庫存
-    window.editStock = async function(id, oldStock) {
-      const newStock = prompt('請輸入現貨庫存箱數：', oldStock);
-      if (newStock !== null && !isNaN(newStock)) {
-        await supabase.from('product').update({ stock: parseInt(newStock) }).eq('id', id);
-        window.loadHQData();
-      }
-    };
-
-    // 快速開立新店名冊
     window.registerNewStore = async function() {
       const shopName = prompt('【快速開立新店名冊】請輸入便利店招牌名稱：', '新合作便利店');
       if (!shopName || !shopName.trim()) return;
@@ -730,17 +882,17 @@
       }
     };
 
-    // 商品可見性授權
     window.openVisibilityModal = function(storeId, storeName, currentJson) {
       currentStoreForVis = storeId;
       document.getElementById('vis-store-title').innerText = `${storeName} (可見貨品控制)`;
       const selected = JSON.parse(currentJson || '[]');
+      const activeProds = allProducts.filter(p => p.status !== 'inactive');
 
       const groupEl = document.getElementById('vis-checkbox-group');
-      if (allProducts.length === 0) {
-        groupEl.innerHTML = '<div class="py-4 text-center text-slate-400">目前庫房尚無商品，請先發布商品。</div>';
+      if (activeProds.length === 0) {
+        groupEl.innerHTML = '<div class="py-4 text-center text-slate-400">目前庫房無在售商品。</div>';
       } else {
-        groupEl.innerHTML = allProducts.map(p => {
+        groupEl.innerHTML = activeProds.map(p => {
           const isChecked = selected.length === 0 || selected.includes(p.id);
           return `
             <label class="flex justify-between items-center py-2 px-1 cursor-pointer hover:bg-slate-50">
@@ -772,7 +924,6 @@
       window.loadHQData();
     };
 
-    // 修改門店授信額度
     window.modifyCreditLimit = async function(storeId, currentLimit) {
       const newLimit = prompt(`當前授信周轉額度為 ¥${currentLimit}，請輸入調整後的額度（元）：`, currentLimit);
       if (newLimit !== null && !isNaN(newLimit)) {
@@ -782,7 +933,6 @@
       }
     };
 
-    // 改派司機
     window.reassignDriverPrompt = async function(storeId, currentDriver) {
       const newDriver = prompt(`當前專屬送貨人為【${currentDriver}】，請輸入新指派師傅姓名：`, '送貨師傅');
       if (newDriver && newDriver.trim()) {
@@ -792,7 +942,6 @@
       }
     };
 
-    // 拓客線索管理
     window.openAddLeadModal = function() {
       document.getElementById('lead-modal').classList.remove('hidden');
     };
@@ -826,7 +975,6 @@
       }
     };
 
-    // 拓客線索一鍵轉為正式供貨店
     window.convertLeadToStore = async function(leadId, shopName, bossName, phone) {
       if (!confirm(`確定將線索【${shopName}】轉為正式供貨店嗎？系統將為其開立供貨檔案並賦予初始 2,000 元額度。`)) return;
 
@@ -852,7 +1000,11 @@
       window.loadHQData();
     };
 
-    // 初始化時還原上次所在的 Tab
+    window.previewFullImage = function(url) {
+      const w = window.open('');
+      w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
+    };
+
     const savedTab = localStorage.getItem('hq_active_tab') || 'stores';
     window.switchTab(savedTab);
     window.loadHQData();
