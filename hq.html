@@ -3,56 +3,65 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>总代仓配与调度中台</title>
+  <title>總代倉配與調度中台</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&display=swap" rel="stylesheet">
+  <style>
+    .font-serif-sc { font-family: 'Noto Serif SC', serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans p-4 min-h-screen">
   <div class="max-w-6xl mx-auto space-y-4">
     
-    <!-- 顶栏：总代实体与邀请码名片 -->
+    <!-- 頂欄：總代實體與邀請碼名片 -->
     <header class="bg-indigo-900 text-white p-5 rounded-3xl shadow-lg flex flex-wrap justify-between items-center gap-4">
       <div>
         <div class="flex items-center gap-2.5">
-          <h1 class="text-lg font-bold">北京顺达商贸供应链 · 独立中台</h1>
+          <h1 class="text-lg font-bold">北京順達商貿供應鏈 · 獨立中台</h1>
           <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 云底座在线
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 雲底座連通在線
           </span>
         </div>
-        <div class="text-xs text-indigo-200 mt-1 flex gap-4">
-          <span>总代识别代号: <b class="font-mono text-white">BJ_SHUNDA</b></span>
-          <span>专属邀请码: <b class="font-mono text-amber-300 tracking-wider">888001</b></span>
+        <div class="text-xs text-indigo-200 mt-1 flex flex-wrap gap-4">
+          <span>總代標識: <b class="font-mono text-white">BJ_SHUNDA</b></span>
+          <span>專屬邀請碼: <b class="font-mono text-amber-300 tracking-wider">888001</b></span>
+          <span>線路主管: <b>李經理 (13800138002)</b></span>
         </div>
       </div>
 
       <div class="flex items-center gap-2">
-        <select id="route-select" onchange="loadHQData()" class="bg-indigo-950 border border-indigo-700 text-white text-xs px-3 py-2 rounded-xl outline-none">
-          <option value="城东A线">城东A线 · 负责人：老张师傅</option>
-          <option value="城西B线">城西B线 · 负责人：李师傅</option>
+        <select id="route-select" onchange="window.loadHQData()" class="bg-indigo-950 border border-indigo-700 text-white text-xs px-3 py-2 rounded-xl outline-none">
+          <option value="城東A線">城東A線 · 負責人：送貨師傅(老張)</option>
+          <option value="城西B線">城西B線 · 負責人：送貨師傅(李師傅)</option>
         </select>
-        <button onclick="loadHQData()" class="bg-white text-indigo-900 text-xs px-3.5 py-2 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition active:scale-95">
-          刷新调度
+        <button onclick="window.loadHQData()" class="bg-white text-indigo-900 text-xs px-3.5 py-2 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition active:scale-95">
+          重新整理調度
         </button>
       </div>
     </header>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       
-      <!-- 左侧 2 列：送货人派单与装车看板 -->
+      <!-- 左側 2 列：送貨人派單、裝車指示與門店檔案 -->
       <div class="lg:col-span-2 space-y-4">
         
-        <!-- 装车堆叠指引表 -->
+        <!-- 裝車堆疊指引表 -->
         <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center">
             <div>
-              <h2 class="text-sm font-bold text-slate-800">🚚 送货人装车配货表 (<span id="current-driver-tag" class="text-indigo-700 font-mono">老张师傅</span>)</h2>
-              <span class="text-[11px] text-slate-400">系统已根据箱规自动标定底层重货与轻放上层</span>
+              <h2 class="text-sm font-bold text-slate-800">🚚 送貨師傅裝車配貨表 (<span id="current-driver-tag" class="text-indigo-700 font-mono">送貨師傅</span>)</h2>
+              <span class="text-[11px] text-slate-400">系統已按箱規與承重，自動標定底層重貨與上層輕放</span>
             </div>
             <div class="flex gap-2">
-              <button onclick="dispatchDriverNotice()" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3.5 py-1.5 rounded-xl shadow active:scale-95 transition">
-                师傅装齐 · 微信通知沿线门店
+              <button onclick="window.dispatchDriverNotice()" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3.5 py-1.5 rounded-xl shadow active:scale-95 transition">
+                師傅裝齊 · 微信通知沿線門店
               </button>
-              <button onclick="exportWaveCSV()" class="text-xs border border-slate-200 text-slate-600 font-bold px-3 py-1.5 rounded-xl hover:bg-slate-50">
-                导出清单
+              <button onclick="window.exportWaveCSV()" class="text-xs border border-slate-200 text-slate-600 font-bold px-3 py-1.5 rounded-xl hover:bg-slate-50">
+                匯出清單
               </button>
             </div>
           </div>
@@ -60,81 +69,83 @@
           <table class="w-full text-left text-xs">
             <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 font-medium">
               <tr>
-                <th class="p-2.5">码放建议</th>
-                <th class="p-2.5">商品名称</th>
-                <th class="p-2.5">规格/箱规</th>
-                <th class="p-2.5 text-right">装车总数</th>
+                <th class="p-2.5">碼放建議</th>
+                <th class="p-2.5">商品名稱</th>
+                <th class="p-2.5">箱規/包裝</th>
+                <th class="p-2.5 text-right">裝車總數</th>
               </tr>
             </thead>
             <tbody id="wave-table-body" class="divide-y divide-slate-100">
-              <tr><td colspan="4" class="p-6 text-center text-slate-400">正在查对配车数据...</td></tr>
+              <tr><td colspan="4" class="p-6 text-center text-slate-400">正在查對車次配貨資料...</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- 辖区便利店与信用账期档案 -->
+        <!-- 轄區便利店檔案與信用額度監控 -->
         <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center">
             <div>
-              <h2 class="text-sm font-bold text-slate-800">🏪 合作便利店档案 (授信风控与周转)</h2>
-              <span class="text-[11px] text-slate-400">共绑定 18 家门店 · 实时监控挂账额度</span>
+              <h2 class="text-sm font-bold text-slate-800">🏪 合作便利店檔案 (授信風控與動態指派)</h2>
+              <span class="text-[11px] text-slate-400">即時監控小店掛賬額度、在店周轉筐與專屬送貨人</span>
             </div>
-            <button onclick="registerNewStore()" class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1 rounded-xl font-bold hover:bg-indigo-100 transition">
-              + 录入门店手机号
+            <button onclick="window.registerNewStore()" class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1 rounded-xl font-bold hover:bg-indigo-100 transition">
+              + 登記新店手機號
             </button>
           </div>
 
           <div id="store-list" class="divide-y divide-slate-100 text-xs">
-            <!-- 动态载入 -->
+            <!-- 動態載入 -->
           </div>
         </div>
 
       </div>
 
-      <!-- 右侧 1 列：找货登记与下期选品诉求 -->
+      <!-- 右側 1 列：發展新店、缺貨登記與選品看板 -->
       <div class="space-y-4">
         
-        <!-- 扫码绑定引导卡 -->
+        <!-- 掃碼綁定通道卡片 -->
         <div class="bg-gradient-to-br from-indigo-50 to-emerald-50 border border-indigo-100 p-4 rounded-3xl space-y-2">
-          <b class="text-xs text-indigo-900 block">📲 发展新便利店绑定通道</b>
+          <b class="text-xs text-indigo-900 block">📲 發展新便利店綁定通道</b>
           <p class="text-[11px] text-slate-600 leading-relaxed">
-            将专属直通地址发给掌柜，或让师傅带二维码上门：<br>
+            新店掌櫃打開終端即可輸入 6 位碼 <b class="text-amber-800 font-mono">888001</b> 綁定，或在推廣連結後帶參：
             <code class="bg-white px-2 py-0.5 rounded text-[10px] text-indigo-800 border border-indigo-100 select-all block mt-1">?agent=BJ_SHUNDA</code>
           </p>
         </div>
 
-        <!-- 门店缺货与找货需求 -->
+        <!-- 掌櫃缺貨捎話看板 -->
         <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center">
-            <h2 class="text-xs font-bold text-slate-800">📝 掌柜找货捎话与缺货留言</h2>
-            <span class="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded font-bold">待采购</span>
+            <h2 class="text-xs font-bold text-slate-800">📝 掌櫃缺貨捎話與找貨留言</h2>
+            <span class="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded font-bold">待採購辦結</span>
           </div>
 
           <div class="space-y-2" id="demand-cards">
             <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1 text-xs">
               <div class="flex justify-between">
-                <b class="text-slate-800">农夫山泉 东方树叶 茉莉花茶 15瓶</b>
+                <b class="text-slate-800">農夫山泉 東方樹葉 茉莉花茶 15瓶</b>
                 <span class="text-[10px] font-mono text-amber-700 font-bold">3~5 箱</span>
               </div>
-              <div class="text-[11px] text-slate-400">提报：利民平价便利店 · 交代老张随车顺带</div>
+              <div class="text-[11px] text-slate-400">提報：利民平價便利店 · 交代送貨師傅隨車順帶</div>
               <div class="pt-1 flex justify-end">
-                <button onclick="alert('已标记为已调配入库！')" class="text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded-lg text-slate-600 hover:bg-slate-100">已安排调货</button>
+                <button onclick="alert('已標記為已調貨，下次出車隨行！')" class="text-[10px] bg-white border border-slate-200 px-2.5 py-0.5 rounded-lg text-slate-600 hover:bg-slate-100">
+                  已安排調配
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 选品投票倾向 -->
+        <!-- 熟客動銷投票傾向 -->
         <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 space-y-2 text-xs">
-          <h2 class="text-xs font-bold text-slate-800">💡 社区熟客选品呼声</h2>
+          <h2 class="text-xs font-bold text-slate-800">💡 社區熟客動銷選品呼聲</h2>
           <div class="space-y-1.5 text-[11px] text-slate-600">
-            <div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl">
-              <span>🥛 伊利金典/纯牛奶整箱</span>
-              <b class="text-emerald-700 font-mono">12 家店推荐</b>
+            <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl">
+              <span>🥛 純牛奶整箱 (早餐高頻)</span>
+              <b class="text-emerald-700 font-mono">12 家店預約</b>
             </div>
-            <div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl">
-              <span>🧻 维达/心相印抽纸整包</span>
-              <b class="text-emerald-700 font-mono">9 家店推荐</b>
+            <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl">
+              <span>🧻 品牌抽紙連包 (日耗剛需)</span>
+              <b class="text-emerald-700 font-mono">9 家店預約</b>
             </div>
           </div>
         </div>
@@ -150,32 +161,32 @@
 
     window.loadHQData = async function() {
       const route = document.getElementById('route-select').value;
-      const driver = route.includes('城东') ? '老张师傅' : '李师傅';
+      const driver = route.includes('城東') ? '送貨師傅(老張)' : '送貨師傅(李師傅)';
       document.getElementById('current-driver-tag').innerText = driver;
 
-      // 1. 模拟聚合今日该师傅线路所有订单
+      // 1. 裝車碼放指引
       const tbody = document.getElementById('wave-table-body');
       tbody.innerHTML = `
         <tr>
-          <td class="p-2.5"><span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold">⬇️ 底层重货</span></td>
-          <td class="p-2.5 font-bold text-slate-800">金龙鱼 黄金比例食用调和油 5L</td>
-          <td class="p-2.5 text-slate-500">4桶/箱</td>
+          <td class="p-2.5"><span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold">⬇️ 底層重貨</span></td>
+          <td class="p-2.5 font-bold text-slate-800">金龍魚 黃金比例食用調和油 5L</td>
+          <td class="p-2.5 text-slate-500 font-mono">4桶/箱</td>
           <td class="p-2.5 text-right font-mono font-bold text-indigo-700 text-sm">28 箱</td>
         </tr>
         <tr>
-          <td class="p-2.5"><span class="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold">⬆️ 上层轻放</span></td>
-          <td class="p-2.5 font-bold text-slate-800">统一 鲜橙多 450ml*15瓶</td>
-          <td class="p-2.5 text-slate-500">15瓶/箱</td>
+          <td class="p-2.5"><span class="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold">⬆️ 上層輕放</span></td>
+          <td class="p-2.5 font-bold text-slate-800">統一 鮮橙多 450ml*15瓶</td>
+          <td class="p-2.5 text-slate-500 font-mono">15瓶/箱</td>
           <td class="p-2.5 text-right font-mono font-bold text-indigo-700 text-sm">16 箱</td>
         </tr>
       `;
 
-      // 2. 载入门店档案及周转标签
+      // 2. 便利店檔案及動態指定送貨人
       const storeContainer = document.getElementById('store-list');
       storeContainer.innerHTML = [
-        { id: 1, name: '利民平价便利店', contact: '王掌柜', phone: '13811112222', debt: 450, limit: 2000, tag: '按周结清 · 信用优', crates: 6 },
-        { id: 2, name: '朝阳便民超市', contact: '张姐', phone: '13833334444', debt: 1750, limit: 2000, tag: '临近授信红线', crates: 12 },
-        { id: 3, name: '乐家生鲜烟酒', contact: '李哥', phone: '13855556666', debt: 0, limit: 3000, tag: '现场微信秒结', crates: 0 }
+        { id: 1, name: '利民平價便利店', contact: '王掌櫃', phone: '13811112222', debt: 450, limit: 2000, tag: '按周結清 · 信用優', crates: 6, driver: '送貨師傅(老張)' },
+        { id: 2, name: '朝陽便民超市', contact: '張姐', phone: '13833334444', debt: 1750, limit: 2000, tag: '臨近授信紅線', crates: 12, driver: '送貨師傅(李師傅)' },
+        { id: 3, name: '樂家生鮮煙酒', contact: '李哥', phone: '13855556666', debt: 0, limit: 3000, tag: '現場微信秒結', crates: 0, driver: '送貨師傅(老張)' }
       ].map(s => `
         <div class="py-3 flex justify-between items-center">
           <div>
@@ -185,36 +196,53 @@
                 ${s.tag}
               </span>
             </div>
-            <div class="text-[11px] text-slate-400 mt-0.5 font-mono">${s.contact} · ${s.phone} · 在店筐数: ${s.crates}个</div>
+            <div class="text-[11px] text-slate-400 mt-0.5 font-mono">${s.contact} · ${s.phone} · 當前指派: <b class="text-indigo-700">${s.driver}</b></div>
           </div>
-          <div class="text-right">
-            <div class="font-mono font-bold ${s.debt > s.limit * 0.8 ? 'text-rose-600' : 'text-slate-700'}">
-              挂账: ¥${s.debt}
+          <div class="flex items-center gap-3">
+            <div class="text-right">
+              <div class="font-mono font-bold ${s.debt > s.limit * 0.8 ? 'text-rose-600' : 'text-slate-700'}">掛賬: ¥${s.debt}</div>
+              <div class="text-[10px] text-slate-400 font-mono">周轉筐: ${s.crates}個</div>
             </div>
-            <div class="text-[10px] text-slate-400 font-mono">额度: ¥${s.limit}</div>
+            <button onclick="window.changeStoreDriver(${s.id}, '${s.driver}')" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg border border-slate-200">
+              改派師傅
+            </button>
           </div>
         </div>
       `).join('');
     };
 
-    window.dispatchDriverNotice = function() {
-      const driver = document.getElementById('current-driver-tag').innerText;
-      sendWechatNotice(`🚚 送货通知：${driver}已装车出发`, `城东A线今日全部商品已核验封箱，师傅正顺路赶往各店，备齐即送！`);
-      alert(`已发车！沿线便利店将收到老张师傅的到达提醒。`);
-    };
-
-    window.exportWaveCSV = function() {
-      alert('已导出老张师傅装车单 CSV！');
-    };
-
-    window.registerNewStore = function() {
-      const phone = prompt('请输入新合作小店的掌柜手机号：');
-      if (phone && phone.length === 11) {
-        alert(`已登记！掌柜使用该手机号登录终端时将自动识别认领总代。`);
+    window.changeStoreDriver = function(storeId, currentDriver) {
+      const newDriver = prompt(`當前指派為【${currentDriver}】，請輸入新送貨師傅姓名或備註：`);
+      if (newDriver && newDriver.trim()) {
+        alert(`改派成功！該店專屬送貨人已切換為【${newDriver.trim()}】，終端已即時同步更新。`);
+        window.loadHQData();
       }
     };
 
-    loadHQData();
+    window.dispatchDriverNotice = function() {
+      const driver = document.getElementById('current-driver-tag').innerText;
+      sendWechatNotice(`🚚 發車通知：${driver}已裝齊出發`, `城東A線今日貨物已配齊封箱，師傅正隨車經由各店，備好即送！`);
+      alert(`通知已發送！沿線便利店微信將收到送貨師傅的發車與抵店提醒。`);
+    };
+
+    window.exportWaveCSV = function() {
+      const csvContent = "data:text/csv;charset=utf-8,\uFEFF商品名稱,碼放類別,包裝,裝車總量\n金龍魚食用調和油5L,底層重貨,4桶/箱,28\n統一鮮橙多450ml,上層輕放,15瓶/箱,16";
+      const link = document.createElement("a");
+      link.setAttribute("href", encodeURI(csvContent));
+      link.setAttribute("download", "送貨師傅裝車波次清單.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    window.registerNewStore = function() {
+      const phone = prompt('請輸入新合作便利店掌櫃手機號：');
+      if (phone && phone.length === 11) {
+        alert(`登記成功！手機號 ${phone} 已錄入順達總代直供白名單，掌櫃進入終端將自動認領。`);
+      }
+    };
+
+    window.loadHQData();
   </script>
 </body>
 </html>
