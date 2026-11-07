@@ -1,4 +1,4 @@
-// src/lib/offline.js - 独立离线存储与网络重试引擎
+// src/lib/offline.js - 离线存储与网络重试引擎
 let idb = null;
 
 export function initIndexedDB() {
