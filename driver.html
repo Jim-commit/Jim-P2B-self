@@ -22,7 +22,7 @@
   </div>
 
   <script type="module">
-    import { supabase, currentTenant } from '/src/lib/supabase.js';
+    import { supabase, currentTenant } from './src/lib/supabase.js';
 
     // 核心拦截守卫：司机若无总代租户信息，强制阻断操作
     if (!currentTenant) {
@@ -31,7 +31,7 @@
           <div class="bg-white p-6 rounded-2xl shadow max-w-xs w-full text-center space-y-3">
             <div class="text-4xl">🚚</div>
             <h2 class="text-base font-bold text-slate-800">未指定车队所属总代</h2>
-            <p class="text-xs text-slate-500 leading-relaxed">司机核销端必须从排班任务看板扫码接入，请联系仓库调度员下发派车单。</p>
+            <p class="text-xs text-slate-500 leading-relaxed">司机核销端必须从排班任务看板接入，请联系调度员下发派车单。</p>
             <div class="pt-2 border-t border-slate-100 space-y-2">
               <span class="text-[11px] text-slate-400 block">测试入口快速接入：</span>
               <a href="?tenant=BJ_HQ" class="block w-full bg-slate-800 active:bg-slate-900 text-white text-xs font-bold py-2 rounded-lg">登录北京车队</a>
@@ -44,7 +44,7 @@
     }
 
     window.loadOrders = async function() {
-      const { data: orders } = await supabase.from('orders').select('*').order('id', { ascending: false });
+      const { data: orders, error } = await supabase.from('orders').select('*').order('id', { ascending: false });
       const container = document.getElementById('driver-orders');
 
       if (!orders || orders.length === 0) {
