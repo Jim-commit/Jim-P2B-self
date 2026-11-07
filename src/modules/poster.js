@@ -1,4 +1,4 @@
-// src/modules/poster.js - 店门花纸定制工作台引擎
+// src/modules/poster.js - 店门花纸定制工作台 Canvas 引擎
 export let posterState = {
   title: '金龙鱼 黄金比例食用调和油 5L',
   subTitle: '大厂正规批次 · 街坊随心挑看',
