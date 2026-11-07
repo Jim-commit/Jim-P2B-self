@@ -5,16 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>便利店/商超订货端</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans select-none pb-28 antialiased">
   <div id="main-app" class="max-w-md mx-auto min-h-screen bg-slate-50 relative">
 
+    <!-- 1. 离线/弱网暂存提示条 (带待同步计数 Badge) -->
     <div id="net-status-bar" class="hidden bg-amber-500 text-white text-xs px-3 py-1.5 flex justify-between items-center font-bold sticky top-0 z-50 shadow">
       <span id="net-status-text">⚠️ 离线模式，订单暂存手机本地</span>
       <span id="offline-count-badge" class="bg-white text-amber-700 px-1.5 py-0.5 rounded text-[10px]">0 条暂存</span>
     </div>
 
-    <!-- 沉浸式深绿顶栏 -->
+    <!-- 2. 沉浸式深绿顶栏 -->
     <header class="bg-emerald-700 text-white p-4 pt-3 rounded-b-3xl shadow-md">
       <div class="flex justify-between items-center text-xs pb-3 opacity-90 border-b border-emerald-600/50">
         <span class="font-mono font-bold">09:41</span>
@@ -22,6 +27,7 @@
         <div class="bg-black/20 rounded-full px-2 py-0.5 border border-white/20 text-[10px]">••• ⭘</div>
       </div>
 
+      <!-- 线路与授信资产透传 -->
       <div class="mt-3 flex justify-between items-start">
         <div class="space-y-1 text-xs">
           <div class="flex items-center gap-1.5">
@@ -34,13 +40,14 @@
             <span id="credit-detail" class="text-[11px] text-emerald-100 opacity-90">(欠款:¥0 / 授信:¥0)</span>
           </div>
         </div>
+        <!-- 扫码进货 -->
         <button onclick="handleScanButton()" class="bg-emerald-600 hover:bg-emerald-500 border border-emerald-400 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow active:scale-95 transition">
           <span>📷</span> 扫码进货
         </button>
       </div>
 
-      <!-- 本月收益与毛利看板 -->
-      <div class="mt-3 bg-emerald-800/90 border border-emerald-500/50 rounded-2xl p-2.5 flex items-center justify-between">
+      <!-- 经营收益看板 + 一键复购 -->
+      <div class="mt-3.5 bg-emerald-800/90 border border-emerald-500/50 rounded-2xl p-2.5 flex items-center justify-between">
         <div class="text-xs">
           <div class="text-[11px] text-emerald-200">📊 本月总代直供经营简报：</div>
           <div class="font-bold mt-0.5 text-white">进货: <span id="month-purchase">¥0</span> | 预计净赚: <span id="month-profit" class="text-amber-300">¥0</span></div>
@@ -51,13 +58,13 @@
       </div>
     </header>
 
-    <!-- 扫码录入浮层 -->
+    <!-- 3. 扫码录入隐藏浮层 (支持红外扫码枪与手动条码) -->
     <div id="scan-box" class="hidden p-3 bg-white border-b border-slate-200 flex gap-2">
       <input type="text" id="barcode-input" placeholder="输入条码或用红外扫码枪扫描" class="flex-1 bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-emerald-600">
       <button onclick="scanBarcodeSubmit()" class="bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">录入加购</button>
     </div>
 
-    <!-- 导航 Tab -->
+    <!-- 4. 核心导航 Tab -->
     <nav class="flex bg-white border-b border-slate-200 sticky top-0 z-40">
       <button id="tab-btn-order" onclick="switchTab('order')" class="flex-1 py-3 text-center text-xs font-bold text-emerald-700 border-b-2 border-emerald-700 flex items-center justify-center gap-1">
         <span>📦</span> 极简订货
@@ -71,7 +78,7 @@
       </button>
     </nav>
 
-    <!-- Tab 1: 订货 -->
+    <!-- Tab 1: 极简订货 -->
     <section id="tab-order" class="p-3 space-y-2">
       <div class="flex justify-between items-center px-1 text-[11px] text-slate-400 font-medium">
         <span>常购清单与现货目录</span>
@@ -82,7 +89,7 @@
       </div>
     </section>
 
-    <!-- Tab 2: 帮着卖 -->
+    <!-- Tab 2: 帮着卖 (赚差价) -->
     <section id="tab-sales" class="hidden p-3 space-y-3">
       <div class="bg-gradient-to-r from-red-600 to-amber-600 text-white p-3.5 rounded-2xl shadow-sm space-y-2">
         <div class="flex justify-between items-center">
@@ -92,7 +99,7 @@
         <h3 class="font-bold text-sm">金龙鱼 黄金比例食用调和油 5L</h3>
         <div class="text-xs text-red-100 flex items-center gap-3">
           <span>进价: <b class="text-white text-sm">¥198</b>/4桶</span>
-          <span>建议零售: <b class="text-amber-200 text-sm">¥59.9</b>/桶</span>
+          <span>社区建议零售: <b class="text-amber-200 text-sm">¥59.9</b>/桶</span>
         </div>
         <div class="pt-1 flex gap-2">
           <button onclick="copyGroupPromo()" class="flex-1 bg-white text-red-600 font-bold text-xs py-2 rounded-xl shadow active:scale-95 transition">
@@ -111,19 +118,19 @@
       </div>
     </section>
 
-    <!-- Tab 3: 临期换新 -->
+    <!-- Tab 3: 临期调换 -->
     <section id="tab-exchange" class="hidden p-3 space-y-3">
       <div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-xs text-amber-900 flex items-start gap-2">
         <span class="text-lg">🛡️</span>
         <div>
           <div class="font-bold">总代无忧滞销保障服务</div>
-          <p class="text-[11px] text-amber-700 mt-0.5">未拆封整箱商品在到期前60天，司机送新货时可随车原价带回调换。</p>
+          <p class="text-[11px] text-amber-700 mt-0.5">未拆封整箱商品在距保质期60天以上，司机送新货时可随车原价带回调换冲抵账期。</p>
         </div>
       </div>
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 space-y-3">
         <div class="font-bold text-xs text-slate-800 flex justify-between items-center">
-          <span>📦 批次在店追踪</span>
-          <span class="text-[11px] text-emerald-600 font-normal">支持随车调换</span>
+          <span>📦 批次在店追踪 (根据近45天进货)</span>
+          <span class="text-[11px] text-emerald-600 font-normal">支持随车原价调换</span>
         </div>
         <div class="divide-y divide-slate-100 text-xs">
           <div class="py-2.5 flex justify-between items-center">
@@ -152,7 +159,7 @@
 
   </div>
 
-  <!-- 下单结算固定栏 -->
+  <!-- 5. 底部固定下单结算栏 (防连击 + 授信校验) -->
   <footer id="footer-bar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 p-3 max-w-md mx-auto flex justify-between items-center z-50 shadow-lg">
     <div>
       <div class="text-[11px] text-slate-400">次日早 09:00 前专车送达</div>
@@ -170,6 +177,7 @@
     import { supabase, currentTenant } from './src/lib/supabase.js';
     import { sendWechatNotice } from './src/lib/notify.js';
 
+    // 1. 租户拦截守卫 (方案一：无租户阻断访问)
     if (!currentTenant) {
       document.body.innerHTML = `
         <div class="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
@@ -194,8 +202,10 @@
     let products = [];
     let currentStore = null;
     let cart = {};
+    let idb = null;
     let isSubmitting = false;
 
+    // 2. Tab 切换控制器
     window.switchTab = function(tabName) {
       const orderSec = document.getElementById('tab-order');
       const salesSec = document.getElementById('tab-sales');
@@ -223,6 +233,7 @@
       }
     };
 
+    // 3. 扫码兼容逻辑：优先小程序扫码，降级为文本框录入
     window.handleScanButton = function() {
       if (window.wx && window.wx.scanCode) {
         window.wx.scanCode({
@@ -259,6 +270,7 @@
       }
     };
 
+    // 4. 临期换新
     window.requestExchange = function(productName) {
       const qty = prompt(`请输入需要总代司机随车调换的【${productName}】箱数：`, "1");
       if (qty && parseInt(qty) > 0) {
@@ -266,11 +278,92 @@
       }
     };
 
+    // 5. 离线缓存引擎 (IndexedDB 完整保留与重试)
+    function initIndexedDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('b2b_offline_db', 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('products')) db.createObjectStore('products', { keyPath: 'id' });
+          if (!db.objectStoreNames.contains('offline_orders')) db.createObjectStore('offline_orders', { keyPath: 'client_temp_id' });
+        };
+        req.onsuccess = (e) => { idb = e.target.result; resolve(idb); };
+        req.onerror = (e) => reject(e);
+      });
+    }
+
+    async function cacheProducts(items) {
+      if (!idb) return;
+      const tx = idb.transaction('products', 'readwrite');
+      items.forEach(it => tx.objectStore('products').put(it));
+    }
+
+    async function getLocalProducts() {
+      if (!idb) return [];
+      return new Promise((resolve) => {
+        const req = idb.transaction('products', 'readonly').objectStore('products').getAll();
+        req.onsuccess = () => resolve(req.result || []);
+      });
+    }
+
+    async function saveOfflineOrder(payload) {
+      const tx = idb.transaction('offline_orders', 'readwrite');
+      payload.client_temp_id = 'OFF_' + Date.now();
+      tx.objectStore('offline_orders').put(payload);
+      updateOfflineUI();
+    }
+
+    async function getOfflineOrders() {
+      return new Promise((resolve) => {
+        const req = idb.transaction('offline_orders', 'readonly').objectStore('offline_orders').getAll();
+        req.onsuccess = () => resolve(req.result || []);
+      });
+    }
+
+    async function syncOfflineOrders() {
+      if (!navigator.onLine) return;
+      const list = await getOfflineOrders();
+      if (list.length === 0) return;
+      for (const item of list) {
+        try {
+          const { error } = await supabase.rpc('submit_b2b_order', { p_store_id: item.store_id, p_items: item.items });
+          if (!error) {
+            idb.transaction('offline_orders', 'readwrite').objectStore('offline_orders').delete(item.client_temp_id);
+          }
+        } catch(e) {}
+      }
+      updateOfflineUI();
+    }
+
+    async function updateOfflineUI() {
+      const list = await getOfflineOrders();
+      const badge = document.getElementById('offline-count-badge');
+      const bar = document.getElementById('net-status-bar');
+      if (list.length > 0 || !navigator.onLine) {
+        bar.classList.remove('hidden');
+        badge.innerText = `${list.length} 条待重放`;
+      } else {
+        bar.classList.add('hidden');
+      }
+    }
+
+    window.addEventListener('online', () => syncOfflineOrders());
+    window.addEventListener('offline', () => updateOfflineUI());
+
+    // 6. 门店与商品初始化
     async function init() {
-      const { data: storeData } = await supabase.from('store').select('*').eq('wechat_openid', currentOpenid).single();
-      currentStore = storeData;
-      const { data: prodData } = await supabase.from('product').select('*');
-      products = prodData || [];
+      await initIndexedDB();
+
+      if (navigator.onLine) {
+        const { data: storeData } = await supabase.from('store').select('*').eq('wechat_openid', currentOpenid).single();
+        currentStore = storeData;
+        const { data: prodData } = await supabase.from('product').select('*');
+        products = prodData || [];
+        if (products.length > 0) cacheProducts(products);
+      } else {
+        products = await getLocalProducts();
+        currentStore = { id: 1, name: '利民平价便利店 (离线模式)', route_name: '城东A线', credit_limit: 2000, current_debt: 0, price_tier: 'TIER_1' };
+      }
 
       if (currentStore) {
         document.getElementById('store-nav-title').innerText = currentStore.name;
@@ -279,9 +372,11 @@
         calcMonthPerformance();
       }
       renderProducts();
+      updateOfflineUI();
     }
 
     async function calcMonthPerformance() {
+      if (!currentStore || !navigator.onLine) return;
       const { data: orders } = await supabase.from('orders').select('total_amount').eq('store_id', currentStore.id);
       let totalSpent = 0;
       if (orders && orders.length > 0) {
@@ -361,7 +456,7 @@
       });
     };
 
-    // 核心提交下单函数（含自动推送微信通知）
+    // 7. 提交订单 (硬授信校验 + 防重点击 + 离线支持 + 微信通知)
     window.submitOrder = async function() {
       if (isSubmitting) return;
 
@@ -383,10 +478,22 @@
 
       if (items.length === 0) return alert('当前购物车为空，请先加购商品！');
 
+      // 前端硬阻断校验授信
       if (currentStore && (currentStore.current_debt + totalAmount > currentStore.credit_limit)) {
         return alert(`超出授信额度！可用额度仅剩 ¥${(currentStore.credit_limit - currentStore.current_debt).toFixed(2)}，本次订货金额 ¥${totalAmount.toFixed(2)}。请联系总代财务结账后提交。`);
       }
 
+      // 弱网离线分支
+      if (!navigator.onLine) {
+        await saveOfflineOrder({ store_id: currentStore.id, items });
+        alert('当前网络断开，订单已安全暂存手机本地！恢复网络后将自动重放提交至总代。');
+        cart = {};
+        renderProducts();
+        calcTotal();
+        return;
+      }
+
+      // 开启防抖防连击动画
       isSubmitting = true;
       const btn = document.getElementById('submit-btn');
       const spinner = document.getElementById('btn-spinner');
@@ -405,7 +512,7 @@
         if (error) {
           alert('下单失败: ' + error.message);
         } else {
-          // 异步触发老板个人微信服务通知
+          // 异步推送老板微信服务通知 (带容错)
           const itemSummary = items.map(it => `* **${it.name}**：${it.quantity} ${it.pack_unit}`).join('\n');
           const noticeTitle = `📦 新订货：${currentStore.name} (¥${totalAmount.toFixed(2)})`;
           const noticeDesp = `### 收到门店新订货需求\n- **进货门店**：${currentStore.name} (${currentStore.contact_name || '负责人'})\n- **配送线路**：${currentStore.route_name}\n- **订货总额**：¥${totalAmount.toFixed(2)}\n- **订货单号**：\`${data.order_no}\`\n\n**进货明细清单：**\n${itemSummary}\n\n[👉 点击快速打开中台排产配货](https://goods-lucky.vercel.app/hq.html?tenant=${currentTenant})`;
