@@ -38,7 +38,7 @@
       </div>
     </header>
 
-    <!-- 仓库波次装车汇总表 (带堆叠防损指引、发车推送、导出) -->
+    <!-- 仓库波次装车汇总表 -->
     <div class="bg-white p-4 rounded-xl shadow border border-slate-200">
       <div class="flex justify-between items-center mb-3">
         <div>
@@ -46,7 +46,6 @@
           <span class="text-[11px] text-slate-400">已内置「重货底层承重、轻抛上层轻放」装载指引</span>
         </div>
         <div class="flex gap-2">
-          <!-- 核心新增：确认发车并自动通知 -->
           <button id="dispatch-btn" onclick="confirmDispatch()" class="text-xs bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold px-3 py-1 rounded shadow-sm flex items-center gap-1 transition">
             <span>🚚</span> 确认发车并通知
           </button>
@@ -128,7 +127,6 @@
       return '<span class="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold">⬆️ 上层轻放</span>';
     }
 
-    // 1. 加载波次装车数据
     window.loadWaveData = async function() {
       const route = document.getElementById('route-select').value;
       const { data, error } = await supabase.rpc('get_route_wave_summary', { p_route_name: route });
@@ -150,7 +148,6 @@
       `).join('');
     };
 
-    // 2. 确认发车并全员通知
     window.confirmDispatch = async function() {
       const route = document.getElementById('route-select').value;
       if (!currentWaveData || currentWaveData.length === 0) {
@@ -166,7 +163,6 @@
       btn.innerText = '正在发车通知...';
 
       try {
-        // 变更数据库状态为配送中
         const { data, error } = await supabase.rpc('dispatch_route_orders', { p_route_name: route });
         
         if (error) {
@@ -176,10 +172,8 @@
           const title = `🚚【发车通知】${tenantName} · ${route}`;
           const desp = `### 总代车队已装车发货\n- **配送线路**：${route}\n- **装车总件数**：**${totalBoxes}** 箱\n- **配送覆盖门店**：${data.store_count || '多'} 家\n- **发车时间**：${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}\n- **接车指引**：司机正沿指定干线配送，请各便利店预留收货通道与交接人。\n\n[👉 点击打开司机配送随车端](https://goods-lucky.vercel.app/driver.html?tenant=${currentTenant})`;
 
-          // 触发个人微信卡片通知
           sendWechatNotice(title, desp);
 
-          // 复制微信群播报格式文案
           const groupCopyText = `【总代发车播报】\n线路：${route}\n总数：${totalBoxes} 箱已装车发运\n预计送达：次日上午\n请沿线小店老板注意查收！`;
           if (navigator.clipboard) {
             navigator.clipboard.writeText(groupCopyText);
@@ -196,7 +190,6 @@
       }
     };
 
-    // 3. 导出 CSV
     window.exportWaveCSV = function() {
       if (!currentWaveData || currentWaveData.length === 0) {
         return alert('暂无装车数据可导出！');
@@ -214,7 +207,6 @@
       link.click();
     };
 
-    // 4. 门店欠款监管
     window.loadStores = async function() {
       const { data: stores } = await supabase.from('store').select('*');
       const container = document.getElementById('store-debt-list');
@@ -238,7 +230,6 @@
       `).join('');
     };
 
-    // 5. 司机对账流水
     window.loadPaymentLogs = async function() {
       const { data: logs } = await supabase
         .from('payment_record')
@@ -264,7 +255,6 @@
       `).join('');
     };
 
-    // 6. Realtime 实时大屏监听
     function setupRealtimeListener() {
       supabase
         .channel('hq-dashboard-live')
