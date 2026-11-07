@@ -5,31 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>便利店/商超订货端</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    /* 隐藏横向滚动条 */
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-  </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans select-none pb-28 antialiased">
   <div id="main-app" class="max-w-md mx-auto min-h-screen bg-slate-50 relative">
 
-    <!-- 离线/弱网暂存提示条 -->
     <div id="net-status-bar" class="hidden bg-amber-500 text-white text-xs px-3 py-1.5 flex justify-between items-center font-bold sticky top-0 z-50 shadow">
       <span id="net-status-text">⚠️ 离线模式，订单暂存手机本地</span>
       <span id="offline-count-badge" class="bg-white text-amber-700 px-1.5 py-0.5 rounded text-[10px]">0 条暂存</span>
     </div>
 
-    <!-- 顶部深绿沉浸式卡片 -->
+    <!-- 沉浸式深绿顶栏 -->
     <header class="bg-emerald-700 text-white p-4 pt-3 rounded-b-3xl shadow-md">
-      <!-- 模拟小程序原生顶栏 -->
       <div class="flex justify-between items-center text-xs pb-3 opacity-90 border-b border-emerald-600/50">
         <span class="font-mono font-bold">09:41</span>
         <span id="store-nav-title" class="font-bold text-sm tracking-wide">利民平价便利店</span>
         <div class="bg-black/20 rounded-full px-2 py-0.5 border border-white/20 text-[10px]">••• ⭘</div>
       </div>
 
-      <!-- 线路与账期资产透传 -->
       <div class="mt-3 flex justify-between items-start">
         <div class="space-y-1 text-xs">
           <div class="flex items-center gap-1.5">
@@ -38,17 +30,15 @@
           </div>
           <div class="flex items-center gap-1.5">
             <span class="text-emerald-200">账期额度：</span>
-            <span class="font-bold text-amber-300 text-sm">可用 <span id="avail-credit">¥2000</span></span>
-            <span id="credit-detail" class="text-[11px] text-emerald-100 opacity-90">(欠款:¥0 / 授信:¥2000)</span>
+            <span class="font-bold text-amber-300 text-sm">可用 <span id="avail-credit">¥0.00</span></span>
+            <span id="credit-detail" class="text-[11px] text-emerald-100 opacity-90">(欠款:¥0 / 授信:¥0)</span>
           </div>
         </div>
-        <!-- 扫码进货快捷按钮 -->
-        <button onclick="triggerScanInput()" class="bg-emerald-600 hover:bg-emerald-500 border border-emerald-400 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow active:scale-95 transition">
+        <button onclick="handleScanButton()" class="bg-emerald-600 hover:bg-emerald-500 border border-emerald-400 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow active:scale-95 transition">
           <span>📷</span> 扫码进货
         </button>
       </div>
 
-      <!-- 上次订单一键复购横幅 -->
       <div class="mt-3.5 bg-emerald-800/80 border border-emerald-500/50 rounded-2xl p-2.5 flex items-center justify-between">
         <div class="text-xs">
           <div class="text-[11px] text-emerald-200">上次订单 (2天前送达)：</div>
@@ -60,13 +50,13 @@
       </div>
     </header>
 
-    <!-- 扫码输入隐藏触发框 -->
+    <!-- 扫码录入浮层 -->
     <div id="scan-box" class="hidden p-3 bg-white border-b border-slate-200 flex gap-2">
-      <input type="text" id="barcode-input" placeholder="输入商品条码或用红外枪扫码" class="flex-1 bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-emerald-600">
+      <input type="text" id="barcode-input" placeholder="输入条码或用红外扫码枪扫描" class="flex-1 bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-emerald-600">
       <button onclick="scanBarcodeSubmit()" class="bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">录入加购</button>
     </div>
 
-    <!-- 核心业务导航切换 Tab（扩展为 3 个实用功能） -->
+    <!-- 导航 Tab -->
     <nav class="flex bg-white border-b border-slate-200 sticky top-0 z-40">
       <button id="tab-btn-order" onclick="switchTab('order')" class="flex-1 py-3 text-center text-xs font-bold text-emerald-700 border-b-2 border-emerald-700 flex items-center justify-center gap-1">
         <span>📦</span> 极简订货
@@ -80,7 +70,7 @@
       </button>
     </nav>
 
-    <!-- Tab 1: 常购极简订货 -->
+    <!-- Tab 1: 订货 -->
     <section id="tab-order" class="p-3 space-y-2">
       <div class="flex justify-between items-center px-1 text-[11px] text-slate-400 font-medium">
         <span>常购清单与现货目录</span>
@@ -91,7 +81,7 @@
       </div>
     </section>
 
-    <!-- Tab 2: 帮着卖营销赋能 (赋能终端赚差价) -->
+    <!-- Tab 2: 帮着卖 -->
     <section id="tab-sales" class="hidden p-3 space-y-3">
       <div class="bg-gradient-to-r from-red-600 to-amber-600 text-white p-3.5 rounded-2xl shadow-sm space-y-2">
         <div class="flex justify-between items-center">
@@ -101,7 +91,7 @@
         <h3 class="font-bold text-sm">金龙鱼 黄金比例食用调和油 5L</h3>
         <div class="text-xs text-red-100 flex items-center gap-3">
           <span>进价: <b class="text-white text-sm">¥198</b>/4桶</span>
-          <span>社区建议零售: <b class="text-amber-200 text-sm">¥59.9</b>/桶</span>
+          <span>建议零售: <b class="text-amber-200 text-sm">¥59.9</b>/桶</span>
         </div>
         <div class="pt-1 flex gap-2">
           <button onclick="copyGroupPromo()" class="flex-1 bg-white text-red-600 font-bold text-xs py-2 rounded-xl shadow active:scale-95 transition">
@@ -112,7 +102,6 @@
           </button>
         </div>
       </div>
-
       <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm space-y-2">
         <div class="font-bold text-xs text-slate-800">💡 社区终端销售赋能提示：</div>
         <p class="text-xs text-slate-500 leading-relaxed">
@@ -121,24 +110,21 @@
       </div>
     </section>
 
-    <!-- Tab 3: 新增实用功能 —— 临期预警与调换新货申请 -->
+    <!-- Tab 3: 临期换新 -->
     <section id="tab-exchange" class="hidden p-3 space-y-3">
       <div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-xs text-amber-900 flex items-start gap-2">
         <span class="text-lg">🛡️</span>
         <div>
           <div class="font-bold">总代无忧滞销保障服务</div>
-          <p class="text-[11px] text-amber-700 mt-0.5">距保质期还剩 60 天以上且未拆封整箱商品，司机送新货时可随车带回冲抵账期。</p>
+          <p class="text-[11px] text-amber-700 mt-0.5">未拆封整箱商品在到期前60天，司机送新货时可随车原价带回调换。</p>
         </div>
       </div>
-
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 space-y-3">
         <div class="font-bold text-xs text-slate-800 flex justify-between items-center">
-          <span>📦 批次在店追踪 (根据近45天进货)</span>
-          <span class="text-[11px] text-emerald-600 font-normal">支持随车原价调换</span>
+          <span>📦 批次在店追踪</span>
+          <span class="text-[11px] text-emerald-600 font-normal">支持随车调换</span>
         </div>
-
         <div class="divide-y divide-slate-100 text-xs">
-          <!-- 预警条目 1 -->
           <div class="py-2.5 flex justify-between items-center">
             <div>
               <div class="font-bold text-slate-800">统一 鲜橙多 450ml*15瓶</div>
@@ -146,11 +132,9 @@
               <span class="inline-block mt-1 bg-red-50 text-red-600 text-[10px] font-bold px-1.5 py-0.2 rounded">建议申请调换</span>
             </div>
             <button onclick="requestExchange('统一 鲜橙多 450ml*15瓶')" class="bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 active:scale-95 text-xs font-bold px-3 py-1.5 rounded-xl transition">
-              申请随车换新
+              申请换新
             </button>
           </div>
-
-          <!-- 预警条目 2 -->
           <div class="py-2.5 flex justify-between items-center">
             <div>
               <div class="font-bold text-slate-800">康师傅 红烧牛肉面 12桶</div>
@@ -167,7 +151,7 @@
 
   </div>
 
-  <!-- 底部固定下单结算栏 -->
+  <!-- 下单结算固定栏 -->
   <footer id="footer-bar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 p-3 max-w-md mx-auto flex justify-between items-center z-50 shadow-lg">
     <div>
       <div class="text-[11px] text-slate-400">次日早 09:00 前专车送达</div>
@@ -175,22 +159,23 @@
         应付：<span id="order-total" class="text-emerald-700 text-lg">¥0.00</span>
       </div>
     </div>
-    <button onclick="submitOrder()" class="bg-emerald-600 active:bg-emerald-700 hover:bg-emerald-500 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow active:scale-95 transition">
-      确认提交订单
+    <button id="submit-btn" onclick="submitOrder()" class="bg-emerald-600 active:bg-emerald-700 hover:bg-emerald-500 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow active:scale-95 transition flex items-center gap-1.5">
+      <span id="btn-spinner" class="hidden animate-spin">⏳</span>
+      <span id="btn-text">确认提交订单</span>
     </button>
   </footer>
 
   <script type="module">
     import { supabase, currentTenant } from './src/lib/supabase.js';
 
-    // 1. 租户拦截守卫
+    // 租户阻断守卫
     if (!currentTenant) {
       document.body.innerHTML = `
         <div class="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
           <div class="bg-white p-6 rounded-2xl shadow max-w-xs w-full text-center space-y-3">
             <div class="text-4xl">🏪</div>
             <h2 class="text-base font-bold text-slate-800">未绑定供货总代</h2>
-            <p class="text-xs text-slate-500 leading-relaxed">请从总代专属邀请码或微信小程序入口进入，以获取授信和准确配货价格。</p>
+            <p class="text-xs text-slate-500 leading-relaxed">请从总代专属邀请码或微信小程序入口进入，以获取授信和配货价格。</p>
             <div class="pt-2 border-t border-slate-100 space-y-2">
               <span class="text-[11px] text-slate-400 block font-medium">调试入口直达：</span>
               <a href="?tenant=BJ_HQ&openid=wx_test_mock_openid_123" class="block w-full bg-emerald-600 active:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-xl">北京总代体验</a>
@@ -208,9 +193,8 @@
     let products = [];
     let currentStore = null;
     let cart = {};
-    let idb = null;
+    let isSubmitting = false;
 
-    // 2. Tab 切换逻辑（支持三个功能区）
     window.switchTab = function(tabName) {
       const orderSec = document.getElementById('tab-order');
       const salesSec = document.getElementById('tab-sales');
@@ -219,7 +203,6 @@
       const btnSales = document.getElementById('tab-btn-sales');
       const btnExchange = document.getElementById('tab-btn-exchange');
 
-      // 重置所有状态
       [orderSec, salesSec, exchangeSec].forEach(el => el.classList.add('hidden'));
       [btnOrder, btnSales, btnExchange].forEach(btn => {
         btn.className = "flex-1 py-3 text-center text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 relative";
@@ -239,118 +222,69 @@
       }
     };
 
-    window.triggerScanInput = function() {
-      const box = document.getElementById('scan-box');
-      box.classList.toggle('hidden');
-      if (!box.classList.contains('hidden')) {
-        document.getElementById('barcode-input').focus();
-      }
-    };
-
-    // 3. 临期换新申请事件
-    window.requestExchange = function(productName) {
-      const qty = prompt(`请输入需要总代司机随车带回调换的【${productName}】箱数：`, "1");
-      if (qty && parseInt(qty) > 0) {
-        alert(`申请成功！已自动通知调度中台，明天配送时司机会核验封条并原价带回冲抵账期！`);
-      }
-    };
-
-    // 4. 离线缓存支持 (IndexedDB)
-    function initIndexedDB() {
-      return new Promise((resolve, reject) => {
-        const req = indexedDB.open('b2b_offline_db', 1);
-        req.onupgradeneeded = (e) => {
-          const db = e.target.result;
-          if (!db.objectStoreNames.contains('products')) db.createObjectStore('products', { keyPath: 'id' });
-          if (!db.objectStoreNames.contains('offline_orders')) db.createObjectStore('offline_orders', { keyPath: 'client_temp_id' });
-        };
-        req.onsuccess = (e) => { idb = e.target.result; resolve(idb); };
-        req.onerror = (e) => reject(e);
-      });
-    }
-
-    async function cacheProducts(items) {
-      if (!idb) return;
-      const tx = idb.transaction('products', 'readwrite');
-      items.forEach(it => tx.objectStore('products').put(it));
-    }
-
-    async function getLocalProducts() {
-      if (!idb) return [];
-      return new Promise((resolve) => {
-        const req = idb.transaction('products', 'readonly').objectStore('products').getAll();
-        req.onsuccess = () => resolve(req.result || []);
-      });
-    }
-
-    async function saveOfflineOrder(payload) {
-      const tx = idb.transaction('offline_orders', 'readwrite');
-      payload.client_temp_id = 'OFF_' + Date.now();
-      tx.objectStore('offline_orders').put(payload);
-      updateOfflineUI();
-    }
-
-    async function getOfflineOrders() {
-      return new Promise((resolve) => {
-        const req = idb.transaction('offline_orders', 'readonly').objectStore('offline_orders').getAll();
-        req.onsuccess = () => resolve(req.result || []);
-      });
-    }
-
-    async function syncOfflineOrders() {
-      if (!navigator.onLine) return;
-      const list = await getOfflineOrders();
-      if (list.length === 0) return;
-      for (const item of list) {
-        try {
-          const { error } = await supabase.rpc('submit_b2b_order', { p_store_id: item.store_id, p_items: item.items });
-          if (!error) {
-            idb.transaction('offline_orders', 'readwrite').objectStore('offline_orders').delete(item.client_temp_id);
+    // 智能扫码：优先调用微信小程序扫码环境，降级为条码输入框
+    window.handleScanButton = function() {
+      if (window.wx && window.wx.scanCode) {
+        window.wx.scanCode({
+          onlyFromCamera: true,
+          scanType: ['barCode', 'qrCode'],
+          success: (res) => {
+            const match = products.find(p => p.barcode === res.result);
+            if (match) {
+              window.changeQty(match.id, 1);
+              alert(`已扫码加购 1 箱【${match.name}】！`);
+            } else {
+              alert('未找到与该条码匹配的现货！');
+            }
           }
-        } catch(e) {}
-      }
-      updateOfflineUI();
-    }
-
-    async function updateOfflineUI() {
-      const list = await getOfflineOrders();
-      const badge = document.getElementById('offline-count-badge');
-      const bar = document.getElementById('net-status-bar');
-      if (list.length > 0 || !navigator.onLine) {
-        bar.classList.remove('hidden');
-        badge.innerText = `${list.length} 条待重放`;
+        });
       } else {
-        bar.classList.add('hidden');
+        const box = document.getElementById('scan-box');
+        box.classList.toggle('hidden');
+        if (!box.classList.contains('hidden')) {
+          document.getElementById('barcode-input').focus();
+        }
       }
-    }
+    };
 
-    window.addEventListener('online', () => syncOfflineOrders());
-    window.addEventListener('offline', () => updateOfflineUI());
+    window.scanBarcodeSubmit = function() {
+      const code = document.getElementById('barcode-input').value.trim();
+      const match = products.find(p => p.barcode === code);
+      if (match) {
+        window.changeQty(match.id, 1);
+        document.getElementById('barcode-input').value = '';
+        alert(`已成功加购 1 箱【${match.name}】！`);
+      } else {
+        alert('条码库未检索到对应商品，请核对条码！');
+      }
+    };
 
-    // 5. 数据初始化
+    window.requestExchange = function(productName) {
+      const qty = prompt(`请输入需要总代司机随车调换的【${productName}】箱数：`, "1");
+      if (qty && parseInt(qty) > 0) {
+        alert(`申请成功！已通知中台，次日配送时司机将核对原价带回冲抵账期！`);
+      }
+    };
+
     async function init() {
-      await initIndexedDB();
-
-      if (navigator.onLine) {
-        const { data: storeData } = await supabase.from('store').select('*').eq('wechat_openid', currentOpenid).single();
-        currentStore = storeData;
-        const { data: prodData } = await supabase.from('product').select('*');
-        products = prodData || [];
-        if (products.length > 0) cacheProducts(products);
-      } else {
-        products = await getLocalProducts();
-        currentStore = { id: 1, name: '利民平价便利店', route_name: '城东A线', credit_limit: 2000, current_debt: 0, price_tier: 'TIER_1' };
-      }
+      const { data: storeData } = await supabase.from('store').select('*').eq('wechat_openid', currentOpenid).single();
+      currentStore = storeData;
+      const { data: prodData } = await supabase.from('product').select('*');
+      products = prodData || [];
 
       if (currentStore) {
         document.getElementById('store-nav-title').innerText = currentStore.name;
         document.getElementById('route-text').innerText = `${currentStore.route_name} (次日早达)`;
-        const avail = Math.max(0, currentStore.credit_limit - currentStore.current_debt);
-        document.getElementById('avail-credit').innerText = `¥${avail}`;
-        document.getElementById('credit-detail').innerText = `(欠款:¥${currentStore.current_debt} / 授信:¥${currentStore.credit_limit})`;
+        updateStoreCreditUI();
       }
       renderProducts();
-      updateOfflineUI();
+    }
+
+    function updateStoreCreditUI() {
+      if (!currentStore) return;
+      const avail = Math.max(0, currentStore.credit_limit - currentStore.current_debt);
+      document.getElementById('avail-credit').innerText = `¥${avail.toFixed(2)}`;
+      document.getElementById('credit-detail').innerText = `(欠款:¥${currentStore.current_debt} / 授信:¥${currentStore.credit_limit})`;
     }
 
     function renderProducts() {
@@ -363,7 +297,7 @@
         <div class="py-3 px-2 flex justify-between items-center">
           <div>
             <div class="font-bold text-xs text-slate-800">${p.name}</div>
-            <div class="text-[11px] text-slate-400 mt-0.5">${p.spec || '标品'} · 条码:${p.barcode}</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">${p.spec || '标品'} · 库存: ${p.stock || 99}箱</div>
             <div class="text-xs font-bold text-emerald-700 mt-1">
               ¥${p.tier_1_price} <span class="text-[10px] text-slate-400 font-normal">/${p.pack_unit}</span>
             </div>
@@ -391,19 +325,8 @@
         if (cart[p.id]) total += cart[p.id] * p.tier_1_price;
       });
       document.getElementById('order-total').innerText = '¥' + total.toFixed(2);
+      return total;
     }
-
-    window.scanBarcodeSubmit = function() {
-      const code = document.getElementById('barcode-input').value.trim();
-      const match = products.find(p => p.barcode === code);
-      if (match) {
-        window.changeQty(match.id, 1);
-        document.getElementById('barcode-input').value = '';
-        alert(`已成功扫描并加购 1 箱【${match.name}】！`);
-      } else {
-        alert('条码库未检索到对应商品，请核对条码！');
-      }
-    };
 
     window.quickRepeat = function() {
       products.forEach((p, idx) => {
@@ -418,14 +341,18 @@
     };
 
     window.copyGroupPromo = function() {
-      const text = `【利民便民特惠接龙】\n金龙鱼黄金比例食用调和油 5L 厂家直供补贴只需 ¥59.9/桶！明早 9 点到店自提。\n1. 102室 张阿姨 1桶\n2. 501室 李老师 1桶\n3. 接龙继续...`;
+      const text = `【利民便民特惠接龙】\n金龙鱼食用油 5L 厂家补贴直供只需 ¥59.9/桶！明早9点到店自提。\n1. 102室 张阿姨 1桶\n2. 501室 李老师 1桶\n3. 接龙继续...`;
       navigator.clipboard.writeText(text).then(() => {
-        alert('微信群接龙推广文案已成功复制到剪贴板，可直接粘贴到微信业主群！');
+        alert('微信群接龙文案已复制！可直接粘贴至业主微信群。');
       });
     };
 
+    // 严防重复点击与超额硬拦截
     window.submitOrder = async function() {
+      if (isSubmitting) return;
+
       const items = [];
+      let totalAmount = 0;
       products.forEach(p => {
         if (cart[p.id] > 0) {
           items.push({
@@ -436,33 +363,50 @@
             price: p.tier_1_price,
             quantity: cart[p.id]
           });
+          totalAmount += cart[p.id] * p.tier_1_price;
         }
       });
 
       if (items.length === 0) return alert('当前购物车为空，请先加购商品！');
 
-      if (!navigator.onLine) {
-        await saveOfflineOrder({ store_id: currentStore.id, items });
-        alert('已成功离线暂存！网络恢复后系统会自动同步给总代排产。');
-        cart = {};
-        renderProducts();
-        calcTotal();
-        return;
+      // 前置硬阻断：授信额度本地校验
+      if (currentStore && (currentStore.current_debt + totalAmount > currentStore.credit_limit)) {
+        return alert(`超出授信额度！可用额度仅剩 ¥${(currentStore.credit_limit - currentStore.current_debt).toFixed(2)}，本次订货金额 ¥${totalAmount.toFixed(2)}。请联系总代财务结账后提交。`);
       }
 
-      const { data, error } = await supabase.rpc('submit_b2b_order', {
-        p_store_id: currentStore.id,
-        p_items: items
-      });
+      // 开启防抖 Loading 状态
+      isSubmitting = true;
+      const btn = document.getElementById('submit-btn');
+      const spinner = document.getElementById('btn-spinner');
+      const btnText = document.getElementById('btn-text');
+      btn.disabled = true;
+      btn.classList.add('opacity-50', 'cursor-not-allowed');
+      spinner.classList.remove('hidden');
+      btnText.innerText = '正在提交总代...';
 
-      if (error) {
-        alert(error.message);
-      } else {
-        alert(`订货成功！单号: ${data.order_no}，次日早将专车送达。`);
-        cart = {};
-        renderProducts();
-        calcTotal();
-        init();
+      try {
+        const { data, error } = await supabase.rpc('submit_b2b_order', {
+          p_store_id: currentStore.id,
+          p_items: items
+        });
+
+        if (error) {
+          alert('下单失败: ' + error.message);
+        } else {
+          alert(`订货提交成功！单号: ${data.order_no}，次日早将专车送达。`);
+          cart = {};
+          renderProducts();
+          calcTotal();
+          await init();
+        }
+      } catch (err) {
+        alert('提交异常，请检查网络或稍后重试');
+      } finally {
+        isSubmitting = false;
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        spinner.classList.add('hidden');
+        btnText.innerText = '确认提交订单';
       }
     };
 
