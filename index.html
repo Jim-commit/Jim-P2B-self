@@ -39,11 +39,11 @@
         </button>
       </div>
 
-      <!-- 本月收益与毛利粘性卡片 -->
+      <!-- 本月收益与毛利看板 -->
       <div class="mt-3 bg-emerald-800/90 border border-emerald-500/50 rounded-2xl p-2.5 flex items-center justify-between">
         <div class="text-xs">
           <div class="text-[11px] text-emerald-200">📊 本月总代直供经营简报：</div>
-          <div class="font-bold mt-0.5 text-white">进货: <span id="month-purchase">¥4,520</span> | 预计净赚: <span id="month-profit" class="text-amber-300">¥1,260</span></div>
+          <div class="font-bold mt-0.5 text-white">进货: <span id="month-purchase">¥0</span> | 预计净赚: <span id="month-profit" class="text-amber-300">¥0</span></div>
         </div>
         <button onclick="quickRepeat()" class="bg-white text-emerald-800 font-bold text-xs px-3 py-1.5 rounded-xl shadow-sm hover:bg-emerald-50 active:scale-95 transition whitespace-nowrap">
           一键复购
@@ -168,6 +168,7 @@
 
   <script type="module">
     import { supabase, currentTenant } from './src/lib/supabase.js';
+    import { sendWechatNotice } from './src/lib/notify.js';
 
     if (!currentTenant) {
       document.body.innerHTML = `
@@ -280,16 +281,15 @@
       renderProducts();
     }
 
-    // 统计当店进货与毛利
     async function calcMonthPerformance() {
       const { data: orders } = await supabase.from('orders').select('total_amount').eq('store_id', currentStore.id);
       let totalSpent = 0;
       if (orders && orders.length > 0) {
         totalSpent = orders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
       } else {
-        totalSpent = 3280; // 初始演示基数
+        totalSpent = 3280;
       }
-      const estProfit = totalSpent * 0.28; // 便利店综合毛利率约 28%
+      const estProfit = totalSpent * 0.28;
       document.getElementById('month-purchase').innerText = `¥${totalSpent.toFixed(0)}`;
       document.getElementById('month-profit').innerText = `¥${estProfit.toFixed(0)}`;
     }
@@ -361,6 +361,7 @@
       });
     };
 
+    // 核心提交下单函数（含自动推送微信通知）
     window.submitOrder = async function() {
       if (isSubmitting) return;
 
@@ -404,6 +405,13 @@
         if (error) {
           alert('下单失败: ' + error.message);
         } else {
+          // 异步触发老板个人微信服务通知
+          const itemSummary = items.map(it => `* **${it.name}**：${it.quantity} ${it.pack_unit}`).join('\n');
+          const noticeTitle = `📦 新订货：${currentStore.name} (¥${totalAmount.toFixed(2)})`;
+          const noticeDesp = `### 收到门店新订货需求\n- **进货门店**：${currentStore.name} (${currentStore.contact_name || '负责人'})\n- **配送线路**：${currentStore.route_name}\n- **订货总额**：¥${totalAmount.toFixed(2)}\n- **订货单号**：\`${data.order_no}\`\n\n**进货明细清单：**\n${itemSummary}\n\n[👉 点击快速打开中台排产配货](https://goods-lucky.vercel.app/hq.html?tenant=${currentTenant})`;
+          
+          sendWechatNotice(noticeTitle, noticeDesp);
+
           alert(`订货提交成功！单号: ${data.order_no}，次日早将专车送达。`);
           cart = {};
           renderProducts();
