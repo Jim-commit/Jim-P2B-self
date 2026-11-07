@@ -55,3 +55,10 @@ export async function clearOfflineOrder(tempId) {
   const tx = idb.transaction('offline_orders', 'readwrite');
   tx.objectStore('offline_orders').delete(tempId);
 }
+export function getSavedAgent() {
+  return localStorage.getItem('active_agent') || '';
+}
+
+export function saveAgent(agent) {
+  localStorage.setItem('active_agent', agent);
+}
