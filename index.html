@@ -12,9 +12,6 @@
     .font-serif-sc { font-family: 'Noto Serif SC', serif; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    .gold-gradient {
-      background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 50%, #aa771c 100%);
-    }
   </style>
 </head>
 <body class="bg-stone-100 text-slate-800 font-sans select-none pb-28 antialiased">
@@ -35,16 +32,21 @@
       <div class="absolute -right-8 -top-8 w-40 h-40 bg-emerald-400/10 rounded-full blur-2xl pointer-events-none"></div>
 
       <!-- 顶栏导航 -->
-      <div class="flex justify-between items-center text-xs pb-3.5 opacity-90 border-b border-emerald-500/30">
+      <div class="flex justify-between items-center text-xs pb-3.5 opacity-90 border-b border-emerald-500/30 relative z-20">
         <span class="font-mono tracking-widest text-[11px] text-emerald-200">09:41</span>
         <span id="store-nav-title" class="font-bold text-sm tracking-wide text-white drop-shadow-sm">利民平价便利店</span>
         
-        <!-- 右上角小店专属管家抽屉 -->
+        <!-- 右上角小店专属管家抽屉 (彻底防遮挡布局) -->
         <div class="relative">
-          <button onclick="toggleStoreMenu()" class="bg-white/10 hover:bg-white/20 active:scale-95 transition-all rounded-full px-3 py-1 border border-white/20 text-[11px] tracking-wider cursor-pointer shadow-sm flex items-center gap-1">
+          <button onclick="toggleStoreMenu(event)" class="bg-white/10 hover:bg-white/20 active:scale-95 transition-all rounded-full px-3 py-1 border border-white/20 text-[11px] tracking-wider cursor-pointer shadow-sm flex items-center gap-1">
             <span class="opacity-80">•••</span> <span class="text-[9px]">⭘</span>
           </button>
-          <div id="store-action-menu" class="hidden absolute right-0 mt-2.5 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.12)] border border-stone-200/80 p-2 z-50 text-slate-800 space-y-1">
+          
+          <!-- 全屏透明遮罩（打开时激活，点屏幕任意区域立即关闭收起） -->
+          <div id="store-menu-backdrop" class="hidden fixed inset-0 z-40 bg-transparent" onclick="closeStoreMenu()"></div>
+
+          <!-- 下拉菜单：纯白不透底、加深投影、彻底收起不遮挡 -->
+          <div id="store-action-menu" class="hidden absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.18)] border border-stone-200 p-2 z-50 text-slate-800 space-y-1">
             <div class="text-[10px] font-bold text-stone-400 px-2.5 py-1 tracking-wider border-b border-stone-100">门店掌柜助手</div>
             <button onclick="showRouteCutoff()" class="w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-slate-700 transition">
               <span class="text-emerald-700">⏰</span> 配车时效与截单时间
@@ -53,7 +55,7 @@
               <span class="text-emerald-700">🧾</span> 历史配货与签收对账
             </button>
             <div class="border-t border-stone-100 my-1"></div>
-            <a href="tel:13800138000" class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-emerald-50 text-xs font-bold text-emerald-800 transition">
+            <a href="tel:13800138000" onclick="closeStoreMenu()" class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-emerald-50 text-xs font-bold text-emerald-800 transition">
               <span>📞</span> 呼叫线路专管业务员
             </a>
           </div>
@@ -61,7 +63,7 @@
       </div>
 
       <!-- 线路时效与账期资产 -->
-      <div class="mt-4 flex justify-between items-start">
+      <div class="mt-4 flex justify-between items-start relative z-10">
         <div class="space-y-1.5 text-xs">
           <div class="flex items-center gap-2">
             <span class="text-emerald-200/90 text-[11px]">干线班次</span>
@@ -79,7 +81,7 @@
       </div>
 
       <!-- 经营收益雅致卡片 + 一键复购 -->
-      <div class="mt-4 bg-emerald-950/40 border border-emerald-400/20 backdrop-blur-md rounded-2xl p-3 flex items-center justify-between">
+      <div class="mt-4 bg-emerald-950/40 border border-emerald-400/20 backdrop-blur-md rounded-2xl p-3 flex items-center justify-between relative z-10">
         <div class="text-xs space-y-0.5">
           <div class="text-[10px] tracking-wider uppercase text-emerald-200/80 font-medium">经营效益看板</div>
           <div class="text-stone-100 font-medium text-xs">
@@ -101,7 +103,7 @@
     </div>
 
     <!-- 典雅极简导航 Tab -->
-    <nav class="flex bg-white/90 backdrop-blur sticky top-0 z-40 border-b border-stone-200/80 px-2">
+    <nav class="flex bg-white/90 backdrop-blur sticky top-0 z-30 border-b border-stone-200/80 px-2">
       <button id="tab-btn-order" onclick="switchTab('order')" class="flex-1 py-3 text-center text-xs font-bold text-emerald-800 border-b-2 border-emerald-800 flex items-center justify-center gap-1.5 transition">
         <span>📦</span> 极简现货订货
       </button>
@@ -125,9 +127,8 @@
       </div>
     </section>
 
-    <!-- Tab 2: 帮着卖 (典雅信誉与熟客营销) -->
+    <!-- Tab 2: 帮着卖 (熟客营销) -->
     <section id="tab-sales" class="hidden p-3.5 space-y-3.5">
-      <!-- 典雅质感推荐卡片 -->
       <div class="bg-gradient-to-br from-[#881337] via-[#9f1239] to-[#be123c] text-white p-4 rounded-3xl shadow-md space-y-3 relative overflow-hidden">
         <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-amber-400/10 rounded-full blur-xl pointer-events-none"></div>
 
@@ -147,7 +148,6 @@
           <div class="text-emerald-300 font-bold">每桶实赚 ¥10.4</div>
         </div>
 
-        <!-- 社区接龙进度 -->
         <div class="space-y-1.5 pt-0.5">
           <div class="flex justify-between text-[11px] text-rose-100">
             <span>熟客已预定: <b id="group-sold-count" class="text-white font-mono font-bold">14</b> 桶</span>
@@ -158,7 +158,6 @@
           </div>
         </div>
 
-        <!-- 营销物料按钮 -->
         <div class="pt-1.5 grid grid-cols-2 gap-2.5">
           <button onclick="generatePosterModal()" class="bg-white hover:bg-stone-50 text-rose-900 font-bold text-xs py-2.5 rounded-2xl shadow active:scale-95 transition flex items-center justify-center gap-1.5">
             <span>📜</span> 生成典雅店门海报
@@ -276,7 +275,7 @@
   </div>
 
   <!-- 底部结算栏 -->
-  <footer id="footer-bar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-stone-200/80 p-3.5 max-w-md mx-auto flex justify-between items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+  <footer id="footer-bar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-stone-200/80 p-3.5 max-w-md mx-auto flex justify-between items-center z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
     <div>
       <div class="text-[10px] text-stone-400 tracking-wide font-medium">总代专车 · 次日早 09:00 前直达</div>
       <div class="text-base font-bold text-slate-900">
@@ -322,27 +321,36 @@
     let isSubmitting = false;
     let groupSoldCount = 14;
 
-    // 2. 右上角抽屉
-    window.toggleStoreMenu = function() {
+    // 2. 右上角抽屉（彻底防遮挡与全屏收起）
+    window.toggleStoreMenu = function(e) {
+      if (e) e.stopPropagation();
       const menu = document.getElementById('store-action-menu');
-      if (menu) menu.classList.toggle('hidden');
+      const backdrop = document.getElementById('store-menu-backdrop');
+      const isHidden = menu.classList.contains('hidden');
+      
+      if (isHidden) {
+        menu.classList.remove('hidden');
+        backdrop.classList.remove('hidden');
+      } else {
+        window.closeStoreMenu();
+      }
     };
 
-    window.addEventListener('click', function(e) {
+    window.closeStoreMenu = function() {
       const menu = document.getElementById('store-action-menu');
-      if (menu && !menu.contains(e.target) && !e.target.closest('button[onclick="toggleStoreMenu()"]')) {
-        menu.classList.add('hidden');
-      }
-    });
+      const backdrop = document.getElementById('store-menu-backdrop');
+      if (menu) menu.classList.add('hidden');
+      if (backdrop) backdrop.classList.add('hidden');
+    };
 
     window.showRouteCutoff = function() {
-      window.toggleStoreMenu();
+      window.closeStoreMenu();
       const route = currentStore ? currentStore.route_name : '城东A线';
       alert(`【${route} · 仓配排班须知】\n1. 截单时间：每晚 23:00 前提交次日送达。\n2. 送达时效：次日早 09:00 前随车配齐到店。\n3. 紧急加单：如遇急件请在 23:00 后直接电话联系跟车业务员。`);
     };
 
     window.showHistoryStatements = async function() {
-      window.toggleStoreMenu();
+      window.closeStoreMenu();
       if (!currentStore) return alert('正在读取门店信息，请稍候...');
       
       const { data: historyOrders } = await supabase
@@ -367,6 +375,7 @@
 
     // 3. Tab 控制器
     window.switchTab = function(tabName) {
+      window.closeStoreMenu();
       const orderSec = document.getElementById('tab-order');
       const salesSec = document.getElementById('tab-sales');
       const exchangeSec = document.getElementById('tab-exchange');
@@ -508,6 +517,7 @@
 
     // 7. 扫码兼容
     window.handleScanButton = function() {
+      window.closeStoreMenu();
       if (window.wx && window.wx.scanCode) {
         window.wx.scanCode({
           onlyFromCamera: true,
