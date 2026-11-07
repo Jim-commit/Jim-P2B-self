@@ -100,7 +100,7 @@
         </button>
       </div>
 
-      <!-- 真实计算的经营账簿看板 -->
+      <!-- 动态经营账簿 -->
       <div class="mt-4 bg-emerald-950/40 border border-emerald-400/20 backdrop-blur-md rounded-2xl p-3 flex items-center justify-between relative z-10">
         <div class="text-xs space-y-0.5">
           <div class="text-[10px] tracking-wider text-emerald-200/80 font-medium">小店经营账簿</div>
@@ -295,7 +295,7 @@
     import './src/modules/tools.js';
     import { initPosterStudio } from './src/modules/poster.js';
 
-    // 动态载入独立弹窗组件池[cite: 1, 2]
+    // 动态载入独立弹窗组件池
     async function loadModalsHTML() {
       try {
         const res = await fetch('./modals.html');
@@ -343,7 +343,7 @@
       }
     };
 
-    // 右上角抽屉控制[cite: 1, 2]
+    // 右上角抽屉控制
     window.toggleStoreMenu = function(e) {
       if (e) e.stopPropagation();
       const menu = document.getElementById('store-action-menu');
