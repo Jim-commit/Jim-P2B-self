@@ -8,6 +8,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans p-4">
   <div class="max-w-4xl mx-auto space-y-4">
+    <!-- 头部：多租户与路线选择 -->
     <header class="bg-indigo-800 text-white p-4 rounded-xl shadow flex justify-between items-center">
       <div>
         <div class="flex items-center gap-2">
@@ -26,7 +27,7 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <select id="route-select" class="bg-indigo-900 border border-indigo-700 text-white text-xs px-3 py-1.5 rounded-lg outline-none">
+        <select id="route-select" onchange="loadWaveData()" class="bg-indigo-900 border border-indigo-700 text-white text-xs px-3 py-1.5 rounded-lg outline-none">
           <option value="城东A线">城东A线</option>
           <option value="城西B线">城西B线</option>
           <option value="浦东特快线">浦东特快线</option>
@@ -37,7 +38,7 @@
       </div>
     </header>
 
-    <!-- 仓库波次装车汇总表 (带堆叠防损指引与微信播报) -->
+    <!-- 仓库波次装车汇总表 (带堆叠防损指引、发车推送、导出) -->
     <div class="bg-white p-4 rounded-xl shadow border border-slate-200">
       <div class="flex justify-between items-center mb-3">
         <div>
@@ -45,8 +46,9 @@
           <span class="text-[11px] text-slate-400">已内置「重货底层承重、轻抛上层轻放」装载指引</span>
         </div>
         <div class="flex gap-2">
-          <button onclick="sendWechatDispatchNotice()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded shadow-sm">
-            📢 微信群播报发车
+          <!-- 核心新增：确认发车并自动通知 -->
+          <button id="dispatch-btn" onclick="confirmDispatch()" class="text-xs bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold px-3 py-1 rounded shadow-sm flex items-center gap-1 transition">
+            <span>🚚</span> 确认发车并通知
           </button>
           <button onclick="exportWaveCSV()" class="text-xs text-emerald-700 font-bold border border-emerald-200 px-2.5 py-1 rounded hover:bg-emerald-50">
             📥 导出装车 CSV
@@ -106,6 +108,7 @@
 
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
+    import { sendWechatNotice } from './src/lib/notify.js';
 
     let currentWaveData = [];
     const urlParams = new URLSearchParams(window.location.search);
@@ -118,7 +121,6 @@
       window.location.search = urlParams.toString();
     };
 
-    // 智能堆叠推荐标签：油/水为底层，方便面/轻品为上层
     function getStackBadge(name) {
       if (name.includes('油') || name.includes('水') || name.includes('饮料')) {
         return '<span class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">⬇️ 底层重货</span>';
@@ -126,6 +128,7 @@
       return '<span class="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold">⬆️ 上层轻放</span>';
     }
 
+    // 1. 加载波次装车数据
     window.loadWaveData = async function() {
       const route = document.getElementById('route-select').value;
       const { data, error } = await supabase.rpc('get_route_wave_summary', { p_route_name: route });
@@ -147,25 +150,53 @@
       `).join('');
     };
 
-    // 微信群 / 个人微信 Webhook 发车播报
-    window.sendWechatDispatchNotice = async function() {
+    // 2. 确认发车并全员通知
+    window.confirmDispatch = async function() {
       const route = document.getElementById('route-select').value;
       if (!currentWaveData || currentWaveData.length === 0) {
-        return alert('当前线路无装车数据，无需播报！');
+        return alert('当前线路无待装车货物，无需发车！');
       }
 
       const totalBoxes = currentWaveData.reduce((sum, it) => sum + parseInt(it.total_qty || 0), 0);
-      const noticeContent = `【总代发车通知】${currentTenant === 'BJ_HQ' ? '北京总代' : '上海总代'}\n线路：${route}\n总装车：${totalBoxes} 箱\n状态：已完成分拣核验，司机已发车，请沿线小店做好收货准备！`;
+      const confirmRun = confirm(`确认对【${route}】执行发车吗？\n共装载 ${totalBoxes} 箱，将同步更新所有订单为“配送中”并发送微信通知。`);
+      if (!confirmRun) return;
 
-      // 演示：直接生成微信可复制卡片，同时支持配置外部 Webhook
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(noticeContent);
-        alert(`已一键生成【微信群发车播报通知】并复制到剪贴板！\n\n${noticeContent}\n\n可以直接粘贴到车队微信群或客户群。`);
-      } else {
-        alert(noticeContent);
+      const btn = document.getElementById('dispatch-btn');
+      btn.disabled = true;
+      btn.innerText = '正在发车通知...';
+
+      try {
+        // 变更数据库状态为配送中
+        const { data, error } = await supabase.rpc('dispatch_route_orders', { p_route_name: route });
+        
+        if (error) {
+          alert('发车失败: ' + error.message);
+        } else {
+          const tenantName = currentTenant === 'BJ_HQ' ? '北京顺达商贸' : '上海乐购供应链';
+          const title = `🚚【发车通知】${tenantName} · ${route}`;
+          const desp = `### 总代车队已装车发货\n- **配送线路**：${route}\n- **装车总件数**：**${totalBoxes}** 箱\n- **配送覆盖门店**：${data.store_count || '多'} 家\n- **发车时间**：${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}\n- **接车指引**：司机正沿指定干线配送，请各便利店预留收货通道与交接人。\n\n[👉 点击打开司机配送随车端](https://goods-lucky.vercel.app/driver.html?tenant=${currentTenant})`;
+
+          // 触发个人微信卡片通知
+          sendWechatNotice(title, desp);
+
+          // 复制微信群播报格式文案
+          const groupCopyText = `【总代发车播报】\n线路：${route}\n总数：${totalBoxes} 箱已装车发运\n预计送达：次日上午\n请沿线小店老板注意查收！`;
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(groupCopyText);
+          }
+
+          alert(`发车成功！已更新 ${data.order_count || 0} 笔订单为配送中。\n\n微信群播报文案已自动复制到剪贴板，可直接粘贴！`);
+          window.loadWaveData();
+        }
+      } catch (e) {
+        alert('处理异常，请重试');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🚚</span> 确认发车并通知';
       }
     };
 
+    // 3. 导出 CSV
     window.exportWaveCSV = function() {
       if (!currentWaveData || currentWaveData.length === 0) {
         return alert('暂无装车数据可导出！');
@@ -183,6 +214,7 @@
       link.click();
     };
 
+    // 4. 门店欠款监管
     window.loadStores = async function() {
       const { data: stores } = await supabase.from('store').select('*');
       const container = document.getElementById('store-debt-list');
@@ -206,6 +238,7 @@
       `).join('');
     };
 
+    // 5. 司机对账流水
     window.loadPaymentLogs = async function() {
       const { data: logs } = await supabase
         .from('payment_record')
@@ -231,14 +264,15 @@
       `).join('');
     };
 
+    // 6. Realtime 实时大屏监听
     function setupRealtimeListener() {
       supabase
         .channel('hq-dashboard-live')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
           window.loadWaveData();
           window.loadStores();
         })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payment_record' }, payload => {
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payment_record' }, () => {
           window.loadPaymentLogs();
           window.loadStores();
         })
