@@ -312,3 +312,30 @@
     </div>
   </div>
 </div>
+<!-- 10. 電子簽字板彈窗 -->
+<div id="sign-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+  <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
+    <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+      <div>
+        <h3 class="font-bold text-sm text-stone-800">✍️ 現場驗貨簽字確認</h3>
+        <p class="text-[10px] text-stone-400">請掌柜在下方框內手寫簽名，留存對賬憑證</p>
+      </div>
+      <button onclick="window.closeSignModal()" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
+    </div>
+
+    <!-- 簽名 Canvas -->
+    <div class="border-2 border-dashed border-stone-200 rounded-2xl bg-stone-50 overflow-hidden relative">
+      <canvas id="signature-pad" width="320" height="160" class="w-full h-40 touch-none bg-white cursor-crosshair"></canvas>
+      <span class="absolute bottom-2 right-3 text-[10px] text-stone-300 pointer-events-none select-none">掌柜正楷手寫</span>
+    </div>
+
+    <div class="flex gap-2">
+      <button onclick="window.clearSignature()" class="bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-bold px-4 py-2.5 rounded-2xl transition">
+        重簽
+      </button>
+      <button onclick="window.saveSignatureAndSettle()" class="flex-1 bg-[#064e3b] hover:bg-[#065f46] text-white text-xs font-bold py-2.5 rounded-2xl shadow active:scale-95 transition">
+        確認簽名並完成交接
+      </button>
+    </div>
+  </div>
+</div>
