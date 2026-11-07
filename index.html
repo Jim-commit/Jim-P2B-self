@@ -65,7 +65,7 @@
   </div>
 
   <script type="module">
-    import { supabase, currentTenant } from '/src/lib/supabase.js';
+    import { supabase, currentTenant } from './src/lib/supabase.js';
 
     // 核心拦截守卫：若未指定租户参数，直接覆写界面并终止执行
     if (!currentTenant) {
