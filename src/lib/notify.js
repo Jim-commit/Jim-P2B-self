@@ -1,36 +1,28 @@
 // src/lib/notify.js
+// 填入在 https://sct.ftqq.com 获取的 SendKey（若未配置则仅记录日志，绝不中断业务）
+const SERVERCHAN_SENDKEY = 'SCT464122TDPF8WjfPxmKjBVqJzoANzloL';
 
-// 填入你刚才在 Server酱 复制的 SendKey
-const SERVERCHAN_SENDKEY = 'SCT464122TDPF8WjfPxmKjBVqJzoANzloL'; 
-
-/**
- * 推送微信服务通知到个人微信
- * @param {string} title - 通知标题（如：【新订单提醒】）
- * @param {string} desp - 通知正文（支持 Markdown 语法与超链接）
- */
 export async function sendWechatNotice(title, desp) {
-  if (!SERVERCHAN_SENDKEY || SERVERCHAN_SENDKEY.startsWith('SCTxxx')) {
-    console.warn('未配置有效的 Server酱 SendKey，跳过推送');
-    return;
+  if (!SERVERCHAN_SENDKEY || SERVERCHAN_SENDKEY.includes('REPLACE')) {
+    console.warn('[微信通知] 未配置有效 SendKey，跳过网络推送。');
+    return { code: -1, msg: 'No key configured' };
   }
 
-  const url = `https://sctapi.ftqq.com/${SERVERCHAN_SENDKEY}.send`;
-  
+  const endpoint = `https://sctapi.ftqq.com/${SERVERCHAN_SENDKEY}.send`;
   try {
-    const response = await fetch(url, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
         title: title,
-        desp: desp
-      })
+        desp: desp,
+      }),
     });
-    const result = await response.json();
-    console.log('微信推送结果：', result);
-    return result;
-  } catch (error) {
-    console.error('微信推送失败：', error);
+    return await response.json();
+  } catch (err) {
+    console.error('[微信通知] 推送异常（不阻断正常业务）:', err);
+    return { code: 500, err };
   }
 }
