@@ -119,22 +119,27 @@
     </main>
 
     <!-- 底部报单栏 -->
-    <footer class="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 space-y-2 z-20">
+    <!-- 底部常驻报单栏（去除断层，贴合视口底部） -->
+    <footer class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 space-y-2 z-30 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+      <!-- 捎句话便签栏 -->
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-[10px]">
         <span class="text-stone-400 whitespace-nowrap font-medium">📝 捎句话:</span>
         <div id="dynamic-notes-box" class="flex gap-1.5"></div>
       </div>
 
-      <div class="flex justify-between items-center">
+      <!-- 结算合计与精简按钮 -->
+      <div class="flex justify-between items-center pt-0.5">
         <div>
           <div class="text-[10px] text-stone-400">进货合计:</div>
           <div class="text-emerald-950 font-mono font-bold text-xl leading-tight">
             ¥<span id="cart-total-amount">0.00</span>
           </div>
         </div>
-        <button onclick="window.submitB2BOrder()" id="btn-submit-order" class="bg-[#064e3b] hover:bg-[#043327] text-white text-xs font-bold px-6 py-2.5 rounded-2xl shadow active:scale-95 transition flex items-center gap-2">
-          <span>🚚 交代师父排单装车</span>
-          <span id="cart-count-badge" class="bg-amber-400 text-stone-900 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold">0</span>
+        
+        <!-- 按钮文案修改为极简的“订货” -->
+        <button type="button" onclick="window.submitB2BOrder()" id="btn-submit-order" class="bg-[#064e3b] hover:bg-[#043327] text-white text-sm font-bold px-7 py-2.5 rounded-2xl shadow active:scale-95 transition flex items-center gap-2">
+          <span>订货</span>
+          <span id="cart-count-badge" class="bg-amber-400 text-stone-900 text-xs px-2 py-0.5 rounded-full font-mono font-bold">0</span>
         </button>
       </div>
     </footer>
