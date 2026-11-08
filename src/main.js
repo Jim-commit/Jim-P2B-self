@@ -26,7 +26,7 @@ let allProducts = [];
 let currentCategory = '全部';
 let currentTagFilter = '全部';
 
-// 购物车按每个总代隔离！如 b2b_cart_BJ_SHUNDA
+// 购物车按每个总代隔离
 let cart = {};
 
 function loadAgentCart() {
@@ -47,36 +47,45 @@ let deliveryNote = '';
 let currentFlyerProd = null;
 let currentFlyerStyle = 'neighborhood';
 
-// 安全更新 DOM 辅助函数（全量防空指针）
+// 安全更新 DOM 辅助函数
 function safeSetText(id, text) {
   const el = document.getElementById(id);
   if (el) el.innerText = text;
 }
 
 // ==========================================
-// 2. 顶栏极简 ☰ / ··· 菜单展开与收起
+// 2. 顶栏 ☰ / ··· 及店型下拉菜单控制器
 // ==========================================
 window.toggleLeftNavMenu = function (e) {
   e.stopPropagation();
-  const leftMenu = document.getElementById('left-nav-menu');
-  const rightMenu = document.getElementById('right-nav-menu');
-  if (rightMenu) rightMenu.classList.add('hidden');
-  if (leftMenu) leftMenu.classList.toggle('hidden');
+  document.getElementById('right-nav-menu')?.classList.add('hidden');
+  document.getElementById('shop-type-dropdown')?.classList.add('hidden');
+  document.getElementById('left-nav-menu')?.classList.toggle('hidden');
 };
 
 window.toggleRightNavMenu = function (e) {
   e.stopPropagation();
-  const leftMenu = document.getElementById('left-nav-menu');
-  const rightMenu = document.getElementById('right-nav-menu');
-  if (leftMenu) leftMenu.classList.add('hidden');
-  if (rightMenu) rightMenu.classList.toggle('hidden');
+  document.getElementById('left-nav-menu')?.classList.add('hidden');
+  document.getElementById('shop-type-dropdown')?.classList.add('hidden');
+  document.getElementById('right-nav-menu')?.classList.toggle('hidden');
 };
 
+// 展开/收起店型下拉气泡菜单
+window.toggleShopTypeDropdown = function (e) {
+  e.stopPropagation();
+  document.getElementById('left-nav-menu')?.classList.add('hidden');
+  document.getElementById('right-nav-menu')?.classList.add('hidden');
+  document.getElementById('shop-type-dropdown')?.classList.toggle('hidden');
+};
+
+// 全局收起所有下拉菜单
 window.closeAllMenus = function () {
   document.getElementById('left-nav-menu')?.classList.add('hidden');
   document.getElementById('right-nav-menu')?.classList.add('hidden');
+  document.getElementById('shop-type-dropdown')?.classList.add('hidden');
 };
 
+// 点击屏幕空白处自动收起所有下拉
 document.addEventListener('click', () => {
   window.closeAllMenus();
 });
@@ -119,8 +128,6 @@ function renderAgentSelector() {
 // ==========================================
 // 4. 店型管理与便签
 // ==========================================
-window.openShopTypeModal = () => window.openModal('shop-type-modal');
-
 window.selectShopType = (type) => {
   shopType = type;
   localStorage.setItem('active_shop_type', shopType);
@@ -128,7 +135,8 @@ window.selectShopType = (type) => {
   renderDynamicNotes();
   renderProductList();
   updateCartSummary();
-  window.closeModal('shop-type-modal');
+  // 选定后自动收起下拉菜单
+  document.getElementById('shop-type-dropdown')?.classList.add('hidden');
 };
 
 function renderShopType() {
@@ -434,7 +442,6 @@ window.submitB2BOrder = async () => {
     const curAgentObj = myAgents.find(a => a.id === currentAgent);
     alert(`🎉 【${curAgentObj?.name || currentAgent}】报单成功！合计 ¥${totalAmount.toFixed(2)}。已安排师傅装车！`);
 
-    // 只清空当前总代的购物车
     for (const k of Object.keys(cart)) delete cart[k];
     saveAgentCart();
     deliveryNote = '';
@@ -555,13 +562,9 @@ async function initTerminal() {
     localStorage.setItem('active_agent', currentAgent);
   }
 
-  // 1. 加载当前总代对应的隔离购物车
   loadAgentCart();
-
-  // 2. 渲染顶栏多总代标签
   renderAgentSelector();
 
-  // 3. 读取当前总代下的独立门店账本
   currentStore = await StoreService.getStoreByTenant(currentAgent);
   if (currentStore) {
     safeSetText('store-title', currentStore.name || '合作便民老店');
@@ -579,7 +582,6 @@ async function initTerminal() {
       localStorage.setItem('active_shop_type', shopType);
     }
   } else {
-    // 默认空状态展示
     safeSetText('store-driver', '待指派配送员');
     safeSetText('store-basket-count', '0 个');
     safeSetText('credit-avail', '¥2000.00');
@@ -589,7 +591,6 @@ async function initTerminal() {
   renderShopType();
   renderDynamicNotes();
 
-  // 4. 拉取当前总代的在售货品
   allProducts = await StoreService.getProducts(currentAgent, currentStore?.visible_product_ids);
   renderCategoryTabs();
   renderProductList();
