@@ -107,43 +107,57 @@
 
   </div>
 
-  <!-- 营销海报自定义定制弹窗（彻底解决点开无内容的问题） -->
+  <!-- 营销海报自定义定制弹窗 -->
   <div id="marketing-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
-          <h3 class="font-bold text-sm text-stone-800">🎨 自选海报风格与文案</h3>
-          <p class="text-[10px] text-stone-400" id="flyer-prod-name">商品海报</p>
+          <h3 class="font-bold text-sm text-stone-800">🎨 定制本店宣发海报</h3>
+          <p class="text-[10px] text-stone-400" id="flyer-prod-name">全行业通用</p>
         </div>
         <button onclick="window.closeModal('marketing-modal')" class="text-stone-400 hover:text-stone-600 text-xl font-bold">✕</button>
       </div>
 
-      <!-- 风格选择 -->
       <div class="space-y-1.5">
         <label class="text-[11px] font-bold text-stone-700 block">① 挑选海报风格模板：</label>
         <div id="style-selector-box" class="flex flex-wrap gap-1.5"></div>
       </div>
 
-      <!-- 标题与价格自定义 -->
-      <div class="grid grid-cols-2 gap-2 text-xs">
+      <div class="space-y-2 text-xs">
         <div>
-          <label class="text-[10px] text-stone-500 block mb-1">自定义主标题：</label>
+          <label class="text-[10px] text-stone-500 block mb-0.5">海报主标题 (招牌背书)：</label>
           <input type="text" id="flyer-title-input" oninput="window.renderLiveFlyerPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none font-bold text-stone-800">
         </div>
         <div>
-          <label class="text-[10px] text-stone-500 block mb-1">拼单参考价 (元)：</label>
-          <input type="number" step="0.1" id="flyer-price-input" oninput="window.renderLiveFlyerPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none font-mono font-bold text-rose-700">
+          <label class="text-[10px] text-stone-500 block mb-0.5">副标信誉承诺词：</label>
+          <input type="text" id="flyer-tagline-input" oninput="window.renderLiveFlyerPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none text-stone-700">
         </div>
       </div>
 
-      <!-- 海报实时预览区 -->
-      <div class="rounded-2xl overflow-hidden border border-stone-200 shadow-sm">
-        <img id="flyer-preview-img" src="" class="w-full object-cover">
+      <div class="text-xs">
+        <label class="text-[10px] text-stone-500 block mb-0.5">拼单参考价 (元)：</label>
+        <input type="number" step="0.1" id="flyer-price-input" oninput="window.renderLiveFlyerPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none font-mono font-bold text-rose-700">
       </div>
 
-      <p class="text-[10px] text-stone-400 text-center">长按上方图片即可「发送给朋友」或保存至相册发圈</p>
+      <div class="space-y-1.5 text-xs">
+        <div class="flex justify-between items-center">
+          <label class="text-[10px] text-stone-500 font-bold">掌柜特色叮咛 (可手写或点选)：</label>
+          <div class="flex gap-1 text-[9px]">
+            <button type="button" onclick="window.applyQuickNote('daily')" class="text-indigo-700 hover:underline">日化常用</button>
+            <button type="button" onclick="window.applyQuickNote('general')" class="text-indigo-700 hover:underline">厚道百货</button>
+            <button type="button" onclick="window.applyQuickNote('food')" class="text-indigo-700 hover:underline">粮油食品</button>
+          </div>
+        </div>
+        <textarea id="flyer-note-input" rows="2" oninput="window.renderLiveFlyerPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none text-stone-800 text-xs"></textarea>
+      </div>
 
-      <button onclick="window.closeModal('marketing-modal')" class="w-full bg-[#064e3b] text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition">
+      <div class="rounded-2xl overflow-hidden border border-stone-200 shadow-sm bg-stone-100">
+        <img id="flyer-preview-img" src="" class="w-full object-cover" alt="海报实时预览">
+      </div>
+
+      <p class="text-[10px] text-stone-400 text-center">长按图片即可「发送给朋友」或保存到手机发朋友圈</p>
+
+      <button onclick="window.closeModal('marketing-modal')" class="w-full bg-[#064e3b] text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition shadow">
         做妥完成 · 返回货单
       </button>
     </div>
