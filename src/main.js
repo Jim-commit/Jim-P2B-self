@@ -1,11 +1,7 @@
-import { supabase } from './lib/supabase.js';
 import { StoreService } from './services/storeService.js';
 import { ShopTypeManager } from './modules/shopTypeManager.js';
 import { MarketingCanvas } from './modules/marketingCanvas.js';
 
-// ==========================================
-// 1. 全局运行状态与响应式数据
-// ==========================================
 let currentAgent = localStorage.getItem('active_agent') || 'BJ_SHUNDA';
 let currentStore = null;
 let shopType = localStorage.getItem('active_shop_type') || '社区超市';
@@ -13,40 +9,21 @@ let allProducts = [];
 let currentCategory = '全部';
 let currentTagFilter = '全部';
 
-// 购物车状态（支持 LocalStorage 本地断网/刷新持久化）
-const CART_STORAGE_KEY = `b2b_cart_${currentAgent}`;
+const CART_KEY = `b2b_cart_${currentAgent}`;
 let cart = {};
-try {
-  cart = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '{}');
-} catch (e) {
-  cart = {};
-}
+try { cart = JSON.parse(localStorage.getItem(CART_KEY) || '{}'); } catch (e) { cart = {}; }
 
 let deliveryNote = '';
-
-// 海报自定义配置状态
 let currentFlyerProd = null;
 let currentFlyerStyle = 'neighborhood';
 
-// ==========================================
-// 2. 基础模态窗与全局事件绑定 (挂载至 window)
-// ==========================================
-window.openModal = function (id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.remove('hidden');
-};
+// 基础弹窗控制
+window.openModal = id => document.getElementById(id)?.classList.remove('hidden');
+window.closeModal = id => document.getElementById(id)?.classList.add('hidden');
 
-window.closeModal = function (id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.add('hidden');
-};
-
-// ==========================================
-// 3. 店型自适应与动态捎句话便签模块
-// ==========================================
+// 店型切换
 window.openShopTypeModal = () => window.openModal('shop-type-modal');
-
-window.selectShopType = function (type) {
+window.selectShopType = (type) => {
   shopType = type;
   localStorage.setItem('active_shop_type', shopType);
   renderShopType();
@@ -58,41 +35,33 @@ window.selectShopType = function (type) {
 
 function renderShopType() {
   const el = document.getElementById('shop-type-badge');
-  if (el) {
-    el.innerHTML = `<span>${ShopTypeManager.icons[shopType] || '🏪'} ${shopType}</span> ▾`;
-  }
+  if (el) el.innerHTML = `<span>${ShopTypeManager.icons[shopType] || '🏪'} ${shopType}</span> ▾`;
 }
 
 function renderDynamicNotes() {
   const box = document.getElementById('dynamic-notes-box');
   if (!box) return;
-  const notes = ShopTypeManager.getDynamicNotes(shopType);
-  box.innerHTML = notes.map(n => `
+  box.innerHTML = ShopTypeManager.getDynamicNotes(shopType).map(n => `
     <button onclick="window.appendDeliveryNote('${n}')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 px-2 py-0.5 rounded-lg whitespace-nowrap active:scale-95 transition">
       ${n}
     </button>
   `).join('');
 }
 
-window.appendDeliveryNote = function (txt) {
+window.appendDeliveryNote = (txt) => {
   deliveryNote = deliveryNote ? `${deliveryNote}；${txt}` : txt;
   alert(`已附加随车小纸条：「${deliveryNote}」`);
 };
 
-// ==========================================
-// 4. 百宝箱与掌柜实用工具集 (换总代、调换货、连线)
-// ==========================================
+// 百宝箱工具
 window.openToolboxModal = () => window.openModal('toolbox-modal');
-
-window.callDriver = function () {
+window.callDriver = () => {
   const driver = currentStore ? (currentStore.driver_name || '老张师傅') : '配送师傅';
-  const phone = currentStore && currentStore.driver_phone ? currentStore.driver_phone : '13800138000';
-  if (confirm(`是否立即致电随车师傅【${driver}】(${phone})？`)) {
-    window.location.href = `tel:${phone}`;
-  }
+  alert(`正在连线随车管家【${driver}】...`);
+  window.location.href = 'tel:13800138000';
 };
 
-window.openReturnModal = function () {
+window.openReturnModal = () => {
   window.closeModal('toolbox-modal');
   document.getElementById('return-prod-name').value = '';
   document.getElementById('return-qty').value = '1';
@@ -100,35 +69,30 @@ window.openReturnModal = function () {
   window.openModal('return-modal');
 };
 
-window.submitReturnRequest = function () {
-  const prodName = document.getElementById('return-prod-name').value.trim();
+window.submitReturnRequest = () => {
+  const name = document.getElementById('return-prod-name').value.trim();
   const qty = parseInt(document.getElementById('return-qty').value) || 1;
   const reason = document.getElementById('return-reason').value;
   const remark = document.getElementById('return-remark').value.trim();
-
-  if (!prodName) return alert('请填写需要调换的商品名称！');
+  if (!name) return alert('请填写需要调换的商品全名！');
 
   const extra = remark ? `(${remark})` : '';
-  const returnStr = `【调换货申请】${prodName} x ${qty}件 - 原因:${reason}${extra}`;
-  deliveryNote = deliveryNote ? `${deliveryNote}；${returnStr}` : returnStr;
-
-  alert(`已成功登记调换货！\n附言已加入本次随车叮咛，师傅送货时当面核减验退！`);
+  const noteStr = `【调换货】${name} x ${qty}件 - ${reason}${extra}`;
+  deliveryNote = deliveryNote ? `${deliveryNote}；${noteStr}` : noteStr;
+  alert('已成功登记调换货！送货时师傅当面核减验退。');
   window.closeModal('return-modal');
 };
 
-// ==========================================
-// 5. 社区营销海报全行业通配与自定义引擎
-// ==========================================
-window.openMarketingCenter = function () {
-  if (allProducts.length === 0) return alert('当前没有可做海报的在售货品！');
+// 营销海报工作台
+window.openMarketingCenter = () => {
+  if (allProducts.length === 0) return alert('当前没有可做海报的货品！');
   window.configureFlyer(allProducts[0].id);
 };
 
-window.configureFlyer = function (prodId) {
+window.configureFlyer = (prodId) => {
   const prod = allProducts.find(x => x.id === prodId);
   if (!prod) return;
   currentFlyerProd = prod;
-
   currentFlyerStyle = (shopType === '餐饮饭店') ? 'honest' : 'neighborhood';
 
   const defaultPrice = (ShopTypeManager.getEffectivePrice(prod, shopType) * 1.15).toFixed(1);
@@ -145,7 +109,7 @@ window.configureFlyer = function (prodId) {
   window.openModal('marketing-modal');
 };
 
-window.setFlyerStyle = function (styleKey) {
+window.setFlyerStyle = (styleKey) => {
   currentFlyerStyle = styleKey;
   const style = MarketingCanvas.styles[styleKey];
   if (style) {
@@ -159,22 +123,18 @@ window.setFlyerStyle = function (styleKey) {
 function renderStyleChips() {
   const container = document.getElementById('style-selector-box');
   if (!container) return;
-  container.innerHTML = Object.entries(MarketingCanvas.styles).map(([key, item]) => {
-    const isSel = (currentFlyerStyle === key);
-    return `
-      <button onclick="window.setFlyerStyle('${key}')" class="px-2.5 py-1 rounded-xl text-xs font-bold border transition ${isSel ? 'bg-emerald-800 text-white border-emerald-900 shadow' : 'bg-stone-100 text-stone-600 border-stone-200'}">
-        ${item.name}
-      </button>
-    `;
-  }).join('');
+  container.innerHTML = Object.entries(MarketingCanvas.styles).map(([key, item]) => `
+    <button onclick="window.setFlyerStyle('${key}')" class="px-2.5 py-1 rounded-xl text-xs font-bold border transition ${currentFlyerStyle === key ? 'bg-emerald-800 text-white border-emerald-900 shadow' : 'bg-stone-100 text-stone-600 border-stone-200'}">
+      ${item.name}
+    </button>
+  `).join('');
 }
 
-window.applyQuickNote = function (type) {
+window.applyQuickNote = (type) => {
   const noteMap = {
     'daily': '💬 掌柜交心话：家里洗洁精、洗衣液、抽纸用得快，这批大厂直供大包装，量大抗用还便宜！',
     'general': '💬 掌柜承诺：老实人做老实买卖，不卖山寨假货！大家伙儿放心买、放心用！',
-    'rush': '💬 老板交代：这批整箱货走的是出厂大宗批发价，数量有限，老邻居微信留言先留现货！',
-    'food': '💬 掌柜叮咛：正规大厂最新出厂批次，封条完好，自己家也天天吃，品质绝对放心！'
+    'food': '💬 掌柜叮咛：正规大厂最新出厂批次，封条完好，自己家也天天用，品质绝对放心！'
   };
   if (noteMap[type]) {
     document.getElementById('flyer-note-input').value = noteMap[type];
@@ -182,25 +142,20 @@ window.applyQuickNote = function (type) {
   }
 };
 
-window.renderLiveFlyerPreview = async function () {
+window.renderLiveFlyerPreview = async () => {
   if (!currentFlyerProd) return;
   const canvas = document.getElementById('hidden-canvas');
-  const customTitle = document.getElementById('flyer-title-input').value;
-  const customTagline = document.getElementById('flyer-tagline-input').value;
-  const customPrice = parseFloat(document.getElementById('flyer-price-input').value);
-  const customNote = document.getElementById('flyer-note-input').value;
+  const title = document.getElementById('flyer-title-input').value;
+  const tagline = document.getElementById('flyer-tagline-input').value;
+  const price = parseFloat(document.getElementById('flyer-price-input').value);
+  const note = document.getElementById('flyer-note-input').value;
   const shopName = currentStore ? currentStore.name : '老主顾诚信店';
 
-  const dataUrl = await MarketingCanvas.generate(
-    canvas, currentFlyerProd, shopName, currentFlyerStyle,
-    customTitle, customTagline, customPrice, customNote
-  );
+  const dataUrl = await MarketingCanvas.generate(canvas, currentFlyerProd, shopName, currentFlyerStyle, title, tagline, price, note);
   document.getElementById('flyer-preview-img').src = dataUrl;
 };
 
-// ==========================================
-// 6. 商品主数据流与分类标签快筛
-// ==========================================
+// 列表与分类筛选
 function renderCategoryTabs() {
   const categories = ['全部', ...new Set(allProducts.map(p => p.category_main).filter(Boolean))];
   const bar = document.getElementById('category-bar');
@@ -212,13 +167,13 @@ function renderCategoryTabs() {
   `).join('');
 }
 
-window.filterCategory = function (cat) {
+window.filterCategory = (cat) => {
   currentCategory = cat;
   renderCategoryTabs();
   renderProductList();
 };
 
-window.filterBySpecialTag = function (tag) {
+window.filterBySpecialTag = (tag) => {
   currentTagFilter = tag;
   document.querySelectorAll('.tag-filter-chip').forEach(b => {
     b.className = (b.innerText === tag)
@@ -229,10 +184,7 @@ window.filterBySpecialTag = function (tag) {
 };
 
 function renderProductList() {
-  let filtered = (currentCategory === '全部')
-    ? allProducts
-    : allProducts.filter(p => p.category_main === currentCategory);
-
+  let filtered = (currentCategory === '全部') ? allProducts : allProducts.filter(p => p.category_main === currentCategory);
   if (currentTagFilter !== '全部') {
     filtered = filtered.filter(p => Array.isArray(p.tags) && p.tags.includes(currentTagFilter));
   }
@@ -247,7 +199,7 @@ function renderProductList() {
 
   container.innerHTML = filtered.map(p => {
     const imgHtml = p.image_url
-      ? `<img src="${p.image_url}" class="w-16 h-16 rounded-2xl object-cover border border-stone-200 shadow-sm" onerror="this.src='';this.parentElement.innerHTML='<div class=\\'w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400\\'>实物包</div>';">`
+      ? `<img src="${p.image_url}" class="w-16 h-16 rounded-2xl object-cover border border-stone-200 shadow-sm">`
       : `<div class="w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400">实物包</div>`;
 
     const tags = Array.isArray(p.tags) ? p.tags : [];
@@ -255,8 +207,8 @@ function renderProductList() {
 
     const price = ShopTypeManager.getEffectivePrice(p, shopType);
     const isTier2 = (price < p.tier_1_price);
-    const currentStock = (p.stock !== undefined && p.stock !== null) ? p.stock : 999;
-    const isOutOfStock = currentStock <= 0;
+    const stock = p.stock ?? 999;
+    const isOutOfStock = stock <= 0;
 
     return `
       <div class="py-3.5 px-1 space-y-2 ${isOutOfStock ? 'opacity-50' : ''}">
@@ -267,7 +219,7 @@ function renderProductList() {
               <div class="font-bold text-xs text-stone-800">${p.name}</div>
               <div class="mt-0.5 space-x-1">${tagHtml}</div>
               <div class="text-[11px] text-stone-400 mt-0.5 font-mono">
-                规格: ${p.spec || '整装'} · 库存: ${isOutOfStock ? '<span class="text-rose-600 font-bold">已售罄</span>' : `${currentStock}箱`}
+                规格: ${p.spec || '整装'} · 库存: ${isOutOfStock ? '<span class="text-rose-600 font-bold">已售罄</span>' : `${stock}箱`}
               </div>
               <div class="text-xs font-bold text-emerald-800 mt-0.5 font-mono flex items-center gap-1">
                 ¥${price.toFixed(2)} <span class="text-[10px] text-stone-400 font-normal">/${p.pack_unit || '箱'}</span>
@@ -276,7 +228,6 @@ function renderProductList() {
             </div>
           </div>
           
-          <!-- 计件按钮 -->
           <div class="flex items-center gap-2">
             <button onclick="window.changeQty(${p.id}, -1)" class="w-7 h-7 rounded-xl bg-stone-100 active:scale-95 font-bold text-stone-600 flex items-center justify-center text-sm shadow-sm">-</button>
             <span id="qty-${p.id}" class="w-6 text-center font-bold text-xs font-mono">${cart[p.id] || 0}</span>
@@ -294,38 +245,29 @@ function renderProductList() {
   }).join('');
 }
 
-// ==========================================
-// 7. 购物车加减、库存校验与持久化
-// ==========================================
-window.changeQty = function (id, delta) {
+// 购物车
+window.changeQty = (id, delta) => {
   const prod = allProducts.find(x => x.id === id);
-  const currentStock = prod && prod.stock !== undefined ? prod.stock : 999;
-
+  const stock = prod?.stock ?? 999;
   let newQty = (cart[id] || 0) + delta;
+
   if (newQty < 0) newQty = 0;
-  if (newQty > currentStock) {
-    alert(`总代库存仅剩 ${currentStock} 箱，无法再加！`);
-    newQty = currentStock;
+  if (newQty > stock) {
+    alert(`在售库存仅剩 ${stock} 箱！`);
+    newQty = stock;
   }
 
-  if (newQty === 0) {
-    delete cart[id];
-  } else {
-    cart[id] = newQty;
-  }
+  if (newQty === 0) delete cart[id];
+  else cart[id] = newQty;
 
-  // 持久化到本地，防止不小心切出页面导致丢失加购
-  localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-
+  localStorage.setItem(CART_KEY, JSON.stringify(cart));
   const el = document.getElementById(`qty-${id}`);
   if (el) el.innerText = newQty;
-
   updateCartSummary();
 };
 
 function updateCartSummary() {
-  let totalAmount = 0;
-  let totalCount = 0;
+  let totalAmount = 0, totalCount = 0;
   for (const [id, qty] of Object.entries(cart)) {
     if (qty > 0) {
       const prod = allProducts.find(x => x.id === parseInt(id));
@@ -335,80 +277,45 @@ function updateCartSummary() {
       }
     }
   }
-
-  const amtEl = document.getElementById('cart-total-amount');
-  const cntEl = document.getElementById('cart-count-badge');
-  if (amtEl) amtEl.innerText = totalAmount.toFixed(2);
-  if (cntEl) cntEl.innerText = totalCount;
+  document.getElementById('cart-total-amount').innerText = totalAmount.toFixed(2);
+  document.getElementById('cart-count-badge').innerText = totalCount;
 }
 
-// ==========================================
-// 8. 报单提交与单据真实落库
-// ==========================================
-window.submitB2BOrder = async function () {
+// 报单提交
+window.submitB2BOrder = async () => {
   const totalAmount = parseFloat(document.getElementById('cart-total-amount').innerText);
   if (totalAmount <= 0) return alert('请先挑选进货件数！');
 
-  const itemsPayload = [];
+  const items = [];
   for (const [id, qty] of Object.entries(cart)) {
     if (qty > 0) {
       const p = allProducts.find(x => x.id === parseInt(id));
-      if (p) {
-        itemsPayload.push({
-          id: p.id,
-          name: p.name,
-          spec: p.spec,
-          price: ShopTypeManager.getEffectivePrice(p, shopType),
-          qty: qty
-        });
-      }
+      if (p) items.push({ id: p.id, name: p.name, spec: p.spec, price: ShopTypeManager.getEffectivePrice(p, shopType), qty });
     }
   }
 
   const btn = document.getElementById('btn-submit-order');
   btn.disabled = true;
-  btn.innerText = '正在提交装车清单...';
+  btn.innerText = '正在提交...';
 
   try {
     if (currentStore) {
-      // 1. 写入履约订单
-      const { error: orderErr } = await supabase.from('store_order').insert([{
-        tenant_id: currentAgent,
-        store_id: currentStore.id,
-        store_name: currentStore.name,
-        driver_name: currentStore.driver_name || '配送师傅',
-        total_amount: totalAmount,
-        pay_type: 'credit',
-        pay_status: 'pending',
-        delivery_status: 'ordered',
+      await StoreService.submitOrder({
+        tenantId: currentAgent,
+        storeId: currentStore.id,
+        storeName: currentStore.name,
+        driverName: currentStore.driver_name,
+        totalAmount,
+        items,
         note: deliveryNote,
-        items: itemsPayload
-      }]);
-
-      if (orderErr) throw orderErr;
-
-      // 2. 扣减商品现货库存（防超卖）
-      for (const item of itemsPayload) {
-        const prod = allProducts.find(x => x.id === item.id);
-        if (prod && prod.stock !== undefined) {
-          const remainStock = Math.max(0, prod.stock - item.qty);
-          await supabase.from('product').update({ stock: remainStock }).eq('id', item.id);
-        }
-      }
-
-      // 3. 累加挂账
-      const newDebt = parseFloat(currentStore.current_debt || 0) + totalAmount;
-      await supabase.from('store').update({ current_debt: newDebt }).eq('id', currentStore.id);
+        currentDebt: currentStore.current_debt
+      });
     }
 
-    const noteInfo = deliveryNote ? `\n随车叮咛：「${deliveryNote}」` : '';
-    alert(`🎉 报单成功！合计 ¥${totalAmount.toFixed(2)}。${noteInfo}\n已通知随车师傅安排装车！`);
-
-    // 清空购物车与缓存
+    alert(`🎉 报单成功！合计 ¥${totalAmount.toFixed(2)}。已安排师傅装车！`);
     for (const k of Object.keys(cart)) delete cart[k];
-    localStorage.removeItem(CART_STORAGE_KEY);
+    localStorage.removeItem(CART_KEY);
     deliveryNote = '';
-
     await initTerminal();
   } catch (err) {
     alert(`报单失败: ${err.message}`);
@@ -418,10 +325,8 @@ window.submitB2BOrder = async function () {
   }
 };
 
-// ==========================================
-// 9. 单据明细展开与电子收条查验
-// ==========================================
-window.openReceiptsModal = async function () {
+// 单据历史
+window.openReceiptsModal = async () => {
   if (!currentStore) return alert('未绑定有效门店！');
   window.openModal('receipts-modal');
 
@@ -439,7 +344,6 @@ window.openReceiptsModal = async function () {
         </div>
         <div class="text-[10px] text-stone-600">📦 配货明细: ${itemsText || '整批进货'}</div>
         ${o.note ? `<div class="text-[10px] text-amber-800">💬 随车附言: ${o.note}</div>` : ''}
-        ${o.sign_image_url ? `<div class="text-[9px] text-emerald-800 font-bold">✍️ 本店已正楷签字验收</div>` : ''}
         <div class="text-[10px] text-stone-400">报单时间: ${new Date(o.created_at).toLocaleString()}</div>
       </div>
     `;
@@ -452,16 +356,14 @@ window.openReceiptsModal = async function () {
         <span>经办随车人: ${r.driver_name}</span>
         <span>实交: ¥${parseFloat(r.amount).toFixed(2)} (${r.pay_method})</span>
       </div>
-      ${r.basket_return ? `<div class="text-[10px] text-amber-800">退还周转空筐: ${r.basket_return} 个 (折抵货款 ¥${r.basket_deduct_amount})</div>` : ''}
+      ${r.basket_return ? `<div class="text-[10px] text-amber-800">退还空筐: ${r.basket_return} 个 (折抵货款 ¥${r.basket_deduct_amount})</div>` : ''}
       <div class="text-[10px] text-emerald-800">核销时间: ${new Date(r.created_at).toLocaleString()}</div>
     </div>
   `).join('') || '<div class="text-stone-400 text-center py-2">暂无还款记录</div>';
 };
 
-// ==========================================
-// 10. 总代绑定 (认领码与手机号双通道)
-// ==========================================
-window.bindByCode = function () {
+// 认领总代
+window.bindByCode = () => {
   const code = document.getElementById('bind-input-code').value.trim();
   if (code === '888001') currentAgent = 'BJ_SHUNDA';
   else if (code === '888002') currentAgent = 'SH_LEGOU';
@@ -473,7 +375,7 @@ window.bindByCode = function () {
   initTerminal();
 };
 
-window.bindByPhone = async function () {
+window.bindByPhone = async () => {
   const phone = document.getElementById('bind-input-phone').value.trim();
   if (!phone || phone.length < 11) return alert('请输入有效的 11 位手机号！');
   const store = await StoreService.bindByPhone(phone);
@@ -488,9 +390,7 @@ window.bindByPhone = async function () {
   }
 };
 
-// ==========================================
-// 11. 初始化入口
-// ==========================================
+// 初始化
 async function initTerminal() {
   const urlParams = new URLSearchParams(window.location.search);
   const urlAgent = urlParams.get('agent') || urlParams.get('tenant');
@@ -521,14 +421,7 @@ async function initTerminal() {
   renderShopType();
   renderDynamicNotes();
 
-  const { data: prods } = await supabase.from('product').select('*').eq('tenant_id', currentAgent).neq('status', 'inactive').order('id', { ascending: false });
-  let rawProds = prods || [];
-  if (currentStore && currentStore.visible_product_ids && currentStore.visible_product_ids.length > 0) {
-    allProducts = rawProds.filter(p => currentStore.visible_product_ids.includes(p.id));
-  } else {
-    allProducts = rawProds;
-  }
-
+  allProducts = await StoreService.getProducts(currentAgent, currentStore?.visible_product_ids);
   renderCategoryTabs();
   renderProductList();
   updateCartSummary();
