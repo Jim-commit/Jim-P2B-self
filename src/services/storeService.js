@@ -33,7 +33,7 @@ export const StoreService = {
     }
   },
 
-  // 3. 拉取当前总代的在售货品（结合特权过滤）
+  // 3. 拉取当前总代的在售货品
   async getProducts(tenantId, visibleIds = null) {
     try {
       const { data, error } = await supabase
@@ -55,27 +55,83 @@ export const StoreService = {
     }
   },
 
-  // 4. 提交订单并扣减当前总代库存、更新该总代账本挂账
-  async submitOrder({ tenantId, storeId, storeName, driverName, totalAmount, items, note, currentDebt }) {
+  // 4. 追溯某商品的最近一次历史送货/进货价格（退货锁定原价）
+  async getHistoricalPrice(storeId, tenantId, productId) {
     try {
-      // ① 写入当前总代的订单表
-      const { error: orderErr } = await supabase.from('store_order').insert([{
+      const { data, error } = await supabase
+        .from('store_order')
+        .select('items, created_at, id')
+        .eq('store_id', storeId)
+        .eq('tenant_id', tenantId)
+        .order('id', { ascending: false })
+        .limit(10);
+
+      if (error || !data) return null;
+
+      for (const order of data) {
+        const items = Array.isArray(order.items) ? order.items : [];
+        const match = items.find(it => it.id === productId);
+        if (match && match.price) {
+          return { price: parseFloat(match.price), orderId: order.id, date: order.created_at };
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  // 5. 提交三合一多模式综合送货单（订/退/换、结算策略、凭据照片）
+  async submitComprehensiveOrder({
+    tenantId,
+    storeId,
+    storeName,
+    driverName,
+    orderSource,
+    settlementType,
+    settlementNote,
+    itemsOrder,
+    itemsReturn,
+    itemsExchange,
+    orderTotal,
+    returnTotal,
+    netTotal,
+    note,
+    proofImages,
+    currentDebt
+  }) {
+    try {
+      // ① 生成唯一单据流水号
+      const orderNo = `DH-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      // ② 写入主订单
+      const { data: newOrder, error: orderErr } = await supabase.from('store_order').insert([{
+        order_no: orderNo,
         tenant_id: tenantId,
         store_id: storeId,
         store_name: storeName,
         driver_name: driverName || '配送师傅',
-        total_amount: totalAmount,
-        items: items,
-        pay_type: 'credit',
+        order_source: orderSource || 'store_order',
+        settlement_type: settlementType || 'credit',
+        settlement_note: settlementNote || '',
+        items: itemsOrder,
+        items_return: itemsReturn,
+        items_exchange: itemsExchange,
+        total_amount: orderTotal,
+        return_amount: returnTotal,
+        net_settle_amount: netTotal,
+        pay_type: settlementType,
         pay_status: 'pending',
         delivery_status: 'ordered',
+        order_status: 'pending_confirm',
+        proof_images: proofImages || [],
         note: note || ''
-      }]);
+      }]).select().single();
 
       if (orderErr) throw orderErr;
 
-      // ② 依次扣减在售商品现货库存（防超卖）
-      for (const item of items) {
+      // ③ 扣减在售商品现货库存
+      for (const item of itemsOrder) {
         const { data: prod } = await supabase
           .from('product')
           .select('stock')
@@ -84,29 +140,24 @@ export const StoreService = {
 
         if (prod && prod.stock !== undefined && prod.stock !== null) {
           const remainStock = Math.max(0, prod.stock - item.qty);
-          await supabase
-            .from('product')
-            .update({ stock: remainStock })
-            .eq('id', item.id);
+          await supabase.from('product').update({ stock: remainStock }).eq('id', item.id);
         }
       }
 
-      // ③ 仅累加当前总代的挂账欠款
-      const newDebt = parseFloat(currentDebt || 0) + totalAmount;
-      const { error: storeErr } = await supabase
-        .from('store')
-        .update({ current_debt: newDebt })
-        .eq('id', storeId);
+      // ④ 财务账本更新（若是赊销挂账，累加净额；若是实销/现结不累加挂账）
+      if (settlementType === 'credit') {
+        const newDebt = Math.max(0, parseFloat(currentDebt || 0) + netTotal);
+        await supabase.from('store').update({ current_debt: newDebt }).eq('id', storeId);
+      }
 
-      if (storeErr) throw storeErr;
-      return true;
+      return newOrder;
     } catch (err) {
-      console.error('[StoreService] submitOrder 失败:', err);
+      console.error('[StoreService] submitComprehensiveOrder 失败:', err);
       throw err;
     }
   },
 
-  // 5. 查验本店在该总代下的历史报单
+  // 6. 查验历史报单
   async getMyOrders(storeId, tenantId) {
     try {
       let query = supabase.from('store_order').select('*').eq('store_id', storeId);
@@ -122,7 +173,7 @@ export const StoreService = {
     }
   },
 
-  // 6. 查验本店在该总代下的师傅收款电子收条
+  // 7. 查验师傅收款电子收条
   async getMyReceipts(storeId, tenantId) {
     try {
       let query = supabase.from('driver_collection_log').select('*').eq('store_id', storeId);
