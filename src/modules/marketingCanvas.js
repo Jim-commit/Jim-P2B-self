@@ -88,6 +88,7 @@ export const MarketingCanvas = {
         ctx.fillRect(100, 160, 400, 320);
         ctx.fillStyle = '#94a3b8';
         ctx.font = '22px sans-serif';
+        ctx.textAlign = 'center';
         ctx.fillText('正品实物保真包装', 300, 320);
         this.drawDetails(ctx, prod, style, customPrice, customNote);
         resolve(canvas.toDataURL('image/jpeg', 0.88));
