@@ -7,7 +7,7 @@ export const ShopTypeManager = {
     '批发副食': '📦'
   },
 
-  // 根据店名自动预判
+  // 根据店招名称自动识别店型
   autoDetect(storeName) {
     if (!storeName) return '社区超市';
     const name = storeName.toLowerCase();
@@ -18,7 +18,7 @@ export const ShopTypeManager = {
     return '社区超市';
   },
 
-  // 自匹配随车便签
+  // 智能自匹配各行业的随车小纸条
   getDynamicNotes(shopType) {
     if (shopType === '餐饮饭店') return ['赶午市早点送', '直接抬进后厨', '货交大厨验收', '带发票或收条'];
     if (shopType === '社区超市') return ['送货避开早高峰', '帮忙抬进地库', '备点零钱找零', '随车带6个空筐'];
@@ -26,7 +26,7 @@ export const ShopTypeManager = {
     return ['整箱包装完好', '随车清点空筐', '查验生产日期', '备好随车单据'];
   },
 
-  // 阶梯价格适配
+  // 自动适配大客户价与门市价
   getEffectivePrice(prod, shopType) {
     if ((shopType === '餐饮饭店' || shopType === '精品商超') && prod.tier_2_price && parseFloat(prod.tier_2_price) > 0) {
       return parseFloat(prod.tier_2_price);
