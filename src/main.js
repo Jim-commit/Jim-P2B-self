@@ -54,7 +54,7 @@ function safeSetText(id, text) {
 }
 
 // ==========================================
-// 2. 顶栏 ☰ / ··· 及店型下拉菜单控制器
+// 2. 顶栏 ☰ / ··· 及店型轻灵下拉菜单控制
 // ==========================================
 window.toggleLeftNavMenu = function (e) {
   e.stopPropagation();
@@ -177,7 +177,6 @@ window.bindByPhone = async () => {
   }
 };
 
-// 解绑当前供货商（二次安全确认）
 window.confirmUnbindCurrentAgent = function () {
   if (myAgents.length <= 1) {
     return alert('⚠️ 至少需要保留一个供货商，无法解绑全部供货商！');
@@ -203,7 +202,7 @@ window.confirmUnbindCurrentAgent = function () {
 };
 
 // ==========================================
-// 5. 右上角高频实用功能：一键重填常订品 & 清空购物车
+// 5. 右上角高频实用功能：重填常订品 & 清空购物车
 // ==========================================
 window.repeatLastOrder = async function () {
   if (!currentStore) return alert('当前供货商未绑定有效门店！');
@@ -258,7 +257,7 @@ window.openStoreOverview = function () {
     `• 本总代未结挂账：${debt}\n` +
     `• 免息授信可用额度：${avail}\n` +
     `• 借用周转空筐：${basket}\n\n` +
-    `如需查看历次明细，可在右上角「···」菜单中点击「本总代单据与收条」。`
+    `如需查看历次明细，可在右上角「···」菜单中点击「单据与收款条」。`
   );
 };
 
