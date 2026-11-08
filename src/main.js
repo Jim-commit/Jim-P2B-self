@@ -361,10 +361,9 @@ window.submitB2BOrder = async () => {
     alert(`报单失败: ${err.message}`);
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `<span>🚚 交代师父排单装车</span> <span id="cart-count-badge" class="bg-amber-400 text-stone-900 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold">0</span>`;
+    btn.innerHTML = `<span>订货</span> <span id="cart-count-badge" class="bg-amber-400 text-stone-900 text-xs px-2 py-0.5 rounded-full font-mono font-bold">0</span>`;
   }
 };
-
 // 单据历史
 window.openReceiptsModal = async () => {
   if (!currentStore) return alert('未绑定有效门店！');
