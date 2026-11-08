@@ -16,17 +16,15 @@
     
     <!-- 顶栏 -->
     <header class="bg-gradient-to-br from-[#064e3b] to-[#043327] text-white p-4 pt-4 rounded-b-[2rem] shadow-lg space-y-3">
-      <!-- 顶部功能栏：左营销宣传，右百宝箱 -->
       <div class="flex justify-between items-center pb-2 border-b border-emerald-700/40 text-xs">
         <button onclick="window.openMarketingCenter()" class="bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/40 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition">
-          <span>📢 社区营销·宣发海报</span>
+          <span>📢 社区营销·自选海报</span>
         </button>
         <button onclick="window.openToolboxModal()" class="bg-white/10 hover:bg-white/20 text-emerald-100 border border-emerald-400/30 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition">
           <span>🧰 常规百宝箱 ▾</span>
         </button>
       </div>
 
-      <!-- 门店牌匾 -->
       <div class="flex justify-between items-start">
         <div class="space-y-1">
           <div class="flex items-center gap-2">
@@ -46,7 +44,6 @@
         </button>
       </div>
 
-      <!-- 账目看板 -->
       <div class="bg-emerald-950/60 p-3 rounded-2xl border border-emerald-700/40 space-y-1.5">
         <div class="flex justify-between items-center text-xs">
           <div>
@@ -70,7 +67,7 @@
       </div>
     </header>
 
-    <!-- 分类滑动栏与卖点贴快筛 -->
+    <!-- 分类与卖点贴快筛 -->
     <div class="sticky top-0 z-10 bg-white border-b border-stone-100 p-2.5 space-y-1.5 shadow-sm">
       <div id="category-bar" class="flex gap-2 overflow-x-auto no-scrollbar text-xs"></div>
       <div id="quick-tag-pills" class="flex gap-1.5 overflow-x-auto no-scrollbar text-[11px] pt-0.5">
@@ -84,10 +81,10 @@
 
     <!-- 货品列表 -->
     <main id="product-container" class="p-3 divide-y divide-stone-100 flex-1">
-      <div class="p-12 text-center text-stone-400 text-xs">正在调取总代在售货单...</div>
+      <div class="p-12 text-center text-stone-400 text-xs">正在调取在售货单...</div>
     </main>
 
-    <!-- 底部常驻报单栏 -->
+    <!-- 底部报单栏 -->
     <footer class="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 space-y-2 z-20">
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-[10px]">
         <span class="text-stone-400 whitespace-nowrap font-medium">📝 捎句话:</span>
@@ -110,7 +107,48 @@
 
   </div>
 
-  <!-- 弹窗集 -->
+  <!-- 营销海报自定义定制弹窗（彻底解决点开无内容的问题） -->
+  <div id="marketing-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-800">🎨 自选海报风格与文案</h3>
+          <p class="text-[10px] text-stone-400" id="flyer-prod-name">商品海报</p>
+        </div>
+        <button onclick="window.closeModal('marketing-modal')" class="text-stone-400 hover:text-stone-600 text-xl font-bold">✕</button>
+      </div>
+
+      <!-- 风格选择 -->
+      <div class="space-y-1.5">
+        <label class="text-[11px] font-bold text-stone-700 block">① 挑选海报风格模板：</label>
+        <div id="style-selector-box" class="flex flex-wrap gap-1.5"></div>
+      </div>
+
+      <!-- 标题与价格自定义 -->
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div>
+          <label class="text-[10px] text-stone-500 block mb-1">自定义主标题：</label>
+          <input type="text" id="flyer-title-input" oninput="window.renderLiveFlyerPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none font-bold text-stone-800">
+        </div>
+        <div>
+          <label class="text-[10px] text-stone-500 block mb-1">拼单参考价 (元)：</label>
+          <input type="number" step="0.1" id="flyer-price-input" oninput="window.renderLiveFlyerPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none font-mono font-bold text-rose-700">
+        </div>
+      </div>
+
+      <!-- 海报实时预览区 -->
+      <div class="rounded-2xl overflow-hidden border border-stone-200 shadow-sm">
+        <img id="flyer-preview-img" src="" class="w-full object-cover">
+      </div>
+
+      <p class="text-[10px] text-stone-400 text-center">长按上方图片即可「发送给朋友」或保存至相册发圈</p>
+
+      <button onclick="window.closeModal('marketing-modal')" class="w-full bg-[#064e3b] text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition">
+        做妥完成 · 返回货单
+      </button>
+    </div>
+  </div>
+
   <!-- 店型点选 -->
   <div id="shop-type-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
@@ -154,22 +192,6 @@
         </button>
         <button onclick="window.callDriver()" class="p-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex flex-col items-center gap-1 text-emerald-950 active:scale-95">
           <span class="text-2xl">📞</span><b class="text-xs">致电跟车师傅</b><span class="text-[9px] text-emerald-700">查问车次到店时间</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 社区营销海报中心 -->
-  <div id="marketing-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 text-stone-800 shadow-2xl">
-      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-        <h3 class="font-bold text-sm text-stone-800">📢 社区营销·宣发海报中心</h3>
-        <button onclick="window.closeModal('marketing-modal')" class="text-stone-400 text-lg">✕</button>
-      </div>
-      <div class="space-y-2.5 text-xs">
-        <p class="text-stone-500 text-[11px]">请在列表中找到心仪货品，直接点击商品下方的宣发按钮，系统将自动生成图片。</p>
-        <button onclick="window.closeModal('marketing-modal')" class="w-full bg-[#064e3b] text-white font-bold py-2.5 rounded-xl text-xs active:scale-95">
-          挑选商品做海报
         </button>
       </div>
     </div>
@@ -235,19 +257,6 @@
     </div>
   </div>
 
-  <!-- 海报预览 -->
-  <div id="flyer-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-4">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 text-center space-y-3.5">
-      <h3 class="font-bold text-sm text-stone-800">📲 宣发海报已做妥</h3>
-      <div class="rounded-2xl overflow-hidden border border-stone-200 shadow-md">
-        <img id="flyer-preview-img" src="" class="w-full object-cover">
-      </div>
-      <button onclick="window.closeModal('flyer-modal')" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-xl text-xs">
-        关闭返回
-      </button>
-    </div>
-  </div>
-
   <!-- 绑定总代 -->
   <div id="bind-agent-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl">
@@ -276,7 +285,6 @@
 
   <canvas id="hidden-canvas" class="hidden"></canvas>
 
-  <!-- 引入主控模块 -->
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
