@@ -140,20 +140,23 @@
       </div>
     </section>
 
-    <!-- 板块 3：随车收款与订单履约对账 (三合一核单 + 审核流转 + AI经营风控) -->
+    <!-- 板块 3：随车收款与订单履约对账 (三合一核单 + 审核流转 + AI经营风控 + 超额特批) -->
     <section id="tab-settle" class="hidden space-y-4">
       
-      <!-- 订单履约流转与双向确认池 (待审核 / 已排单 / 已送达) -->
+      <!-- 订单履约流转与双向确认池 -->
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
             <h2 class="text-sm font-bold text-slate-800">📋 供采对账凭单审阅与履约调度</h2>
-            <p class="text-[11px] text-slate-400">订/退/换三合一净额审核、结算策略核对、异常原图查验、AI风控评估、点【同意接单】或【建议修改】</p>
+            <p class="text-[11px] text-slate-400">订/退/换三合一净额审核、结算策略核对、异常原图查验、AI风控评估、超额特批裁决</p>
           </div>
           <!-- 筛选状态切换胶囊 -->
-          <div class="flex gap-1.5 text-xs font-bold">
+          <div class="flex flex-wrap gap-1.5 text-xs font-bold">
             <button onclick="window.filterOrderStatus('pending_confirm')" id="order-filter-pending" class="px-3 py-1 rounded-xl bg-indigo-950 text-white transition">
-              待总代确认 <span id="count-pending-confirm" class="bg-amber-400 text-stone-900 px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
+              待确认订货 <span id="count-pending-confirm" class="bg-amber-400 text-stone-900 px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
+            </button>
+            <button onclick="window.filterOrderStatus('over_credit_pending')" id="order-filter-over-credit" class="px-3 py-1 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
+              🚨 超额特批待办 <span id="count-over-credit" class="bg-rose-500 text-white px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
             </button>
             <button onclick="window.filterOrderStatus('confirmed')" id="order-filter-confirmed" class="px-3 py-1 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
               已同意待配送
@@ -575,14 +578,13 @@
       '生鲜低温': ['常温纯奶', '低温酸奶', '冷冻面点']
     };
 
-    // AI 经营风控建议分析引擎 (总代审核侧专享)
     function analyzeOrderRiskAI({ orderItems, returnItems, exchangeItems, storeQuota, usedQuota }) {
       const orderTotal = orderItems.reduce((acc, it) => acc + ((parseFloat(it.price) || 0) * (parseInt(it.qty) || 0)), 0);
       const returnTotal = returnItems.reduce((acc, it) => acc + ((parseFloat(it.price) || 0) * (parseInt(it.qty) || 0)), 0);
       const remainQuota = Math.max(0, storeQuota - usedQuota);
 
       const tips = [];
-      let riskLevel = 'normal'; // normal | warning | danger
+      let riskLevel = 'normal';
 
       if (returnTotal > 0 && returnTotal > remainQuota) {
         riskLevel = 'danger';
@@ -817,7 +819,7 @@
           </div>
         `).join('');
 
-      // 4. 履约订单流水看板 (升级承接三合一结构)
+      // 4. 履约订单流水看板
       const { data: fulfillmentOrders } = await supabase
         .from('store_order')
         .select('*')
@@ -827,7 +829,10 @@
 
       allOrders = fulfillmentOrders || [];
       const pendingCount = allOrders.filter(o => o.order_status === 'pending_confirm').length;
+      const overCreditCount = allOrders.filter(o => o.order_status === 'over_credit_pending').length;
+      
       document.getElementById('count-pending-confirm').innerText = pendingCount;
+      document.getElementById('count-over-credit').innerText = overCreditCount;
       renderOrderFulfillmentList();
 
       // 5. 拓客线索
@@ -855,10 +860,13 @@
 
     window.filterOrderStatus = function(status) {
       activeOrderFilter = status;
-      ['pending', 'confirmed', 'delivered', 'all'].forEach(k => {
+      ['pending', 'over-credit', 'confirmed', 'delivered', 'all'].forEach(k => {
         const btn = document.getElementById(`order-filter-${k}`);
         if (btn) {
-          btn.className = (k === status || (status === 'pending_confirm' && k === 'pending'))
+          const isMatch = (k === status) || 
+                          (status === 'pending_confirm' && k === 'pending') || 
+                          (status === 'over_credit_pending' && k === 'over-credit');
+          btn.className = isMatch
             ? 'px-3 py-1 rounded-xl bg-indigo-950 text-white transition'
             : 'px-3 py-1 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
         }
@@ -866,11 +874,13 @@
       renderOrderFulfillmentList();
     };
 
-    // 渲染三合一订单审核与履约清单 (嵌入总代专属 AI 风控卡片)
+    // 渲染三合一订单审核与履约清单 (含 AI 风控卡片与超额特批控制)
     function renderOrderFulfillmentList() {
       let filtered = allOrders;
       if (activeOrderFilter === 'pending_confirm') {
         filtered = allOrders.filter(o => o.order_status === 'pending_confirm' || o.order_status === 'counter_proposal');
+      } else if (activeOrderFilter === 'over_credit_pending') {
+        filtered = allOrders.filter(o => o.order_status === 'over_credit_pending');
       } else if (activeOrderFilter === 'confirmed') {
         filtered = allOrders.filter(o => o.order_status === 'confirmed' && o.delivery_status !== 'delivered');
       } else if (activeOrderFilter === 'delivered') {
@@ -887,6 +897,7 @@
         const isDelivered = (o.delivery_status === 'delivered');
         const isPending = (o.order_status === 'pending_confirm');
         const isProposal = (o.order_status === 'counter_proposal');
+        const isOverCredit = (o.order_status === 'over_credit_pending');
         const isPush = (o.order_source === 'vendor_push');
 
         const orderItems = Array.isArray(o.items) ? o.items : [];
@@ -898,14 +909,13 @@
         const returnTotal = parseFloat(o.return_amount || 0);
         const netTotal = parseFloat(o.net_settle_amount || (orderTotal - returnTotal));
 
-        // 匹配当前门店档案，运行 AI 经营风控建议
         const store = allStores.find(s => s.id === o.store_id);
         const storeQuota = parseFloat(store?.monthly_return_quota || 500);
         const usedQuota = parseFloat(store?.used_return_quota || 0);
         const aiResult = analyzeOrderRiskAI({ orderItems, returnItems, exchangeItems, storeQuota, usedQuota });
 
         return `
-          <div class="p-4 bg-slate-50 border ${isPending ? 'border-amber-300 shadow-md' : 'border-slate-200'} rounded-3xl space-y-2.5 transition">
+          <div class="p-4 bg-slate-50 border ${isOverCredit ? 'border-rose-400 bg-rose-50/30 shadow-md' : (isPending ? 'border-amber-300 shadow-md' : 'border-slate-200')} rounded-3xl space-y-2.5 transition">
             
             <!-- 单据头部 -->
             <div class="flex flex-wrap justify-between items-start gap-2 border-b border-slate-200/60 pb-2">
@@ -915,10 +925,11 @@
                   <span class="text-[10px] font-mono bg-slate-200 text-slate-700 px-1.5 rounded">#${o.order_no || o.id}</span>
                   <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${
                     isDelivered ? 'bg-emerald-100 text-emerald-800' :
+                    isOverCredit ? 'bg-rose-500 text-white animate-pulse' :
                     isPending ? 'bg-amber-100 text-amber-900 animate-pulse' :
                     isProposal ? 'bg-purple-100 text-purple-900' : 'bg-blue-100 text-blue-900'
                   }">
-                    ${isDelivered ? '✅ 已送达核销' : isPending ? '⏳ 待总代确认' : isProposal ? '💬 已发修改建议' : '🚚 排单待配'}
+                    ${isDelivered ? '✅ 已送达核销' : isOverCredit ? '🚨 授信超额待特批' : isPending ? '⏳ 待总代确认' : isProposal ? '💬 已发修改建议' : '🚚 排单待配'}
                   </span>
                   <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${isPush ? 'bg-indigo-50 text-indigo-700' : 'bg-stone-100 text-stone-600'}">
                     ${isPush ? '供货商主动供货' : '掌柜自主订货'}
@@ -929,7 +940,6 @@
                 </div>
               </div>
 
-              <!-- 结算策略说明标签 -->
               <div class="text-right">
                 <span class="text-[10px] bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-lg font-bold">
                   ${o.settlement_type || '授信赊销'}
@@ -960,23 +970,24 @@
               </div>
             </div>
 
-            <!-- ⭐ 总代专属：AI 经营风控建议卡片 (仅供总代审核决策) -->
-            ${isPending ? `
+            <!-- ⭐ 总代专属：AI 经营风控建议卡片 -->
+            ${(isPending || isOverCredit) ? `
               <div class="p-2.5 rounded-2xl border text-[11px] space-y-1 ${
-                aiResult.riskLevel === 'danger' ? 'bg-rose-50 border-rose-200 text-rose-950' :
+                aiResult.riskLevel === 'danger' || isOverCredit ? 'bg-rose-50 border-rose-200 text-rose-950' :
                 aiResult.riskLevel === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-950' :
                 'bg-emerald-50 border-emerald-200 text-emerald-950'
               }">
                 <div class="font-bold flex items-center gap-1.5">
                   <span>🤖 AI 经营风控核定建议：</span>
                   <span class="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold ${
-                    aiResult.riskLevel === 'danger' ? 'bg-rose-200 text-rose-900' :
+                    isOverCredit || aiResult.riskLevel === 'danger' ? 'bg-rose-200 text-rose-900' :
                     aiResult.riskLevel === 'warning' ? 'bg-amber-200 text-amber-900' :
                     'bg-emerald-200 text-emerald-900'
                   }">
-                    ${aiResult.riskLevel === 'danger' ? '高风险关注' : aiResult.riskLevel === 'warning' ? '建议复核' : '低风险放行'}
+                    ${isOverCredit ? '🚨 授信穿透风险' : (aiResult.riskLevel === 'danger' ? '高风险关注' : aiResult.riskLevel === 'warning' ? '建议复核' : '低风险放行')}
                   </span>
                 </div>
+                ${isOverCredit ? `<div class="text-[10px] font-bold text-rose-800 leading-tight">• ⚠️ 现场告警：本次提货已超出该店核定授信额度 ¥${o.over_credit_amount || 0}，司机端已锁定！</div>` : ''}
                 ${aiResult.tips.map(t => `<div class="text-[10px] leading-tight">• ${t}</div>`).join('')}
               </div>
             ` : ''}
@@ -1007,8 +1018,17 @@
                 <span class="font-bold text-sm text-emerald-950 ml-1">应结净额: ¥${netTotal.toFixed(2)}</span>
               </div>
 
-              <!-- 审核接单或打回按钮 (供货商专属) -->
-              ${isPending ? `
+              <!-- ⭐ 方案 B：超额授信特批审批流操作 -->
+              ${isOverCredit ? `
+                <div class="flex items-center gap-2">
+                  <button onclick="window.hqRejectOverCredit(${o.id})" class="bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-xl border border-rose-200 active:scale-95 transition">
+                    🚫 拒绝超额 · 令其现结
+                  </button>
+                  <button onclick="window.hqApproveOverCredit(${o.id}, ${o.store_id}, ${o.over_credit_amount || 0})" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-1.5 rounded-xl shadow active:scale-95 transition">
+                    ✅ 特批放行 · 允许欠款
+                  </button>
+                </div>
+              ` : (isPending ? `
                 <div class="flex items-center gap-2">
                   <button onclick="window.hqRejectWithProposal(${o.id})" class="bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold px-3 py-1.5 rounded-xl border border-amber-200 active:scale-95 transition">
                     💬 建议修改
@@ -1021,7 +1041,7 @@
                 <span class="text-[11px] text-slate-400 font-mono">
                   ${o.driver_action_instruction || '依单办理点交'}
                 </span>
-              `}
+              `)}
             </div>
 
           </div>
@@ -1029,7 +1049,45 @@
       }).join('');
     }
 
-    // 供货商点同意接单
+    // ⭐ 超额特批放行操作
+    window.hqApproveOverCredit = async function(orderId, storeId, overAmount) {
+      const mode = confirm(`【特批放行】\n超额金额：¥${overAmount}\n• 点击 [确定]：仅限本单特批放行，司机立即解锁交货\n• 点击 [取消]：永久调高该店授信额度并放行`);
+      
+      let driverCmd = `【总代已特批】允许本单超额挂账交接，请督促下期按时清账！`;
+
+      if (mode) {
+        await supabase.from('store_order').update({
+          order_status: 'over_credit_approved',
+          driver_action_instruction: driverCmd
+        }).eq('id', orderId);
+      } else {
+        const store = allStores.find(s => s.id === storeId);
+        const newLimit = (store ? parseFloat(store.credit_limit || 2000) : 2000) + overAmount;
+        await supabase.from('store').update({ credit_limit: newLimit }).eq('id', storeId);
+        await supabase.from('store_order').update({
+          order_status: 'over_credit_approved',
+          driver_action_instruction: `【总代提额放行】授信已永久上调至 ¥${newLimit}，本单正常交接挂账。`
+        }).eq('id', orderId);
+      }
+
+      alert('✅ 特批放行完毕！司机手机端已即时解锁，可当面签字完成平账！');
+      window.loadHQData();
+    };
+
+    // ⭐ 超额特批拒绝操作
+    window.hqRejectOverCredit = async function(orderId) {
+      const reason = prompt('请输入拒绝说明（指令将即时下达随车司机）：', '授信超额，本单严禁赊销，请当场收取现金或微信，否则拉回！');
+      if (!reason) return;
+
+      await supabase.from('store_order').update({
+        order_status: 'over_credit_rejected',
+        driver_action_instruction: `【总代拒绝挂账】${reason}`
+      }).eq('id', orderId);
+
+      alert('已驳回特批申请！随车指令已更新为：“拒绝挂账，当面收现或拉回”！');
+      window.loadHQData();
+    };
+
     window.hqApproveOrder = async function(orderId) {
       const order = allOrders.find(o => o.id === orderId);
       if (!order) return;
@@ -1051,7 +1109,6 @@
       }
     };
 
-    // 供货商点建议修改打回
     window.hqRejectWithProposal = async function(orderId) {
       const feedback = prompt('请输入给掌柜的调整建议（如：缺货改配、退货理由核查、建议送达时间）：');
       if (!feedback || !feedback.trim()) return;
@@ -1068,7 +1125,6 @@
       }
     };
 
-    // 主动供货操作
     window.openPushOrderModal = function() {
       const storeSelect = document.getElementById('push-store-select');
       storeSelect.innerHTML = allStores.map(s => `
@@ -1155,7 +1211,6 @@
       }
     };
 
-    // 门店策略配置弹窗 (授信 + 退货配额 + 结算白名单)
     window.openStorePolicyModal = function(storeId) {
       const s = allStores.find(x => x.id === storeId);
       if (!s) return;
