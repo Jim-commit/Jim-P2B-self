@@ -3,238 +3,419 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>送貨師傅隨車工作台</title>
+  <title>随车配送与现场收款核销中枢</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&display=swap" rel="stylesheet">
   <style>
-    .font-serif-sc { font-family: 'Noto Serif SC', serif; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-stone-100 text-stone-800 font-sans select-none pb-24 antialiased p-3">
-  <div class="max-w-md mx-auto space-y-3">
+<body class="bg-slate-100 text-slate-800 font-sans pb-24 min-h-screen">
+  
+  <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-xl relative">
     
-    <!-- 頂部名片：送貨師傅身分與亮碼通道 -->
-    <header class="bg-[#064e3b] text-white p-4 rounded-3xl shadow-lg flex justify-between items-center">
-      <div>
-        <div class="flex items-center gap-1.5">
-          <span class="text-lg">🚚</span>
-          <h1 class="font-bold text-sm">隨車核銷端 · 送貨師傅</h1>
-        </div>
-        <p class="text-[11px] text-emerald-200/90 mt-0.5">城東A線 · 憑掌櫃現場簽字留底</p>
-      </div>
-      <button onclick="window.showDriverQR()" class="bg-white/15 hover:bg-white/20 active:scale-95 text-white border border-white/20 text-xs px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition">
-        <span>📲</span> 亮總代碼
-      </button>
-    </header>
-
-    <!-- 配送任務卡片流 -->
-    <div class="space-y-3" id="task-list">
-
-      <!-- 任務卡片 1：利民平價便利店 -->
-      <div class="bg-white p-4 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
-        <div class="flex justify-between items-start">
-          <div>
-            <div class="flex items-center gap-1.5">
-              <span class="font-bold text-sm text-stone-800">利民平價便利店</span>
-              <span class="bg-amber-50 text-amber-800 border border-amber-200 text-[10px] px-1.5 py-0.5 rounded font-bold">待點件簽收</span>
-            </div>
-            <div class="text-[11px] text-stone-400 mt-0.5 font-mono">單號: CG20261107-001 (共4箱)</div>
-          </div>
-          <a href="tel:13811112222" class="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold px-2.5 py-1 rounded-xl active:scale-95">
-            撥打掌櫃
-          </a>
-        </div>
-
-        <!-- 本次配貨件數清單 -->
-        <div class="bg-stone-50 p-2.5 rounded-2xl space-y-1 text-xs">
-          <div class="flex justify-between">
-            <span class="text-stone-700">金龍魚 5L 比例調和油 (4桶/箱)</span>
-            <b class="text-stone-900 font-mono">4 箱</b>
-          </div>
-        </div>
-
-        <!-- 現場實收金額校驗 -->
-        <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-2 text-xs">
-          <div class="flex justify-between items-baseline">
-            <span class="text-stone-500">本單應收金額:</span>
-            <b class="text-emerald-800 font-mono text-base font-bold">¥198.00</b>
-          </div>
-          <div class="flex items-center gap-2 pt-1 border-t border-stone-200/60">
-            <span class="text-stone-600 whitespace-nowrap">現場實收金額:</span>
-            <input type="number" id="actual-pay-input" value="198.00" class="flex-1 bg-white border border-stone-300 rounded-xl px-2.5 py-1 font-mono font-bold text-xs text-stone-900 outline-none focus:border-emerald-700">
-          </div>
-        </div>
-
-        <!-- 隨車周轉筐現場交接點算 -->
-        <div class="flex justify-between items-center p-2.5 bg-amber-50/70 border border-amber-200 rounded-2xl text-xs">
-          <span class="text-stone-700">隨車塑料周轉筐交接:</span>
+    <!-- 顶栏：随车人员身份与今日随车钱箱 -->
+    <header class="bg-indigo-950 text-white p-4 pt-5 rounded-b-3xl shadow-md space-y-3">
+      <div class="flex justify-between items-start">
+        <div>
           <div class="flex items-center gap-2">
-            <button onclick="window.stepCrate(-1)" class="w-6 h-6 bg-white border border-amber-300 rounded-lg font-bold text-xs active:scale-95">-</button>
-            <span id="task-crate-num" class="font-mono font-bold text-amber-900">0</span>
-            <button onclick="window.stepCrate(1)" class="w-6 h-6 bg-white border border-amber-300 rounded-lg font-bold text-xs active:scale-95">+</button>
-            <span class="text-[10px] text-stone-400">(新卸下筐數)</span>
+            <h1 class="text-base font-bold">🚚 随车配送与现场核销</h1>
+            <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 font-mono">
+              随车管家
+            </span>
+          </div>
+          <div class="text-[11px] text-indigo-200 mt-1">
+            配送师傅: <b id="driver-name-display" class="text-white">老张师傅</b> · 商号: <span id="tenant-display" class="font-mono text-emerald-300">BJ_SHUNDA</span>
           </div>
         </div>
-
-        <!-- 掌櫃電子手寫簽名核銷按鈕 -->
-        <div class="pt-1">
-          <button onclick="window.openSignModal('利民平價便利店')" class="w-full bg-[#064e3b] hover:bg-[#065f46] text-white text-xs font-bold py-3 rounded-2xl shadow active:scale-95 transition flex items-center justify-center gap-1.5">
-            <span>✍️</span> 掌櫃驗貨手寫簽字並結清
-          </button>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- 彈窗 1：掌櫃現場手寫簽名板 -->
-    <div id="sign-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-      <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
-        <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-          <div>
-            <h3 class="font-bold text-sm text-stone-800">✍️ 現場驗貨簽字確認</h3>
-            <p class="text-[10px] text-stone-400">請掌櫃在下方框內手寫簽名，留存對賬憑證</p>
-          </div>
-          <button onclick="window.closeSignModal()" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
-        </div>
-
-        <!-- 簽名繪圖區域 -->
-        <div class="border-2 border-dashed border-stone-200 rounded-2xl bg-stone-50 overflow-hidden relative">
-          <canvas id="signature-pad" width="320" height="160" class="w-full h-40 touch-none bg-white cursor-crosshair"></canvas>
-          <span class="absolute bottom-2 right-3 text-[10px] text-stone-300 pointer-events-none select-none">掌櫃正楷手寫</span>
-        </div>
-
-        <div class="flex gap-2">
-          <button onclick="window.clearSignature()" class="bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-bold px-4 py-2.5 rounded-2xl transition">
-            重簽
-          </button>
-          <button onclick="window.saveSignatureAndSettle()" class="flex-1 bg-[#064e3b] hover:bg-[#065f46] text-white text-xs font-bold py-2.5 rounded-2xl shadow active:scale-95 transition">
-            確認簽名並完成交接
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 彈窗 2：總代專屬直連綁定二維碼 -->
-    <div id="qr-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white max-w-xs w-full rounded-3xl p-5 text-center space-y-3.5 shadow-2xl">
-        <div class="flex justify-between items-center pb-1 border-b border-stone-100">
-          <h3 class="font-bold text-sm text-stone-800">隨車 · 新店綁定碼</h3>
-          <button onclick="window.hideDriverQR()" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
-        </div>
-        <div class="p-4 bg-stone-50 rounded-2xl flex flex-col items-center justify-center border border-stone-200">
-          <div class="w-36 h-36 bg-white border-2 border-dashed border-stone-300 rounded-xl flex flex-col items-center justify-center text-xs text-stone-400 font-mono p-2">
-            <span class="text-2xl mb-1">📷</span>
-            <span>[微信掃一掃]</span>
-            <span class="text-[9px] text-emerald-800 font-bold mt-1">?agent=BJ_SHUNDA</span>
-          </div>
-        </div>
-        <p class="text-[11px] text-stone-500 leading-relaxed">
-          新店掌櫃微信掃一掃，自動接入北京順達商貿總代貨單與師傅車次。
-        </p>
-        <button onclick="window.hideDriverQR()" class="w-full bg-[#064e3b] text-white text-xs font-bold py-2.5 rounded-2xl shadow active:scale-95 transition">
-          收起二維碼
+        <button onclick="window.switchDriverPrompt()" class="text-[10px] bg-white/10 hover:bg-white/20 text-indigo-100 border border-indigo-400/30 px-2 py-1 rounded-xl">
+          换师傅
         </button>
       </div>
-    </div>
+
+      <!-- 随车钱箱统计：钱货两清回库对账 -->
+      <div class="bg-indigo-900/80 p-3 rounded-2xl border border-indigo-700/50 flex justify-between items-center text-xs">
+        <div>
+          <span class="text-indigo-300 text-[10px] block">今日随车已收待交 (随车钱箱)</span>
+          <b id="today-cash-collected" class="text-amber-300 font-mono text-lg font-bold">¥0.00</b>
+        </div>
+        <div class="text-right space-y-0.5">
+          <span class="text-indigo-200 text-[10px] block font-mono">现金: <span id="stat-cash">¥0</span> | 微信: <span id="stat-wechat">¥0</span></span>
+          <span class="text-emerald-300 text-[10px] block">已配送完成: <b id="stat-done-count">0</b> 单</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 配送路线列表容器 -->
+    <main class="p-3 flex-1 space-y-3">
+      <div class="flex justify-between items-center px-1">
+        <h2 class="text-xs font-bold text-slate-700">📋 今日路线待送与收款门店</h2>
+        <button onclick="window.loadDriverTasks()" class="text-[11px] text-indigo-700 font-bold hover:underline">
+          刷新名册
+        </button>
+      </div>
+
+      <div id="route-container" class="space-y-2.5">
+        <div class="p-12 text-center text-slate-400 text-xs">调取路线门店中...</div>
+      </div>
+    </main>
+
+    <!-- 底部常驻交账按钮 -->
+    <footer class="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 z-20">
+      <button onclick="window.openCheckoutSummaryModal()" class="w-full bg-indigo-950 hover:bg-indigo-900 text-white font-bold py-3 rounded-2xl text-xs shadow active:scale-95 transition flex justify-center items-center gap-2">
+        <span>📦 今日跑车结束 · 生成回库财务交账清单</span>
+      </button>
+    </footer>
 
   </div>
 
+  <!-- 弹窗 1：现场收款核销操作弹窗 -->
+  <div id="collect-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-slate-800 shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+        <div>
+          <h3 class="font-bold text-sm text-slate-800" id="modal-shop-title">利民平价超市</h3>
+          <p class="text-[10px] text-slate-400">现场收款核销 · 即时扣减欠款</p>
+        </div>
+        <button onclick="window.closeModal('collect-modal')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <input type="hidden" id="modal-store-id" value="">
+      <input type="hidden" id="modal-current-debt" value="0">
+
+      <div class="space-y-2.5 text-xs">
+        <div class="bg-amber-50 p-2.5 rounded-2xl border border-amber-200 flex justify-between items-center">
+          <span class="text-amber-900 font-bold">该店当前累计挂账：</span>
+          <b id="modal-debt-text" class="font-mono text-base text-rose-600 font-bold">¥0.00</b>
+        </div>
+
+        <div>
+          <label class="block text-slate-600 font-bold mb-1">本次实收金额 (元) *：</label>
+          <input type="number" step="0.1" id="collect-amount" placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-base font-bold text-emerald-900 outline-none focus:border-indigo-700">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-500 mb-1">现场抹零/扣减：</label>
+            <input type="number" id="collect-discount" value="0" placeholder="0" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono outline-none">
+          </div>
+          <div>
+            <label class="block text-slate-500 mb-1">收款方式：</label>
+            <select id="collect-method" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold outline-none">
+              <option value="现金">💵 实收现金</option>
+              <option value="微信转账">📱 微信转账(转入师傅)</option>
+              <option value="公司码">🏦 扫车身公司码</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 掌柜正楷电子手写签名板 -->
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-[11px] font-bold text-slate-700">负责人/大厨 手写签字确认 *：</label>
+            <button type="button" onclick="window.clearSignature()" class="text-[10px] text-rose-600 hover:underline">重签</button>
+          </div>
+          <div class="border border-slate-300 rounded-xl bg-slate-50 overflow-hidden">
+            <canvas id="sign-pad" width="300" height="100" class="w-full h-24 touch-none cursor-crosshair"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2 border-t border-slate-100">
+        <button onclick="window.submitCollection()" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
+          确认收讫 · 钱货两清
+        </button>
+        <button onclick="window.closeModal('collect-modal')" class="bg-slate-100 text-slate-600 font-bold px-4 py-2.5 rounded-2xl text-xs">
+          取消
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹窗 2：回库财务交账核对清单 -->
+  <div id="checkout-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-slate-800 shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+        <h3 class="font-bold text-sm text-slate-800">🏁 今日跑车交账清算单</h3>
+        <button onclick="window.closeModal('checkout-modal')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-2">
+        <div class="flex justify-between">
+          <span class="text-slate-500">配送负责人：</span>
+          <b id="chk-driver" class="font-bold">老张师傅</b>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">实收现钞（应点清交财务）：</span>
+          <b id="chk-cash" class="font-mono text-emerald-800 font-bold">¥0.00</b>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">个人代收微信款（转账至财务）：</span>
+          <b id="chk-wechat" class="font-mono text-emerald-800 font-bold">¥0.00</b>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">累计抹零让利：</span>
+          <b id="chk-discount" class="font-mono text-rose-600">¥0.00</b>
+        </div>
+        <div class="pt-2 border-t border-slate-200 flex justify-between items-center text-sm">
+          <span class="font-bold text-slate-800">应上缴财务总计：</span>
+          <b id="chk-total" class="font-mono text-lg font-bold text-emerald-900">¥0.00</b>
+        </div>
+      </div>
+
+      <p class="text-[10px] text-slate-400 text-center">财务出纳核对金额无误后点清入库，日清日结。</p>
+
+      <button onclick="window.finalizeSettlement()" class="w-full bg-[#064e3b] hover:bg-[#043327] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
+        财务已收讫确认 · 随车钱箱归零
+      </button>
+    </div>
+  </div>
+
   <script type="module">
-    import { sendWechatNotice } from './src/lib/notify.js';
+    import { supabase } from './src/lib/supabase.js';
 
-    let crateDelta = 0;
-    let sigCanvas, sigCtx, isDrawing = false, currentStoreSigning = '';
+    let currentAgent = localStorage.getItem('active_agent') || 'BJ_SHUNDA';
+    let currentDriver = localStorage.getItem('active_driver') || '配送师傅';
+    let routeStores = [];
+    let isSigned = false;
 
-    window.stepCrate = function(delta) {
-      crateDelta += delta;
-      document.getElementById('task-crate-num').innerText = crateDelta >= 0 ? `+${crateDelta}` : `${crateDelta}`;
-    };
+    // 手写签名板配置
+    let canvas, ctx, drawing = false;
 
-    // 簽名板核心手寫邏輯
-    window.initSignaturePad = function() {
-      sigCanvas = document.getElementById('signature-pad');
-      if (!sigCanvas) return;
-      sigCtx = sigCanvas.getContext('2d');
-      sigCtx.strokeStyle = '#1c1917';
-      sigCtx.lineWidth = 3;
-      sigCtx.lineCap = 'round';
+    window.openModal = id => document.getElementById(id).classList.remove('hidden');
+    window.closeModal = id => document.getElementById(id).classList.add('hidden');
 
-      const getPos = (e) => {
-        const rect = sigCanvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return {
-          x: (clientX - rect.left) * (sigCanvas.width / rect.width),
-          y: (clientY - rect.top) * (sigCanvas.height / rect.height)
-        };
-      };
-
-      const startDraw = (e) => {
-        isDrawing = true;
-        const p = getPos(e);
-        sigCtx.beginPath();
-        sigCtx.moveTo(p.x, p.y);
-      };
-
-      const drawing = (e) => {
-        if (!isDrawing) return;
-        const p = getPos(e);
-        sigCtx.lineTo(p.x, p.y);
-        sigCtx.stroke();
-      };
-
-      const stopDraw = () => { isDrawing = false; };
-
-      sigCanvas.onmousedown = startDraw;
-      sigCanvas.onmousemove = drawing;
-      window.onmouseup = stopDraw;
-
-      sigCanvas.ontouchstart = (e) => { e.preventDefault(); startDraw(e); };
-      sigCanvas.ontouchmove = (e) => { e.preventDefault(); drawing(e); };
-      sigCanvas.ontouchend = stopDraw;
-    };
-
-    window.openSignModal = function(storeName) {
-      currentStoreSigning = storeName;
-      document.getElementById('sign-modal').classList.remove('hidden');
-      window.initSignaturePad();
-      window.clearSignature();
-    };
-
-    window.closeSignModal = function() {
-      document.getElementById('sign-modal').classList.add('hidden');
-    };
-
-    window.clearSignature = function() {
-      if (sigCtx && sigCanvas) {
-        sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+    window.switchDriverPrompt = function() {
+      const name = prompt('输入您的随车师傅姓名：', currentDriver);
+      if (name && name.trim()) {
+        currentDriver = name.trim();
+        localStorage.setItem('active_driver', currentDriver);
+        initDriver();
       }
     };
 
-    window.saveSignatureAndSettle = function() {
-      const actualPay = document.getElementById('actual-pay-input').value;
-      
-      // 送出微信通知與憑證回報
-      sendWechatNotice(
-        `✅ 驗貨簽收完成：${currentStoreSigning}`,
-        `配送人員：送貨師傅\n實收金額：¥${actualPay}\n周轉筐變動：${crateDelta} 個\n[憑證留底] 掌櫃已現場手寫電子簽名確認。`
-      );
+    function initSignPad() {
+      canvas = document.getElementById('sign-pad');
+      if (!canvas) return;
+      ctx = canvas.getContext('2d');
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#111827';
+      ctx.lineCap = 'round';
 
-      alert(`簽字已成功存檔留底！本單實收 ¥${actualPay}，交接正式完成。`);
-      window.closeSignModal();
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+          x: (clientX - rect.left) * (canvas.width / rect.width),
+          y: (clientY - rect.top) * (canvas.height / rect.height)
+        };
+      }
+
+      function start(e) {
+        drawing = true;
+        isSigned = true;
+        const pos = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        e.preventDefault();
+      }
+
+      function move(e) {
+        if (!drawing) return;
+        const pos = getPos(e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        e.preventDefault();
+      }
+
+      function stop() { drawing = false; }
+
+      canvas.addEventListener('mousedown', start);
+      canvas.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', stop);
+
+      canvas.addEventListener('touchstart', start, { passive: false });
+      canvas.addEventListener('touchmove', move, { passive: false });
+      window.addEventListener('touchend', stop);
+    }
+
+    window.clearSignature = function() {
+      if (ctx && canvas) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        isSigned = false;
+      }
     };
 
-    window.showDriverQR = function() {
-      document.getElementById('qr-modal').classList.remove('hidden');
+    async function initDriver() {
+      document.getElementById('driver-name-display').innerText = currentDriver;
+      document.getElementById('tenant-display').innerText = currentAgent;
+      initSignPad();
+      await window.loadDriverTasks();
+      await calculateTodayStats();
+    }
+
+    // 载入分配给该师傅的门店
+    window.loadDriverTasks = async function() {
+      const container = document.getElementById('route-container');
+      container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">加载名册中...</div>';
+
+      const { data: stores } = await supabase
+        .from('store')
+        .select('*')
+        .eq('tenant_id', currentAgent)
+        .order('current_debt', { ascending: false });
+
+      routeStores = stores || [];
+
+      if (routeStores.length === 0) {
+        container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">暂无分配的路线门店。</div>';
+        return;
+      }
+
+      container.innerHTML = routeStores.map((s, idx) => {
+        const debt = parseFloat(s.current_debt || 0);
+        const hasDebt = debt > 0;
+
+        return `
+          <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2 hover:bg-white transition">
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-mono text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-bold">#${idx + 1}</span>
+                  <b class="text-xs text-slate-800">${s.name}</b>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-0.5">
+                  负责人: ${s.contact || '负责人'} · 电话: <a href="tel:${s.phone}" class="text-indigo-700 font-bold underline font-mono">${s.phone}</a>
+                </div>
+                <div class="text-[10px] text-slate-500 mt-0.5">
+                  地址: ${s.address || '临街门面'}
+                </div>
+              </div>
+
+              <div class="text-right">
+                <span class="text-[10px] text-slate-400 block">待收款/挂账</span>
+                <b class="font-mono text-sm ${hasDebt ? 'text-rose-600' : 'text-emerald-700'} font-bold">
+                  ¥${debt.toFixed(2)}
+                </b>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-200/60 flex justify-between items-center gap-2">
+              <a href="tel:${s.phone}" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 active:scale-95">
+                📞 拨打电话
+              </a>
+              <button onclick="window.openCollectModal(${s.id}, '${s.name}', ${debt})" class="flex-1 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-1.5 rounded-xl shadow active:scale-95 transition">
+                💵 现场收款核销 (钱货两清)
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
     };
 
-    window.hideDriverQR = function() {
-      document.getElementById('qr-modal').classList.add('hidden');
+    window.openCollectModal = function(storeId, storeName, debt) {
+      document.getElementById('modal-shop-title').innerText = storeName;
+      document.getElementById('modal-store-id').value = storeId;
+      document.getElementById('modal-current-debt').value = debt;
+      document.getElementById('modal-debt-text').innerText = `¥${debt.toFixed(2)}`;
+      document.getElementById('collect-amount').value = debt > 0 ? debt : '';
+      document.getElementById('collect-discount').value = '0';
+      window.clearSignature();
+      window.openModal('collect-modal');
     };
+
+    window.submitCollection = async function() {
+      const storeId = parseInt(document.getElementById('modal-store-id').value);
+      const store = routeStores.find(s => s.id === storeId);
+      const curDebt = parseFloat(document.getElementById('modal-current-debt').value);
+      const amount = parseFloat(document.getElementById('collect-amount').value);
+      const discount = parseFloat(document.getElementById('collect-discount').value) || 0;
+      const method = document.getElementById('collect-method').value;
+
+      if (isNaN(amount) || amount <= 0) return alert('请输入有效的实收金额！');
+      if (!isSigned) return alert('请让负责人或验收人手写正楷签字！');
+
+      const signBase64 = canvas.toDataURL('image/png');
+
+      // 1. 记入随车收款核销流水表
+      const { error: logErr } = await supabase.from('driver_collection_log').insert([{
+        tenant_id: currentAgent,
+        store_id: storeId,
+        store_name: store ? store.name : '合作门店',
+        driver_name: currentDriver,
+        collect_type: '随车收回货款',
+        amount: amount,
+        discount_amount: discount,
+        pay_method: method,
+        sign_image_url: signBase64
+      }]);
+
+      if (logErr) return alert('记录失败: ' + logErr.message);
+
+      // 2. 实时扣减门店挂账欠款
+      const newDebt = Math.max(0, curDebt - amount - discount);
+      await supabase.from('store').update({ current_debt: newDebt }).eq('id', storeId);
+
+      alert(`核销完毕！实收 ¥${amount}，抹零 ¥${discount}。\n该店当前剩余挂账：¥${newDebt.toFixed(2)}。已钱货两清！`);
+      window.closeModal('collect-modal');
+      await window.loadDriverTasks();
+      await calculateTodayStats();
+    };
+
+    async function calculateTodayStats() {
+      const { data: logs } = await supabase
+        .from('driver_collection_log')
+        .select('*')
+        .eq('tenant_id', currentAgent)
+        .eq('driver_name', currentDriver)
+        .eq('settled_to_hq', false);
+
+      const list = logs || [];
+      let totalCash = 0;
+      let totalWechat = 0;
+      let totalDiscount = 0;
+
+      list.forEach(l => {
+        if (l.pay_method === '现金') totalCash += parseFloat(l.amount || 0);
+        else totalWechat += parseFloat(l.amount || 0);
+        totalDiscount += parseFloat(l.discount_amount || 0);
+      });
+
+      const grandTotal = totalCash + totalWechat;
+      document.getElementById('today-cash-collected').innerText = `¥${grandTotal.toFixed(2)}`;
+      document.getElementById('stat-cash').innerText = `¥${totalCash.toFixed(1)}`;
+      document.getElementById('stat-wechat').innerText = `¥${totalWechat.toFixed(1)}`;
+      document.getElementById('stat-done-count').innerText = list.length;
+
+      // 存入结算弹窗
+      document.getElementById('chk-driver').innerText = currentDriver;
+      document.getElementById('chk-cash').innerText = `¥${totalCash.toFixed(2)}`;
+      document.getElementById('chk-wechat').innerText = `¥${totalWechat.toFixed(2)}`;
+      document.getElementById('chk-discount').innerText = `¥${totalDiscount.toFixed(2)}`;
+      document.getElementById('chk-total').innerText = `¥${grandTotal.toFixed(2)}`;
+    }
+
+    window.openCheckoutSummaryModal = function() {
+      window.openModal('checkout-modal');
+    };
+
+    window.finalizeSettlement = async function() {
+      if (!confirm('确认财务已点清收讫款项？确认后随车钱箱将清零归档。')) return;
+
+      await supabase
+        .from('driver_collection_log')
+        .update({ settled_to_hq: true })
+        .eq('tenant_id', currentAgent)
+        .eq('driver_name', currentDriver)
+        .eq('settled_to_hq', false);
+
+      alert('交账归档成功！今日随车钱款已正式入公司账。');
+      window.closeModal('checkout-modal');
+      await calculateTodayStats();
+    };
+
+    initDriver();
   </script>
 </body>
 </html>
