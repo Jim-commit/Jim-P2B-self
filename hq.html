@@ -36,6 +36,9 @@
       </div>
 
       <div class="flex items-center gap-2">
+        <button onclick="window.openPushOrderModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow active:scale-95 transition flex items-center gap-1.5">
+          <span>📦</span> 发起主动供货
+        </button>
         <select id="agent-selector" onchange="window.switchAgent(this.value)" class="bg-indigo-900 border border-indigo-700 text-white text-xs px-3 py-2 rounded-xl outline-none">
           <option value="BJ_SHUNDA">北京顺达商贸 (认领码 888001)</option>
           <option value="SH_LEGOU">上海乐购供应链 (认领码 888002)</option>
@@ -70,7 +73,7 @@
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
             <h2 class="text-sm font-bold text-slate-800">🏪 合作门店档案与风控授信</h2>
-            <p class="text-[11px] text-slate-400">贴熟客脾气便签、分配跟车师傅、控制特权白名单与借用塑料周转筐</p>
+            <p class="text-[11px] text-slate-400">贴熟客脾气便签、分配跟车师傅、控制特权白名单、结算方式授权与退换配额</p>
           </div>
           <button onclick="window.registerNewStore()" class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl font-bold hover:bg-indigo-100 transition active:scale-95">
             + 快速建档开户
@@ -137,30 +140,48 @@
       </div>
     </section>
 
-    <!-- 板块 3：随车收款与订单履约对账 -->
+    <!-- 板块 3：随车收款与订单履约对账 (三合一核单 + 审核流转) -->
     <section id="tab-settle" class="hidden space-y-4">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <!-- 待交现钞与微信代收款核验 -->
-        <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
-          <div class="flex justify-between items-center">
-            <div>
-              <h2 class="text-sm font-bold text-slate-800">💵 随车师傅收款对账 (钱箱清算)</h2>
-              <p class="text-[11px] text-slate-400">司机实收现钞与微信代收款，出纳点清后确认入账</p>
-            </div>
-            <button onclick="window.loadHQData()" class="text-xs text-indigo-700 font-bold hover:underline">刷新对账</button>
+      
+      <!-- 订单履约流转与双向确认池 (待审核 / 已排单 / 已送达) -->
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <div>
+            <h2 class="text-sm font-bold text-slate-800">📋 供采对账凭单审阅与履约调度</h2>
+            <p class="text-[11px] text-slate-400">订/退/换三合一净额审核、结算策略核对、异常原图查验、点【同意接单】或【建议修改】</p>
           </div>
-          <div id="driver-settle-list" class="space-y-2 text-xs"></div>
+          <!-- 筛选状态切换胶囊 -->
+          <div class="flex gap-1.5 text-xs font-bold">
+            <button onclick="window.filterOrderStatus('pending_confirm')" id="order-filter-pending" class="px-3 py-1 rounded-xl bg-indigo-950 text-white transition">
+              待总代确认 <span id="count-pending-confirm" class="bg-amber-400 text-stone-900 px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
+            </button>
+            <button onclick="window.filterOrderStatus('confirmed')" id="order-filter-confirmed" class="px-3 py-1 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              已同意待配送
+            </button>
+            <button onclick="window.filterOrderStatus('delivered')" id="order-filter-delivered" class="px-3 py-1 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              已送达完成
+            </button>
+            <button onclick="window.filterOrderStatus('all')" id="order-filter-all" class="px-3 py-1 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              全部单据
+            </button>
+          </div>
         </div>
 
-        <!-- 履约订单历史流水与掌柜手写签名存根 -->
-        <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
-          <div>
-            <h2 class="text-sm font-bold text-slate-800">📋 最新订货与履约签字存根</h2>
-            <p class="text-[11px] text-slate-400">查看门店报单明细清单、随车附言与负责人正楷手写签名凭证</p>
-          </div>
-          <div id="order-fulfillment-list" class="space-y-2.5 text-xs max-h-[500px] overflow-y-auto no-scrollbar"></div>
-        </div>
+        <div id="order-fulfillment-list" class="space-y-3 text-xs max-h-[600px] overflow-y-auto no-scrollbar"></div>
       </div>
+
+      <!-- 待交现钞与微信代收款出纳核验 -->
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-slate-800">💵 随车师傅收款对账 (钱箱清算入账)</h2>
+            <p class="text-[11px] text-slate-400">司机实收现钞与微信代收款，出纳点清后确认入账核销</p>
+          </div>
+          <button onclick="window.loadHQData()" class="text-xs text-indigo-700 font-bold hover:underline">刷新对账</button>
+        </div>
+        <div id="driver-settle-list" class="space-y-2 text-xs"></div>
+      </div>
+
     </section>
 
     <!-- 板块 4：地推拓客 -->
@@ -221,6 +242,121 @@
           取消
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- 门店结算方式与风控额度配置弹窗 -->
+  <div id="store-policy-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-4 text-slate-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+        <div>
+          <h3 class="font-bold text-sm text-slate-800">⚙️ 客户结算策略与风控额度</h3>
+          <p id="policy-store-name" class="text-[10px] text-slate-400">合作门店</p>
+        </div>
+        <button onclick="document.getElementById('store-policy-modal').classList.add('hidden')" class="text-slate-400 text-lg">✕</button>
+      </div>
+
+      <input type="hidden" id="policy-store-id" value="">
+
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-600 font-bold mb-1">免息赊销授信额度 (元)：</label>
+            <input type="number" id="policy-credit-limit" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono font-bold outline-none">
+          </div>
+          <div>
+            <label class="block text-slate-600 font-bold mb-1">月度退货免批配额 (元)：</label>
+            <input type="number" id="policy-return-quota" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono font-bold outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-600 font-bold mb-1">默认匹配结算方式：</label>
+          <select id="policy-default-settlement" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none font-bold">
+            <option value="credit">授信赊销 (占用免息额度)</option>
+            <option value="cash">随车现结 (现场收取现金/微信)</option>
+            <option value="monthly">月结对账 (月度固定核销)</option>
+            <option value="rolling">压批结 (压一付一)</option>
+            <option value="consignment">实销实结 (未销不计费)</option>
+            <option value="custom">双方协议自定义</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-slate-600 font-bold mb-1">开放给该客户的结算方式白名单：</label>
+          <div id="policy-allowed-checkboxes" class="grid grid-cols-2 gap-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-[11px]">
+            <label class="flex items-center gap-1.5"><input type="checkbox" value="cash" class="policy-cb"> 随车现结</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" value="credit" class="policy-cb"> 授信赊销</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" value="monthly" class="policy-cb"> 月结对账</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" value="rolling" class="policy-cb"> 压批结</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" value="bi_weekly" class="policy-cb"> 半月结/旬结</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" value="consignment" class="policy-cb"> 实销实结</label>
+            <label class="flex items-center gap-1.5 col-span-2"><input type="checkbox" value="custom" class="policy-cb"> 允许专案自定义协议</label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-600 font-bold mb-1">自定义协议常态约定备忘 (选填)：</label>
+          <input type="text" id="policy-custom-terms" placeholder="如：中秋节后第一个周一统一平账" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2 border-t border-slate-100">
+        <button onclick="window.saveStorePolicySettings()" class="flex-1 bg-indigo-950 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition shadow">
+          保存客户策略
+        </button>
+        <button onclick="document.getElementById('store-policy-modal').classList.add('hidden')" class="bg-slate-100 text-slate-600 font-bold px-4 py-2.5 rounded-xl text-xs">
+          取消
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主动供货制单弹窗 -->
+  <div id="push-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+        <b class="text-sm font-bold text-slate-900">📦 发起供货商主动供货</b>
+        <button onclick="document.getElementById('push-modal').classList.add('hidden')" class="text-slate-400 text-lg">✕</button>
+      </div>
+
+      <div class="space-y-2.5">
+        <div>
+          <label class="block text-slate-600 font-bold mb-1">目标收货门店：</label>
+          <select id="push-store-select" onchange="window.onPushStoreChange(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold outline-none"></select>
+        </div>
+
+        <div>
+          <label class="block text-slate-600 font-bold mb-1">本次供货核定结算方式：</label>
+          <select id="push-settlement-select" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none font-bold">
+            <option value="credit">授信赊销 (占用免息额度)</option>
+            <option value="cash">随车现结 (现场收取现金/微信)</option>
+            <option value="consignment">实销实结 (代销铺市·未销不计费)</option>
+            <option value="rolling">压批结 (压一付一)</option>
+            <option value="monthly">月结对账</option>
+            <option value="custom">双方协议自定义</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-slate-600 font-bold mb-1">指派随车师傅：</label>
+          <input type="text" id="push-driver-name" value="老张师傅" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none">
+        </div>
+
+        <div>
+          <label class="block text-slate-600 font-bold mb-1">指定供货货品与件数：</label>
+          <div id="push-products-list" class="space-y-1.5 max-h-40 overflow-y-auto border border-slate-100 p-2 rounded-xl"></div>
+        </div>
+
+        <div>
+          <label class="block text-slate-600 font-bold mb-1">随车交接附言 / 专案约定：</label>
+          <input type="text" id="push-note-input" placeholder="例：新品推广铺底，卖掉再结，滞销全退" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none">
+        </div>
+      </div>
+
+      <button onclick="window.submitVendorPushOrder()" class="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
+        确认生成主动供货单 · 推送掌柜
+      </button>
     </div>
   </div>
 
@@ -422,10 +558,12 @@
     let currentStoreForVis = null;
     let allProducts = [];
     let allStores = [];
+    let allOrders = [];
     let uploadedImageBase64 = '';
     let selectedTags = [];
     let activeProdFilter = '全部';
     let activeStoreFilter = '全部';
+    let activeOrderFilter = 'pending_confirm';
     let videoStream = null;
     let scanInterval = null;
 
@@ -591,6 +729,7 @@
       document.getElementById('image-preview-box').innerHTML = '无图';
     };
 
+    // 全量数据读取
     window.loadHQData = async function() {
       document.getElementById('agent-selector').value = currentAgent;
       document.getElementById('hq-tenant-id').innerText = currentAgent;
@@ -648,47 +787,18 @@
           </div>
         `).join('');
 
-      // 4. 履约订单流水看板
+      // 4. 履约订单流水看板 (升级承接三合一结构)
       const { data: fulfillmentOrders } = await supabase
         .from('store_order')
         .select('*')
         .eq('tenant_id', currentAgent)
         .order('id', { ascending: false })
-        .limit(20);
+        .limit(30);
 
-      const fOrders = fulfillmentOrders || [];
-      document.getElementById('order-fulfillment-list').innerHTML = fOrders.length === 0
-        ? '<div class="p-8 text-center text-slate-400 text-xs">暂无最新报单。</div>'
-        : fOrders.map(o => {
-          const isDelivered = (o.delivery_status === 'delivered');
-          const items = Array.isArray(o.items) ? o.items : [];
-          const itemsDesc = items.map(it => `${it.name} x ${it.qty}箱`).join('； ');
-
-          return `
-            <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5">
-              <div class="flex justify-between items-center">
-                <div class="flex items-center gap-1.5">
-                  <b class="text-slate-800">${o.store_name}</b>
-                  <span class="text-[10px] font-mono bg-slate-200 text-slate-700 px-1.5 rounded">#${o.id}</span>
-                  <span class="text-[10px] font-bold px-1.5 py-0.2 rounded ${isDelivered ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
-                    ${isDelivered ? '✅ 已送达核销' : '🚚 排单装车中'}
-                  </span>
-                </div>
-                <b class="font-mono text-emerald-800 font-bold">¥${o.total_amount}</b>
-              </div>
-              <div class="text-[11px] text-slate-600 bg-white p-2 rounded-xl border border-slate-100">
-                📦 进货清单: ${itemsDesc || '整批进货'}
-              </div>
-              ${o.note ? `<div class="text-[10px] text-amber-800">💬 随车附言: ${o.note}</div>` : ''}
-              ${o.sign_image_url ? `
-                <div class="pt-1 flex items-center gap-2">
-                  <span class="text-[10px] text-slate-400">掌柜正楷签收凭证:</span>
-                  <img src="${o.sign_image_url}" class="h-6 border border-slate-200 bg-white rounded px-1 cursor-pointer" onclick="window.previewFullImage('${o.sign_image_url}')">
-                </div>
-              ` : ''}
-            </div>
-          `;
-        }).join('');
+      allOrders = fulfillmentOrders || [];
+      const pendingCount = allOrders.filter(o => o.order_status === 'pending_confirm').length;
+      document.getElementById('count-pending-confirm').innerText = pendingCount;
+      renderOrderFulfillmentList();
 
       // 5. 拓客线索
       const { data: leads } = await supabase.from('store_lead').select('*').eq('tenant_id', currentAgent).order('id', { ascending: false });
@@ -711,6 +821,325 @@
             </button>
           </div>
         `).join('');
+    };
+
+    // 订单筛选过滤
+    window.filterOrderStatus = function(status) {
+      activeOrderFilter = status;
+      ['pending', 'confirmed', 'delivered', 'all'].forEach(k => {
+        const btn = document.getElementById(`order-filter-${k}`);
+        if (btn) {
+          btn.className = (k === status || (status === 'pending_confirm' && k === 'pending'))
+            ? 'px-3 py-1 rounded-xl bg-indigo-950 text-white transition'
+            : 'px-3 py-1 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+        }
+      });
+      renderOrderFulfillmentList();
+    };
+
+    // 渲染三合一订单审核与履约清单
+    function renderOrderFulfillmentList() {
+      let filtered = allOrders;
+      if (activeOrderFilter === 'pending_confirm') {
+        filtered = allOrders.filter(o => o.order_status === 'pending_confirm' || o.order_status === 'counter_proposal');
+      } else if (activeOrderFilter === 'confirmed') {
+        filtered = allOrders.filter(o => o.order_status === 'confirmed' && o.delivery_status !== 'delivered');
+      } else if (activeOrderFilter === 'delivered') {
+        filtered = allOrders.filter(o => o.delivery_status === 'delivered');
+      }
+
+      const container = document.getElementById('order-fulfillment-list');
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">当前分类下暂无单据。</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(o => {
+        const isDelivered = (o.delivery_status === 'delivered');
+        const isPending = (o.order_status === 'pending_confirm');
+        const isProposal = (o.order_status === 'counter_proposal');
+        const isPush = (o.order_source === 'vendor_push');
+
+        const orderItems = Array.isArray(o.items) ? o.items : [];
+        const returnItems = Array.isArray(o.items_return) ? o.items_return : [];
+        const exchangeItems = Array.isArray(o.items_exchange) ? o.items_exchange : [];
+        const proofs = Array.isArray(o.proof_images) ? o.proof_images : [];
+
+        const orderTotal = parseFloat(o.total_amount || 0);
+        const returnTotal = parseFloat(o.return_amount || 0);
+        const netTotal = parseFloat(o.net_settle_amount || (orderTotal - returnTotal));
+
+        return `
+          <div class="p-4 bg-slate-50 border ${isPending ? 'border-amber-300 shadow-md' : 'border-slate-200'} rounded-3xl space-y-2.5 transition">
+            
+            <!-- 单据头部 -->
+            <div class="flex flex-wrap justify-between items-start gap-2 border-b border-slate-200/60 pb-2">
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <b class="text-sm text-slate-900">${o.store_name}</b>
+                  <span class="text-[10px] font-mono bg-slate-200 text-slate-700 px-1.5 rounded">#${o.order_no || o.id}</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    isDelivered ? 'bg-emerald-100 text-emerald-800' :
+                    isPending ? 'bg-amber-100 text-amber-900 animate-pulse' :
+                    isProposal ? 'bg-purple-100 text-purple-900' : 'bg-blue-100 text-blue-900'
+                  }">
+                    ${isDelivered ? '✅ 已送达核销' : isPending ? '⏳ 待总代同意' : isProposal ? '💬 已发修改建议' : '🚚 排单待配'}
+                  </span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${isPush ? 'bg-indigo-50 text-indigo-700' : 'bg-stone-100 text-stone-600'}">
+                    ${isPush ? '供货商主动供货' : '掌柜自主订货'}
+                  </span>
+                </div>
+                <div class="text-[10px] text-slate-400 mt-0.5 font-mono">
+                  制单时间: ${new Date(o.created_at).toLocaleString()} · 经办师傅: <b class="text-slate-700">${o.driver_name || '未派'}</b>
+                </div>
+              </div>
+
+              <!-- 结算策略说明标签 -->
+              <div class="text-right">
+                <span class="text-[10px] bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-lg font-bold">
+                  ${o.settlement_type || '授信赊销'}
+                </span>
+                ${o.settlement_note ? `<span class="block text-[9px] text-slate-400 mt-0.5 truncate max-w-xs">条款: ${o.settlement_note}</span>` : ''}
+              </div>
+            </div>
+
+            <!-- 三分区品项明细 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-white p-2.5 rounded-2xl border border-slate-100 text-[11px]">
+              <div>
+                <span class="text-[10px] font-bold text-emerald-800 block mb-0.5">① 新订货品 (增):</span>
+                ${orderItems.length 
+                  ? orderItems.map(i => `<div class="text-slate-700">• ${i.name} x ${i.qty}箱 (¥${i.price})</div>`).join('') 
+                  : '<div class="text-slate-300">无</div>'}
+              </div>
+              <div>
+                <span class="text-[10px] font-bold text-rose-700 block mb-0.5">② 授权退货 (减 · 原进价):</span>
+                ${returnItems.length 
+                  ? returnItems.map(i => `<div class="text-rose-700">• ${i.name} x ${i.qty}箱 (-¥${i.price}) [${i.reason || '破损'}]</div>`).join('') 
+                  : '<div class="text-slate-300">无退货</div>'}
+              </div>
+              <div>
+                <span class="text-[10px] font-bold text-amber-800 block mb-0.5">③ 调换交接 (平):</span>
+                ${exchangeItems.length 
+                  ? exchangeItems.map(i => `<div class="text-amber-800">• ${i.name} x ${i.qty}箱 [${i.reason || '同款调换'}]</div>`).join('') 
+                  : '<div class="text-slate-300">无调换</div>'}
+              </div>
+            </div>
+
+            <!-- 附言与凭据缩略图 -->
+            ${(o.note || proofs.length > 0 || o.sign_image_url) ? `
+              <div class="flex flex-wrap items-center justify-between gap-2 text-[10px] pt-0.5">
+                ${o.note ? `<div class="text-amber-800 font-medium">💬 随车附言: ${o.note}</div>` : '<div></div>'}
+                <div class="flex items-center gap-2">
+                  ${proofs.length ? `
+                    <span class="text-slate-400">异常原单/破损拍照:</span>
+                    <div class="flex gap-1">
+                      ${proofs.map(src => `<img src="${src}" class="h-6 w-6 rounded border border-slate-300 object-cover cursor-pointer" onclick="window.previewFullImage('${src}')">`).join('')}
+                    </div>
+                  ` : ''}
+                  ${o.sign_image_url ? `
+                    <span class="text-slate-400 ml-2">掌柜手签:</span>
+                    <img src="${o.sign_image_url}" class="h-6 border border-slate-200 bg-white rounded px-1 cursor-pointer" onclick="window.previewFullImage('${o.sign_image_url}')">
+                  ` : ''}
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- 实结净额与操作控制台 -->
+            <div class="flex flex-wrap justify-between items-center pt-2 border-t border-slate-200/60 text-xs">
+              <div class="font-mono">
+                <span class="text-slate-400 text-[10px]">订 ¥${orderTotal.toFixed(1)} - 退 ¥${returnTotal.toFixed(1)} =</span>
+                <span class="font-bold text-sm text-emerald-950 ml-1">应结净额: ¥${netTotal.toFixed(2)}</span>
+              </div>
+
+              <!-- 审核接单或打回按钮 -->
+              ${isPending ? `
+                <div class="flex items-center gap-2">
+                  <button onclick="window.hqRejectWithProposal(${o.id})" class="bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold px-3 py-1.5 rounded-xl border border-amber-200 active:scale-95 transition">
+                    💬 建议修改
+                  </button>
+                  <button onclick="window.hqApproveOrder(${o.id})" class="bg-[#064e3b] hover:bg-[#065f46] text-white font-bold px-4 py-1.5 rounded-xl shadow active:scale-95 transition">
+                    ✅ 同意接单 · 排单装车
+                  </button>
+                </div>
+              ` : `
+                <span class="text-[11px] text-slate-400 font-mono">
+                  ${o.driver_action_instruction || '依单办理点交'}
+                </span>
+              `}
+            </div>
+
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 供货商点同意接单
+    window.hqApproveOrder = async function(orderId) {
+      const order = allOrders.find(o => o.id === orderId);
+      if (!order) return;
+
+      let driverCmd = `【随车指令】配发新货 ${order.items?.length || 0}项；`;
+      if (order.items_return?.length) driverCmd += `验退带回 ${order.items_return.length}箱旧品；`;
+      if (order.settlement_type === 'cash') driverCmd += `现场收清现结款 ¥${parseFloat(order.net_settle_amount || 0).toFixed(2)}；`;
+      else driverCmd += `按${order.settlement_type}挂账签字，严禁私收现金！`;
+
+      const { error } = await supabase.from('store_order').update({
+        order_status: 'confirmed',
+        driver_action_instruction: driverCmd
+      }).eq('id', orderId);
+
+      if (error) alert('接单失败: ' + error.message);
+      else {
+        alert('✅ 已同意接单！订单已下发至随车配送员工作台！');
+        window.loadHQData();
+      }
+    };
+
+    // 供货商点建议修改打回
+    window.hqRejectWithProposal = async function(orderId) {
+      const feedback = prompt('请输入给掌柜的调整建议（如：缺货改配、退货理由核查、建议送达时间）：');
+      if (!feedback || !feedback.trim()) return;
+
+      const { error } = await supabase.from('store_order').update({
+        order_status: 'counter_proposal',
+        vendor_feedback: feedback.trim()
+      }).eq('id', orderId);
+
+      if (error) alert('打回失败: ' + error.message);
+      else {
+        alert('已打回单据并附上建议，待门店掌柜在手机端重新调整提交！');
+        window.loadHQData();
+      }
+    };
+
+    // 主动供货操作
+    window.openPushOrderModal = function() {
+      const storeSelect = document.getElementById('push-store-select');
+      storeSelect.innerHTML = allStores.map(s => `
+        <option value="${s.id}">
+          ${s.name} (授信余 ¥${(s.credit_limit || 2000) - (s.current_debt || 0)})
+        </option>
+      `).join('');
+
+      if (allStores.length > 0) {
+        window.onPushStoreChange(allStores[0].id);
+      }
+
+      const prodBox = document.getElementById('push-products-list');
+      prodBox.innerHTML = allProducts.filter(p => p.status !== 'inactive').map(p => `
+        <div class="flex justify-between items-center py-1 border-b border-slate-50">
+          <span class="text-slate-700">${p.name} (¥${p.tier_1_price}/${p.pack_unit || '箱'})</span>
+          <div class="flex items-center gap-1">
+            <input type="number" min="0" value="0" id="push-qty-${p.id}" class="w-16 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-center font-bold font-mono">
+            <span class="text-slate-400">箱</span>
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('push-modal').classList.remove('hidden');
+    };
+
+    window.onPushStoreChange = function(storeId) {
+      const s = allStores.find(x => x.id === parseInt(storeId));
+      if (s) {
+        document.getElementById('push-driver-name').value = s.driver_name || '老张师傅';
+        if (s.default_settlement) {
+          document.getElementById('push-settlement-select').value = s.default_settlement;
+        }
+      }
+    };
+
+    window.submitVendorPushOrder = async function() {
+      const storeId = parseInt(document.getElementById('push-store-select').value);
+      const store = allStores.find(s => s.id === storeId);
+      const settlement = document.getElementById('push-settlement-select').value;
+      const driver = document.getElementById('push-driver-name').value.trim() || '配送师傅';
+      const note = document.getElementById('push-note-input').value.trim();
+
+      const items = [];
+      let totalAmount = 0;
+      for (const p of allProducts) {
+        const inputEl = document.getElementById(`push-qty-${p.id}`);
+        const qty = parseInt(inputEl?.value || '0');
+        if (qty > 0) {
+          items.push({ id: p.id, name: p.name, spec: p.spec, price: p.tier_1_price, qty });
+          totalAmount += p.tier_1_price * qty;
+        }
+      }
+
+      if (items.length === 0) return alert('请至少填写 1 样主动供货商品的件数！');
+
+      const orderNo = `PS-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const { error } = await supabase.from('store_order').insert([{
+        order_no: orderNo,
+        tenant_id: currentAgent,
+        store_id: storeId,
+        store_name: store.name,
+        driver_name: driver,
+        order_source: 'vendor_push',
+        settlement_type: settlement,
+        settlement_note: note,
+        items: items,
+        items_return: [],
+        items_exchange: [],
+        total_amount: totalAmount,
+        return_amount: 0,
+        net_settle_amount: totalAmount,
+        order_status: 'confirmed',
+        delivery_status: 'ordered',
+        note: `[总代主动供货] ${note}`,
+        driver_action_instruction: `【主动供货】核验交付 ${items.length}项，按${settlement}结算。`
+      }]);
+
+      if (error) alert('发起主动供货失败: ' + error.message);
+      else {
+        alert('🎉 主动供货单已生成，已同步下发跟车师傅与掌柜！');
+        document.getElementById('push-modal').classList.add('hidden');
+        window.loadHQData();
+      }
+    };
+
+    // 门店策略配置弹窗 (授信 + 退货配额 + 结算白名单)
+    window.openStorePolicyModal = function(storeId) {
+      const s = allStores.find(x => x.id === storeId);
+      if (!s) return;
+
+      document.getElementById('policy-store-id').value = s.id;
+      document.getElementById('policy-store-name').innerText = `${s.name} (掌柜: ${s.contact || '负责人'})`;
+      document.getElementById('policy-credit-limit').value = s.credit_limit || 2000;
+      document.getElementById('policy-return-quota').value = s.monthly_return_quota || 500;
+      document.getElementById('policy-default-settlement').value = s.default_settlement || 'credit';
+      document.getElementById('policy-custom-terms').value = s.custom_settlement_terms || '';
+
+      const allowed = Array.isArray(s.allowed_settlements) ? s.allowed_settlements : ['cash', 'credit'];
+      document.querySelectorAll('.policy-cb').forEach(cb => {
+        cb.checked = allowed.includes(cb.value);
+      });
+
+      document.getElementById('store-policy-modal').classList.remove('hidden');
+    };
+
+    window.saveStorePolicySettings = async function() {
+      const storeId = parseInt(document.getElementById('policy-store-id').value);
+      const credit_limit = parseFloat(document.getElementById('policy-credit-limit').value) || 2000;
+      const monthly_return_quota = parseFloat(document.getElementById('policy-return-quota').value) || 500;
+      const default_settlement = document.getElementById('policy-default-settlement').value;
+      const custom_settlement_terms = document.getElementById('policy-custom-terms').value.trim();
+
+      const allowed_settlements = Array.from(document.querySelectorAll('.policy-cb:checked')).map(el => el.value);
+      if (allowed_settlements.length === 0) allowed_settlements.push('cash');
+
+      await supabase.from('store').update({
+        credit_limit,
+        monthly_return_quota,
+        default_settlement,
+        allowed_settlements,
+        custom_settlement_terms
+      }).eq('id', storeId);
+
+      alert('客户结算策略与风控额度保存完毕！');
+      document.getElementById('store-policy-modal').classList.add('hidden');
+      window.loadHQData();
     };
 
     window.filterProductByTag = function(tag) {
@@ -807,13 +1236,14 @@
               <div class="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-3 font-mono">
                 <span>脾气便签: ${tagBadges || '<span class="text-slate-300">无标签</span>'}</span>
                 <span>跟车师傅: <b class="text-indigo-800">${s.driver_name || '配送师傅'}</b></span>
+                <span>退换免批配额: <b class="text-rose-700 font-bold">¥${s.monthly_return_quota || 500}</b></span>
                 <span class="text-amber-800 font-bold">特权: ${s.visible_product_ids ? `${s.visible_product_ids.length} 种可进` : '全品项开放'}</span>
               </div>
             </div>
             <div class="flex items-center gap-2">
               <button onclick="window.editStoreTagsPrompt(${s.id}, '${JSON.stringify(s.tags || []).replace(/"/g, '&quot;')}')" class="text-[11px] bg-slate-100 text-slate-700 px-2 py-1 rounded-xl font-bold">🏷️ 贴便签</button>
+              <button onclick="window.openStorePolicyModal(${s.id})" class="text-[11px] bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-xl font-bold">⚙️ 策略与额度</button>
               <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '&quot;')}')" class="text-[11px] bg-indigo-50 text-indigo-900 border border-indigo-200 px-2.5 py-1 rounded-xl font-bold">🎯 进货特权</button>
-              <button onclick="window.modifyCreditLimit(${s.id}, ${s.credit_limit || 2000})" class="text-[11px] bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-xl font-bold">💳 调额度</button>
               <button onclick="window.reassignDriverPrompt(${s.id}, '${s.driver_name || '配送师傅'}')" class="text-[11px] bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-xl font-bold">🚚 派师傅</button>
             </div>
           </div>
@@ -845,6 +1275,7 @@
         contact: boss ? boss.trim() : '掌柜',
         phone: phone.trim(),
         credit_limit: credit ? parseFloat(credit) : 2000,
+        monthly_return_quota: 500,
         current_debt: 0,
         driver_name: '配送师傅'
       }]);
@@ -884,6 +1315,7 @@
         contact: bossName || '掌柜',
         phone: phone,
         credit_limit: 2000,
+        monthly_return_quota: 500,
         current_debt: 0,
         driver_name: '配送师傅'
       }]);
@@ -1045,14 +1477,6 @@
       alert('进货特权保存完毕！');
       window.closeVisibilityModal();
       window.loadHQData();
-    };
-
-    window.modifyCreditLimit = async function(storeId, currentLimit) {
-      const newLimit = prompt(`当前授信额度为 ¥${currentLimit}，输入新额度：`, currentLimit);
-      if (newLimit !== null && !isNaN(newLimit)) {
-        await supabase.from('store').update({ credit_limit: parseFloat(newLimit) }).eq('id', storeId);
-        window.loadHQData();
-      }
     };
 
     window.reassignDriverPrompt = async function(storeId, currentDriver) {
