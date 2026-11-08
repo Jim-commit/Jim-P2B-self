@@ -149,7 +149,7 @@
           <input type="number" step="0.1" id="collect-amount" oninput="window.updateDeliverBtnText()" placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-base font-bold text-emerald-950 outline-none focus:border-indigo-700">
         </div>
 
-        <!-- 现场抹零与规范化商业收款方式 (精简为三大类) -->
+        <!-- 现场抹零与规范化商业收款方式 (三大类) -->
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-slate-500 mb-1">现场抹零让利：</label>
@@ -324,7 +324,6 @@
 
       routeStores = stores || [];
 
-      // 查询已排单待送，或总代特批放行的单据
       const { data: pendingOrders } = await supabase
         .from('store_order')
         .select('*')
@@ -506,7 +505,7 @@
       document.getElementById('collect-basket-return').value = '0';
 
       window.clearSignature();
-      window.onCollectMethodChange(); // 强制初始化收款方式与实收金额输入状态
+      window.onCollectMethodChange();
       window.openModal('collect-modal');
     };
 
@@ -669,12 +668,21 @@
 
       const signBase64 = canvas.toDataURL('image/png');
 
+      // 严密推导款项业务性质 (杜绝 collect_type 非空报错)
+      let collectType = 'order_delivery';
+      if (netAmount < 0) {
+        collectType = 'refund_payout';
+      } else if (method === '挂账签收' || amount === 0) {
+        collectType = 'credit_sign';
+      }
+
       // 组装交接日志
       const payload = {
         tenant_id: currentAgent,
         store_id: storeId,
         store_name: store ? store.name : '合作门店',
         driver_name: currentDriver,
+        collect_type: collectType, // 👈 补齐此关键字段
         amount: amount,
         discount_amount: discount,
         basket_return: basketReturn,
@@ -685,6 +693,8 @@
 
       // 写入交接日志 (带字段降级保护)
       let { error: logErr } = await supabase.from('driver_collection_log').insert([payload]);
+      
+      // 容错降级重试：若库表缓存未更新，剔除部分新增拓展字段二次尝试
       if (logErr && logErr.message && logErr.message.includes('basket_deduct_amount')) {
         delete payload.basket_deduct_amount;
         delete payload.discount_amount;
