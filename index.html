@@ -269,7 +269,7 @@
             </div>
 
             <div class="flex justify-end">
-              <button onclick="window.generateFlyer(${p.id})" class="text-[10px] bg-stone-50 hover:bg-stone-100 text-stone-600 border border-stone-200 px-2 py-0.5 rounded-lg active:scale-95">
+              <button onclick="window.generateFlyer(${p.id})" class="text-[10px] bg-stone-50 hover:bg-stone-100 text-stone-600 border border-stone-200 px-2 py-0.5 rounded-lg active:scale-95 transition">
                 生成宣传单
               </button>
             </div>
@@ -384,6 +384,20 @@
 
       try {
         if (currentStore) {
+          // 1. 生成实际履约订单记录 (store_order)
+          await supabase.from('store_order').insert([{
+            tenant_id: currentAgent,
+            store_id: currentStore.id,
+            store_name: currentStore.name,
+            driver_name: currentStore.driver_name || '配送师傅',
+            total_amount: totalAmount,
+            pay_type: 'credit',
+            pay_status: 'pending',
+            delivery_status: 'ordered',
+            note: deliveryNote
+          }]);
+
+          // 2. 累加挂账欠款
           const newDebt = parseFloat(currentStore.current_debt || 0) + totalAmount;
           await supabase.from('store').update({ current_debt: newDebt }).eq('id', currentStore.id);
         }
