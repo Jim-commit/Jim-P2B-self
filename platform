@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaaS 平臺運營與廠家入駐管理中心</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&display=swap" rel="stylesheet">
+  <style>
+    .font-serif-sc { font-family: 'Noto Serif SC', serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans p-4 min-h-screen">
+  <div class="max-w-6xl mx-auto space-y-4">
+    
+    <!-- 頂部導航大盤 -->
+    <header class="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl shadow-xl flex flex-wrap justify-between items-center gap-4">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h1 class="text-lg font-bold text-white tracking-wide">平臺運營與入駐授權中樞</h1>
+          <span class="bg-indigo-500/20 text-indigo-300 text-[10px] px-2.5 py-0.5 rounded-full border border-indigo-400/30 font-mono">
+            角色 1 · Super Admin
+          </span>
+        </div>
+        <div class="text-xs text-slate-400 mt-1 flex flex-wrap gap-4 font-mono">
+          <span>入駐廠家/總代: <b id="stat-tenants" class="text-white">0 家</b></span>
+          <span>有效會員: <b id="stat-active-tenants" class="text-emerald-400">0 家</b></span>
+          <span>平臺連接小店: <b id="stat-stores" class="text-amber-400">0 家</b></span>
+          <span>在線商品主數據: <b id="stat-products" class="text-indigo-400">0 款</b></span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="window.openAddTenantModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow-md transition active:scale-95 flex items-center gap-1">
+          + 手動開通新入駐總代
+        </button>
+        <button onclick="window.loadPlatformData()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs px-3 py-2 rounded-xl font-bold transition">
+          重新整理大盤
+        </button>
+      </div>
+    </header>
+
+    <!-- 總代會員管理清單 -->
+    <section class="bg-slate-800/80 border border-slate-700 p-5 rounded-3xl shadow-lg space-y-3">
+      <div class="flex flex-wrap justify-between items-center gap-2">
+        <div>
+          <h2 class="text-sm font-bold text-white">🏢 入駐廠家 / 區域總代授權名冊</h2>
+          <p class="text-[11px] text-slate-400">管理租戶標識、會員等級、服務期截止日及專屬 6 位終端邀請碼</p>
+        </div>
+        <div class="flex gap-2">
+          <input type="text" id="search-tenant" oninput="window.filterTenants(this.value)" placeholder="搜尋公司名 / 租戶代碼..." class="bg-slate-900 border border-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-xl outline-none focus:border-indigo-500">
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs whitespace-nowrap">
+          <thead class="bg-slate-900/60 text-slate-400 font-medium border-b border-slate-700">
+            <tr>
+              <th class="p-3">租戶代碼 (Tenant ID)</th>
+              <th class="p-3">企業名稱</th>
+              <th class="p-3">負責人 / 電話</th>
+              <th class="p-3">專屬邀請碼</th>
+              <th class="p-3">會員等級</th>
+              <th class="p-3">有效期至</th>
+              <th class="p-3">狀態</th>
+              <th class="p-3 text-right">會員操作</th>
+            </tr>
+          </thead>
+          <tbody id="tenant-table-body" class="divide-y divide-slate-700/60">
+            <!-- 動態載入租戶 -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- 彈窗：新增 / 開通總代入駐 -->
+  <div id="add-tenant-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-3xl p-5 space-y-3.5 text-slate-200 shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-700">
+        <div>
+          <h3 class="font-bold text-sm text-white">🏢 開通新總代 / 廠家入駐名額</h3>
+          <p class="text-[10px] text-slate-400">為其建立獨立多租戶數據庫空間與專屬終端邀請碼</p>
+        </div>
+        <button onclick="window.closeAddTenantModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="space-y-2.5 text-xs">
+        <div>
+          <label class="block text-[11px] text-slate-400 mb-1">企業/總代全稱 *：</label>
+          <input type="text" id="new-company-name" placeholder="如：廣州粵海酒水批發總部" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">唯一租戶標識 (英文大寫) *：</label>
+            <input type="text" id="new-tenant-id" placeholder="如：GZ_YUEHAI" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 font-mono outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">專屬 6 位邀請碼 *：</label>
+            <input type="text" id="new-invite-code" placeholder="如：888003" maxlength="6" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 font-mono text-center outline-none focus:border-indigo-500">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">負責人姓名 *：</label>
+            <input type="text" id="new-contact" placeholder="如：周經理" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">聯繫電話 *：</label>
+            <input type="tel" id="new-phone" placeholder="11位手機號" maxlength="11" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">會員等級：</label>
+            <select id="new-tier" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none text-slate-300">
+              <option value="pro">專業版 (無上限)</option>
+              <option value="standard">標準版 (限100店)</option>
+              <option value="trial">試用版 (14天)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">會員有效期（年）：</label>
+            <select id="new-period-years" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none text-slate-300">
+              <option value="1">開通 1 年</option>
+              <option value="2">開通 2 年</option>
+              <option value="0.25">試用 3 個月</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2 border-t border-slate-700">
+        <button onclick="window.submitNewTenant()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
+          確認開通並頒發授權
+        </button>
+        <button onclick="window.closeAddTenantModal()" class="bg-slate-700 text-slate-300 font-bold px-4 py-2.5 rounded-2xl text-xs">
+          取消
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from './src/lib/supabase.js';
+
+    let allTenants = [];
+
+    window.openAddTenantModal = function() {
+      document.getElementById('new-company-name').value = '';
+      document.getElementById('new-tenant-id').value = '';
+      document.getElementById('new-invite-code').value = Math.floor(100000 + Math.random() * 900000).toString();
+      document.getElementById('new-contact').value = '';
+      document.getElementById('new-phone').value = '';
+      document.getElementById('add-tenant-modal').classList.remove('hidden');
+    };
+
+    window.closeAddTenantModal = function() {
+      document.getElementById('add-tenant-modal').classList.add('hidden');
+    };
+
+    window.loadPlatformData = async function() {
+      // 1. 抓取總代租戶表
+      const { data: tenants, error } = await supabase.from('platform_tenant').select('*').order('id', { ascending: false });
+      allTenants = tenants || [];
+
+      document.getElementById('stat-tenants').innerText = `${allTenants.length} 家`;
+      const activeCount = allTenants.filter(t => t.status === 'active').length;
+      document.getElementById('stat-active-tenants').innerText = `${activeCount} 家`;
+
+      // 2. 巨觀統計小店與商品量
+      const { count: storeCount } = await supabase.from('store').select('*', { count: 'exact', head: true });
+      const { count: prodCount } = await supabase.from('product').select('*', { count: 'exact', head: true });
+      document.getElementById('stat-stores').innerText = `${storeCount || 0} 家`;
+      document.getElementById('stat-products').innerText = `${prodCount || 0} 款`;
+
+      renderTenantTable(allTenants);
+    };
+
+    function renderTenantTable(list) {
+      const tbody = document.getElementById('tenant-table-body');
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-500">暫無總代入駐記錄</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = list.map(t => {
+        const isExpired = new Date(t.expire_date) < new Date() || t.status === 'expired';
+        const statusBadge = isExpired
+          ? `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full text-[10px]">已過期</span>`
+          : `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[10px]">服務中</span>`;
+
+        const tierBadge = t.tier === 'pro'
+          ? `<span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold">專業版</span>`
+          : `<span class="bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full text-[10px]">標準版</span>`;
+
+        return `
+          <tr class="hover:bg-slate-800/60 transition">
+            <td class="p-3 font-mono font-bold text-white">${t.tenant_id}</td>
+            <td class="p-3 font-bold text-slate-200">${t.company_name}</td>
+            <td class="p-3 text-slate-400 font-mono">${t.contact_name} (${t.phone})</td>
+            <td class="p-3 font-mono font-bold text-amber-400">${t.invite_code}</td>
+            <td class="p-3">${tierBadge}</td>
+            <td class="p-3 font-mono ${isExpired ? 'text-rose-400' : 'text-slate-300'}">${t.expire_date}</td>
+            <td class="p-3">${statusBadge}</td>
+            <td class="p-3 text-right space-x-2">
+              <button onclick="window.renewTenant('${t.tenant_id}', '${t.company_name}')" class="text-[11px] text-emerald-400 hover:underline font-bold">
+                續費延期
+              </button>
+              <button onclick="window.toggleTenantStatus('${t.tenant_id}', '${t.status}')" class="text-[11px] ${t.status === 'active' ? 'text-rose-400 hover:underline' : 'text-indigo-400 hover:underline'}">
+                ${t.status === 'active' ? '凍結' : '解凍'}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    window.filterTenants = function(q) {
+      if (!q.trim()) return renderTenantTable(allTenants);
+      const filtered = allTenants.filter(t => 
+        t.company_name.toLowerCase().includes(q.toLowerCase()) || 
+        t.tenant_id.toLowerCase().includes(q.toLowerCase())
+      );
+      renderTenantTable(filtered);
+    };
+
+    window.submitNewTenant = async function() {
+      const company_name = document.getElementById('new-company-name').value.trim();
+      const tenant_id = document.getElementById('new-tenant-id').value.trim().toUpperCase();
+      const invite_code = document.getElementById('new-invite-code').value.trim();
+      const contact_name = document.getElementById('new-contact').value.trim();
+      const phone = document.getElementById('new-phone').value.trim();
+      const tier = document.getElementById('new-tier').value;
+      const years = parseFloat(document.getElementById('new-period-years').value);
+
+      if (!company_name || !tenant_id || !invite_code || !phone) {
+        return alert('請填寫完整的總代企業全稱、租戶代碼、邀請碼與聯繫電話！');
+      }
+
+      // 計算到期日
+      const exp = new Date();
+      exp.setDate(exp.getDate() + Math.round(years * 365));
+      const expire_date = exp.toISOString().split('T')[0];
+
+      const { error } = await supabase.from('platform_tenant').insert([{
+        tenant_id,
+        company_name,
+        contact_name,
+        phone,
+        invite_code,
+        tier,
+        status: 'active',
+        expire_date
+      }]);
+
+      if (error) {
+        alert('開通失敗：' + error.message);
+      } else {
+        alert(`🎉 恭喜！總代【${company_name}】已成功開通入駐！\n租戶標識：${tenant_id}\n邀請碼：${invite_code}\n效期至：${expire_date}`);
+        window.closeAddTenantModal();
+        window.loadPlatformData();
+      }
+    };
+
+    window.renewTenant = async function(tenant_id, company_name) {
+      const addYears = prompt(`為總代【${company_name}】延長會員期，請輸入延長年數（如：1 或 2）：`, '1');
+      if (!addYears || isNaN(addYears)) return;
+
+      const exp = new Date();
+      exp.setDate(exp.getDate() + Math.round(parseFloat(addYears) * 365));
+      const newExp = exp.toISOString().split('T')[0];
+
+      await supabase.from('platform_tenant').update({ expire_date: newExp, status: 'active' }).eq('tenant_id', tenant_id);
+      alert(`已成功續期至 ${newExp}！`);
+      window.loadPlatformData();
+    };
+
+    window.toggleTenantStatus = async function(tenant_id, currentStatus) {
+      const target = currentStatus === 'active' ? 'expired' : 'active';
+      if (!confirm(`確定要${target === 'expired' ? '凍結該總代賬號（凍結後無法新增商品與開戶）' : '重新激活該總代'}嗎？`)) return;
+
+      await supabase.from('platform_tenant').update({ status: target }).eq('tenant_id', tenant_id);
+      window.loadPlatformData();
+    };
+
+    window.loadPlatformData();
+  </script>
+</body>
+</html>
