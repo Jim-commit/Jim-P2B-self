@@ -140,7 +140,7 @@
       </div>
     </section>
 
-    <!-- 板块 3：随车收款与订单履约对账 (三合一核单 + 审核流转) -->
+    <!-- 板块 3：随车收款与订单履约对账 (三合一核单 + 审核流转 + AI经营风控) -->
     <section id="tab-settle" class="hidden space-y-4">
       
       <!-- 订单履约流转与双向确认池 (待审核 / 已排单 / 已送达) -->
@@ -148,7 +148,7 @@
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
             <h2 class="text-sm font-bold text-slate-800">📋 供采对账凭单审阅与履约调度</h2>
-            <p class="text-[11px] text-slate-400">订/退/换三合一净额审核、结算策略核对、异常原图查验、点【同意接单】或【建议修改】</p>
+            <p class="text-[11px] text-slate-400">订/退/换三合一净额审核、结算策略核对、异常原图查验、AI风控评估、点【同意接单】或【建议修改】</p>
           </div>
           <!-- 筛选状态切换胶囊 -->
           <div class="flex gap-1.5 text-xs font-bold">
@@ -575,6 +575,36 @@
       '生鲜低温': ['常温纯奶', '低温酸奶', '冷冻面点']
     };
 
+    // AI 经营风控建议分析引擎 (总代审核侧专享)
+    function analyzeOrderRiskAI({ orderItems, returnItems, exchangeItems, storeQuota, usedQuota }) {
+      const orderTotal = orderItems.reduce((acc, it) => acc + ((parseFloat(it.price) || 0) * (parseInt(it.qty) || 0)), 0);
+      const returnTotal = returnItems.reduce((acc, it) => acc + ((parseFloat(it.price) || 0) * (parseInt(it.qty) || 0)), 0);
+      const remainQuota = Math.max(0, storeQuota - usedQuota);
+
+      const tips = [];
+      let riskLevel = 'normal'; // normal | warning | danger
+
+      if (returnTotal > 0 && returnTotal > remainQuota) {
+        riskLevel = 'danger';
+        tips.push(`⚠️ 超额预警：本次退货抵扣 ¥${returnTotal.toFixed(2)} 已超出该店月度免批配额余额 (余 ¥${remainQuota.toFixed(2)})，需重点核验异常照片！`);
+      }
+
+      if (orderTotal > 0 && (returnTotal / (orderTotal + returnTotal)) > 0.3) {
+        if (riskLevel !== 'danger') riskLevel = 'warning';
+        tips.push(`💡 风控提示：本次退货占总订货比高达 ${((returnTotal / (orderTotal + returnTotal)) * 100).toFixed(0)}%，建议核实批次质量并酌情建议修改。`);
+      }
+
+      if (exchangeItems.length > 2) {
+        tips.push(`💡 调换提示：本单平换品项达 ${exchangeItems.length} 种，请提示跟车师傅核对带回旧包装条码完整性。`);
+      }
+
+      if (tips.length === 0) {
+        tips.push(`✅ 信用良好：退换货项在核定月度额度内，历史履约良好，建议直接同意接单装车。`);
+      }
+
+      return { riskLevel, tips, returnTotal, orderTotal, netTotal: orderTotal - returnTotal };
+    }
+
     window.switchEntityType = function(type) {
       localStorage.setItem('hq_entity_type', type);
       const isFactory = (type === 'factory');
@@ -823,7 +853,6 @@
         `).join('');
     };
 
-    // 订单筛选过滤
     window.filterOrderStatus = function(status) {
       activeOrderFilter = status;
       ['pending', 'confirmed', 'delivered', 'all'].forEach(k => {
@@ -837,7 +866,7 @@
       renderOrderFulfillmentList();
     };
 
-    // 渲染三合一订单审核与履约清单
+    // 渲染三合一订单审核与履约清单 (嵌入总代专属 AI 风控卡片)
     function renderOrderFulfillmentList() {
       let filtered = allOrders;
       if (activeOrderFilter === 'pending_confirm') {
@@ -869,6 +898,12 @@
         const returnTotal = parseFloat(o.return_amount || 0);
         const netTotal = parseFloat(o.net_settle_amount || (orderTotal - returnTotal));
 
+        // 匹配当前门店档案，运行 AI 经营风控建议
+        const store = allStores.find(s => s.id === o.store_id);
+        const storeQuota = parseFloat(store?.monthly_return_quota || 500);
+        const usedQuota = parseFloat(store?.used_return_quota || 0);
+        const aiResult = analyzeOrderRiskAI({ orderItems, returnItems, exchangeItems, storeQuota, usedQuota });
+
         return `
           <div class="p-4 bg-slate-50 border ${isPending ? 'border-amber-300 shadow-md' : 'border-slate-200'} rounded-3xl space-y-2.5 transition">
             
@@ -883,7 +918,7 @@
                     isPending ? 'bg-amber-100 text-amber-900 animate-pulse' :
                     isProposal ? 'bg-purple-100 text-purple-900' : 'bg-blue-100 text-blue-900'
                   }">
-                    ${isDelivered ? '✅ 已送达核销' : isPending ? '⏳ 待总代同意' : isProposal ? '💬 已发修改建议' : '🚚 排单待配'}
+                    ${isDelivered ? '✅ 已送达核销' : isPending ? '⏳ 待总代确认' : isProposal ? '💬 已发修改建议' : '🚚 排单待配'}
                   </span>
                   <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${isPush ? 'bg-indigo-50 text-indigo-700' : 'bg-stone-100 text-stone-600'}">
                     ${isPush ? '供货商主动供货' : '掌柜自主订货'}
@@ -912,18 +947,39 @@
                   : '<div class="text-slate-300">无</div>'}
               </div>
               <div>
-                <span class="text-[10px] font-bold text-rose-700 block mb-0.5">② 授权退货 (减 · 原进价):</span>
+                <span class="text-[10px] font-bold text-rose-700 block mb-0.5">② 授权退货 (减 · 锁定原单价):</span>
                 ${returnItems.length 
                   ? returnItems.map(i => `<div class="text-rose-700">• ${i.name} x ${i.qty}箱 (-¥${i.price}) [${i.reason || '破损'}]</div>`).join('') 
                   : '<div class="text-slate-300">无退货</div>'}
               </div>
               <div>
-                <span class="text-[10px] font-bold text-amber-800 block mb-0.5">③ 调换交接 (平):</span>
+                <span class="text-[10px] font-bold text-amber-800 block mb-0.5">③ 调换交接 (平 · 一新换一旧):</span>
                 ${exchangeItems.length 
                   ? exchangeItems.map(i => `<div class="text-amber-800">• ${i.name} x ${i.qty}箱 [${i.reason || '同款调换'}]</div>`).join('') 
                   : '<div class="text-slate-300">无调换</div>'}
               </div>
             </div>
+
+            <!-- ⭐ 总代专属：AI 经营风控建议卡片 (仅供总代审核决策) -->
+            ${isPending ? `
+              <div class="p-2.5 rounded-2xl border text-[11px] space-y-1 ${
+                aiResult.riskLevel === 'danger' ? 'bg-rose-50 border-rose-200 text-rose-950' :
+                aiResult.riskLevel === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-950' :
+                'bg-emerald-50 border-emerald-200 text-emerald-950'
+              }">
+                <div class="font-bold flex items-center gap-1.5">
+                  <span>🤖 AI 经营风控核定建议：</span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold ${
+                    aiResult.riskLevel === 'danger' ? 'bg-rose-200 text-rose-900' :
+                    aiResult.riskLevel === 'warning' ? 'bg-amber-200 text-amber-900' :
+                    'bg-emerald-200 text-emerald-900'
+                  }">
+                    ${aiResult.riskLevel === 'danger' ? '高风险关注' : aiResult.riskLevel === 'warning' ? '建议复核' : '低风险放行'}
+                  </span>
+                </div>
+                ${aiResult.tips.map(t => `<div class="text-[10px] leading-tight">• ${t}</div>`).join('')}
+              </div>
+            ` : ''}
 
             <!-- 附言与凭据缩略图 -->
             ${(o.note || proofs.length > 0 || o.sign_image_url) ? `
@@ -951,7 +1007,7 @@
                 <span class="font-bold text-sm text-emerald-950 ml-1">应结净额: ¥${netTotal.toFixed(2)}</span>
               </div>
 
-              <!-- 审核接单或打回按钮 -->
+              <!-- 审核接单或打回按钮 (供货商专属) -->
               ${isPending ? `
                 <div class="flex items-center gap-2">
                   <button onclick="window.hqRejectWithProposal(${o.id})" class="bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold px-3 py-1.5 rounded-xl border border-amber-200 active:scale-95 transition">
