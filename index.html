@@ -29,16 +29,25 @@
             <span>总代: <b id="tenant-badge" class="font-mono text-emerald-100">BJ_SHUNDA</b></span>
           </div>
         </div>
-        <button onclick="window.openModal('bind-agent-modal')" class="text-[11px] bg-white/10 hover:bg-white/20 text-emerald-100 border border-emerald-400/30 px-2.5 py-1 rounded-xl active:scale-95">
-          换供货商
-        </button>
+        <div class="flex items-center gap-1.5">
+          <button onclick="window.openReceiptsModal()" class="text-[11px] bg-amber-400 text-stone-900 font-bold px-2.5 py-1 rounded-xl shadow active:scale-95">
+            📜 单据/收条
+          </button>
+          <button onclick="window.openModal('bind-agent-modal')" class="text-[11px] bg-white/10 hover:bg-white/20 text-emerald-100 border border-emerald-400/30 px-2.5 py-1 rounded-xl active:scale-95">
+            换总代
+          </button>
+        </div>
       </div>
 
-      <!-- 赊销额度与挂账 -->
+      <!-- 赊销额度与挂账看板 -->
       <div class="mt-3 bg-emerald-950/60 p-3 rounded-2xl border border-emerald-700/40 flex justify-between items-center text-xs">
         <div>
-          <span class="text-emerald-300 text-[10px] block">可用赊销额度</span>
+          <span class="text-emerald-300 text-[10px] block">可用赊销周转金</span>
           <b id="credit-avail" class="text-amber-300 font-mono text-base font-bold">¥2000.00</b>
+        </div>
+        <div class="text-center">
+          <span class="text-emerald-300 text-[10px] block">借用空筐</span>
+          <b id="store-basket-count" class="text-amber-200 font-mono text-sm font-bold">0 个</b>
         </div>
         <div class="text-right">
           <span class="text-emerald-300 text-[10px] block">随车挂账累计</span>
@@ -46,31 +55,38 @@
         </div>
       </div>
       <div class="text-[10px] text-emerald-200 mt-1.5 flex justify-between">
-        <span>跟车师傅: <b id="store-driver" class="text-white">配送师傅</b></span>
-        <span>随车核销 · 日清日结</span>
+        <span>跟车服务人: <b id="store-driver" class="text-white">配送师傅</b></span>
+        <span>随车卸货 · 钱货两清</span>
       </div>
     </header>
 
-    <!-- 分类标签栏 -->
-    <div id="category-bar" class="flex gap-2 p-3 overflow-x-auto no-scrollbar border-b border-stone-100 bg-white sticky top-0 z-10 text-xs">
-      <button onclick="window.filterCategory('全部')" class="cat-pill bg-[#064e3b] text-white px-3 py-1.5 rounded-xl font-bold whitespace-nowrap">
-        全部品项
-      </button>
+    <!-- 分类标签与卖点贴快筛 -->
+    <div class="sticky top-0 z-10 bg-white border-b border-stone-100 p-2 space-y-1.5">
+      <div id="category-bar" class="flex gap-2 overflow-x-auto no-scrollbar text-xs">
+        <button onclick="window.filterCategory('全部')" class="cat-pill bg-[#064e3b] text-white px-3 py-1.5 rounded-xl font-bold whitespace-nowrap">
+          全部现货
+        </button>
+      </div>
+      <div id="quick-tag-pills" class="flex gap-1.5 overflow-x-auto no-scrollbar text-[11px] pt-1">
+        <button onclick="window.filterBySpecialTag('全部')" class="tag-filter-chip bg-stone-800 text-white px-2 py-0.5 rounded-lg whitespace-nowrap font-bold">全部</button>
+        <button onclick="window.filterBySpecialTag('🔥 街坊抢手')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg whitespace-nowrap">🔥 街坊抢手</button>
+        <button onclick="window.filterBySpecialTag('⏳ 临期捡漏')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg whitespace-nowrap">⏳ 临期捡漏</button>
+        <button onclick="window.filterBySpecialTag('💎 高毛利')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg whitespace-nowrap">💎 高毛利</button>
+      </div>
     </div>
 
-    <!-- 货品列表 -->
+    <!-- 货品列表容器 -->
     <main id="product-container" class="p-3 divide-y divide-stone-100 flex-1">
       <div class="p-12 text-center text-stone-400 text-xs">正在调取在售货单...</div>
     </main>
 
-    <!-- 底部报单栏 -->
+    <!-- 底部常驻报单栏 -->
     <footer class="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 space-y-2 z-20">
-      <!-- 随车附言 -->
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-[10px]">
         <span class="text-stone-400 whitespace-nowrap">随车附言:</span>
         <button onclick="window.appendDeliveryNote('赶早送达')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 px-2 py-0.5 rounded-lg whitespace-nowrap">赶早送达</button>
         <button onclick="window.appendDeliveryNote('送入库房')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 px-2 py-0.5 rounded-lg whitespace-nowrap">送入库房</button>
-        <button onclick="window.appendDeliveryNote('备零钱')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 px-2 py-0.5 rounded-lg whitespace-nowrap">备零钱</button>
+        <button onclick="window.appendDeliveryNote('备零钱找零')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 px-2 py-0.5 rounded-lg whitespace-nowrap">备零钱</button>
         <button onclick="window.appendDeliveryNote('后厨验收')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 px-2 py-0.5 rounded-lg whitespace-nowrap">后厨验收</button>
       </div>
 
@@ -88,6 +104,26 @@
       </div>
     </footer>
 
+  </div>
+
+  <!-- 弹窗：单据历史与电子收条看板 -->
+  <div id="receipts-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <h3 class="font-bold text-sm text-stone-800">📜 进货单据与付款收条</h3>
+        <button onclick="window.closeModal('receipts-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div class="space-y-2">
+        <b class="text-xs text-stone-700 block">🚚 进货报单记录 (含货物明细)</b>
+        <div id="my-orders-list" class="space-y-2 text-xs"></div>
+      </div>
+
+      <div class="space-y-2 pt-2 border-t border-stone-100">
+        <b class="text-xs text-stone-700 block">🧾 随车师傅收款电子收条</b>
+        <div id="my-receipts-list" class="space-y-2 text-xs"></div>
+      </div>
+    </div>
   </div>
 
   <!-- 宣传单生成弹窗 -->
@@ -111,21 +147,14 @@
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <h3 class="font-bold text-sm text-stone-800">绑定供货总代</h3>
-        <button onclick="window.closeModal('bind-agent-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
+        <button onclick="window.closeModal('bind-agent-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="space-y-2 text-xs">
         <div>
           <label class="block text-stone-600 mb-1">总代 6 位认领码：</label>
           <div class="flex gap-2">
             <input type="text" id="bind-input-code" placeholder="输入 6 位认领码" maxlength="6" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-center font-bold outline-none">
-            <button onclick="window.bindByCode()" class="bg-[#064e3b] text-white font-bold px-3 py-1.5 rounded-xl active:scale-95">验证</button>
-          </div>
-        </div>
-        <div class="pt-2 border-t border-stone-100">
-          <label class="block text-stone-600 mb-1">手机号直接认领：</label>
-          <div class="flex gap-2">
-            <input type="tel" id="bind-input-phone" placeholder="输入建档手机号" maxlength="11" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono outline-none">
-            <button onclick="window.bindByPhone()" class="bg-amber-600 text-white font-bold px-3 py-1.5 rounded-xl active:scale-95">认领</button>
+            <button onclick="window.bindByCode()" class="bg-[#064e3b] text-white font-bold px-3 py-1.5 rounded-xl">验证</button>
           </div>
         </div>
       </div>
@@ -142,6 +171,7 @@
     let shopType = localStorage.getItem('active_shop_type') || '社区超市';
     let allProducts = [];
     let currentCategory = '全部';
+    let currentTagFilter = '全部';
     const cart = {};
     let deliveryNote = '';
 
@@ -169,14 +199,6 @@
 
     async function initTerminal() {
       renderShopType();
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlAgent = urlParams.get('agent') || urlParams.get('tenant');
-      if (urlAgent) {
-        currentAgent = urlAgent;
-        localStorage.setItem('active_agent', currentAgent);
-      }
-
       document.getElementById('tenant-badge').innerText = currentAgent;
 
       const { data: stores } = await supabase.from('store').select('*').eq('tenant_id', currentAgent).limit(1);
@@ -185,6 +207,7 @@
         document.getElementById('store-title').innerText = currentStore.name || '合作门店';
         document.getElementById('store-boss').innerText = currentStore.contact || '负责人';
         document.getElementById('store-driver').innerText = currentStore.driver_name || '配送师傅';
+        document.getElementById('store-basket-count').innerText = `${currentStore.basket_count || 0} 个`;
         
         const limit = parseFloat(currentStore.credit_limit || 2000);
         const debt = parseFloat(currentStore.current_debt || 0);
@@ -200,7 +223,6 @@
         .order('id', { ascending: false });
 
       let rawProds = prods || [];
-
       if (currentStore && currentStore.visible_product_ids && currentStore.visible_product_ids.length > 0) {
         allProducts = rawProds.filter(p => currentStore.visible_product_ids.includes(p.id));
       } else {
@@ -213,8 +235,7 @@
 
     function renderCategoryTabs() {
       const categories = ['全部', ...new Set(allProducts.map(p => p.category_main).filter(Boolean))];
-      const bar = document.getElementById('category-bar');
-      bar.innerHTML = categories.map(c => `
+      document.getElementById('category-bar').innerHTML = categories.map(c => `
         <button onclick="window.filterCategory('${c}')" class="cat-pill ${c === currentCategory ? 'bg-[#064e3b] text-white' : 'bg-stone-100 text-stone-600'} px-3 py-1.5 rounded-xl font-bold whitespace-nowrap">
           ${c}
         </button>
@@ -227,14 +248,28 @@
       renderProductList();
     };
 
+    window.filterBySpecialTag = function(tag) {
+      currentTagFilter = tag;
+      document.querySelectorAll('.tag-filter-chip').forEach(b => {
+        b.className = (b.innerText === tag) 
+          ? 'tag-filter-chip bg-stone-800 text-white px-2 py-0.5 rounded-lg whitespace-nowrap font-bold'
+          : 'tag-filter-chip bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg whitespace-nowrap';
+      });
+      renderProductList();
+    };
+
     function renderProductList() {
-      const filtered = currentCategory === '全部' 
+      let filtered = (currentCategory === '全部') 
         ? allProducts 
         : allProducts.filter(p => p.category_main === currentCategory);
 
+      if (currentTagFilter !== '全部') {
+        filtered = filtered.filter(p => Array.isArray(p.tags) && p.tags.includes(currentTagFilter));
+      }
+
       const container = document.getElementById('product-container');
       if (filtered.length === 0) {
-        container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">该分类暂无在售货品</div>';
+        container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">无符合条件的在售货品</div>';
         return;
       }
 
@@ -242,7 +277,6 @@
         const imgHtml = p.image_url 
           ? `<img src="${p.image_url}" class="w-14 h-14 rounded-xl object-cover border border-stone-200">`
           : `<div class="w-14 h-14 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400">无图</div>`;
-
         const tags = Array.isArray(p.tags) ? p.tags : [];
         const tagHtml = tags.map(t => `<span class="bg-amber-50 text-amber-900 border border-amber-200 text-[9px] px-1 py-0.2 rounded font-medium">${t}</span>`).join(' ');
 
@@ -269,8 +303,8 @@
             </div>
 
             <div class="flex justify-end">
-              <button onclick="window.generateFlyer(${p.id})" class="text-[10px] bg-stone-50 hover:bg-stone-100 text-stone-600 border border-stone-200 px-2 py-0.5 rounded-lg active:scale-95 transition">
-                生成宣传单
+              <button onclick="window.generateFlyer(${p.id})" class="text-[10px] bg-stone-50 hover:bg-stone-100 text-stone-600 border border-stone-200 px-2 py-0.5 rounded-lg active:scale-95">
+                做张宣传单
               </button>
             </div>
           </div>
@@ -287,15 +321,11 @@
     };
 
     function updateCartSummary() {
-      let totalAmount = 0;
-      let totalCount = 0;
+      let totalAmount = 0, totalCount = 0;
       for (const [id, qty] of Object.entries(cart)) {
         if (qty > 0) {
           const prod = allProducts.find(x => x.id === parseInt(id));
-          if (prod) {
-            totalAmount += prod.tier_1_price * qty;
-            totalCount += qty;
-          }
+          if (prod) { totalAmount += prod.tier_1_price * qty; totalCount += qty; }
         }
       }
       document.getElementById('cart-total-amount').innerText = totalAmount.toFixed(2);
@@ -309,66 +339,28 @@
       const shopName = currentStore ? currentStore.name : '合作门店';
       const canvas = document.getElementById('hidden-canvas');
       const ctx = canvas.getContext('2d');
+      canvas.width = 600; canvas.height = 760;
 
-      canvas.width = 600;
-      canvas.height = 760;
-
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, 600, 760);
-
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 600, 760);
       const headColor = (shopType === '餐饮饭店') ? '#78350f' : '#064e3b';
-      ctx.fillStyle = headColor;
-      ctx.fillRect(30, 30, 540, 80);
+      ctx.fillStyle = headColor; ctx.fillRect(30, 30, 540, 80);
       
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 24px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${shopName} · 正品严选`, 300, 78);
+      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`${shopName} · 正品严选直供`, 300, 78);
 
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.onload = function() {
-        ctx.drawImage(img, 120, 140, 360, 300);
-        drawText();
-      };
-      img.onerror = function() {
-        ctx.fillStyle = '#f3f4f6';
-        ctx.fillRect(120, 140, 360, 300);
-        drawText();
-      };
+      img.onload = function() { ctx.drawImage(img, 120, 140, 360, 300); drawText(); };
+      img.onerror = function() { ctx.fillStyle = '#f3f4f6'; ctx.fillRect(120, 140, 360, 300); drawText(); };
       img.src = prod.image_url || '';
 
       function drawText() {
-        ctx.fillStyle = '#111827';
-        ctx.font = 'bold 26px sans-serif';
-        ctx.textAlign = 'center';
+        ctx.fillStyle = '#111827'; ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center';
         ctx.fillText(prod.name, 300, 480);
-
-        ctx.fillStyle = '#6b7280';
-        ctx.font = '16px sans-serif';
+        ctx.fillStyle = '#6b7280'; ctx.font = '16px sans-serif';
         ctx.fillText(`规格：${prod.spec || '整箱装'} · 正品直发`, 300, 515);
-
-        ctx.fillStyle = '#b91c1c';
-        ctx.font = 'bold 36px sans-serif';
-        if (shopType === '餐饮饭店') {
-          ctx.fillText(`明厨亮灶 · 良心选材`, 300, 580);
-        } else {
-          ctx.fillText(`老客拼单价：¥${(prod.tier_1_price * 1.15).toFixed(1)}`, 300, 580);
-        }
-
-        ctx.fillStyle = '#f9fafb';
-        ctx.fillRect(50, 630, 500, 80);
-        ctx.strokeStyle = '#e5e7eb';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(50, 630, 500, 80);
-
-        ctx.fillStyle = '#374151';
-        ctx.font = 'bold 16px sans-serif';
-        ctx.fillText('源头总代供货 · 正品保障', 300, 665);
-        ctx.font = '13px sans-serif';
-        ctx.fillStyle = '#6b7280';
-        ctx.fillText('到店自提或微信留言预留', 300, 690);
-
+        ctx.fillStyle = '#b91c1c'; ctx.font = 'bold 36px sans-serif';
+        ctx.fillText(shopType === '餐饮饭店' ? `明厨亮灶 · 良心选材` : `老客拼单价：¥${(prod.tier_1_price * 1.15).toFixed(1)}`, 300, 580);
         document.getElementById('flyer-preview-img').src = canvas.toDataURL('image/jpeg', 0.85);
         window.openModal('flyer-modal');
       }
@@ -378,13 +370,20 @@
       const totalAmount = parseFloat(document.getElementById('cart-total-amount').innerText);
       if (totalAmount <= 0) return alert('未选择货品件数！');
 
+      const itemsPayload = [];
+      for (const [id, qty] of Object.entries(cart)) {
+        if (qty > 0) {
+          const p = allProducts.find(x => x.id === parseInt(id));
+          if (p) itemsPayload.push({ id: p.id, name: p.name, spec: p.spec, price: p.tier_1_price, qty });
+        }
+      }
+
       const btn = document.getElementById('btn-submit-order');
       btn.disabled = true;
       btn.innerText = '提交中...';
 
       try {
         if (currentStore) {
-          // 1. 生成实际履约订单记录 (store_order)
           await supabase.from('store_order').insert([{
             tenant_id: currentAgent,
             store_id: currentStore.id,
@@ -394,16 +393,15 @@
             pay_type: 'credit',
             pay_status: 'pending',
             delivery_status: 'ordered',
-            note: deliveryNote
+            note: deliveryNote,
+            items: itemsPayload
           }]);
 
-          // 2. 累加挂账欠款
           const newDebt = parseFloat(currentStore.current_debt || 0) + totalAmount;
           await supabase.from('store').update({ current_debt: newDebt }).eq('id', currentStore.id);
         }
 
-        const noteInfo = deliveryNote ? `\n随车附言：${deliveryNote}` : '';
-        alert(`报单成功：合计 ¥${totalAmount.toFixed(2)}${noteInfo}\n已转达跟车师傅安排装车。`);
+        alert(`报单成功！合计 ¥${totalAmount.toFixed(2)}\n跟车师傅已收到配货清单，正安排装车！`);
         for (const k of Object.keys(cart)) cart[k] = 0;
         deliveryNote = '';
         renderProductList();
@@ -417,6 +415,53 @@
       }
     };
 
+    window.openReceiptsModal = async function() {
+      if (!currentStore) return alert('未绑定门店');
+      window.openModal('receipts-modal');
+
+      const { data: myOrders } = await supabase
+        .from('store_order')
+        .select('*')
+        .eq('store_id', currentStore.id)
+        .order('id', { ascending: false })
+        .limit(10);
+
+      document.getElementById('my-orders-list').innerHTML = (myOrders || []).map(o => {
+        const items = Array.isArray(o.items) ? o.items : [];
+        const itemsText = items.map(it => `${it.name} x ${it.qty}箱`).join('、');
+        return `
+          <div class="p-2.5 bg-stone-50 border border-stone-200 rounded-xl space-y-1">
+            <div class="flex justify-between font-bold">
+              <span>单号 #${o.id} · ¥${o.total_amount}</span>
+              <span class="${o.delivery_status === 'delivered' ? 'text-emerald-700' : 'text-amber-700'}">
+                ${o.delivery_status === 'delivered' ? '已送达平账' : '排单待送'}
+              </span>
+            </div>
+            <div class="text-[10px] text-stone-500">品项: ${itemsText || '整批进货'}</div>
+            <div class="text-[10px] text-stone-400">报单时间: ${new Date(o.created_at).toLocaleString()}</div>
+          </div>
+        `;
+      }).join('') || '<div class="text-stone-400 text-center py-2">暂无报单</div>';
+
+      const { data: myReceipts } = await supabase
+        .from('driver_collection_log')
+        .select('*')
+        .eq('store_id', currentStore.id)
+        .order('id', { ascending: false })
+        .limit(10);
+
+      document.getElementById('my-receipts-list').innerHTML = (myReceipts || []).map(r => `
+        <div class="p-2.5 bg-emerald-50/60 border border-emerald-200 rounded-xl space-y-1">
+          <div class="flex justify-between font-bold text-emerald-950">
+            <span>经办跟车人: ${r.driver_name}</span>
+            <span>实交: ¥${r.amount} (${r.pay_method})</span>
+          </div>
+          ${r.basket_return ? `<div class="text-[10px] text-amber-800">退还周转空筐: ${r.basket_return}个 (折抵 ¥${r.basket_deduct_amount})</div>` : ''}
+          <div class="text-[10px] text-emerald-800">核销时间: ${new Date(r.created_at).toLocaleString()}</div>
+        </div>
+      `).join('') || '<div class="text-stone-400 text-center py-2">暂无交款凭证</div>';
+    };
+
     window.bindByCode = function() {
       const code = document.getElementById('bind-input-code').value.trim();
       if (!code) return alert('请输入认领码！');
@@ -428,22 +473,6 @@
       alert('绑定完成，货单已更新。');
       window.closeModal('bind-agent-modal');
       initTerminal();
-    };
-
-    window.bindByPhone = async function() {
-      const phone = document.getElementById('bind-input-phone').value.trim();
-      if (!phone || phone.length < 11) return alert('请输入有效手机号！');
-
-      const { data: stores } = await supabase.from('store').select('*').eq('phone', phone).limit(1);
-      if (stores && stores.length > 0) {
-        currentAgent = stores[0].tenant_id || 'BJ_SHUNDA';
-        localStorage.setItem('active_agent', currentAgent);
-        alert(`认领成功：${stores[0].name}`);
-        window.closeModal('bind-agent-modal');
-        initTerminal();
-      } else {
-        alert('未查询到建档记录，请联系总代跟车师傅录入名册。');
-      }
     };
 
     initTerminal();
