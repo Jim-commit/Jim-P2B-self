@@ -12,11 +12,22 @@ let currentTagFilter = '全部';
 const cart = {};
 let deliveryNote = '';
 
-// 通用模态窗控制器
-window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
-window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+// 当前正在生成海报的商品与设置
+let currentFlyerProd = null;
+let currentFlyerStyle = 'neighborhood';
 
-// 店型点选切换
+// 全局弹窗控制方法
+window.openModal = function(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('hidden');
+};
+
+window.closeModal = function(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('hidden');
+};
+
+// 1. 店型切换
 window.openShopTypeModal = () => window.openModal('shop-type-modal');
 window.selectShopType = (type) => {
   shopType = type;
@@ -29,11 +40,15 @@ window.selectShopType = (type) => {
 };
 
 function renderShopType() {
-  document.getElementById('shop-type-badge').innerHTML = `<span>${ShopTypeManager.icons[shopType] || '🏪'} ${shopType}</span> ▾`;
+  const el = document.getElementById('shop-type-badge');
+  if (el) {
+    el.innerHTML = `<span>${ShopTypeManager.icons[shopType] || '🏪'} ${shopType}</span> ▾`;
+  }
 }
 
 function renderDynamicNotes() {
   const box = document.getElementById('dynamic-notes-box');
+  if (!box) return;
   const notes = ShopTypeManager.getDynamicNotes(shopType);
   box.innerHTML = notes.map(n => `
     <button onclick="window.appendDeliveryNote('${n}')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 px-2 py-0.5 rounded-lg whitespace-nowrap active:scale-95 transition">
@@ -47,16 +62,69 @@ window.appendDeliveryNote = (txt) => {
   alert(`已附加随车小纸条：「${deliveryNote}」`);
 };
 
-// 百宝箱与营销海报中心
+// 2. 右上角百宝箱
 window.openToolboxModal = () => window.openModal('toolbox-modal');
-window.openMarketingCenter = () => window.openModal('marketing-modal');
-window.callDriver = () => {
-  const driver = document.getElementById('store-driver').innerText;
-  alert(`正在为您连线随车管家【${driver}】...`);
-  window.location.href = 'tel:13800138000';
+
+// 3. 左上角营销海报中心
+window.openMarketingCenter = () => {
+  if (allProducts.length === 0) return alert('当前没有可做海报的货品');
+  // 默认选中第一件商品进入海报自定义配置
+  window.configureFlyer(allProducts[0].id);
 };
 
-// 调换货申报
+// 唤起海报自定义配置面板
+window.configureFlyer = function(prodId) {
+  const prod = allProducts.find(x => x.id === prodId);
+  if (!prod) return;
+  currentFlyerProd = prod;
+
+  // 根据店型智能初始化风格
+  currentFlyerStyle = (shopType === '餐饮饭店') ? 'kitchen' : 'neighborhood';
+
+  const defaultPrice = (ShopTypeManager.getEffectivePrice(prod, shopType) * 1.15).toFixed(1);
+  const shopName = currentStore ? currentStore.name : '老主顾诚信店';
+
+  document.getElementById('flyer-title-input').value = `【${shopName}】正品福利`;
+  document.getElementById('flyer-price-input').value = defaultPrice;
+  document.getElementById('flyer-prod-name').innerText = prod.name;
+
+  renderStyleChips();
+  window.renderLiveFlyerPreview();
+  window.openModal('marketing-modal');
+};
+
+window.setFlyerStyle = function(styleKey) {
+  currentFlyerStyle = styleKey;
+  renderStyleChips();
+  window.renderLiveFlyerPreview();
+};
+
+function renderStyleChips() {
+  const container = document.getElementById('style-selector-box');
+  if (!container) return;
+  container.innerHTML = Object.entries(MarketingCanvas.styles).map(([key, item]) => {
+    const isSel = (currentFlyerStyle === key);
+    return `
+      <button onclick="window.setFlyerStyle('${key}')" class="px-2.5 py-1 rounded-xl text-xs font-bold border transition ${isSel ? 'bg-emerald-800 text-white border-emerald-900 shadow' : 'bg-stone-100 text-stone-600 border-stone-200'}">
+        ${item.name}
+      </button>
+    `;
+  }).join('');
+}
+
+// 实时重绘海报
+window.renderLiveFlyerPreview = async function() {
+  if (!currentFlyerProd) return;
+  const canvas = document.getElementById('hidden-canvas');
+  const customTitle = document.getElementById('flyer-title-input').value;
+  const customPrice = parseFloat(document.getElementById('flyer-price-input').value);
+  const shopName = currentStore ? currentStore.name : '老主顾诚信店';
+
+  const dataUrl = await MarketingCanvas.generate(canvas, currentFlyerProd, shopName, currentFlyerStyle, customTitle, customPrice);
+  document.getElementById('flyer-preview-img').src = dataUrl;
+};
+
+// 调换货
 window.openReturnModal = () => {
   window.closeModal('toolbox-modal');
   document.getElementById('return-prod-name').value = '';
@@ -72,11 +140,17 @@ window.submitReturnRequest = () => {
   if (!prodName) return alert('请填写需要调换的商品名称！');
 
   deliveryNote = deliveryNote ? `${deliveryNote}；【调换货申请】${prodName} x ${qty}箱(${reason})` : `【调换货申请】${prodName} x ${qty}箱(${reason})`;
-  alert(`已成功登记调换货！随车叮咛：「${prodName} x ${qty}箱」，送货时师傅当面核退！`);
+  alert(`已登记调换货！师傅送货时当面核减！`);
   window.closeModal('return-modal');
 };
 
-// 初始化终端口
+window.callDriver = () => {
+  const driver = document.getElementById('store-driver').innerText;
+  alert(`正在连线随车师傅【${driver}】...`);
+  window.location.href = 'tel:13800138000';
+};
+
+// 初始化
 async function initTerminal() {
   const urlParams = new URLSearchParams(window.location.search);
   const urlAgent = urlParams.get('agent') || urlParams.get('tenant');
@@ -86,12 +160,11 @@ async function initTerminal() {
   }
   document.getElementById('tenant-badge').innerText = currentAgent;
 
-  // 获取门店档案
   currentStore = await StoreService.getStoreByTenant(currentAgent);
   if (currentStore) {
     document.getElementById('store-title').innerText = currentStore.name || '合作门店';
     document.getElementById('store-boss').innerText = currentStore.contact || '掌柜';
-    document.getElementById('store-driver').innerText = `${currentStore.driver_name || '老张师傅'} (每日随车)`;
+    document.getElementById('store-driver').innerText = `${currentStore.driver_name || '老张师傅'}`;
     document.getElementById('store-basket-count').innerText = `${currentStore.basket_count || 0} 个`;
 
     const limit = parseFloat(currentStore.credit_limit || 2000);
@@ -108,7 +181,6 @@ async function initTerminal() {
   renderShopType();
   renderDynamicNotes();
 
-  // 获取商品
   const { data: prods } = await supabase.from('product').select('*').eq('tenant_id', currentAgent).neq('status', 'inactive').order('id', { ascending: false });
   let rawProds = prods || [];
   if (currentStore && currentStore.visible_product_ids && currentStore.visible_product_ids.length > 0) {
@@ -165,10 +237,8 @@ function renderProductList() {
       : `<div class="w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400">实物包</div>`;
     const tags = Array.isArray(p.tags) ? p.tags : [];
     const tagHtml = tags.map(t => `<span class="bg-amber-50 text-amber-900 border border-amber-200 text-[9px] px-1.5 py-0.2 rounded font-medium">${t}</span>`).join(' ');
-
     const price = ShopTypeManager.getEffectivePrice(p, shopType);
     const isTier2 = (price < p.tier_1_price);
-    const flyerBtnText = (shopType === '餐饮饭店') ? '📜 做张明厨良心食材单' : '📲 做张老邻居拼单单';
 
     return `
       <div class="py-3.5 px-1 space-y-2">
@@ -192,8 +262,8 @@ function renderProductList() {
           </div>
         </div>
         <div class="flex justify-end pt-0.5">
-          <button onclick="window.generateFlyer(${p.id})" class="text-[10px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-3 py-1 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition">
-            ${flyerBtnText}
+          <button onclick="window.configureFlyer(${p.id})" class="text-[10px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-3 py-1 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition">
+            📲 自选风格做海报
           </button>
         </div>
       </div>
@@ -224,23 +294,9 @@ function updateCartSummary() {
   document.getElementById('cart-count-badge').innerText = totalCount;
 }
 
-// 调用模块化 Canvas 海报引擎
-window.generateFlyer = async (prodId) => {
-  const prod = allProducts.find(x => x.id === prodId);
-  if (!prod) return;
-  const shopName = currentStore ? currentStore.name : '老主顾诚信店';
-  const canvas = document.getElementById('hidden-canvas');
-  const price = ShopTypeManager.getEffectivePrice(prod, shopType);
-
-  const dataUrl = await MarketingCanvas.generate(canvas, prod, shopName, shopType, price);
-  document.getElementById('flyer-preview-img').src = dataUrl;
-  window.openModal('flyer-modal');
-};
-
-// 报单提交
 window.submitB2BOrder = async () => {
   const totalAmount = parseFloat(document.getElementById('cart-total-amount').innerText);
-  if (totalAmount <= 0) return alert('请先挑选进货品种和箱数！');
+  if (totalAmount <= 0) return alert('请先挑选进货件数！');
 
   const itemsPayload = [];
   for (const [id, qty] of Object.entries(cart)) {
@@ -252,7 +308,7 @@ window.submitB2BOrder = async () => {
 
   const btn = document.getElementById('btn-submit-order');
   btn.disabled = true;
-  btn.innerText = '正在交代跟车师傅...';
+  btn.innerText = '正在提交...';
 
   try {
     if (currentStore) {
@@ -273,7 +329,7 @@ window.submitB2BOrder = async () => {
       await supabase.from('store').update({ current_debt: newDebt }).eq('id', currentStore.id);
     }
 
-    alert(`🎉 报单成功！合计 ¥${totalAmount.toFixed(2)}。已交代跟车师傅排单装车！`);
+    alert(`🎉 报单成功！合计 ¥${totalAmount.toFixed(2)}。已安排师傅装车！`);
     for (const k of Object.keys(cart)) cart[k] = 0;
     deliveryNote = '';
     renderProductList();
@@ -287,7 +343,6 @@ window.submitB2BOrder = async () => {
   }
 };
 
-// 单据历史与收条
 window.openReceiptsModal = async () => {
   if (!currentStore) return alert('未绑定有效门店！');
   window.openModal('receipts-modal');
@@ -301,7 +356,7 @@ window.openReceiptsModal = async () => {
         <div class="flex justify-between font-bold">
           <span>单号 #${o.id} · ¥${o.total_amount}</span>
           <span class="${o.delivery_status === 'delivered' ? 'text-emerald-700' : 'text-amber-700'}">
-            ${o.delivery_status === 'delivered' ? '✅ 已送达结清' : '🚚 排单待送'}
+            ${o.delivery_status === 'delivered' ? '✅ 已送达平账' : '🚚 排单待送'}
           </span>
         </div>
         <div class="text-[10px] text-stone-600">📦 配货明细: ${itemsText || '整批进货'}</div>
@@ -309,7 +364,7 @@ window.openReceiptsModal = async () => {
         <div class="text-[10px] text-stone-400">报单时间: ${new Date(o.created_at).toLocaleString()}</div>
       </div>
     `;
-  }).join('') || '<div class="text-stone-400 text-center py-2">暂无历史报单</div>';
+  }).join('') || '<div class="text-stone-400 text-center py-2">暂无报单</div>';
 
   const myReceipts = await StoreService.getMyReceipts(currentStore.id);
   document.getElementById('my-receipts-list').innerHTML = myReceipts.map(r => `
@@ -324,14 +379,13 @@ window.openReceiptsModal = async () => {
   `).join('') || '<div class="text-stone-400 text-center py-2">暂无还款记录</div>';
 };
 
-// 绑定供货商
 window.bindByCode = () => {
   const code = document.getElementById('bind-input-code').value.trim();
   if (code === '888001') currentAgent = 'BJ_SHUNDA';
   else if (code === '888002') currentAgent = 'SH_LEGOU';
   else return alert('认领码无效！');
   localStorage.setItem('active_agent', currentAgent);
-  alert('已成功绑定专属于您的供货商！');
+  alert('已绑定总代！');
   window.closeModal('bind-agent-modal');
   initTerminal();
 };
@@ -347,7 +401,7 @@ window.bindByPhone = async () => {
     window.closeModal('bind-agent-modal');
     initTerminal();
   } else {
-    alert('未在总代名册中查到该手机号，请联系随车师傅建档。');
+    alert('未在总代名册中查到该手机号，请联系师傅建档。');
   }
 };
 
