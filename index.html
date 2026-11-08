@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>商超採購與社區動銷終端</title>
+  <title>便利店掌櫃進貨與社群帶貨終端</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,331 +14,417 @@
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-stone-100 text-stone-800 font-sans select-none pb-28 antialiased">
-  <div id="main-app" class="max-w-md mx-auto min-h-screen bg-stone-50/70 relative shadow-2xl border-x border-stone-200/70">
-
-    <!-- 離線提示條 -->
-    <div id="net-status-bar" class="hidden bg-stone-800/90 backdrop-blur text-amber-200 text-xs px-3.5 py-2 flex justify-between items-center font-medium sticky top-0 z-50 border-b border-amber-500/20 shadow-md">
-      <div class="flex items-center gap-1.5">
-        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-        <span id="net-status-text">暫無網路，單子已存本地，聯網自動報送</span>
-      </div>
-      <span id="offline-count-badge" class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-mono">0 單待傳</span>
-    </div>
-
-    <!-- 頂欄：黛綠質感卡片 -->
-    <header class="bg-gradient-to-b from-[#064e3b] via-[#065f46] to-[#047857] text-white p-5 pt-4 rounded-b-[2rem] shadow-lg relative overflow-hidden">
-      <div class="flex justify-between items-center text-xs pb-3.5 opacity-90 border-b border-emerald-500/30 relative z-20">
-        <span class="font-mono tracking-widest text-[11px] text-emerald-200">09:41</span>
-        <div class="flex items-center gap-1.5">
-          <span id="store-nav-title" class="font-bold text-sm tracking-wide text-white drop-shadow-sm">利民平價便利店</span>
-          <span id="agent-tag" class="bg-emerald-800/80 text-emerald-200 border border-emerald-400/30 text-[9px] px-1.5 py-0.5 rounded-full">順達總代</span>
-        </div>
-        
-        <!-- 右上角實用抽屜按鈕 -->
-        <div class="relative">
-          <button onclick="window.toggleStoreMenu(event)" class="bg-white/10 hover:bg-white/20 active:scale-95 transition-all rounded-full px-3 py-1 border border-white/20 text-[11px] tracking-wider cursor-pointer shadow-sm">••• ⭘</button>
-          <div id="store-menu-backdrop" class="hidden fixed inset-0 z-40 bg-transparent" onclick="window.closeStoreMenu()"></div>
-
-          <div id="store-action-menu" class="hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-stone-200 p-2 z-50 text-stone-800 space-y-1">
-            <div class="text-[10px] font-bold text-stone-400 px-2.5 py-1 tracking-wider border-b border-stone-100 flex justify-between items-center">
-              <span>掌櫃百寶箱</span>
-              <button onclick="window.openModal('bind-agent-modal')" class="text-[9px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-mono">換綁總代</button>
-            </div>
-            <button onclick="window.showRouteCutoff()" class="w-full text-left px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700">⏰ 送貨班次與截單時效</button>
-            <button onclick="window.showHistoryStatements()" class="w-full text-left px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700">🧾 往期送貨單據與對賬</button>
-            <button onclick="window.openModal('trace-modal')" class="w-full text-left px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700">🔍 商品批次與保真質檢單</button>
-            <button onclick="window.openModal('supplier-license-modal')" class="w-full text-left px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700">🏛️ 供貨商資質與食安背書</button>
-            <button onclick="window.openModal('service-window-modal')" class="w-full text-left px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700">📇 專屬送貨人與服務窗口</button>
-            <button onclick="window.openModal('demand-request-modal')" class="w-full text-left px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700">📝 缺貨登記 · 捎話找貨</button>
-            <div class="border-t border-stone-100 my-1"></div>
-            <button onclick="window.openModal('crates-modal')" class="w-full text-left px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700">📦 周轉筐與押金容器備忘</button>
-            <button onclick="window.openModal('calc-modal')" class="w-full text-left px-2.5 py-2 rounded-xl hover:bg-stone-50 text-xs font-medium text-stone-700">🧮 單件進價與毛利速算</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 送貨師傅名片與周轉授信 -->
-      <div class="mt-4 flex justify-between items-start relative z-10">
-        <div class="space-y-1.5 text-xs">
+<body class="bg-stone-100 text-stone-800 font-sans pb-28 min-h-screen">
+  
+  <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-xl relative">
+    
+    <!-- 頂部店鋪牌匾與總代狀態 -->
+    <header class="bg-[#064e3b] text-white p-4 pt-5 rounded-b-3xl shadow-md">
+      <div class="flex justify-between items-start">
+        <div>
           <div class="flex items-center gap-2">
-            <span class="text-emerald-200/90 text-[11px]">專屬送貨人</span>
-            <span class="font-medium text-stone-50 bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10 text-[11px]">🚚 <b id="store-driver-name">送貨師傅</b> · 備好即送</span>
+            <h1 id="store-title" class="text-base font-bold tracking-tight">利民平價便利店</h1>
+            <span id="tenant-badge" class="bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full font-mono">
+              BJ_SHUNDA
+            </span>
           </div>
-          <div class="flex items-baseline gap-2 pt-0.5">
-            <span class="text-emerald-200/90 text-[11px]">可用周轉</span>
-            <span class="font-bold text-amber-300 text-lg tracking-tight font-mono"><span id="avail-credit">¥0.00</span></span>
-            <span id="credit-detail" class="text-[10px] text-emerald-100/70 font-mono">(掛:¥0 / 額:¥0)</span>
+          <div class="text-[11px] text-emerald-200 mt-1 flex items-center gap-2">
+            <span>掌櫃: <b id="store-boss">王掌櫃</b></span>
+            <span>跟車師傅: <b id="store-driver">老張師傅</b></span>
           </div>
         </div>
-        <button onclick="window.handleScanButton()" class="bg-gradient-to-r from-emerald-600 to-teal-700 border border-emerald-300/40 text-white px-3.5 py-2 rounded-2xl text-xs font-medium flex items-center gap-1.5 shadow-md active:scale-95">📷 掃碼補貨</button>
+        <button onclick="window.openModal('bind-agent-modal')" class="text-[10px] bg-white/10 hover:bg-white/20 text-emerald-100 border border-emerald-400/30 px-2.5 py-1 rounded-xl">
+          換供貨總代
+        </button>
       </div>
 
-      <!-- 動態經營賬簿 -->
-      <div class="mt-4 bg-emerald-950/40 border border-emerald-400/20 backdrop-blur-md rounded-2xl p-3 flex items-center justify-between relative z-10">
-        <div class="text-xs space-y-0.5">
-          <div class="text-[10px] tracking-wider text-emerald-200/80 font-medium">小店經營賬簿</div>
-          <div class="text-stone-100 font-medium text-xs">本月備貨 <span id="month-purchase" class="font-mono font-bold text-white">¥0</span> · 預估賺利 <span id="month-profit" class="font-mono font-bold text-amber-300">¥0</span></div>
+      <!-- 免息周轉金看板 -->
+      <div class="mt-4 bg-emerald-950/40 p-3 rounded-2xl flex justify-between items-center text-xs border border-emerald-700/30">
+        <div>
+          <span class="text-emerald-300 text-[10px] block">可用免息周轉金 (賒銷賬期)</span>
+          <b id="credit-avail" class="text-amber-300 font-mono text-base">¥2000.00</b>
         </div>
-        <button onclick="window.quickRepeat()" class="bg-gradient-to-r from-amber-100 to-amber-200 text-stone-900 font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-sm active:scale-95">照老樣子加購</button>
+        <div class="text-right">
+          <span class="text-emerald-300 text-[10px] block">累計已掛賬 (隨車結清)</span>
+          <b id="credit-debt" class="text-white font-mono">¥0.00</b>
+        </div>
       </div>
     </header>
 
-    <!-- 掃碼輸入框 -->
-    <div id="scan-box" class="hidden p-3.5 bg-white border-b border-stone-200 flex gap-2.5 shadow-inner">
-      <input type="text" id="barcode-input" placeholder="輸入條碼或用紅外掃碼槍掃描" class="flex-1 bg-stone-100/80 border border-stone-200 rounded-xl px-3.5 py-2 text-xs outline-none focus:border-emerald-600">
-      <button onclick="window.scanBarcodeSubmit()" class="bg-[#064e3b] text-white text-xs font-medium px-4 py-2 rounded-xl active:scale-95">添入清單</button>
+    <!-- 分類水平滑動欄 -->
+    <div id="category-bar" class="flex gap-2 p-3 overflow-x-auto no-scrollbar border-b border-stone-100 bg-white sticky top-0 z-10 text-xs">
+      <button onclick="window.filterCategory('全部')" class="cat-pill bg-[#064e3b] text-white px-3 py-1.5 rounded-xl font-bold whitespace-nowrap">
+        全部現貨
+      </button>
+      <!-- 動態載入分類 -->
     </div>
 
-    <!-- 導航 Tab -->
-    <nav class="flex bg-white/90 backdrop-blur sticky top-0 z-30 border-b border-stone-200/80 px-2">
-      <button id="tab-btn-order" onclick="window.switchTab('order')" class="flex-1 py-3 text-center text-xs font-bold text-emerald-800 border-b-2 border-emerald-800 flex items-center justify-center gap-1.5">📦 進現貨</button>
-      <button id="tab-btn-sales" onclick="window.switchTab('sales')" class="flex-1 py-3 text-center text-xs font-medium text-stone-500 hover:text-stone-800 flex items-center justify-center gap-1.5 relative">🤝 幫著賣 (熟客特惠) <span class="w-1.5 h-1.5 rounded-full bg-amber-500 absolute top-3 right-3"></span></button>
-      <button id="tab-btn-exchange" onclick="window.switchTab('exchange')" class="flex-1 py-3 text-center text-xs font-medium text-stone-500 hover:text-stone-800 flex items-center justify-center gap-1.5">🔄 臨期調換</button>
-    </nav>
-
-    <!-- Tab 1: 訂貨 -->
-    <section id="tab-order" class="p-3.5 space-y-2.5">
-      <div class="flex justify-between items-center px-1 text-[11px] text-stone-400 font-medium"><span>總代直供現貨 (按箱加購)</span><span>加減件數</span></div>
-      <div id="product-list" class="divide-y divide-stone-100 bg-white rounded-3xl shadow-sm border border-stone-200/70 p-2">
-        <div class="p-8 text-center text-stone-400 text-xs">正在連通總代倉庫查點現貨...</div>
+    <!-- 商品列表容器 -->
+    <main id="product-container" class="p-3 divide-y divide-stone-100 flex-1">
+      <div class="p-8 text-center text-stone-400 text-xs">
+        正在查驗總代在庫現貨...
       </div>
-    </section>
+    </main>
 
-    <!-- Tab 2: 幫著賣 -->
-    <section id="tab-sales" class="hidden p-3.5 space-y-3.5">
-      <div class="bg-gradient-to-br from-[#881337] via-[#9f1239] to-[#be123c] text-white p-4 rounded-3xl shadow-md space-y-3">
-        <div class="flex justify-between items-center"><span class="bg-white/15 text-stone-100 text-[10px] px-2.5 py-0.5 rounded-full font-medium">廠家源頭直配 · 新鮮好日期</span><span class="text-[11px] text-rose-200 font-mono">當月新產 · 靠譜正品</span></div>
-        <div><h3 class="font-serif-sc font-bold text-lg text-amber-100">金龍魚 黃金比例食用調和油 5L</h3><p class="text-[11px] text-rose-100/90 mt-0.5">大廠正規批次，街坊隨吃隨買，圖個常來常往</p></div>
-        <div class="bg-black/20 backdrop-blur-sm p-3 rounded-2xl flex justify-between items-center text-xs border border-white/10">
-          <div>店裡進價: <b class="text-white text-sm font-mono">¥49.5</b>/桶</div>
-          <div>心意價: <b class="text-amber-300 text-sm font-mono">¥59.9</b>/桶</div>
-          <div class="text-emerald-300 font-bold">每桶實賺 ¥10.4</div>
-        </div>
-        <div class="pt-1.5 grid grid-cols-2 gap-2.5">
-          <button onclick="window.openPosterStudio()" class="bg-white text-rose-900 font-bold text-xs py-2.5 rounded-2xl shadow active:scale-95 flex items-center justify-center gap-1.5">🎨 定制店門花紙</button>
-          <button onclick="window.syncGroupToCart()" class="bg-gradient-to-r from-amber-300 to-amber-400 text-stone-900 font-bold text-xs py-2.5 rounded-2xl shadow active:scale-95 flex items-center justify-center gap-1.5">🛒 把鄰居要的裝上車</button>
+    <!-- 底部常駐下單報單條 -->
+    <footer class="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 flex justify-between items-center z-20">
+      <div>
+        <div class="text-[10px] text-stone-400">進貨合計:</div>
+        <div class="text-emerald-900 font-mono font-bold text-lg">
+          ¥<span id="cart-total-amount">0.00</span>
         </div>
       </div>
-
-      <!-- 微信群文案 -->
-      <div class="bg-white rounded-3xl p-4 border border-stone-200/70 shadow-sm space-y-3">
-        <div class="flex justify-between items-center"><span class="font-bold text-xs text-stone-800">📋 街坊隨手嘮嗑話術</span><span class="text-[10px] text-stone-400">點一下即複製</span></div>
-        <div class="space-y-2.5 text-xs">
-          <div class="p-3 bg-stone-50 border border-stone-100 rounded-2xl space-y-1.5">
-            <div class="flex justify-between items-center"><span class="text-[11px] font-bold text-stone-700">☀️ 早間發群：正品順路帶</span><button onclick="window.copyPromoTemplate('morning')" class="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-lg font-bold">複製</button></div>
-            <p class="text-[11px] text-stone-500">“鄰里早！總代新鮮批次金龍魚5L，街坊價¥59.9，店裡隨意挑，有啥不合適隨時找我。”</p>
-          </div>
-          <div class="p-3 bg-stone-50 border border-stone-100 rounded-2xl space-y-1.5">
-            <div class="flex justify-between items-center"><span class="text-[11px] font-bold text-stone-700">🌙 傍晚發群：捎油回家做飯</span><button onclick="window.copyPromoTemplate('night')" class="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-lg font-bold">複製</button></div>
-            <p class="text-[11px] text-stone-500">“下班順路捎油的鄰居知會一聲，我給留好，省得大老遠跑超市人擠人。”</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 街坊預定提貨備忘本 -->
-      <div class="bg-white rounded-3xl p-4 border border-stone-200/70 shadow-sm space-y-2.5">
-        <div class="flex justify-between items-center"><div class="flex items-center gap-1.5"><span class="text-sm">📋</span><span class="font-bold text-xs text-stone-800">街坊預定提貨備忘本</span></div><span class="text-[10px] text-stone-400">輕點即記 · 櫃台防忘</span></div>
-        <div class="space-y-1.5 text-xs" id="pickup-note-list">
-          <div class="flex justify-between items-center p-2.5 bg-stone-50 rounded-2xl border border-stone-100 hover:bg-emerald-50/50 cursor-pointer" onclick="window.togglePickup(this)">
-            <div class="flex items-center gap-2"><span class="status-icon w-4 h-4 rounded-full border border-stone-300 flex items-center justify-center text-[10px] text-transparent">✓</span><span class="font-bold text-stone-800">102室 張阿姨</span><span class="text-stone-400">· 1桶</span></div>
-            <span class="status-tag text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded font-medium">待来店取</span>
-          </div>
-          <div class="flex justify-between items-center p-2.5 bg-stone-50 rounded-2xl border border-stone-100 hover:bg-emerald-50/50 cursor-pointer" onclick="window.togglePickup(this)">
-            <div class="flex items-center gap-2"><span class="status-icon w-4 h-4 rounded-full border border-stone-300 flex items-center justify-center text-[10px] text-transparent">✓</span><span class="font-bold text-stone-800">502室 李老師</span><span class="text-stone-400">· 1桶</span></div>
-            <span class="status-tag text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded font-medium">待来店取</span>
-          </div>
-        </div>
-        <div class="flex justify-between items-center pt-1 text-[11px] text-stone-400"><span>提走點一下自動劃線記清</span><button onclick="window.addPickupNote()" class="text-emerald-800 font-bold hover:underline">+ 隨手添一人</button></div>
-      </div>
-    </section>
-
-    <!-- Tab 3: 臨期調換 -->
-    <section id="tab-exchange" class="hidden p-3.5 space-y-3">
-      <div class="bg-amber-50/80 border border-amber-200 p-3 rounded-2xl text-xs text-amber-950 flex items-start gap-2.5">
-        <span class="text-base">📦</span>
-        <div><div class="font-bold">貨品隨車保鮮調劑</div><p class="text-[11px] text-amber-800/90 mt-0.5">整箱未開封走得慢的貨品，送貨師傅隨車拉回原價沖抵賬目，放心賣。</p></div>
-      </div>
-      <div class="bg-white rounded-3xl shadow-sm border border-stone-200/70 p-3.5 divide-y divide-stone-100 text-xs">
-        <div class="py-3 flex justify-between items-center">
-          <div><div class="font-bold text-stone-800">統一 鮮橙多 450ml*15瓶</div><div class="text-[11px] text-stone-400 mt-0.5 font-mono">進店批次: 2026-09-15</div></div>
-          <button onclick="alert('已轉告送貨師傅安排調換！')" class="bg-stone-50 border border-stone-200 text-stone-700 active:scale-95 font-bold px-3 py-1.5 rounded-xl">安排隨車換新</button>
-        </div>
-      </div>
-    </section>
+      <button onclick="window.submitB2BOrder()" id="btn-submit-order" class="bg-[#064e3b] text-white text-xs font-bold px-5 py-3 rounded-2xl shadow active:scale-95 transition flex items-center gap-1.5">
+        <span>🚚 給跟車師傅報單</span>
+        <span id="cart-count-badge" class="bg-amber-400 text-stone-900 text-[10px] px-1.5 py-0.2 rounded-full font-mono">0</span>
+      </button>
+    </footer>
 
   </div>
 
-  <!-- 獨立彈窗組件池容器 -->
-  <div id="modal-container"></div>
+  <!-- 彈窗 1：街坊宣傳單生成預覽彈窗 -->
+  <div id="flyer-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-4 text-center space-y-3">
+      <h3 class="font-bold text-sm text-stone-800">📲 街坊宣傳單已做妥！</h3>
+      <p class="text-[11px] text-stone-500">長按圖片直接「發送給朋友」或保存轉發小區業主群</p>
+      
+      <div class="rounded-2xl overflow-hidden border border-stone-200 shadow-md">
+        <img id="flyer-preview-img" src="" class="w-full object-cover">
+      </div>
 
-  <!-- 底部結算欄 -->
-  <footer id="footer-bar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-stone-200/80 p-3.5 max-w-md mx-auto flex justify-between items-center z-40 shadow-lg">
-    <div><div class="text-[10px] text-stone-400 font-medium">送貨師傅專送 · 備齊即送</div><div class="text-base font-bold text-stone-900">合計：<span id="order-total" class="text-emerald-800 text-lg font-mono">¥0.00</span></div></div>
-    <button id="submit-btn" onclick="window.submitOrder()" class="bg-[#064e3b] active:bg-[#022c22] text-white font-bold text-sm px-6 py-2.5 rounded-2xl shadow-md active:scale-95 flex items-center gap-2">
-      <span id="btn-spinner" class="hidden animate-spin text-xs">⏳</span><span id="btn-text">確認給送貨師傅報單</span>
-    </button>
-  </footer>
+      <button onclick="window.closeModal('flyer-modal')" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2 rounded-xl text-xs">
+        關閉返回
+      </button>
+    </div>
+  </div>
+
+  <!-- 彈窗 2：綁定供貨商 -->
+  <div id="bind-agent-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 text-stone-800 shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-800">🏪 綁定供貨總代</h3>
+          <p class="text-[10px] text-stone-400">認准專屬總代，享受特約進貨價與賬期</p>
+        </div>
+        <button onclick="window.closeModal('bind-agent-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
+          <label class="block font-bold text-stone-700 text-xs">方式 1：輸入總代 6 位認領碼</label>
+          <div class="flex gap-2">
+            <input type="text" id="bind-input-code" placeholder="如 888001" maxlength="6" class="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-center font-bold tracking-widest text-emerald-800 outline-none">
+            <button onclick="window.bindByCode()" class="bg-[#064e3b] text-white text-xs font-bold px-3 py-1.5 rounded-xl active:scale-95">認證</button>
+          </div>
+        </div>
+
+        <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
+          <label class="block font-bold text-stone-700 text-xs">方式 2：輸入掌櫃登記手機號</label>
+          <div class="flex gap-2">
+            <input type="tel" id="bind-input-phone" placeholder="輸入手機號一鍵認領小店" maxlength="11" class="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-xs outline-none">
+            <button onclick="window.bindByPhone()" class="bg-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl active:scale-95">認領</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="hidden-canvas" class="hidden"></canvas>
 
   <script type="module">
-    import { supabase, currentTenant } from './src/lib/supabase.js';
-    import { sendWechatNotice } from './src/lib/notify.js';
-    import { initIndexedDB, cacheProducts, getLocalProducts, saveOfflineOrder, clearOfflineOrder, getOfflineOrders } from './src/lib/offline.js';
-    import './src/modules/tools.js';
-    import { initPosterStudio } from './src/modules/poster.js';
+    import { supabase } from './src/lib/supabase.js';
 
-    async function loadModalsHTML() {
-      try {
-        const res = await fetch('./modals.html');
-        document.getElementById('modal-container').innerHTML = await res.text();
-      } catch(e) { console.error('載入彈窗池失敗', e); }
+    let currentAgent = localStorage.getItem('active_agent') || 'BJ_SHUNDA';
+    let currentStore = null;
+    let allProducts = [];
+    let currentCategory = '全部';
+    const cart = {};
+
+    window.openModal = id => document.getElementById(id).classList.remove('hidden');
+    window.closeModal = id => document.getElementById(id).classList.add('hidden');
+
+    async function initTerminal() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlAgent = urlParams.get('agent') || urlParams.get('tenant');
+      if (urlAgent) {
+        currentAgent = urlAgent;
+        localStorage.setItem('active_agent', currentAgent);
+      }
+
+      document.getElementById('tenant-badge').innerText = currentAgent;
+
+      // 抓小店數據
+      const { data: stores } = await supabase.from('store').select('*').eq('tenant_id', currentAgent).limit(1);
+      if (stores && stores.length > 0) {
+        currentStore = stores[0];
+        document.getElementById('store-title').innerText = currentStore.name || '合作便利店';
+        document.getElementById('store-boss').innerText = currentStore.contact || '掌櫃';
+        document.getElementById('store-driver').innerText = currentStore.driver_name || '送貨師傅';
+        
+        const limit = parseFloat(currentStore.credit_limit || 2000);
+        const debt = parseFloat(currentStore.current_debt || 0);
+        document.getElementById('credit-avail').innerText = `¥${Math.max(0, limit - debt).toFixed(2)}`;
+        document.getElementById('credit-debt').innerText = `¥${debt.toFixed(2)}`;
+      }
+
+      // 抓總代在庫在售商品
+      const { data: prods } = await supabase
+        .from('product')
+        .select('*')
+        .eq('tenant_id', currentAgent)
+        .neq('status', 'inactive')
+        .order('id', { ascending: false });
+
+      let rawProds = prods || [];
+
+      // 進貨特權過濾
+      if (currentStore && currentStore.visible_product_ids && Array.isArray(currentStore.visible_product_ids) && currentStore.visible_product_ids.length > 0) {
+        allProducts = rawProds.filter(p => currentStore.visible_product_ids.includes(p.id));
+      } else {
+        allProducts = rawProds;
+      }
+
+      renderCategoryTabs();
+      renderProductList();
     }
 
-    let products = [], currentStore = null, cart = {}, isSubmitting = false;
+    function renderCategoryTabs() {
+      const categories = ['全部', ...new Set(allProducts.map(p => p.category_main).filter(Boolean))];
+      const bar = document.getElementById('category-bar');
+      bar.innerHTML = categories.map(c => `
+        <button onclick="window.filterCategory('${c}')" class="cat-pill ${c === currentCategory ? 'bg-[#064e3b] text-white' : 'bg-stone-100 text-stone-600'} px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition">
+          ${c === '全部' ? '全部現貨' : c}
+        </button>
+      `).join('');
+    }
 
-    // 自包含原生儲存函式
-    const getSavedAgent = () => localStorage.getItem('active_agent') || '';
-    const saveAgent = (agent) => localStorage.setItem('active_agent', agent);
+    window.filterCategory = function(cat) {
+      currentCategory = cat;
+      renderCategoryTabs();
+      renderProductList();
+    };
 
-    const urlParams = new URLSearchParams(window.location.search);
-    let activeAgent = urlParams.get('agent') || urlParams.get('tenant') || getSavedAgent();
-    if (!activeAgent) setTimeout(() => window.openModal('bind-agent-modal'), 300);
-    else saveAgent(activeAgent);
+    function renderProductList() {
+      const filtered = currentCategory === '全部' 
+        ? allProducts 
+        : allProducts.filter(p => p.category_main === currentCategory);
+
+      const container = document.getElementById('product-container');
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">總代暫無此類別在供商品</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(p => {
+        const imgHtml = p.image_url 
+          ? `<img src="${p.image_url}" class="w-14 h-14 rounded-2xl object-cover border border-stone-200 shadow-sm">`
+          : `<div class="w-14 h-14 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400">無圖</div>`;
+
+        const tags = Array.isArray(p.tags) ? p.tags : [];
+        const tagHtml = tags.map(t => `<span class="bg-amber-50 text-amber-900 border border-amber-200 text-[9px] px-1.5 py-0.2 rounded font-medium">${t}</span>`).join(' ');
+
+        return `
+          <div class="py-3 px-1 space-y-2">
+            <div class="flex justify-between items-center gap-3">
+              <div class="flex items-center gap-3">
+                ${imgHtml}
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-bold text-xs text-stone-800">${p.name}</span>
+                  </div>
+                  <div class="mt-0.5 space-x-1">${tagHtml}</div>
+                  <div class="text-[11px] text-stone-400 mt-0.5 font-mono">
+                    ${p.spec || '整箱'}
+                  </div>
+                  <div class="text-xs font-bold text-emerald-800 mt-0.5 font-mono">
+                    ¥${p.tier_1_price} <span class="text-[10px] text-stone-400 font-normal">/${p.pack_unit || '箱'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 加減件 -->
+              <div class="flex items-center gap-2">
+                <button onclick="window.changeQty(${p.id}, -1)" class="w-7 h-7 rounded-xl bg-stone-100 active:scale-95 font-bold text-stone-600 flex items-center justify-center text-sm">-</button>
+                <span id="qty-${p.id}" class="w-6 text-center font-bold text-xs font-mono">${cart[p.id] || 0}</span>
+                <button onclick="window.changeQty(${p.id}, 1)" class="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-800 active:scale-95 font-bold flex items-center justify-center text-sm">+</button>
+              </div>
+            </div>
+
+            <!-- 掌櫃帶貨工具按鈕 (做張街坊宣傳單) -->
+            <div class="flex justify-end pt-1">
+              <button onclick="window.generateFlyer(${p.id})" class="text-[10px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition">
+                📲 做張街坊宣傳單 (老鄰居拼單)
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.changeQty = function(id, delta) {
+      cart[id] = (cart[id] || 0) + delta;
+      if (cart[id] < 0) cart[id] = 0;
+      const el = document.getElementById(`qty-${id}`);
+      if (el) el.innerText = cart[id];
+      updateCartSummary();
+    };
+
+    function updateCartSummary() {
+      let totalAmount = 0;
+      let totalCount = 0;
+      for (const [id, qty] of Object.entries(cart)) {
+        if (qty > 0) {
+          const prod = allProducts.find(x => x.id === parseInt(id));
+          if (prod) {
+            totalAmount += prod.tier_1_price * qty;
+            totalCount += qty;
+          }
+        }
+      }
+      document.getElementById('cart-total-amount').innerText = totalAmount.toFixed(2);
+      document.getElementById('cart-count-badge').innerText = totalCount;
+    }
+
+    // 核心亮點：前端一鍵生成【街坊宣傳單 / 老鄰居拼單圖】
+    window.generateFlyer = function(prodId) {
+      const prod = allProducts.find(x => x.id === prodId);
+      if (!prod) return;
+
+      const shopName = currentStore ? currentStore.name : '小區便利店';
+      const canvas = document.getElementById('hidden-canvas');
+      const ctx = canvas.getContext('2d');
+
+      canvas.width = 600;
+      canvas.height = 800;
+
+      // 1. 溫暖復古底色
+      ctx.fillStyle = '#fefdfa';
+      ctx.fillRect(0, 0, 600, 800);
+
+      // 2. 頂部店名牌匾
+      ctx.fillStyle = '#064e3b';
+      ctx.fillRect(30, 30, 540, 100);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`【${shopName}】街坊好貨通告`, 300, 75);
+      ctx.font = '16px sans-serif';
+      ctx.fillStyle = '#a7f3d0';
+      ctx.fillText('實體老店誠信背書 · 正品保證 · 隨時到店取貨', 300, 108);
+
+      // 3. 商品主圖繪製
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function() {
+        ctx.drawImage(img, 100, 160, 400, 320);
+        drawFlyerText();
+      };
+      img.onerror = function() {
+        ctx.fillStyle = '#e5e7eb';
+        ctx.fillRect(100, 160, 400, 320);
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('實物好貨實拍', 300, 320);
+        drawFlyerText();
+      };
+      img.src = prod.image_url || '';
+
+      function drawFlyerText() {
+        // 商品名稱
+        ctx.fillStyle = '#1c1917';
+        ctx.font = 'bold 28px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(prod.name, 300, 520);
+
+        // 規格與特色
+        ctx.fillStyle = '#78716c';
+        ctx.font = '18px sans-serif';
+        ctx.fillText(`規格：${prod.spec || '整箱'} · 廠家直通平價直供`, 300, 555);
+
+        // 街坊拼單價
+        ctx.fillStyle = '#991b1b';
+        ctx.font = 'bold 40px sans-serif';
+        ctx.fillText(`老鄰居拼單價：¥${(prod.tier_1_price * 1.15).toFixed(1)}`, 300, 620);
+
+        // 底部掌櫃承諾框
+        ctx.fillStyle = '#fef3c7';
+        ctx.fillRect(50, 660, 500, 90);
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(50, 660, 500, 90);
+
+        ctx.fillStyle = '#92400e';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('💬 掌櫃交代：好貨不多，先到先得！', 300, 700);
+        ctx.font = '14px sans-serif';
+        ctx.fillStyle = '#b45309';
+        ctx.fillText('在小區群裡直接回覆「我要1件」即可留貨！', 300, 728);
+
+        document.getElementById('flyer-preview-img').src = canvas.toDataURL('image/jpeg', 0.85);
+        window.openModal('flyer-modal');
+      }
+    };
+
+    window.submitB2BOrder = async function() {
+      const totalAmount = parseFloat(document.getElementById('cart-total-amount').innerText);
+      if (totalAmount <= 0) return alert('請先添加進貨商品件數！');
+
+      const btn = document.getElementById('btn-submit-order');
+      btn.disabled = true;
+      btn.innerText = '正在轉告跟車師傅...';
+
+      try {
+        if (currentStore) {
+          const newDebt = parseFloat(currentStore.current_debt || 0) + totalAmount;
+          await supabase.from('store').update({ current_debt: newDebt }).eq('id', currentStore.id);
+        }
+
+        alert(`🎉 報單成功！合計 ¥${totalAmount.toFixed(2)}。\n已成功發送給隨車師傅【${document.getElementById('store-driver').innerText}】，庫房排單裝車中！`);
+        for (const k of Object.keys(cart)) cart[k] = 0;
+        renderProductList();
+        updateCartSummary();
+        initTerminal();
+      } catch (err) {
+        alert('報單失敗：' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>🚚 給跟車師傅報單</span> <span id="cart-count-badge" class="bg-amber-400 text-stone-900 text-[10px] px-1.5 py-0.2 rounded-full font-mono">0</span>`;
+      }
+    };
 
     window.bindByCode = function() {
       const code = document.getElementById('bind-input-code').value.trim();
-      if (!code) return alert('請輸入總代 6 位邀請碼！');
-      const targetAgent = (code === '888002' || code.includes('SH')) ? 'SH_LEGOU' : 'BJ_SHUNDA';
-      saveAgent(targetAgent);
-      alert('綁定成功！'); window.location.search = `?agent=${targetAgent}`;
+      if (code === '888001') {
+        currentAgent = 'BJ_SHUNDA';
+      } else if (code === '888002') {
+        currentAgent = 'SH_LEGOU';
+      } else {
+        return alert('認領碼無效！');
+      }
+      localStorage.setItem('active_agent', currentAgent);
+      alert('已成功綁定專屬總代！');
+      window.closeModal('bind-agent-modal');
+      initTerminal();
     };
 
     window.bindByPhone = async function() {
       const phone = document.getElementById('bind-input-phone').value.trim();
-      if (!phone || phone.length < 11) return alert('請輸入 11 位店主手機號！');
-      const { data: store } = await supabase.from('store').select('*').eq('phone', phone).maybeSingle();
-      const targetAgent = store ? store.tenant_id : 'BJ_SHUNDA';
-      saveAgent(targetAgent);
-      alert('認領成功！'); window.location.search = `?agent=${targetAgent}`;
-    };
+      if (!phone || phone.length < 11) return alert('請輸入有效 11 位掌櫃手機號！');
 
-    window.toggleStoreMenu = function(e) {
-      if (e) e.stopPropagation();
-      const menu = document.getElementById('store-action-menu');
-      const isHidden = menu.classList.contains('hidden');
-      menu.classList.toggle('hidden', !isHidden);
-      document.getElementById('store-menu-backdrop').classList.toggle('hidden', !isHidden);
-    };
-    window.closeStoreMenu = function() {
-      document.getElementById('store-action-menu')?.classList.add('hidden');
-      document.getElementById('store-menu-backdrop')?.classList.add('hidden');
-    };
-    window.showRouteCutoff = function() {
-      window.closeStoreMenu();
-      alert(`【城東A線 · 送貨節奏】\n1. 打烊前報上單子，庫房夜裡備齊。\n2. 貨備齊就送，抓緊走車。\n3. 臨時急用隨時給送貨師傅通電話。`);
-    };
-    window.switchTab = function(tabName) {
-      window.closeStoreMenu();
-      ['tab-order', 'tab-sales', 'tab-exchange'].forEach(id => document.getElementById(id).classList.add('hidden'));
-      ['tab-btn-order', 'tab-btn-sales', 'tab-btn-exchange'].forEach(id => document.getElementById(id).className = "flex-1 py-3 text-center text-xs font-medium text-stone-500 hover:text-stone-800 flex items-center justify-center gap-1.5");
-      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-      document.getElementById(`tab-btn-${tabName}`).className = "flex-1 py-3 text-center text-xs font-bold text-emerald-800 border-b-2 border-emerald-800 flex items-center justify-center gap-1.5";
-    };
-    window.copyPromoTemplate = function(type) {
-      const content = type === 'morning' ? "【利民便利店】送貨師傅剛卸的新鮮金龍魚5L，街坊價¥59.9，隨意挑看！" : "明早送貨師傅順路經由咱店，打烊前留油的鄰居知會一聲。";
-      navigator.clipboard.writeText(content).then(() => alert('文案已複製！'));
-    };
-    window.syncGroupToCart = function() {
-      if (products.length > 0) {
-        cart[products[0].id] = (cart[products[0].id] || 0) + 4;
-        window.switchTab('order'); renderProducts(); calcTotal();
-        alert('已按街坊預訂量添進貨單！直接報給送貨師傅。');
-      }
-    };
-    window.handleScanButton = function() {
-      const box = document.getElementById('scan-box');
-      box.classList.toggle('hidden');
-      if (!box.classList.contains('hidden')) document.getElementById('barcode-input').focus();
-    };
-    window.scanBarcodeSubmit = async function() {
-      const code = document.getElementById('barcode-input').value.trim();
-      let match = products.find(p => p.barcode === code) || (await getLocalProducts()).find(p => p.barcode === code);
-      if (match) { window.changeQty(match.id, 1); document.getElementById('barcode-input').value = ''; alert(`已添上【${match.name}】！`); }
-      else alert('貨單庫裡沒查到該條碼');
-    };
-    window.changeQty = function(id, delta) {
-      cart[id] = (cart[id] || 0) + delta;
-      if (cart[id] < 0) cart[id] = 0;
-      document.getElementById(`qty-${id}`).innerText = cart[id];
-      calcTotal();
-    };
-    function calcTotal() {
-      let total = 0;
-      products.forEach(p => { if (cart[p.id]) total += cart[p.id] * p.tier_1_price; });
-      document.getElementById('order-total').innerText = '¥' + total.toFixed(2);
-      return total;
-    }
-    window.quickRepeat = function() {
-      products.forEach((p, idx) => { if (idx < 3) cart[p.id] = 3 - idx; });
-      renderProducts(); calcTotal(); alert('已照老樣子添好貨品！');
-    };
-    function renderProducts() {
-      const container = document.getElementById('product-list');
-      container.innerHTML = products.map(p => `
-        <div class="py-3 px-2 flex justify-between items-center rounded-2xl hover:bg-stone-50/60">
-          <div>
-            <div class="flex items-center gap-1.5"><span class="font-bold text-xs text-stone-800">${p.name}</span><span class="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[9px] px-1.5 py-0.2 rounded font-medium">源頭直供</span></div>
-            <div class="text-[11px] text-stone-400 mt-1 font-mono">${p.spec || '整箱裝'} · 庫餘: ${p.stock || 99}箱</div>
-            <div class="text-xs font-bold text-emerald-800 mt-0.5 font-mono">¥${p.tier_1_price} <span class="text-[10px] text-stone-400 font-normal">/${p.pack_unit}</span></div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button onclick="window.changeQty(${p.id}, -1)" class="w-7 h-7 rounded-xl bg-stone-100 active:scale-95 font-bold">-</button>
-            <span id="qty-${p.id}" class="w-6 text-center font-bold text-xs font-mono">${cart[p.id] || 0}</span>
-            <button onclick="window.changeQty(${p.id}, 1)" class="w-7 h-7 rounded-xl bg-emerald-50 active:scale-95 text-emerald-800 font-bold">+</button>
-          </div>
-        </div>
-      `).join('');
-    }
-    window.submitOrder = async function() {
-      if (isSubmitting) return;
-      const items = products.filter(p => cart[p.id] > 0).map(p => ({ product_id: p.id, name: p.name, price: p.tier_1_price, quantity: cart[p.id], pack_unit: p.pack_unit }));
-      if (items.length === 0) return alert('貨筐裡還沒加進貨品呢！');
-
-      isSubmitting = true;
-      const btn = document.getElementById('submit-btn');
-      btn.disabled = true; document.getElementById('btn-spinner').classList.remove('hidden');
-      try {
-        if (!navigator.onLine) {
-          await saveOfflineOrder({ store_id: currentStore.id, items });
-          alert('單子已存本地，聯網自動報送！'); cart = {}; renderProducts(); calcTotal(); return;
-        }
-        const { data } = await supabase.rpc('submit_b2b_order', { p_store_id: currentStore.id, p_items: items });
-        sendWechatNotice(`📦 訂貨通知：利民平價便利店`, `送貨人：送貨師傅\n單號：${data ? data.order_no : 'CG' + Date.now()}`);
-        alert('單子已報給送貨師傅與倉庫！'); cart = {}; renderProducts(); calcTotal();
-      } catch (e) {
-        await saveOfflineOrder({ store_id: currentStore.id, items });
-        alert('網路稍緩，已存入離線隊列！'); cart = {}; renderProducts(); calcTotal();
-      } finally {
-        isSubmitting = false; btn.disabled = false; document.getElementById('btn-spinner').classList.add('hidden');
+      const { data: stores } = await supabase.from('store').select('*').eq('phone', phone).limit(1);
+      if (stores && stores.length > 0) {
+        currentAgent = stores[0].tenant_id || 'BJ_SHUNDA';
+        localStorage.setItem('active_agent', currentAgent);
+        alert(`🎉 認領成功！歡迎【${stores[0].name}】掌櫃！`);
+        window.closeModal('bind-agent-modal');
+        initTerminal();
+      } else {
+        alert('未在總代名冊中查到該手機號，請交由隨車師傅在中台開立名冊。');
       }
     };
 
-    async function init() {
-      await loadModalsHTML();
-      await initIndexedDB();
-      const { data: prodData } = await supabase.from('product').select('*');
-      products = prodData || [
-        { id: 1, name: '金龍魚 黃金比例食用調和油 5L', tier_1_price: 198, pack_unit: '箱(4桶)', spec: '4桶/箱', stock: 50 },
-        { id: 2, name: '統一 鮮橙多 450ml*15瓶', tier_1_price: 36, pack_unit: '箱', spec: '15瓶/箱', stock: 80 }
-      ];
-      currentStore = { id: 1, name: '利民平價便利店', credit_limit: 2000, current_debt: 450 };
-      initPosterStudio(products);
-      renderProducts();
-      document.getElementById('month-purchase').innerText = `¥3,280`;
-      document.getElementById('month-profit').innerText = `¥918`;
-      document.getElementById('avail-credit').innerText = `¥1,550.00`;
-    }
-    init();
+    initTerminal();
   </script>
 </body>
 </html>
