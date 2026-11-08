@@ -14,39 +14,45 @@
   
   <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-2xl relative">
     
-    <!-- 极简顶栏：☰ / 店名 / ··· 与多总代切换条 -->
+    <!-- 极简顶栏：左☰营销 | 中招牌与店型下拉 | 右···履约百宝箱 -->
     <header class="bg-gradient-to-br from-[#064e3b] to-[#043327] text-white p-4 pt-3.5 rounded-b-[2rem] shadow-lg space-y-2.5 relative">
       <div class="flex justify-between items-center text-xs relative">
-        <!-- 左侧：三道杠 (汉堡菜单 ☰) -->
+        
+        <!-- 左侧：三道杠 (☰ 营销推广中心) -->
         <div class="relative">
-          <button type="button" onclick="window.toggleLeftNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white" title="营销与海报">
+          <button type="button" onclick="window.toggleLeftNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white" title="营销推广">
             <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
               <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
             </svg>
           </button>
 
-          <!-- 左侧下拉气泡菜单 -->
-          <div id="left-nav-menu" class="hidden absolute left-0 top-10 w-44 bg-white rounded-2xl shadow-2xl py-1.5 z-40 text-stone-800 border border-stone-200 text-xs">
+          <!-- 左侧下拉气泡菜单（纯营销倾向） -->
+          <div id="left-nav-menu" class="hidden absolute left-0 top-10 w-48 bg-white rounded-2xl shadow-2xl py-1.5 z-40 text-stone-800 border border-stone-200 text-xs">
+            <div class="px-3.5 py-1 text-[10px] font-bold text-stone-400 border-b border-stone-100">
+              📢 门店宣发营销
+            </div>
             <button type="button" onclick="window.openMarketingCenter(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium">
-              <span>🎨</span> 制作宣发海报
+              <span>🎨</span> 制作货品宣发海报
             </button>
-            <button type="button" onclick="window.toggleShopTypeDropdown(event)" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium border-t border-stone-100">
-              <span>🏪</span> 点选经营形态
+            <button type="button" onclick="window.quickMakeNeighborhoodFlyer(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium border-t border-stone-100">
+              <span>🏮</span> 一键街坊老友拼单图
+            </button>
+            <button type="button" onclick="window.quickMakeHonestFlyer(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium border-t border-stone-100">
+              <span>⭐</span> 厚道保真宣传海报
             </button>
           </div>
         </div>
 
-        <!-- 居中：门店掌柜招牌与下拉菜单容器 -->
+        <!-- 居中：门店掌柜招牌与店型下拉 -->
         <div class="flex flex-col items-center">
           <div class="flex items-center gap-1.5 relative">
             <h1 id="store-title" class="text-base font-bold tracking-tight text-white">合作便民老店</h1>
             
-            <!-- 触发下拉的店型胶囊 -->
             <button type="button" onclick="window.toggleShopTypeDropdown(event)" id="shop-type-badge" class="bg-amber-400 text-stone-900 text-[10px] px-2 py-0.2 rounded-full font-bold flex items-center gap-0.5 active:scale-95 transition">
               <span>🏪 社区超市</span> ▾
             </button>
 
-            <!-- 店型下拉气泡菜单（直接悬浮展开） -->
+            <!-- 店型下拉气泡菜单 -->
             <div id="shop-type-dropdown" class="hidden absolute left-1/2 -translate-x-1/2 top-8 w-56 bg-white rounded-2xl shadow-2xl py-1.5 z-50 text-stone-800 border border-stone-200 text-xs">
               <div class="px-3 py-1.5 text-[10px] font-bold text-stone-400 border-b border-stone-100">
                 点选本店经营形态
@@ -89,27 +95,46 @@
           </div>
         </div>
 
-        <!-- 右侧：三点 (更多菜单 ···) -->
+        <!-- 右侧：三点 (··· 供货商服务与百宝箱) -->
         <div class="relative">
-          <button type="button" onclick="window.toggleRightNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white" title="更多功能">
+          <button type="button" onclick="window.toggleRightNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white" title="总代服务与百宝箱">
             <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
               <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
             </svg>
           </button>
 
           <!-- 右侧下拉气泡菜单 -->
-          <div id="right-nav-menu" class="hidden absolute right-0 top-10 w-48 bg-white rounded-2xl shadow-2xl py-1.5 z-40 text-stone-800 border border-stone-200 text-xs">
-            <button type="button" onclick="window.openReceiptsModal(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium">
-              <span>📜</span> 当前总代单据收条
+          <div id="right-nav-menu" class="hidden absolute right-0 top-10 w-52 bg-white rounded-2xl shadow-2xl py-1.5 z-40 text-stone-800 border border-stone-200 text-xs">
+            <div class="px-3.5 py-1 text-[10px] font-bold text-stone-400 border-b border-stone-100 flex justify-between items-center">
+              <span>当前供货商服务</span>
+              <span id="menu-current-agent-tag" class="text-emerald-700 font-mono"></span>
+            </div>
+            
+            <!-- 极简高频快捷工具 -->
+            <button type="button" onclick="window.repeatLastOrder(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-800 font-medium">
+              <span>📋</span> 一键重填常订品
             </button>
-            <button type="button" onclick="window.openReturnModal(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-amber-800 font-medium border-t border-stone-100">
-              <span>🔄</span> 随车破损/调换申报
+            <button type="button" onclick="window.clearCurrentCart(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-rose-600 font-medium border-t border-stone-50">
+              <span>🗑️</span> 清空当前购物车
             </button>
-            <button type="button" onclick="window.callDriver(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-emerald-800 font-medium border-t border-stone-100">
+            
+            <!-- 随车与财务查验 -->
+            <button type="button" onclick="window.openReceiptsModal(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium border-t border-stone-100">
+              <span>📜</span> 本总代单据与收条
+            </button>
+            <button type="button" onclick="window.openReturnModal(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-amber-800 font-medium border-t border-stone-50">
+              <span>🔄</span> 随车破损 / 调换申报
+            </button>
+            <button type="button" onclick="window.callDriver(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-emerald-800 font-medium border-t border-stone-50">
               <span>📞</span> 致电本单师傅
             </button>
+
+            <!-- 供货商关系管理 -->
             <button type="button" onclick="window.openModal('bind-agent-modal'); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium border-t border-stone-100">
               <span>🏢</span> 接入新供货总代
+            </button>
+            <button type="button" onclick="window.confirmUnbindCurrentAgent(); window.closeAllMenus();" class="w-full px-3.5 py-2 text-left hover:bg-rose-50 flex items-center gap-2 text-rose-500 font-medium border-t border-stone-50 text-[11px]">
+              <span>⚠️</span> 解绑当前供货商...
             </button>
           </div>
         </div>
@@ -163,13 +188,11 @@
 
     <!-- 底部常驻报单栏 -->
     <footer class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 space-y-2 z-30 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
-      <!-- 捎句话便签栏 -->
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-[10px]">
         <span class="text-stone-400 whitespace-nowrap font-medium">📝 捎句话:</span>
         <div id="dynamic-notes-box" class="flex gap-1.5"></div>
       </div>
 
-      <!-- 结算合计与“订货”按钮 -->
       <div class="flex justify-between items-center pt-0.5">
         <div>
           <div class="text-[10px] text-stone-400">进货合计:</div>
