@@ -69,13 +69,13 @@
 
   </div>
 
-  <!-- 现场收款核销与签收弹窗 -->
+  <!-- 现场收款核销与签收弹窗 (升级支持三合一清单与刚性指令) -->
   <div id="collect-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-slate-100">
         <div>
           <h3 class="font-bold text-sm text-slate-800" id="modal-shop-title">合作门店</h3>
-          <p class="text-[10px] text-slate-400">核对款项 · 退筐折抵 · 现场平账</p>
+          <p class="text-[10px] text-slate-400">核对款项 · 验退残次 · 退筐折抵 · 现场平账</p>
         </div>
         <button onclick="window.closeModal('collect-modal')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
@@ -84,20 +84,46 @@
       <input type="hidden" id="modal-order-id" value="">
       <input type="hidden" id="modal-current-debt" value="0">
       <input type="hidden" id="modal-basket-count" value="0">
+      <input type="hidden" id="modal-settlement-type" value="credit">
 
       <div class="space-y-2 text-xs">
+        
+        <!-- 刚性履约执行指令提醒 -->
+        <div id="modal-instruction-box" class="hidden bg-amber-50 border border-amber-200 p-2 rounded-xl text-amber-900 text-[11px] font-bold leading-tight"></div>
+
+        <!-- 财务账目面板 -->
         <div class="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 space-y-1">
-          <div class="flex justify-between">
-            <span class="text-slate-500">当期送达货款：</span>
-            <b id="modal-order-amount-text" class="font-mono text-emerald-800 font-bold">¥0.00</b>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-500">本单新订金额：</span>
+            <b id="modal-order-amount-text" class="font-mono text-slate-800 font-bold">¥0.00</b>
           </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500">本店历史挂账总欠款：</span>
-            <b id="modal-debt-text" class="font-mono text-rose-600 font-bold">¥0.00</b>
+          <div class="flex justify-between items-center text-rose-600">
+            <span>授权退货抵扣 (原进价)：</span>
+            <b id="modal-return-amount-text" class="font-mono font-bold">-¥0.00</b>
           </div>
-          <div class="flex justify-between text-amber-800">
-            <span>店里未还塑料筐：</span>
-            <b id="modal-basket-text" class="font-mono font-bold">0 个</b>
+          <div class="flex justify-between items-center pt-1 border-t border-slate-200/60">
+            <span class="font-bold text-emerald-950">当期应结净额：</span>
+            <b id="modal-net-amount-text" class="font-mono text-emerald-800 font-bold text-sm">¥0.00</b>
+          </div>
+          <div class="flex justify-between text-[11px] text-slate-500 pt-0.5">
+            <span>本店历史总欠款: <b id="modal-debt-text" class="font-mono text-rose-600">¥0.00</b></span>
+            <span>在店周转筐: <b id="modal-basket-text" class="font-mono text-amber-800 font-bold">0 个</b></span>
+          </div>
+        </div>
+
+        <!-- 现场点交验货清单 (订/退/换) -->
+        <div class="space-y-1.5 bg-slate-50 p-2.5 rounded-2xl border border-slate-200 text-[11px]">
+          <div>
+            <b class="text-[10px] text-emerald-800 block">① 应点交新货 (逐箱点清)：</b>
+            <div id="modal-items-order-list" class="text-slate-700 pl-1 space-y-0.5 mt-0.5">无</div>
+          </div>
+          <div class="pt-1 border-t border-slate-200/60">
+            <b class="text-[10px] text-rose-700 block">② 必须带回旧品 (当面验退)：</b>
+            <div id="modal-items-return-list" class="text-rose-700 pl-1 space-y-0.5 mt-0.5">无须带回旧品</div>
+          </div>
+          <div class="pt-1 border-t border-slate-200/60">
+            <b class="text-[10px] text-amber-800 block">③ 调换平换交接 (一新换一旧)：</b>
+            <div id="modal-items-exchange-list" class="text-amber-800 pl-1 space-y-0.5 mt-0.5">无调换货品</div>
           </div>
         </div>
 
@@ -126,6 +152,7 @@
               <option value="现金">💵 实收现钞</option>
               <option value="微信转账">📱 微信转给师傅</option>
               <option value="公司码">🏦 扫车身聚合码</option>
+              <option value="挂账签收">📝 纯挂账/月结免收现</option>
             </select>
           </div>
         </div>
@@ -221,7 +248,9 @@
       canvas = document.getElementById('sign-pad');
       if (!canvas) return;
       ctx = canvas.getContext('2d');
-      ctx.lineWidth = 2.5; ctx.strokeStyle = '#111827'; ctx.lineCap = 'round';
+      ctx.lineWidth = 2.5; 
+      ctx.strokeStyle = '#111827'; 
+      ctx.lineCap = 'round';
 
       function getPos(e) {
         const rect = canvas.getBoundingClientRect();
@@ -234,15 +263,18 @@
       }
 
       function start(e) {
-        drawing = true; isSigned = true;
+        drawing = true; 
+        isSigned = true;
         const pos = getPos(e);
-        ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
+        ctx.beginPath(); 
+        ctx.moveTo(pos.x, pos.y);
         e.preventDefault();
       }
       function move(e) {
         if (!drawing) return;
         const pos = getPos(e);
-        ctx.lineTo(pos.x, pos.y); ctx.stroke();
+        ctx.lineTo(pos.x, pos.y); 
+        ctx.stroke();
         e.preventDefault();
       }
       function stop() { drawing = false; }
@@ -256,7 +288,10 @@
     }
 
     window.clearSignature = function() {
-      if (ctx && canvas) { ctx.clearRect(0, 0, canvas.width, canvas.height); isSigned = false; }
+      if (ctx && canvas) { 
+        ctx.clearRect(0, 0, canvas.width, canvas.height); 
+        isSigned = false; 
+      }
     };
 
     async function initDriver() {
@@ -267,6 +302,7 @@
       await calculateTodayStats();
     }
 
+    // 读取并渲染路线待送任务（兼顾掌柜自主订货与总代主动供货，以及订/退/换清单）
     window.loadDriverTasks = async function() {
       const container = document.getElementById('route-container');
       container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">加载路线与订单中...</div>';
@@ -279,11 +315,13 @@
 
       routeStores = stores || [];
 
+      // 查询已由总代同意排单且待送达的单据
       const { data: pendingOrders } = await supabase
         .from('store_order')
         .select('*')
         .eq('tenant_id', currentAgent)
-        .eq('delivery_status', 'ordered')
+        .neq('delivery_status', 'delivered')
+        .neq('order_status', 'counter_proposal')
         .order('id', { ascending: false });
 
       const orders = pendingOrders || [];
@@ -296,23 +334,52 @@
       container.innerHTML = routeStores.map((s, idx) => {
         const debt = parseFloat(s.current_debt || 0);
         const storeOrders = orders.filter(o => o.store_id === s.id);
+        
         const orderSummary = storeOrders.map(o => {
-          const items = Array.isArray(o.items) ? o.items : [];
-          const itemsText = items.map(it => `${it.name} x ${it.qty}箱`).join('、');
+          const itemsOrder = Array.isArray(o.items) ? o.items : [];
+          const itemsReturn = Array.isArray(o.items_return) ? o.items_return : [];
+          const itemsExchange = Array.isArray(o.items_exchange) ? o.items_exchange : [];
+
+          const orderStr = itemsOrder.map(it => `${it.name} x ${it.qty}箱`).join('、');
+          const returnStr = itemsReturn.map(it => `${it.name} x ${it.qty}箱 (-¥${it.price || 0})`).join('、');
+          const exchangeStr = itemsExchange.map(it => `${it.name} x ${it.qty}箱`).join('、');
+
+          const isPush = o.order_source === 'vendor_push';
+          const netAmount = parseFloat(o.net_settle_amount || o.total_amount || 0);
+
           return `
-            <div class="bg-amber-50/80 border border-amber-200/70 rounded-xl p-2 text-[11px] text-amber-900 mt-1">
-              <div class="flex justify-between font-bold">
-                <span>单号 #${o.id} · 货款: ¥${o.total_amount}</span>
-                <span class="text-rose-600">待收结清</span>
+            <div class="bg-amber-50/80 border border-amber-200/70 rounded-xl p-2.5 text-[11px] text-amber-900 mt-1 space-y-1">
+              <div class="flex justify-between items-center font-bold">
+                <div class="flex items-center gap-1.5">
+                  <span>单号 #${o.order_no || o.id}</span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${isPush ? 'bg-indigo-100 text-indigo-800' : 'bg-emerald-100 text-emerald-800'}">
+                    ${isPush ? '主动供货' : '自主订货'}
+                  </span>
+                </div>
+                <span class="text-rose-600 font-mono font-bold">净结: ¥${netAmount.toFixed(2)}</span>
               </div>
-              <div class="text-[10px] text-slate-600 mt-0.5">📦 车厢取货: ${itemsText || '整批进货'}</div>
-              ${o.note ? `<div class="text-[10px] text-amber-800 mt-0.5 font-bold">💬 随车附言: ${o.note}</div>` : ''}
+
+              <!-- 随车刚性指令展示 -->
+              ${o.driver_action_instruction ? `
+                <div class="bg-amber-100/70 text-amber-950 p-1.5 rounded-lg font-bold text-[10px] border border-amber-300/60">
+                  ${o.driver_action_instruction}
+                </div>
+              ` : ''}
+
+              <!-- 三合一实物点验提示 -->
+              <div class="text-[10px] space-y-0.5 text-slate-700">
+                <div>📦 送新货: ${orderStr || '无'}</div>
+                ${itemsReturn.length ? `<div class="text-rose-700 font-bold">🔄 验退带回: ${returnStr}</div>` : ''}
+                ${itemsExchange.length ? `<div class="text-amber-800 font-bold">🔀 平价换新: ${exchangeStr}</div>` : ''}
+              </div>
+
+              ${o.note ? `<div class="text-[10px] text-amber-800 font-medium">💬 随车附言: ${o.note}</div>` : ''}
             </div>
           `;
         }).join('');
 
-        const firstOrderId = storeOrders.length > 0 ? storeOrders[0].id : '';
-        const orderAmount = storeOrders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+        const firstOrder = storeOrders.length > 0 ? storeOrders[0] : null;
+        const totalNetOrderAmount = storeOrders.reduce((sum, o) => sum + parseFloat(o.net_settle_amount || o.total_amount || 0), 0);
 
         return `
           <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2 hover:bg-white transition">
@@ -343,8 +410,8 @@
               <a href="tel:${s.phone}" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 active:scale-95">
                 📞 电话
               </a>
-              <button onclick="window.openCollectModal(${s.id}, '${s.name}', ${debt}, '${firstOrderId}', ${orderAmount}, ${s.basket_count || 0})" class="flex-1 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-1.5 rounded-xl shadow active:scale-95 transition">
-                💵 现场收款核销 (退筐/钱货两清)
+              <button onclick="window.openCollectModal(${s.id}, '${s.name}', ${debt}, '${firstOrder ? firstOrder.id : ''}', ${totalNetOrderAmount}, ${s.basket_count || 0})" class="flex-1 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-1.5 rounded-xl shadow active:scale-95 transition">
+                💵 现场收款核销 (退货/退筐/平账)
               </button>
             </div>
           </div>
@@ -352,33 +419,93 @@
       }).join('');
     };
 
-    window.openCollectModal = function(storeId, storeName, debt, orderId, orderAmount, basketCount) {
+    // 唤起现场交接核销弹窗
+    window.openCollectModal = async function(storeId, storeName, debt, orderId, orderAmount, basketCount) {
       document.getElementById('modal-shop-title').innerText = storeName;
       document.getElementById('modal-store-id').value = storeId;
       document.getElementById('modal-order-id').value = orderId || '';
       document.getElementById('modal-current-debt').value = debt;
       document.getElementById('modal-basket-count').value = basketCount;
-      document.getElementById('modal-order-amount-text').innerText = `¥${parseFloat(orderAmount || 0).toFixed(2)}`;
+
+      let itemsOrder = [];
+      let itemsReturn = [];
+      let itemsExchange = [];
+      let totalOrderAmount = orderAmount;
+      let returnDeductAmount = 0;
+      let netAmount = orderAmount;
+      let settlementType = 'credit';
+      let instructionText = '';
+
+      if (orderId) {
+        const { data: o } = await supabase.from('store_order').select('*').eq('id', parseInt(orderId)).single();
+        if (o) {
+          itemsOrder = Array.isArray(o.items) ? o.items : [];
+          itemsReturn = Array.isArray(o.items_return) ? o.items_return : [];
+          itemsExchange = Array.isArray(o.items_exchange) ? o.items_exchange : [];
+          totalOrderAmount = parseFloat(o.total_amount || 0);
+          returnDeductAmount = parseFloat(o.return_amount || 0);
+          netAmount = parseFloat(o.net_settle_amount || (totalOrderAmount - returnDeductAmount));
+          settlementType = o.settlement_type || 'credit';
+          instructionText = o.driver_action_instruction || '';
+        }
+      }
+
+      document.getElementById('modal-settlement-type').value = settlementType;
+      document.getElementById('modal-order-amount-text').innerText = `¥${totalOrderAmount.toFixed(2)}`;
+      document.getElementById('modal-return-amount-text').innerText = `-¥${returnDeductAmount.toFixed(2)}`;
+      document.getElementById('modal-net-amount-text').innerText = `¥${netAmount.toFixed(2)}`;
       document.getElementById('modal-debt-text').innerText = `¥${debt.toFixed(2)}`;
       document.getElementById('modal-basket-text').innerText = `${basketCount} 个`;
-      
-      const defaultCollect = orderAmount > 0 ? orderAmount : (debt > 0 ? debt : '');
-      document.getElementById('collect-amount').value = defaultCollect;
+
+      // 渲染三合一清单
+      document.getElementById('modal-items-order-list').innerHTML = itemsOrder.length 
+        ? itemsOrder.map(i => `<div>• ${i.name} (${i.spec || '整装'}) x <b>${i.qty}箱</b></div>`).join('') 
+        : '无新订货品';
+
+      document.getElementById('modal-items-return-list').innerHTML = itemsReturn.length 
+        ? itemsReturn.map(i => `<div>• ${i.name} x <b>${i.qty}箱</b> (抵-¥${i.price}) [原由: ${i.reason || '破损'}]</div>`).join('') 
+        : '无须带回旧品';
+
+      document.getElementById('modal-items-exchange-list').innerHTML = itemsExchange.length 
+        ? itemsExchange.map(i => `<div>• ${i.name} x <b>${i.qty}箱</b> [平换: ${i.reason || '同款换新'}]</div>`).join('') 
+        : '无调换品项';
+
+      // 渲染履约刚性指令
+      const instBox = document.getElementById('modal-instruction-box');
+      if (instructionText) {
+        instBox.innerText = instructionText;
+        instBox.classList.remove('hidden');
+      } else {
+        instBox.classList.add('hidden');
+      }
+
+      // 结算方式联动实收默认值：现结默认填净额；挂账/月结默认填0
+      const defaultCollect = (settlementType === 'cash') ? netAmount : 0;
+      document.getElementById('collect-amount').value = defaultCollect > 0 ? defaultCollect.toFixed(2) : '0';
       document.getElementById('collect-discount').value = '0';
       document.getElementById('collect-basket-return').value = '0';
+      
+      const methodSelect = document.getElementById('collect-method');
+      if (settlementType === 'cash') methodSelect.value = '现金';
+      else methodSelect.value = '挂账签收';
+
       window.clearSignature();
       window.openModal('collect-modal');
     };
 
+    // 空塑料筐折抵动态计算 (15元/个)
     window.calcBasketDeduct = function() {
       const returnCount = parseInt(document.getElementById('collect-basket-return').value) || 0;
       const deductVal = returnCount * 15;
-      const orderAmount = parseFloat(document.getElementById('modal-order-amount-text').innerText.replace('¥', '')) || 0;
-      if (orderAmount > 0) {
-        document.getElementById('collect-amount').value = Math.max(0, orderAmount - deductVal);
+      const netAmount = parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
+      const settlementType = document.getElementById('modal-settlement-type').value;
+
+      if (settlementType === 'cash' && netAmount > 0) {
+        document.getElementById('collect-amount').value = Math.max(0, netAmount - deductVal).toFixed(2);
       }
     };
 
+    // 提交现场收款核销与电子签名归档
     window.submitCollection = async function() {
       const storeId = parseInt(document.getElementById('modal-store-id').value);
       const orderId = document.getElementById('modal-order-id').value;
@@ -390,12 +517,19 @@
       const basketReturn = parseInt(document.getElementById('collect-basket-return').value) || 0;
       const basketDeduct = basketReturn * 15;
       const method = document.getElementById('collect-method').value;
+      const settlementType = document.getElementById('modal-settlement-type').value;
 
       if (isNaN(amount) || amount < 0) return alert('请输入有效的实收金额！');
       if (!isSigned) return alert('请让掌柜或负责人手写正楷签名确认！');
 
+      // 现结风控拦截
+      if (settlementType === 'cash' && amount <= 0 && discount <= 0 && basketDeduct <= 0) {
+        if (!confirm('【风控提醒】本单为随车现结，但实收现款为 0，是否确认掌柜已转账或经由总代特别许可？')) return;
+      }
+
       const signBase64 = canvas.toDataURL('image/png');
 
+      // 1. 记录司机收款交账日志 (流水台账)
       const { error: logErr } = await supabase.from('driver_collection_log').insert([{
         tenant_id: currentAgent,
         store_id: storeId,
@@ -411,26 +545,27 @@
 
       if (logErr) return alert('记录失败: ' + logErr.message);
 
-      // 实时扣减欠款并冲减周转筐
+      // 2. 实时更新门店账本挂账与周转筐
       const newDebt = Math.max(0, curDebt - amount - discount - basketDeduct);
       const newBaskets = Math.max(0, curBaskets - basketReturn);
       await supabase.from('store').update({ current_debt: newDebt, basket_count: newBaskets }).eq('id', storeId);
 
-      // 单据置为已送达已结清
+      // 3. 联动更新订单履约状态与签字存根
       if (orderId) {
         await supabase.from('store_order').update({
           delivery_status: 'delivered',
-          pay_status: 'paid',
+          pay_status: amount > 0 ? 'paid' : (settlementType === 'cash' ? 'cash_zero_cleared' : 'credit_logged'),
           sign_image_url: signBase64
         }).eq('id', parseInt(orderId));
       }
 
-      alert(`核销完毕！实收现金/微信 ¥${amount}，退还空筐 ${basketReturn} 个 (抵¥${basketDeduct})。\n该店当前剩余挂账：¥${newDebt.toFixed(2)}。已钱货两清！`);
+      alert(`✅ 核销完毕！\n实收金额: ¥${amount.toFixed(2)} (${method})\n退还空筐: ${basketReturn} 个 (折抵¥${basketDeduct})\n该店当前剩余挂账: ¥${newDebt.toFixed(2)}。已钱货两清归档！`);
       window.closeModal('collect-modal');
       await window.loadDriverTasks();
       await calculateTodayStats();
     };
 
+    // 统计今日随车收到的钱钞与空筐
     async function calculateTodayStats() {
       const { data: logs } = await supabase
         .from('driver_collection_log')
@@ -444,7 +579,9 @@
 
       list.forEach(l => {
         if (l.pay_method === '现金') totalCash += parseFloat(l.amount || 0);
-        else totalWechat += parseFloat(l.amount || 0);
+        else if (l.pay_method === '微信转账') totalWechat += parseFloat(l.amount || 0);
+        else totalCash += parseFloat(l.amount || 0); // 其余扫码收款统一计入
+
         totalBaskets += parseInt(l.basket_return || 0);
         totalDiscount += parseFloat(l.discount_amount || 0);
       });
@@ -467,6 +604,7 @@
       window.openModal('checkout-modal');
     };
 
+    // 出纳点清钱箱与塑料筐，正式平账归档
     window.finalizeSettlement = async function() {
       if (!confirm('出纳已确认点清随车款项与回收塑料筐？确认后随车钱箱将归零归档。')) return;
 
@@ -477,7 +615,7 @@
         .eq('driver_name', currentDriver)
         .eq('settled_to_hq', false);
 
-      alert('交账归档成功！今日随车钱款与空筐已正式入库。');
+      alert('🎉 交账归档成功！今日随车钱款与空筐已正式清点入库。');
       window.closeModal('checkout-modal');
       await calculateTodayStats();
     };
