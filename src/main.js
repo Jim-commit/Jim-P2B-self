@@ -2,9 +2,10 @@ import { supabase } from './lib/supabase.js';
 import { StoreService } from './services/storeService.js';
 import { ShopTypeManager } from './modules/shopTypeManager.js';
 import { MarketingCanvas } from './modules/marketingCanvas.js';
+import { SETTLEMENT_CONFIG, RETURN_REASONS, EXCHANGE_REASONS, analyzeOrderRiskAI } from './constants/settlement.js';
 
 // ==========================================
-// 1. 多总代名册管理与独立隔离购物车
+// 1. 多总代名册管理与三态隔离购物车 (订/退/换)
 // ==========================================
 const MY_AGENTS_KEY = 'b2b_my_agents_list';
 const DEFAULT_AGENTS = [
@@ -26,11 +27,11 @@ let allProducts = [];
 let currentCategory = '全部';
 let currentTagFilter = '全部';
 
-// 购物车按每个总代独立隔离
+// 购物车对象结构支持订/退/换: { [id]: { order: 0, return: 0, exchange: 0, returnReason: '', exchangeReason: '', returnPrice: 0 } }
 let cart = {};
 
 function loadAgentCart() {
-  const CART_KEY = `b2b_cart_${currentAgent}`;
+  const CART_KEY = `b2b_cart_v3_${currentAgent}`;
   try {
     cart = JSON.parse(localStorage.getItem(CART_KEY) || '{}');
   } catch (e) {
@@ -39,22 +40,23 @@ function loadAgentCart() {
 }
 
 function saveAgentCart() {
-  const CART_KEY = `b2b_cart_${currentAgent}`;
+  const CART_KEY = `b2b_cart_v3_${currentAgent}`;
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
 }
 
 let deliveryNote = '';
 let currentFlyerProd = null;
 let currentFlyerStyle = 'neighborhood';
+let currentSettlementType = 'credit';
+let uploadedProofImages = [];
 
-// 安全更新 DOM 辅助函数
 function safeSetText(id, text) {
   const el = document.getElementById(id);
   if (el) el.innerText = text;
 }
 
 // ==========================================
-// 2. 顶栏 ☰ / ··· 及店型轻灵下拉菜单控制
+// 2. 顶栏菜单与下拉控制器 (毛玻璃轻灵版)
 // ==========================================
 window.toggleLeftNavMenu = function (e) {
   e.stopPropagation();
@@ -68,10 +70,8 @@ window.toggleRightNavMenu = function (e) {
   document.getElementById('left-nav-menu')?.classList.add('hidden');
   document.getElementById('shop-type-dropdown')?.classList.add('hidden');
   
-  // 动态更新右侧菜单头部的当前供货商名称
   const curObj = myAgents.find(a => a.id === currentAgent);
   safeSetText('menu-current-agent-tag', curObj ? (curObj.name || curObj.id) : currentAgent);
-  
   document.getElementById('right-nav-menu')?.classList.toggle('hidden');
 };
 
@@ -96,7 +96,7 @@ window.openModal = id => document.getElementById(id)?.classList.remove('hidden')
 window.closeModal = id => document.getElementById(id)?.classList.add('hidden');
 
 // ==========================================
-// 3. 多总代平滑切换与动态标签渲染
+// 3. 多总代平滑切换
 // ==========================================
 window.switchActiveAgent = async function (agentId) {
   currentAgent = agentId;
@@ -127,9 +127,7 @@ function renderAgentSelector() {
   `;
 }
 
-// ==========================================
-// 4. 总代接入与二次确认解绑（防误操作）
-// ==========================================
+// 绑定与解绑
 window.bindByCode = async function () {
   const code = document.getElementById('bind-input-code')?.value.trim();
   let targetAgentId = '';
@@ -185,31 +183,388 @@ window.confirmUnbindCurrentAgent = function () {
   const curObj = myAgents.find(a => a.id === currentAgent);
   const curName = curObj ? curObj.name : currentAgent;
 
-  const tip = `【安全确认】您确定要解绑供货商「${curName}」吗？\n\n` +
-              `• 解绑后将从顶栏移除其快捷进货通道\n` +
-              `• 当前供货商的待订购物车将被清理\n` +
-              `• 后续如需恢复，需重新输入认领码接入`;
-
-  if (confirm(tip)) {
-    localStorage.removeItem(`b2b_cart_${currentAgent}`);
+  if (confirm(`【安全确认】您确定要解绑供货商「${curName}」吗？\n\n• 解绑后将清除本总代待订购物车与快捷入口\n• 如需恢复需重新输入认领码接入`)) {
+    localStorage.removeItem(`b2b_cart_v3_${currentAgent}`);
     myAgents = myAgents.filter(a => a.id !== currentAgent);
     localStorage.setItem(MY_AGENTS_KEY, JSON.stringify(myAgents));
-
     const nextAgent = myAgents[0].id;
-    alert(`✅ 已成功解绑「${curName}」，已为您切换到下一家供货商！`);
+    alert(`✅ 已成功解绑「${curName}」！`);
     window.switchActiveAgent(nextAgent);
   }
 };
 
 // ==========================================
-// 5. 右上角高频实用功能：重填常订品 & 清空购物车
+// 4. 货品卡片三态集成操作 (订 / 退 / 换)
+// ==========================================
+window.initProdItemState = (id) => {
+  if (!cart[id]) {
+    cart[id] = { order: 0, return: 0, exchange: 0, returnReason: RETURN_REASONS[0], exchangeReason: EXCHANGE_REASONS[0], returnPrice: null };
+  }
+};
+
+// 订货数量加减
+window.changeOrderQty = (id, delta) => {
+  window.initProdItemState(id);
+  const prod = allProducts.find(x => x.id === id);
+  const stock = prod?.stock ?? 999;
+  let newQty = cart[id].order + delta;
+
+  if (newQty < 0) newQty = 0;
+  if (newQty > stock) {
+    alert(`在售现货仅剩 ${stock} 箱！`);
+    newQty = stock;
+  }
+
+  cart[id].order = newQty;
+  saveAgentCart();
+  safeSetText(`qty-order-${id}`, newQty);
+  updateCartSummary();
+};
+
+// 打开退货设置抽屉
+window.openReturnDrawer = async (id) => {
+  window.initProdItemState(id);
+  const prod = allProducts.find(x => x.id === id);
+  if (!prod) return;
+
+  // 自动追溯历史原进价
+  let origPrice = ShopTypeManager.getEffectivePrice(prod, shopType);
+  if (currentStore) {
+    const hist = await StoreService.getHistoricalPrice(currentStore.id, currentAgent, id);
+    if (hist) origPrice = hist.price;
+  }
+  cart[id].returnPrice = origPrice;
+
+  const currentReturnQty = cart[id].return || 1;
+  const reason = prompt(
+    `🔄 登记退货：【${prod.name}】\n` +
+    `• 追溯送货原价: ¥${origPrice.toFixed(2)} /箱\n` +
+    `• 请输入退货件数 (当前: ${currentReturnQty}，设为0取消退货):`,
+    currentReturnQty
+  );
+
+  if (reason === null) return;
+  const parsedQty = parseInt(reason);
+  if (isNaN(parsedQty) || parsedQty < 0) return alert('请输入有效的数字！');
+
+  cart[id].return = parsedQty;
+  if (parsedQty > 0) {
+    const reasonIndex = prompt(
+      `请选择合规退货理由：\n1. ${RETURN_REASONS[0]}\n2. ${RETURN_REASONS[1]}\n3. ${RETURN_REASONS[2]}\n4. ${RETURN_REASONS[3]}\n请输入序号(1-4):`,
+      '1'
+    );
+    const idx = parseInt(reasonIndex) - 1;
+    cart[id].returnReason = RETURN_REASONS[idx] || RETURN_REASONS[0];
+  }
+
+  saveAgentCart();
+  renderProductList();
+  updateCartSummary();
+};
+
+// 打开换货设置抽屉
+window.openExchangeDrawer = (id) => {
+  window.initProdItemState(id);
+  const prod = allProducts.find(x => x.id === id);
+  if (!prod) return;
+
+  const currentExchangeQty = cart[id].exchange || 1;
+  const input = prompt(
+    `🔀 登记等价平换：【${prod.name}】\n• 规则: 一新换一旧 (差额 ¥0.00)\n• 请输入调换件数 (设为0取消):`,
+    currentExchangeQty
+  );
+
+  if (input === null) return;
+  const parsedQty = parseInt(input);
+  if (isNaN(parsedQty) || parsedQty < 0) return alert('请输入有效的数字！');
+
+  cart[id].exchange = parsedQty;
+  if (parsedQty > 0) {
+    const reasonIndex = prompt(
+      `请选择换货理由：\n1. ${EXCHANGE_REASONS[0]}\n2. ${EXCHANGE_REASONS[1]}\n3. ${EXCHANGE_REASONS[2]}\n请输入序号(1-3):`,
+      '1'
+    );
+    const idx = parseInt(reasonIndex) - 1;
+    cart[id].exchangeReason = EXCHANGE_REASONS[idx] || EXCHANGE_REASONS[0];
+  }
+
+  saveAgentCart();
+  renderProductList();
+  updateCartSummary();
+};
+
+function updateCartSummary() {
+  let orderTotal = 0, returnTotal = 0, orderCount = 0, returnCount = 0, exchangeCount = 0;
+
+  for (const [id, data] of Object.entries(cart)) {
+    const prod = allProducts.find(x => x.id === parseInt(id));
+    if (!prod) continue;
+    const price = ShopTypeManager.getEffectivePrice(prod, shopType);
+
+    if (data.order > 0) {
+      orderTotal += price * data.order;
+      orderCount += data.order;
+    }
+    if (data.return > 0) {
+      const retPrice = data.returnPrice || price;
+      returnTotal += retPrice * data.return;
+      returnCount += data.return;
+    }
+    if (data.exchange > 0) {
+      exchangeCount += data.exchange;
+    }
+  }
+
+  const netTotal = Math.max(0, orderTotal - returnTotal);
+  safeSetText('cart-total-amount', netTotal.toFixed(2));
+  safeSetText('cart-count-badge', orderCount + returnCount + exchangeCount);
+
+  // 底部统计副标
+  const detailEl = document.getElementById('cart-detail-subtext');
+  if (detailEl) {
+    detailEl.innerText = `订 ${orderCount} | 退 ${returnCount} (-¥${returnTotal.toFixed(1)}) | 换 ${exchangeCount}`;
+  }
+}
+
+// ==========================================
+// 5. 三合一送货结算凭单生成与确认弹窗
+// ==========================================
+window.openSettlementModal = () => {
+  const orderItems = [];
+  const returnItems = [];
+  const exchangeItems = [];
+
+  for (const [id, data] of Object.entries(cart)) {
+    const p = allProducts.find(x => x.id === parseInt(id));
+    if (!p) continue;
+    const price = ShopTypeManager.getEffectivePrice(p, shopType);
+
+    if (data.order > 0) {
+      orderItems.push({ id: p.id, name: p.name, spec: p.spec, price, qty: data.order });
+    }
+    if (data.return > 0) {
+      returnItems.push({
+        id: p.id,
+        name: p.name,
+        spec: p.spec,
+        price: data.returnPrice || price,
+        qty: data.return,
+        reason: data.returnReason
+      });
+    }
+    if (data.exchange > 0) {
+      exchangeItems.push({
+        id: p.id,
+        name: p.name,
+        spec: p.spec,
+        qty: data.exchange,
+        reason: data.exchangeReason
+      });
+    }
+  }
+
+  if (orderItems.length === 0 && returnItems.length === 0 && exchangeItems.length === 0) {
+    return alert('当前没有挑选任何订货、退货或换货品项！');
+  }
+
+  // 1. 填充结算方式选择区（在供货商允许的范围内）
+  const allowed = (currentStore && Array.isArray(currentStore.allowed_settlements))
+    ? currentStore.allowed_settlements
+    : ['cash', 'credit'];
+
+  const curSettlementSelect = document.getElementById('slip-settlement-select');
+  if (curSettlementSelect) {
+    curSettlementSelect.innerHTML = Object.entries(SETTLEMENT_CONFIG).map(([key, val]) => {
+      const isAllowed = allowed.includes(key);
+      return `<option value="${key}" ${!isAllowed ? 'disabled' : ''} ${key === currentSettlementType ? 'selected' : ''}>
+        ${val.label} ${!isAllowed ? '(供货商未授权)' : ''}
+      </option>`;
+    }).join('');
+  }
+
+  // 2. 渲染品项分区清单
+  renderSlipItemList('slip-order-items-list', orderItems, 'order');
+  renderSlipItemList('slip-return-items-list', returnItems, 'return');
+  renderSlipItemList('slip-exchange-items-list', exchangeItems, 'exchange');
+
+  // 3. 计算实收净额
+  const orderTotal = orderItems.reduce((a, b) => a + (b.price * b.qty), 0);
+  const returnTotal = returnItems.reduce((a, b) => a + (b.price * b.qty), 0);
+  const netTotal = Math.max(0, orderTotal - returnTotal);
+
+  safeSetText('slip-order-total', `¥${orderTotal.toFixed(2)}`);
+  safeSetText('slip-return-total', `-¥${returnTotal.toFixed(2)}`);
+  safeSetText('slip-net-total', `¥${netTotal.toFixed(2)}`);
+
+  // 4. 运行轻量 AI 风控分析引擎
+  const storeQuota = parseFloat(currentStore?.monthly_return_quota || 500);
+  const usedQuota = parseFloat(currentStore?.used_return_quota || 0);
+  const aiResult = analyzeOrderRiskAI({ orderItems, returnItems, exchangeItems, storeQuota, usedQuota });
+
+  const aiBox = document.getElementById('slip-ai-analysis-box');
+  if (aiBox) {
+    aiBox.innerHTML = aiResult.tips.map(t => `<div class="text-[10px] leading-tight">${t}</div>`).join('');
+  }
+
+  // 5. 若超额或异常，显现凭据上传框
+  const proofBox = document.getElementById('slip-proof-upload-box');
+  if (proofBox) {
+    if (aiResult.riskLevel === 'danger' || returnItems.length > 0) {
+      proofBox.classList.remove('hidden');
+    } else {
+      proofBox.classList.add('hidden');
+    }
+  }
+
+  window.openModal('settlement-slip-modal');
+};
+
+function renderSlipItemList(containerId, items, type) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (items.length === 0) {
+    container.innerHTML = '<div class="text-stone-300 text-[10px] py-1 text-center">无该项变动</div>';
+    return;
+  }
+
+  container.innerHTML = items.map(it => {
+    if (type === 'order') {
+      return `
+        <div class="flex justify-between items-center py-1 border-b border-stone-50">
+          <div>
+            <b class="text-stone-800">${it.name}</b>
+            <span class="text-[9px] text-stone-400 block">${it.spec || '整装'} · ¥${it.price.toFixed(2)} x ${it.qty}箱</span>
+          </div>
+          <b class="text-stone-900 font-mono">¥${(it.price * it.qty).toFixed(2)}</b>
+        </div>
+      `;
+    } else if (type === 'return') {
+      return `
+        <div class="flex justify-between items-center py-1 border-b border-stone-50 text-rose-700">
+          <div>
+            <b>${it.name}</b>
+            <span class="text-[9px] text-rose-500 block">原价 ¥${it.price.toFixed(2)} x ${it.qty}箱 · [${it.reason}]</span>
+          </div>
+          <b class="font-mono">-¥${(it.price * it.qty).toFixed(2)}</b>
+        </div>
+      `;
+    } else {
+      return `
+        <div class="flex justify-between items-center py-1 border-b border-stone-50 text-amber-800">
+          <div>
+            <b>${it.name}</b>
+            <span class="text-[9px] text-amber-600 block">平价替换 x ${it.qty}箱 · [${it.reason}]</span>
+          </div>
+          <span class="font-mono text-[10px] bg-amber-50 px-1.5 py-0.2 rounded font-bold">差额 ¥0.00</span>
+        </div>
+      `;
+    }
+  }).join('');
+}
+
+// 模拟凭据图片上传
+window.handleProofUpload = (e) => {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+  for (let i = 0; i < files.length; i++) {
+    uploadedProofImages.push(URL.createObjectURL(files[i]));
+  }
+  const preview = document.getElementById('proof-preview-container');
+  if (preview) {
+    preview.innerHTML = uploadedProofImages.map(src => `
+      <img src="${src}" class="w-12 h-12 rounded-lg object-cover border border-stone-300">
+    `).join('');
+  }
+  alert('📷 异常纸质底单 / 破损凭据已暂存！');
+};
+
+// 正式确认送货结算单并发送给供货商
+window.confirmAndSubmitOrder = async () => {
+  const settlementSelect = document.getElementById('slip-settlement-select');
+  const settlementType = settlementSelect ? settlementSelect.value : 'credit';
+  const customNote = document.getElementById('slip-custom-note')?.value.trim() || '';
+
+  const orderItems = [];
+  const returnItems = [];
+  const exchangeItems = [];
+
+  for (const [id, data] of Object.entries(cart)) {
+    const p = allProducts.find(x => x.id === parseInt(id));
+    if (!p) continue;
+    const price = ShopTypeManager.getEffectivePrice(p, shopType);
+
+    if (data.order > 0) orderItems.push({ id: p.id, name: p.name, spec: p.spec, price, qty: data.order });
+    if (data.return > 0) returnItems.push({ id: p.id, name: p.name, spec: p.spec, price: data.returnPrice || price, qty: data.return, reason: data.returnReason });
+    if (data.exchange > 0) exchangeItems.push({ id: p.id, name: p.name, spec: p.spec, qty: data.exchange, reason: data.exchangeReason });
+  }
+
+  const orderTotal = orderItems.reduce((a, b) => a + (b.price * b.qty), 0);
+  const returnTotal = returnItems.reduce((a, b) => a + (b.price * b.qty), 0);
+  const netTotal = Math.max(0, orderTotal - returnTotal);
+
+  const btn = document.getElementById('btn-slip-confirm');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = '正在发送供货商...';
+  }
+
+  try {
+    await StoreService.submitComprehensiveOrder({
+      tenantId: currentAgent,
+      storeId: currentStore ? currentStore.id : 1,
+      storeName: currentStore ? currentStore.name : '合作便民老店',
+      driverName: currentStore ? currentStore.driver_name : '老张师傅',
+      orderSource: 'store_order',
+      settlementType,
+      settlementNote: customNote,
+      itemsOrder: orderItems,
+      itemsReturn: returnItems,
+      itemsExchange: exchangeItems,
+      orderTotal,
+      returnTotal,
+      netTotal,
+      note: deliveryNote,
+      proofImages: uploadedProofImages,
+      currentDebt: currentStore?.current_debt || 0
+    });
+
+    alert(`🎉 送货结算凭单已成功推送给供货商！\n实结净额: ¥${netTotal.toFixed(2)}\n供货商确认后随车师傅将装车点交！`);
+
+    for (const k of Object.keys(cart)) delete cart[k];
+    saveAgentCart();
+    uploadedProofImages = [];
+    deliveryNote = '';
+    window.closeModal('settlement-slip-modal');
+    await initTerminal();
+  } catch (err) {
+    alert(`单据生成失败: ${err.message}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = '✅ 确认无误 · 提交供货商';
+    }
+  }
+};
+
+// 掌柜对当前单据提出修正建议打回
+window.returnOrderWithSuggestion = () => {
+  const suggestion = prompt('请输入您对本单的调整建议（如：某品先送一半，退货原由补充）：');
+  if (!suggestion || !suggestion.trim()) return;
+  deliveryNote = deliveryNote ? `${deliveryNote}；[掌柜建议] ${suggestion}` : `[掌柜建议] ${suggestion}`;
+  alert(`已将建议附加至单据附言：「${suggestion}」。您可以重新微调数量后重发！`);
+  window.closeModal('settlement-slip-modal');
+};
+
+// ==========================================
+// 6. 快捷工具与经营助手
 // ==========================================
 window.repeatLastOrder = async function () {
   if (!currentStore) return alert('当前供货商未绑定有效门店！');
 
   const myOrders = await StoreService.getMyOrders(currentStore.id, currentAgent);
   if (!myOrders || myOrders.length === 0) {
-    return alert('当前供货商暂无历史报单记录，请先自选商品订购一次！');
+    return alert('当前供货商暂无历史报单记录！');
   }
 
   const lastOrder = myOrders[0];
@@ -219,9 +574,10 @@ window.repeatLastOrder = async function () {
   let addedCount = 0;
   for (const it of items) {
     if (it.id && it.qty) {
+      window.initProdItemState(it.id);
       const prod = allProducts.find(p => p.id === it.id);
       const stock = prod?.stock ?? 999;
-      cart[it.id] = Math.min(it.qty, stock);
+      cart[it.id].order = Math.min(it.qty, stock);
       addedCount++;
     }
   }
@@ -229,11 +585,11 @@ window.repeatLastOrder = async function () {
   saveAgentCart();
   renderProductList();
   updateCartSummary();
-  alert(`✅ 已为您一键重填【${myAgents.find(a => a.id === currentAgent)?.name || currentAgent}】上单的 ${addedCount} 样常订货品！`);
+  alert(`✅ 已一键重填【${myAgents.find(a => a.id === currentAgent)?.name || currentAgent}】上单的 ${addedCount} 样常订货品！`);
 };
 
 window.clearCurrentCart = function () {
-  if (Object.keys(cart).length === 0) return alert('当前供货商的购物车已经是空的');
+  if (Object.keys(cart).length === 0) return alert('当前购物车已经是空的');
   const curName = myAgents.find(a => a.id === currentAgent)?.name || currentAgent;
   if (confirm(`确认清空【${curName}】的待订购物车？`)) {
     for (const k of Object.keys(cart)) delete cart[k];
@@ -243,9 +599,6 @@ window.clearCurrentCart = function () {
   }
 };
 
-// ==========================================
-// 6. 左侧 ☰ 轻灵经营助手功能（简报 & 搜品 & 海报）
-// ==========================================
 window.openStoreOverview = function () {
   const curName = myAgents.find(a => a.id === currentAgent)?.name || currentAgent;
   const debt = document.getElementById('credit-debt')?.innerText || '¥0.00';
@@ -257,7 +610,7 @@ window.openStoreOverview = function () {
     `• 本总代未结挂账：${debt}\n` +
     `• 免息授信可用额度：${avail}\n` +
     `• 借用周转空筐：${basket}\n\n` +
-    `如需查看历次明细，可在右上角「···」菜单中点击「单据与收款条」。`
+    `可在右上角「···」菜单查验历次明细。`
   );
 };
 
@@ -272,20 +625,18 @@ window.focusProductSearch = function () {
     return alert(`未在当前供货商货单中找到含「${keyword}」的货品。`);
   }
 
-  const container = document.getElementById('product-container');
-  if (container) {
-    currentCategory = '全部';
-    renderCategoryTabs();
-    
-    const oldAll = allProducts;
-    allProducts = matched;
-    renderProductList();
-    allProducts = oldAll;
-    
-    alert(`🔍 找到 ${matched.length} 件相关货品，已为您呈现在货单列表顶部。点击任一分类标签即可恢复全部展示。`);
-  }
+  currentCategory = '全部';
+  renderCategoryTabs();
+  const oldAll = allProducts;
+  allProducts = matched;
+  renderProductList();
+  allProducts = oldAll;
+  alert(`🔍 找到 ${matched.length} 件相关货品已置顶展示。`);
 };
 
+// ==========================================
+// 7. 营销海报中心
+// ==========================================
 window.openMarketingCenter = () => {
   if (allProducts.length === 0) return alert('当前供货商没有可做海报的在售货品！');
   window.configureFlyer(allProducts[0].id);
@@ -372,7 +723,7 @@ window.renderLiveFlyerPreview = async () => {
 };
 
 // ==========================================
-// 7. 店型管理与便签
+// 8. 店型选择与随车便签
 // ==========================================
 window.selectShopType = (type) => {
   shopType = type;
@@ -411,32 +762,11 @@ window.callDriver = () => {
 };
 
 window.openReturnModal = () => {
-  window.closeModal('toolbox-modal');
-  const nameEl = document.getElementById('return-prod-name');
-  const qtyEl = document.getElementById('return-qty');
-  const remarkEl = document.getElementById('return-remark');
-  if (nameEl) nameEl.value = '';
-  if (qtyEl) qtyEl.value = '1';
-  if (remarkEl) remarkEl.value = '';
-  window.openModal('return-modal');
-};
-
-window.submitReturnRequest = () => {
-  const name = document.getElementById('return-prod-name')?.value.trim();
-  const qty = parseInt(document.getElementById('return-qty')?.value) || 1;
-  const reason = document.getElementById('return-reason')?.value || '外箱破损/漏液';
-  const remark = document.getElementById('return-remark')?.value.trim();
-  if (!name) return alert('请填写需要调换的商品全名！');
-
-  const extra = remark ? `(${remark})` : '';
-  const noteStr = `【调换货】${name} x ${qty}件 - ${reason}${extra}`;
-  deliveryNote = deliveryNote ? `${deliveryNote}；${noteStr}` : noteStr;
-  alert('已成功登记调换货！送货时师傅当面核减验退。');
-  window.closeModal('return-modal');
+  alert('💡 现已全面升级：请直接在货品列表右侧点选【退】或【换】，与进货一单一并结算！');
 };
 
 // ==========================================
-// 8. 商品货单展示与分类筛选
+// 9. 货品货单列表渲染 (集成订/退/换三态徽章)
 // ==========================================
 function renderCategoryTabs() {
   const categories = ['全部', ...new Set(allProducts.map(p => p.category_main).filter(Boolean))];
@@ -492,10 +822,14 @@ function renderProductList() {
     const stock = p.stock ?? 999;
     const isOutOfStock = stock <= 0;
 
+    const curState = cart[p.id] || { order: 0, return: 0, exchange: 0 };
+    const hasReturn = curState.return > 0;
+    const hasExchange = curState.exchange > 0;
+
     return `
-      <div class="py-3.5 px-1 space-y-2 ${isOutOfStock ? 'opacity-50' : ''}">
-        <div class="flex justify-between items-center gap-3">
-          <div class="flex items-center gap-3">
+      <div class="py-3.5 px-1 space-y-2 border-b border-stone-100 ${isOutOfStock ? 'opacity-60' : ''}">
+        <div class="flex justify-between items-start gap-3">
+          <div class="flex items-start gap-3">
             ${imgHtml}
             <div>
               <div class="font-bold text-xs text-stone-800">${p.name}</div>
@@ -510,16 +844,31 @@ function renderProductList() {
             </div>
           </div>
           
-          <div class="flex items-center gap-2">
-            <button type="button" onclick="window.changeQty(${p.id}, -1)" class="w-7 h-7 rounded-xl bg-stone-100 active:scale-95 font-bold text-stone-600 flex items-center justify-center text-sm shadow-sm">-</button>
-            <span id="qty-${p.id}" class="w-6 text-center font-bold text-xs font-mono">${cart[p.id] || 0}</span>
-            <button type="button" onclick="window.changeQty(${p.id}, 1)" ${isOutOfStock ? 'disabled' : ''} class="w-7 h-7 rounded-xl ${isOutOfStock ? 'bg-stone-200 text-stone-400' : 'bg-emerald-50 text-emerald-800 active:scale-95'} font-bold flex items-center justify-center text-sm shadow-sm">+</button>
+          <!-- 订货数量加减控制 -->
+          <div class="flex items-center gap-1.5 pt-1">
+            <button type="button" onclick="window.changeOrderQty(${p.id}, -1)" class="w-7 h-7 rounded-xl bg-stone-100 active:scale-95 font-bold text-stone-600 flex items-center justify-center text-sm shadow-sm">-</button>
+            <span id="qty-order-${p.id}" class="w-6 text-center font-bold text-xs font-mono">${curState.order || 0}</span>
+            <button type="button" onclick="window.changeOrderQty(${p.id}, 1)" ${isOutOfStock ? 'disabled' : ''} class="w-7 h-7 rounded-xl ${isOutOfStock ? 'bg-stone-200 text-stone-400' : 'bg-emerald-50 text-emerald-800 active:scale-95'} font-bold flex items-center justify-center text-sm shadow-sm">+</button>
           </div>
         </div>
 
-        <div class="flex justify-end pt-0.5">
-          <button type="button" onclick="window.configureFlyer(${p.id})" class="text-[10px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-3 py-1 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition">
-            📲 自选风格做海报
+        <!-- 订/退/换轻量标记与海报操作条 -->
+        <div class="flex justify-between items-center pt-0.5 text-[10px]">
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="window.openReturnDrawer(${p.id})" class="px-2 py-0.5 rounded-lg font-bold border transition ${
+              hasReturn ? 'bg-rose-50 text-rose-700 border-rose-300' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
+            }">
+              🔄 退货 ${hasReturn ? `(${curState.return}件)` : ''}
+            </button>
+            <button type="button" onclick="window.openExchangeDrawer(${p.id})" class="px-2 py-0.5 rounded-lg font-bold border transition ${
+              hasExchange ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
+            }">
+              🔀 换货 ${hasExchange ? `(${curState.exchange}件)` : ''}
+            </button>
+          </div>
+
+          <button type="button" onclick="window.configureFlyer(${p.id})" class="text-[10px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition">
+            📲 做海报
           </button>
         </div>
       </div>
@@ -528,95 +877,7 @@ function renderProductList() {
 }
 
 // ==========================================
-// 9. 购物车加减与订货报单
-// ==========================================
-window.changeQty = (id, delta) => {
-  const prod = allProducts.find(x => x.id === id);
-  const stock = prod?.stock ?? 999;
-  let newQty = (cart[id] || 0) + delta;
-
-  if (newQty < 0) newQty = 0;
-  if (newQty > stock) {
-    alert(`在售库存仅剩 ${stock} 箱！`);
-    newQty = stock;
-  }
-
-  if (newQty === 0) delete cart[id];
-  else cart[id] = newQty;
-
-  saveAgentCart();
-  const el = document.getElementById(`qty-${id}`);
-  if (el) el.innerText = newQty;
-  updateCartSummary();
-};
-
-function updateCartSummary() {
-  let totalAmount = 0, totalCount = 0;
-  for (const [id, qty] of Object.entries(cart)) {
-    if (qty > 0) {
-      const prod = allProducts.find(x => x.id === parseInt(id));
-      if (prod) {
-        totalAmount += ShopTypeManager.getEffectivePrice(prod, shopType) * qty;
-        totalCount += qty;
-      }
-    }
-  }
-  safeSetText('cart-total-amount', totalAmount.toFixed(2));
-  safeSetText('cart-count-badge', totalCount);
-}
-
-window.submitB2BOrder = async () => {
-  const amtEl = document.getElementById('cart-total-amount');
-  const totalAmount = parseFloat(amtEl ? amtEl.innerText : '0');
-  if (totalAmount <= 0) return alert('请先挑选进货件数！');
-
-  const items = [];
-  for (const [id, qty] of Object.entries(cart)) {
-    if (qty > 0) {
-      const p = allProducts.find(x => x.id === parseInt(id));
-      if (p) items.push({ id: p.id, name: p.name, spec: p.spec, price: ShopTypeManager.getEffectivePrice(p, shopType), qty });
-    }
-  }
-
-  const btn = document.getElementById('btn-submit-order');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerText = '正在提交...';
-  }
-
-  try {
-    if (currentStore) {
-      await StoreService.submitOrder({
-        tenantId: currentAgent,
-        storeId: currentStore.id,
-        storeName: currentStore.name,
-        driverName: currentStore.driver_name,
-        totalAmount,
-        items,
-        note: deliveryNote,
-        currentDebt: currentStore.current_debt
-      });
-    }
-
-    const curAgentObj = myAgents.find(a => a.id === currentAgent);
-    alert(`🎉 【${curAgentObj?.name || currentAgent}】报单成功！合计 ¥${totalAmount.toFixed(2)}。已安排师傅装车！`);
-
-    for (const k of Object.keys(cart)) delete cart[k];
-    saveAgentCart();
-    deliveryNote = '';
-    await initTerminal();
-  } catch (err) {
-    alert(`报单失败: ${err.message}`);
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = `<span>订货</span> <span id="cart-count-badge" class="bg-amber-400 text-stone-900 text-xs px-2 py-0.5 rounded-full font-mono font-bold">0</span>`;
-    }
-  }
-};
-
-// ==========================================
-// 10. 当前总代单据与收条查验
+// 10. 单据历史与收条查验
 // ==========================================
 window.openReceiptsModal = async () => {
   if (!currentStore) return alert('当前供货商未绑定有效门店！');
@@ -626,19 +887,24 @@ window.openReceiptsModal = async () => {
   const ordersListEl = document.getElementById('my-orders-list');
   if (ordersListEl) {
     ordersListEl.innerHTML = myOrders.map(o => {
-      const items = Array.isArray(o.items) ? o.items : [];
-      const itemsText = items.map(it => `${it.name} x ${it.qty}箱`).join('、');
+      const orderItems = Array.isArray(o.items) ? o.items : [];
+      const returnItems = Array.isArray(o.items_return) ? o.items_return : [];
+      const exchangeItems = Array.isArray(o.items_exchange) ? o.items_exchange : [];
+
+      const orderStr = orderItems.map(it => `${it.name} x ${it.qty}箱`).join('、');
+      const returnStr = returnItems.map(it => `退:${it.name}x${it.qty}`).join('、');
+      const exchangeStr = exchangeItems.map(it => `换:${it.name}x${it.qty}`).join('、');
+
       return `
         <div class="p-2.5 bg-stone-50 border border-stone-200 rounded-xl space-y-1">
-          <div class="flex justify-between font-bold">
-            <span>单号 #${o.id} · ¥${parseFloat(o.total_amount).toFixed(2)}</span>
-            <span class="${o.delivery_status === 'delivered' ? 'text-emerald-700' : 'text-amber-700'}">
-              ${o.delivery_status === 'delivered' ? '✅ 已送达平账' : '🚚 排单待送'}
-            </span>
+          <div class="flex justify-between font-bold text-xs">
+            <span>流水 #${o.order_no || o.id}</span>
+            <span class="text-emerald-800">实结: ¥${parseFloat(o.net_settle_amount || o.total_amount).toFixed(2)}</span>
           </div>
-          <div class="text-[10px] text-stone-600">📦 配货明细: ${itemsText || '整批进货'}</div>
-          ${o.note ? `<div class="text-[10px] text-amber-800">💬 随车附言: ${o.note}</div>` : ''}
-          <div class="text-[10px] text-stone-400">报单时间: ${new Date(o.created_at).toLocaleString()}</div>
+          <div class="text-[10px] text-stone-600">📦 新订: ${orderStr || '无'}</div>
+          ${returnStr ? `<div class="text-[10px] text-rose-600">🔄 授权退货: ${returnStr}</div>` : ''}
+          ${exchangeStr ? `<div class="text-[10px] text-amber-700">🔀 调换交接: ${exchangeStr}</div>` : ''}
+          <div class="text-[10px] text-stone-400">结算: ${SETTLEMENT_CONFIG[o.settlement_type]?.label || o.settlement_type} · ${new Date(o.created_at).toLocaleString()}</div>
         </div>
       `;
     }).join('') || '<div class="text-stone-400 text-center py-2">暂无该总代报单</div>';
@@ -649,11 +915,11 @@ window.openReceiptsModal = async () => {
   if (receiptsListEl) {
     receiptsListEl.innerHTML = myReceipts.map(r => `
       <div class="p-2.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1">
-        <div class="flex justify-between font-bold text-emerald-950">
-          <span>经办随车人: ${r.driver_name}</span>
+        <div class="flex justify-between font-bold text-emerald-950 text-xs">
+          <span>随车人: ${r.driver_name}</span>
           <span>实交: ¥${parseFloat(r.amount).toFixed(2)} (${r.pay_method})</span>
         </div>
-        ${r.basket_return ? `<div class="text-[10px] text-amber-800">退还空筐: ${r.basket_return} 个 (折抵货款 ¥${r.basket_deduct_amount})</div>` : ''}
+        ${r.basket_return ? `<div class="text-[10px] text-amber-800">退还空筐: ${r.basket_return} 个 (折抵 ¥${r.basket_deduct_amount})</div>` : ''}
         <div class="text-[10px] text-emerald-800">核销时间: ${new Date(r.created_at).toLocaleString()}</div>
       </div>
     `).join('') || '<div class="text-stone-400 text-center py-2">暂无该总代还款记录</div>';
@@ -661,7 +927,7 @@ window.openReceiptsModal = async () => {
 };
 
 // ==========================================
-// 11. 初始化入口
+// 11. 系统初始化入口
 // ==========================================
 async function initTerminal() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -685,6 +951,10 @@ async function initTerminal() {
     const debt = parseFloat(currentStore.current_debt || 0);
     safeSetText('credit-avail', `¥${Math.max(0, limit - debt).toFixed(2)}`);
     safeSetText('credit-debt', `¥${debt.toFixed(2)}`);
+
+    if (currentStore.default_settlement) {
+      currentSettlementType = currentStore.default_settlement;
+    }
 
     if (!localStorage.getItem('active_shop_type')) {
       shopType = ShopTypeManager.autoDetect(currentStore.name);
