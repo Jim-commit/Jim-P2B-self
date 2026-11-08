@@ -81,7 +81,57 @@ export const StoreService = {
     }
   },
 
-  // 5. 提交三合一多模式综合送货单（订/退/换、结算策略、凭据照片）
+  // 5. 追溯某商品的历史累计订购量与当前最大可退换余量 (防止无单退货与超量退货)
+  async getProductReturnableQuota(storeId, tenantId, productId) {
+    try {
+      const { data: orders, error } = await supabase
+        .from('store_order')
+        .select('id, order_no, items, items_return, items_exchange, created_at')
+        .eq('store_id', storeId)
+        .eq('tenant_id', tenantId)
+        .neq('order_status', 'cancelled');
+
+      if (error || !orders) return { maxReturnable: 0, totalOrdered: 0, totalReturned: 0, lastPrice: 0, lastOrderNo: '' };
+
+      let totalOrdered = 0;
+      let totalReturned = 0;
+      let lastPrice = 0;
+      let lastOrderNo = '';
+
+      for (const o of orders) {
+        const items = Array.isArray(o.items) ? o.items : [];
+        const returns = Array.isArray(o.items_return) ? o.items_return : [];
+        const exchanges = Array.isArray(o.items_exchange) ? o.items_exchange : [];
+
+        const matchOrder = items.find(it => it.id === productId);
+        if (matchOrder) {
+          totalOrdered += parseInt(matchOrder.qty || 0);
+          if (!lastPrice) {
+            lastPrice = parseFloat(matchOrder.price || 0);
+            lastOrderNo = o.order_no || `#${o.id}`;
+          }
+        }
+
+        const matchReturn = returns.find(it => it.id === productId);
+        if (matchReturn) {
+          totalReturned += parseInt(matchReturn.qty || 0);
+        }
+
+        const matchExchange = exchanges.find(it => it.id === productId);
+        if (matchExchange) {
+          totalReturned += parseInt(matchExchange.qty || 0);
+        }
+      }
+
+      const maxReturnable = Math.max(0, totalOrdered - totalReturned);
+      return { maxReturnable, totalOrdered, totalReturned, lastPrice, lastOrderNo };
+    } catch (e) {
+      console.error('[StoreService] getProductReturnableQuota 出错:', e);
+      return { maxReturnable: 0, totalOrdered: 0, totalReturned: 0, lastPrice: 0, lastOrderNo: '' };
+    }
+  },
+
+  // 6. 提交三合一多模式综合送货单（订/退/换、结算策略、凭据照片）
   async submitComprehensiveOrder({
     tenantId,
     storeId,
@@ -101,16 +151,14 @@ export const StoreService = {
     currentDebt
   }) {
     try {
-      // ① 生成唯一单据流水号
       const orderNo = `DH-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-      // ② 写入主订单
       const { data: newOrder, error: orderErr } = await supabase.from('store_order').insert([{
         order_no: orderNo,
         tenant_id: tenantId,
         store_id: storeId,
         store_name: storeName,
-        driver_name: driverName || '配送师傅',
+        driver_name: driverName || '老张师傅',
         order_source: orderSource || 'store_order',
         settlement_type: settlementType || 'credit',
         settlement_note: settlementNote || '',
@@ -130,7 +178,7 @@ export const StoreService = {
 
       if (orderErr) throw orderErr;
 
-      // ③ 扣减在售商品现货库存
+      // 扣减现货库存
       for (const item of itemsOrder) {
         const { data: prod } = await supabase
           .from('product')
@@ -144,7 +192,7 @@ export const StoreService = {
         }
       }
 
-      // ④ 财务账本更新（若是赊销挂账，累加净额；若是实销/现结不累加挂账）
+      // 赊销时记入挂账
       if (settlementType === 'credit') {
         const newDebt = Math.max(0, parseFloat(currentDebt || 0) + netTotal);
         await supabase.from('store').update({ current_debt: newDebt }).eq('id', storeId);
@@ -157,14 +205,14 @@ export const StoreService = {
     }
   },
 
-  // 6. 查验历史报单
+  // 7. 查验历史报单记录
   async getMyOrders(storeId, tenantId) {
     try {
       let query = supabase.from('store_order').select('*').eq('store_id', storeId);
       if (tenantId) {
         query = query.eq('tenant_id', tenantId);
       }
-      const { data, error } = await query.order('id', { ascending: false }).limit(10);
+      const { data, error } = await query.order('id', { ascending: false }).limit(15);
       if (error) throw error;
       return data || [];
     } catch (err) {
@@ -173,14 +221,14 @@ export const StoreService = {
     }
   },
 
-  // 7. 查验师傅收款电子收条
+  // 8. 查验师傅收款电子收条
   async getMyReceipts(storeId, tenantId) {
     try {
       let query = supabase.from('driver_collection_log').select('*').eq('store_id', storeId);
       if (tenantId) {
         query = query.eq('tenant_id', tenantId);
       }
-      const { data, error } = await query.order('id', { ascending: false }).limit(10);
+      const { data, error } = await query.order('id', { ascending: false }).limit(15);
       if (error) throw error;
       return data || [];
     } catch (err) {
