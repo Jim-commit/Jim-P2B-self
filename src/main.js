@@ -192,14 +192,10 @@ window.confirmUnbindCurrentAgent = function () {
               `• 后续如需恢复，需重新输入认领码接入`;
 
   if (confirm(tip)) {
-    // 1. 清理本地购物车缓存
     localStorage.removeItem(`b2b_cart_${currentAgent}`);
-    
-    // 2. 从名册中移除
     myAgents = myAgents.filter(a => a.id !== currentAgent);
     localStorage.setItem(MY_AGENTS_KEY, JSON.stringify(myAgents));
 
-    // 3. 自动切换到名册中的首个供货商
     const nextAgent = myAgents[0].id;
     alert(`✅ 已成功解绑「${curName}」，已为您切换到下一家供货商！`);
     window.switchActiveAgent(nextAgent);
@@ -249,18 +245,46 @@ window.clearCurrentCart = function () {
 };
 
 // ==========================================
-// 6. 左侧 ☰ 纯营销快捷海报功能
+// 6. 左侧 ☰ 轻灵经营助手功能（简报 & 搜品 & 海报）
 // ==========================================
-window.quickMakeNeighborhoodFlyer = () => {
-  if (allProducts.length === 0) return alert('当前供货商暂无在售货品！');
-  currentFlyerStyle = 'neighborhood';
-  window.configureFlyer(allProducts[0].id);
+window.openStoreOverview = function () {
+  const curName = myAgents.find(a => a.id === currentAgent)?.name || currentAgent;
+  const debt = document.getElementById('credit-debt')?.innerText || '¥0.00';
+  const avail = document.getElementById('credit-avail')?.innerText || '¥2000.00';
+  const basket = document.getElementById('store-basket-count')?.innerText || '0 个';
+
+  alert(
+    `📊 【${curName}】经营账目概览：\n\n` +
+    `• 本总代未结挂账：${debt}\n` +
+    `• 免息授信可用额度：${avail}\n` +
+    `• 借用周转空筐：${basket}\n\n` +
+    `如需查看历次明细，可在右上角「···」菜单中点击「本总代单据与收条」。`
+  );
 };
 
-window.quickMakeHonestFlyer = () => {
-  if (allProducts.length === 0) return alert('当前供货商暂无在售货品！');
-  currentFlyerStyle = 'honest';
-  window.configureFlyer(allProducts[0].id);
+window.focusProductSearch = function () {
+  const keyword = prompt('请输入想要查找的商品名称或关键字：');
+  if (!keyword || !keyword.trim()) return;
+
+  const target = keyword.trim().toLowerCase();
+  const matched = allProducts.filter(p => p.name.toLowerCase().includes(target));
+
+  if (matched.length === 0) {
+    return alert(`未在当前供货商货单中找到含「${keyword}」的货品。`);
+  }
+
+  const container = document.getElementById('product-container');
+  if (container) {
+    currentCategory = '全部';
+    renderCategoryTabs();
+    
+    const oldAll = allProducts;
+    allProducts = matched;
+    renderProductList();
+    allProducts = oldAll;
+    
+    alert(`🔍 找到 ${matched.length} 件相关货品，已为您呈现在货单列表顶部。点击任一分类标签即可恢复全部展示。`);
+  }
 };
 
 window.openMarketingCenter = () => {
