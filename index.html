@@ -34,7 +34,7 @@
         </button>
       </div>
 
-      <!-- 赊销周转金与挂账 -->
+      <!-- 赊销额度与挂账 -->
       <div class="mt-3 bg-emerald-950/60 p-3 rounded-2xl border border-emerald-700/40 flex justify-between items-center text-xs">
         <div>
           <span class="text-emerald-300 text-[10px] block">可用赊销额度</span>
@@ -58,14 +58,14 @@
       </button>
     </div>
 
-    <!-- 货品列表容器 -->
+    <!-- 货品列表 -->
     <main id="product-container" class="p-3 divide-y divide-stone-100 flex-1">
       <div class="p-12 text-center text-stone-400 text-xs">正在调取在售货单...</div>
     </main>
 
     <!-- 底部报单栏 -->
     <footer class="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 space-y-2 z-20">
-      <!-- 随车附言便签 -->
+      <!-- 随车附言 -->
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-[10px]">
         <span class="text-stone-400 whitespace-nowrap">随车附言:</span>
         <button onclick="window.appendDeliveryNote('赶早送达')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 px-2 py-0.5 rounded-lg whitespace-nowrap">赶早送达</button>
@@ -269,7 +269,7 @@
             </div>
 
             <div class="flex justify-end">
-              <button onclick="window.generateFlyer(${p.id})" class="text-[10px] bg-stone-50 hover:bg-stone-100 text-stone-600 border border-stone-200 px-2 py-0.5 rounded-lg active:scale-95 transition">
+              <button onclick="window.generateFlyer(${p.id})" class="text-[10px] bg-stone-50 hover:bg-stone-100 text-stone-600 border border-stone-200 px-2 py-0.5 rounded-lg active:scale-95">
                 生成宣传单
               </button>
             </div>
