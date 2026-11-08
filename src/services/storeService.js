@@ -1,14 +1,14 @@
 import { supabase } from '../lib/supabase.js';
 
 export const StoreService = {
-  // 获取门店档案
-  async getStoreByTenant(tenantId) {
+  // 1. 获取特定总代下的门店账本与额度档案
+  async getStoreByTenant(tenantId, phone = null) {
     try {
-      const { data, error } = await supabase
-        .from('store')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .limit(1);
+      let query = supabase.from('store').select('*').eq('tenant_id', tenantId);
+      if (phone) {
+        query = query.eq('phone', phone);
+      }
+      const { data, error } = await query.limit(1);
       if (error) throw error;
       return data && data.length > 0 ? data[0] : null;
     } catch (err) {
@@ -17,7 +17,7 @@ export const StoreService = {
     }
   },
 
-  // 手机号认领门店
+  // 2. 手机号认领门店
   async bindByPhone(phone) {
     try {
       const { data, error } = await supabase
@@ -33,7 +33,7 @@ export const StoreService = {
     }
   },
 
-  // 拉取在售货品（结合特权过滤）
+  // 3. 拉取当前总代的在售货品（结合特权过滤）
   async getProducts(tenantId, visibleIds = null) {
     try {
       const { data, error } = await supabase
@@ -55,10 +55,10 @@ export const StoreService = {
     }
   },
 
-  // 提交订单并扣减库存、更新挂账欠款
+  // 4. 提交订单并扣减当前总代库存、更新该总代账本挂账
   async submitOrder({ tenantId, storeId, storeName, driverName, totalAmount, items, note, currentDebt }) {
     try {
-      // 1. 写入订单主表
+      // ① 写入当前总代的订单表
       const { error: orderErr } = await supabase.from('store_order').insert([{
         tenant_id: tenantId,
         store_id: storeId,
@@ -74,7 +74,7 @@ export const StoreService = {
 
       if (orderErr) throw orderErr;
 
-      // 2. 依次扣减在售商品现货库存（防超卖）
+      // ② 依次扣减在售商品现货库存（防超卖）
       for (const item of items) {
         const { data: prod } = await supabase
           .from('product')
@@ -91,7 +91,7 @@ export const StoreService = {
         }
       }
 
-      // 3. 累加挂账欠款
+      // ③ 仅累加当前总代的挂账欠款
       const newDebt = parseFloat(currentDebt || 0) + totalAmount;
       const { error: storeErr } = await supabase
         .from('store')
@@ -106,15 +106,14 @@ export const StoreService = {
     }
   },
 
-  // 查验历史报单列表
-  async getMyOrders(storeId) {
+  // 5. 查验本店在该总代下的历史报单
+  async getMyOrders(storeId, tenantId) {
     try {
-      const { data, error } = await supabase
-        .from('store_order')
-        .select('*')
-        .eq('store_id', storeId)
-        .order('id', { ascending: false })
-        .limit(10);
+      let query = supabase.from('store_order').select('*').eq('store_id', storeId);
+      if (tenantId) {
+        query = query.eq('tenant_id', tenantId);
+      }
+      const { data, error } = await query.order('id', { ascending: false }).limit(10);
       if (error) throw error;
       return data || [];
     } catch (err) {
@@ -123,15 +122,14 @@ export const StoreService = {
     }
   },
 
-  // 查验随车师傅收款电子收条
-  async getMyReceipts(storeId) {
+  // 6. 查验本店在该总代下的师傅收款电子收条
+  async getMyReceipts(storeId, tenantId) {
     try {
-      const { data, error } = await supabase
-        .from('driver_collection_log')
-        .select('*')
-        .eq('store_id', storeId)
-        .order('id', { ascending: false })
-        .limit(10);
+      let query = supabase.from('driver_collection_log').select('*').eq('store_id', storeId);
+      if (tenantId) {
+        query = query.eq('tenant_id', tenantId);
+      }
+      const { data, error } = await query.order('id', { ascending: false }).limit(10);
       if (error) throw error;
       return data || [];
     } catch (err) {
