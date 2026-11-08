@@ -15,35 +15,72 @@
   <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-2xl relative">
     
     <!-- 顶栏 -->
-    <header class="bg-gradient-to-br from-[#064e3b] to-[#043327] text-white p-4 pt-4 rounded-b-[2rem] shadow-lg space-y-3">
-      <div class="flex justify-between items-center pb-2 border-b border-emerald-700/40 text-xs">
-        <button onclick="window.openMarketingCenter()" class="bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/40 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition">
-          <span>📢 社区营销·自选海报</span>
-        </button>
-        <button onclick="window.openToolboxModal()" class="bg-white/10 hover:bg-white/20 text-emerald-100 border border-emerald-400/30 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition">
-          <span>🧰 常规百宝箱 ▾</span>
-        </button>
-      </div>
+    <!-- 顶栏：左侧三道杠 ☰、右侧三点 ···、店招主视觉让位居中 -->
+    <header class="bg-gradient-to-br from-[#064e3b] to-[#043327] text-white p-4 pt-3.5 rounded-b-[2rem] shadow-lg space-y-3 relative">
+      
+      <!-- 极简顶栏：左 ☰、中 店名招牌、右 ··· -->
+      <div class="flex justify-between items-center text-xs pb-1 relative">
+        <!-- 左侧：三道杠 (汉堡菜单 ☰) -->
+        <div class="relative">
+          <button type="button" onclick="window.toggleLeftNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white" title="营销与海报">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
+            </svg>
+          </button>
 
-      <div class="flex justify-between items-start">
-        <div class="space-y-1">
-          <div class="flex items-center gap-2">
-            <h1 id="store-title" class="text-base font-bold tracking-tight">合作便民老店</h1>
-            <button onclick="window.openShopTypeModal()" id="shop-type-badge" class="bg-amber-400 text-stone-900 text-[10px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 shadow-sm active:scale-95 transition">
-              <span>🏪 社区超市</span> ▾
+          <!-- 左侧下拉气泡菜单 -->
+          <div id="left-nav-menu" class="hidden absolute left-0 top-10 w-44 bg-white rounded-2xl shadow-2xl py-1.5 z-40 text-stone-800 border border-stone-200 text-xs">
+            <button type="button" onclick="window.openMarketingCenter(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium">
+              <span>🎨</span> 制作宣发海报
             </button>
-          </div>
-          <div class="text-[11px] text-emerald-200 flex items-center gap-2 font-mono">
-            <span>掌柜: <b id="store-boss" class="text-white">负责人</b></span>
-            <span>供货总代: <b id="tenant-badge" class="text-emerald-100">BJ_SHUNDA</b></span>
+            <button type="button" onclick="window.openShopTypeModal(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium border-t border-stone-100">
+              <span>🏪</span> 点选经营形态
+            </button>
           </div>
         </div>
 
-        <button onclick="window.openReceiptsModal()" class="text-[11px] bg-emerald-800 hover:bg-emerald-700 text-emerald-100 border border-emerald-600/50 font-bold px-2.5 py-1.5 rounded-xl shadow-sm active:scale-95 transition">
-          📜 单据/收条
-        </button>
+        <!-- 居中：门店掌柜招牌（C位主视觉） -->
+        <div class="flex flex-col items-center">
+          <div class="flex items-center gap-1.5">
+            <h1 id="store-title" class="text-base font-bold tracking-tight text-white">合作便民老店</h1>
+            <button type="button" onclick="window.openShopTypeModal()" id="shop-type-badge" class="bg-amber-400 text-stone-900 text-[10px] px-2 py-0.2 rounded-full font-bold flex items-center gap-0.5 active:scale-95 transition">
+              <span>🏪 社区超市</span> ▾
+            </button>
+          </div>
+          <div class="text-[10px] text-emerald-200/80 font-mono mt-0.5 flex items-center gap-1.5">
+            <span>掌柜: <b id="store-boss" class="text-white">负责人</b></span>
+            <span>·</span>
+            <span>总代: <b id="tenant-badge" class="text-emerald-100">BJ_SHUNDA</b></span>
+          </div>
+        </div>
+
+        <!-- 右侧：三点 (更多菜单 ···) -->
+        <div class="relative">
+          <button type="button" onclick="window.toggleRightNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white" title="更多百宝箱">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
+          </button>
+
+          <!-- 右侧下拉气泡菜单 -->
+          <div id="right-nav-menu" class="hidden absolute right-0 top-10 w-48 bg-white rounded-2xl shadow-2xl py-1.5 z-40 text-stone-800 border border-stone-200 text-xs">
+            <button type="button" onclick="window.openReceiptsModal(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium">
+              <span>📜</span> 单据与电子收条
+            </button>
+            <button type="button" onclick="window.openReturnModal(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-amber-800 font-medium border-t border-stone-100">
+              <span>🔄</span> 破损 / 调换货申报
+            </button>
+            <button type="button" onclick="window.callDriver(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-emerald-800 font-medium border-t border-stone-100">
+              <span>📞</span> 致电随车师傅
+            </button>
+            <button type="button" onclick="window.openModal('bind-agent-modal'); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium border-t border-stone-100">
+              <span>🏢</span> 更换供货总代
+            </button>
+          </div>
+        </div>
       </div>
 
+      <!-- 账目看板：赊销额度、挂账与周转空筐 -->
       <div class="bg-emerald-950/60 p-3 rounded-2xl border border-emerald-700/40 space-y-1.5">
         <div class="flex justify-between items-center text-xs">
           <div>
