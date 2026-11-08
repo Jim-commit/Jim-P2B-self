@@ -29,9 +29,9 @@ export const MarketingCanvas = {
     'honest': {
       name: '⭐ 严选厚道风',
       bg: '#faf6f0',
-      headerBg: '#78350f',      // 沉稳熟褐色
+      headerBg: '#78350f',
       headerText: '#ffffff',
-      subText: '#fde68a',       // 暖金色
+      subText: '#fde68a',
       priceColor: '#b45309',
       boxBg: '#fef3c7',
       boxBorder: '#d97706',
@@ -42,7 +42,7 @@ export const MarketingCanvas = {
     'brand': {
       name: '🏬 专柜正品风',
       bg: '#f8fafc',
-      headerBg: '#1e293b',      // 质感深蓝
+      headerBg: '#1e293b',
       headerText: '#ffffff',
       subText: '#94a3b8',
       priceColor: '#0f172a',
@@ -54,34 +54,27 @@ export const MarketingCanvas = {
     }
   },
 
-  // 支持全行业自定义：主标题、副标宣语、拼单价格、掌柜手写叮咛
   generate(canvas, prod, storeName, styleKey = 'neighborhood', customTitle = '', customTagline = '', customPrice = null, customNote = '') {
     const style = this.styles[styleKey] || this.styles['neighborhood'];
     const ctx = canvas.getContext('2d');
     canvas.width = 600;
     canvas.height = 840;
 
-    // 1. 底色
+    // 1. 底色与牌匾
     ctx.fillStyle = style.bg;
     ctx.fillRect(0, 0, 600, 840);
-
-    // 2. 顶栏牌匾
     ctx.fillStyle = style.headerBg;
     ctx.fillRect(30, 30, 540, 110);
 
     ctx.fillStyle = style.headerText;
     ctx.font = 'bold 26px sans-serif';
     ctx.textAlign = 'center';
-
-    const finalTitle = customTitle.trim() || `【${storeName}】正品现货特惠`;
-    ctx.fillText(finalTitle, 300, 75);
+    ctx.fillText(customTitle.trim() || `【${storeName}】正品现货特惠`, 300, 75);
 
     ctx.font = '15px sans-serif';
     ctx.fillStyle = style.subText;
-    const finalTagline = customTagline.trim() || style.defaultTagline;
-    ctx.fillText(finalTagline, 300, 110);
+    ctx.fillText(customTagline.trim() || style.defaultTagline, 300, 110);
 
-    // 3. 绘制主图与细节
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -95,7 +88,6 @@ export const MarketingCanvas = {
         ctx.fillRect(100, 160, 400, 320);
         ctx.fillStyle = '#94a3b8';
         ctx.font = '22px sans-serif';
-        ctx.textAlign = 'center';
         ctx.fillText('正品实物保真包装', 300, 320);
         this.drawDetails(ctx, prod, style, customPrice, customNote);
         resolve(canvas.toDataURL('image/jpeg', 0.88));
@@ -111,15 +103,14 @@ export const MarketingCanvas = {
     ctx.fillText(prod.name, 300, 520);
 
     ctx.fillStyle = '#6b7280';
-    ctx.font = '17px sans-serif';
-    ctx.fillText(`规格：${prod.spec || '整箱/整件装'} · 源头正品直通`, 300, 555);
+    ctx.font = '16px sans-serif';
+    ctx.fillText(`规格：${prod.spec || '整装'} · 源头正品直通`, 300, 555);
 
     const price = customPrice !== null && !isNaN(customPrice) ? parseFloat(customPrice) : (parseFloat(prod.tier_1_price) * 1.15);
     ctx.fillStyle = style.priceColor;
     ctx.font = 'bold 38px sans-serif';
     ctx.fillText(`老友拼单特惠价：¥${price.toFixed(1)}`, 300, 620);
 
-    // 底部掌柜特色叮咛框
     ctx.fillStyle = style.boxBg;
     ctx.fillRect(45, 665, 510, 120);
     ctx.strokeStyle = style.boxBorder;
@@ -128,33 +119,26 @@ export const MarketingCanvas = {
 
     ctx.fillStyle = style.boxTextColor;
     ctx.font = 'bold 17px sans-serif';
-    
-    // 自动折行渲染掌柜自定义叮咛
-    const noteText = customNote.trim() || style.defaultNote;
-    this.wrapText(ctx, noteText, 300, 705, 480, 26);
+    this.wrapText(ctx, customNote.trim() || style.defaultNote, 300, 705, 480, 26);
   },
 
-  // Canvas 文字智能换行排版
   wrapText(ctx, text, x, y, maxWidth, lineHeight) {
     const lines = text.split('\n');
-    let currentY = y;
-
+    let curY = y;
     for (let i = 0; i < lines.length; i++) {
       let line = '';
-      const chars = lines[i].split('');
-      for (let n = 0; n < chars.length; n++) {
-        const testLine = line + chars[n];
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && n > 0) {
-          ctx.fillText(line, x, currentY);
-          line = chars[n];
-          currentY += lineHeight;
+      for (const char of lines[i].split('')) {
+        const testLine = line + char;
+        if (ctx.measureText(testLine).width > maxWidth && line !== '') {
+          ctx.fillText(line, x, curY);
+          line = char;
+          curY += lineHeight;
         } else {
           line = testLine;
         }
       }
-      ctx.fillText(line, x, currentY);
-      currentY += lineHeight;
+      ctx.fillText(line, x, curY);
+      curY += lineHeight;
     }
   }
 };
