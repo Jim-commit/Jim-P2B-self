@@ -69,7 +69,7 @@
 
   </div>
 
-  <!-- 现场收款核销与签收弹窗 (升级支持三合一清单与刚性指令) -->
+  <!-- 现场收款核销与签收弹窗 -->
   <div id="collect-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-slate-100">
@@ -83,6 +83,7 @@
       <input type="hidden" id="modal-store-id" value="">
       <input type="hidden" id="modal-order-id" value="">
       <input type="hidden" id="modal-current-debt" value="0">
+      <input type="hidden" id="modal-credit-limit" value="2000">
       <input type="hidden" id="modal-basket-count" value="0">
       <input type="hidden" id="modal-settlement-type" value="credit">
 
@@ -106,9 +107,15 @@
             <b id="modal-net-amount-text" class="font-mono text-emerald-800 font-bold text-sm">¥0.00</b>
           </div>
           <div class="flex justify-between text-[11px] text-slate-500 pt-0.5">
-            <span>本店历史总欠款: <b id="modal-debt-text" class="font-mono text-rose-600">¥0.00</b></span>
-            <span>在店周转筐: <b id="modal-basket-text" class="font-mono text-amber-800 font-bold">0 个</b></span>
+            <span>总挂账: <b id="modal-debt-text" class="font-mono text-rose-600">¥0.00</b> / 授信: <b id="modal-limit-text" class="font-mono text-slate-700">¥2000</b></span>
+            <span>在店空筐: <b id="modal-basket-text" class="font-mono text-amber-800 font-bold">0 个</b></span>
           </div>
+        </div>
+
+        <!-- 授信超额报警横幅 (动态显现) -->
+        <div id="over-credit-warning-banner" class="hidden bg-rose-50 border border-rose-300 p-2.5 rounded-2xl text-rose-900 space-y-1 text-xs">
+          <b class="font-bold block text-[11px]">🚨 授信超额拦截警告：</b>
+          <div id="over-credit-warning-desc" class="text-[10px] leading-tight"></div>
         </div>
 
         <!-- 现场点交验货清单 (订/退/换) -->
@@ -131,24 +138,24 @@
         <div class="bg-amber-50/80 border border-amber-200 p-2 rounded-xl flex items-center justify-between">
           <span class="font-bold text-amber-900">现场收回空筐 (15元/个折抵):</span>
           <div class="flex items-center gap-1">
-            <input type="number" id="collect-basket-return" value="0" min="0" oninput="window.calcBasketDeduct()" class="w-14 bg-white border border-amber-300 rounded-lg px-2 py-1 text-center font-bold font-mono outline-none">
+            <input type="number" id="collect-basket-return" value="0" min="0" oninput="window.calcBasketDeduct(); window.updateDeliverBtnText();" class="w-14 bg-white border border-amber-300 rounded-lg px-2 py-1 text-center font-bold font-mono outline-none">
             <span class="text-amber-800">个</span>
           </div>
         </div>
 
         <div>
           <label class="block text-slate-700 font-bold mb-1">本次实收真金白银 (元) *：</label>
-          <input type="number" step="0.1" id="collect-amount" placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-base font-bold text-emerald-950 outline-none focus:border-indigo-700">
+          <input type="number" step="0.1" id="collect-amount" oninput="window.updateDeliverBtnText()" placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-base font-bold text-emerald-950 outline-none focus:border-indigo-700">
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-slate-500 mb-1">现场抹零让利：</label>
-            <input type="number" id="collect-discount" value="0" placeholder="0" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono outline-none">
+            <input type="number" id="collect-discount" value="0" oninput="window.updateDeliverBtnText()" placeholder="0" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono outline-none">
           </div>
           <div>
             <label class="block text-slate-500 mb-1">收款方式：</label>
-            <select id="collect-method" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold outline-none">
+            <select id="collect-method" onchange="window.updateDeliverBtnText()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold outline-none">
               <option value="现金">💵 实收现钞</option>
               <option value="微信转账">📱 微信转给师傅</option>
               <option value="公司码">🏦 扫车身聚合码</option>
@@ -169,11 +176,12 @@
         </div>
       </div>
 
+      <!-- 动态响应按钮组 -->
       <div class="flex gap-2 pt-2 border-t border-slate-100">
-        <button onclick="window.submitCollection()" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
-          确认收讫 · 钱货两清
+        <button type="button" id="btn-submit-collection" onclick="window.submitCollection()" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
+          确认交接
         </button>
-        <button onclick="window.closeModal('collect-modal')" class="bg-slate-100 text-slate-600 font-bold px-4 py-2.5 rounded-2xl text-xs">
+        <button type="button" onclick="window.closeModal('collect-modal')" class="bg-slate-100 text-slate-600 font-bold px-4 py-2.5 rounded-2xl text-xs">
           取消
         </button>
       </div>
@@ -302,7 +310,7 @@
       await calculateTodayStats();
     }
 
-    // 读取并渲染路线待送任务（兼顾掌柜自主订货与总代主动供货，以及订/退/换清单）
+    // 读取并渲染待配送路线列表
     window.loadDriverTasks = async function() {
       const container = document.getElementById('route-container');
       container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">加载路线与订单中...</div>';
@@ -315,13 +323,13 @@
 
       routeStores = stores || [];
 
-      // 查询已由总代同意排单且待送达的单据
+      // 查询已排单待送，或总代特批放行的单据
       const { data: pendingOrders } = await supabase
         .from('store_order')
         .select('*')
         .eq('tenant_id', currentAgent)
         .neq('delivery_status', 'delivered')
-        .neq('order_status', 'counter_proposal')
+        .in('order_status', ['confirmed', 'over_credit_approved', 'over_credit_pending'])
         .order('id', { ascending: false });
 
       const orders = pendingOrders || [];
@@ -345,16 +353,20 @@
           const exchangeStr = itemsExchange.map(it => `${it.name} x ${it.qty}箱`).join('、');
 
           const isPush = o.order_source === 'vendor_push';
+          const isOverCreditPending = o.order_status === 'over_credit_pending';
+          const isOverCreditApproved = o.order_status === 'over_credit_approved';
           const netAmount = parseFloat(o.net_settle_amount || o.total_amount || 0);
 
           return `
-            <div class="bg-amber-50/80 border border-amber-200/70 rounded-xl p-2.5 text-[11px] text-amber-900 mt-1 space-y-1">
+            <div class="bg-amber-50/80 border ${isOverCreditPending ? 'border-rose-400 bg-rose-50/40' : 'border-amber-200/70'} rounded-xl p-2.5 text-[11px] text-amber-900 mt-1 space-y-1">
               <div class="flex justify-between items-center font-bold">
                 <div class="flex items-center gap-1.5">
                   <span>单号 #${o.order_no || o.id}</span>
                   <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${isPush ? 'bg-indigo-100 text-indigo-800' : 'bg-emerald-100 text-emerald-800'}">
                     ${isPush ? '主动供货' : '自主订货'}
                   </span>
+                  ${isOverCreditPending ? '<span class="text-[9px] bg-rose-500 text-white px-1.5 py-0.2 rounded font-bold animate-pulse">待总代特批</span>' : ''}
+                  ${isOverCreditApproved ? '<span class="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">总代已特批</span>' : ''}
                 </div>
                 <span class="text-rose-600 font-mono font-bold">净结: ¥${netAmount.toFixed(2)}</span>
               </div>
@@ -410,7 +422,7 @@
               <a href="tel:${s.phone}" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 active:scale-95">
                 📞 电话
               </a>
-              <button onclick="window.openCollectModal(${s.id}, '${s.name}', ${debt}, '${firstOrder ? firstOrder.id : ''}', ${totalNetOrderAmount}, ${s.basket_count || 0})" class="flex-1 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-1.5 rounded-xl shadow active:scale-95 transition">
+              <button onclick="window.openCollectModal(${s.id}, '${s.name}', ${debt}, '${firstOrder ? firstOrder.id : ''}', ${totalNetOrderAmount}, ${s.basket_count || 0}, ${s.credit_limit || 2000})" class="flex-1 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-1.5 rounded-xl shadow active:scale-95 transition">
                 💵 现场收款核销 (退货/退筐/平账)
               </button>
             </div>
@@ -420,11 +432,12 @@
     };
 
     // 唤起现场交接核销弹窗
-    window.openCollectModal = async function(storeId, storeName, debt, orderId, orderAmount, basketCount) {
+    window.openCollectModal = async function(storeId, storeName, debt, orderId, orderAmount, basketCount, creditLimit) {
       document.getElementById('modal-shop-title').innerText = storeName;
       document.getElementById('modal-store-id').value = storeId;
       document.getElementById('modal-order-id').value = orderId || '';
       document.getElementById('modal-current-debt').value = debt;
+      document.getElementById('modal-credit-limit').value = creditLimit || 2000;
       document.getElementById('modal-basket-count').value = basketCount;
 
       let itemsOrder = [];
@@ -455,6 +468,7 @@
       document.getElementById('modal-return-amount-text').innerText = `-¥${returnDeductAmount.toFixed(2)}`;
       document.getElementById('modal-net-amount-text').innerText = `¥${netAmount.toFixed(2)}`;
       document.getElementById('modal-debt-text').innerText = `¥${debt.toFixed(2)}`;
+      document.getElementById('modal-limit-text').innerText = `¥${creditLimit || 2000}`;
       document.getElementById('modal-basket-text').innerText = `${basketCount} 个`;
 
       // 渲染三合一清单
@@ -470,7 +484,7 @@
         ? itemsExchange.map(i => `<div>• ${i.name} x <b>${i.qty}箱</b> [平换: ${i.reason || '同款换新'}]</div>`).join('') 
         : '无调换品项';
 
-      // 渲染履约刚性指令
+      // 渲染指令
       const instBox = document.getElementById('modal-instruction-box');
       if (instructionText) {
         instBox.innerText = instructionText;
@@ -479,7 +493,6 @@
         instBox.classList.add('hidden');
       }
 
-      // 结算方式联动实收默认值：现结默认填净额；挂账/月结默认填0
       const defaultCollect = (settlementType === 'cash') ? netAmount : 0;
       document.getElementById('collect-amount').value = defaultCollect > 0 ? defaultCollect.toFixed(2) : '0';
       document.getElementById('collect-discount').value = '0';
@@ -490,6 +503,7 @@
       else methodSelect.value = '挂账签收';
 
       window.clearSignature();
+      window.updateDeliverBtnText();
       window.openModal('collect-modal');
     };
 
@@ -505,32 +519,134 @@
       }
     };
 
-    // 提交现场收款核销与电子签名归档
+    // ⭐ 核心重点：全场景动态按钮文案联动与超额刚性锁定判定
+    window.updateDeliverBtnText = function() {
+      const amount = parseFloat(document.getElementById('collect-amount').value) || 0;
+      const discount = parseFloat(document.getElementById('collect-discount').value) || 0;
+      const basketReturn = parseInt(document.getElementById('collect-basket-return').value) || 0;
+      const basketDeduct = basketReturn * 15;
+      const netAmount = parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
+      const curDebt = parseFloat(document.getElementById('modal-current-debt').value) || 0;
+      const creditLimit = parseFloat(document.getElementById('modal-credit-limit').value) || 2000;
+      const method = document.getElementById('collect-method').value;
+
+      const btn = document.getElementById('btn-submit-collection');
+      const warnBanner = document.getElementById('over-credit-warning-banner');
+      const warnDesc = document.getElementById('over-credit-warning-desc');
+      if (!btn) return;
+
+      // 重置状态
+      btn.disabled = false;
+      btn.className = "flex-1 text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition ";
+
+      // 1. 负金额倒退款场景 (退货+退筐抵扣超出新订)
+      if (netAmount < 0) {
+        const refund = Math.abs(netAmount) + basketDeduct;
+        warnBanner.classList.add('hidden');
+        btn.classList.add('bg-indigo-700', 'hover:bg-indigo-800');
+        if (amount > 0) {
+          btn.innerText = `💸 师傅退现 ¥${amount.toFixed(2)} · 掌柜收讫`;
+        } else if (curDebt > 0) {
+          btn.innerText = `📉 差额 ¥${refund.toFixed(2)} 冲减旧欠款 · 签字确认`;
+        } else {
+          btn.innerText = `💳 差额 ¥${refund.toFixed(2)} 留存下批抵扣 · 签字确认`;
+        }
+        return;
+      }
+
+      // 2. 超额授信风控锁定判定：
+      // 本次结算后预期产生的新挂账 = 历史总欠款 + 本单净额 - 现场实收 - 现场抹零 - 空筐折抵
+      const expectedNewDebt = Math.max(0, curDebt + netAmount - amount - discount - basketDeduct);
+      const isOverCredit = expectedNewDebt > creditLimit;
+
+      if (isOverCredit && amount < netAmount) {
+        const overAmount = expectedNewDebt - creditLimit;
+        warnBanner.classList.remove('hidden');
+        warnDesc.innerText = `当前授信额度 ¥${creditLimit}，履约后总欠款将达 ¥${expectedNewDebt.toFixed(2)}，超额 ¥${overAmount.toFixed(2)}！系统刚性锁定挂账放行，请掌柜当面补齐现金，或发起特批！`;
+
+        btn.classList.add('bg-rose-600', 'hover:bg-rose-700');
+        btn.innerText = `🚨 超额 ¥${overAmount.toFixed(2)} · 发起供货商特批`;
+        return;
+      } else {
+        warnBanner.classList.add('hidden');
+      }
+
+      // 3. 正常当面全额结清
+      if (amount > 0 && (amount + discount + basketDeduct) >= netAmount && netAmount > 0) {
+        btn.classList.add('bg-emerald-700', 'hover:bg-emerald-800');
+        if (amount > netAmount) {
+          const payOld = amount - netAmount;
+          btn.innerText = `💰 结清本单并多还旧欠 ¥${payOld.toFixed(1)} · 确认收讫`;
+        } else {
+          btn.innerText = `✅ 确认实收 ¥${amount.toFixed(2)} · 当面结清`;
+        }
+        return;
+      }
+
+      // 4. 现场部分收款，余款转挂账
+      if (amount > 0 && (amount + discount + basketDeduct) < netAmount) {
+        const remain = netAmount - amount - discount - basketDeduct;
+        btn.classList.add('bg-amber-700', 'hover:bg-amber-800');
+        btn.innerText = `✅ 实收 ¥${amount.toFixed(2)} · 余款 ¥${remain.toFixed(2)} 记账`;
+        return;
+      }
+
+      // 5. 无现款发生 (实收为 0)
+      if (amount === 0) {
+        btn.classList.add('bg-[#064e3b]', 'hover:bg-[#043327]');
+        if (netAmount === 0) {
+          btn.innerText = `🔀 平价换新 / 冲抵平账 · 签字交接`;
+        } else if (method === '挂账签收') {
+          btn.innerText = `📝 掌柜签收核验 · ¥${netAmount.toFixed(2)} 计入账本`;
+        } else {
+          btn.innerText = `📝 掌柜签字交接 · 货款转账期`;
+        }
+      }
+    };
+
+    // 提交现场收款核销、特批流转与签名归档
     window.submitCollection = async function() {
       const storeId = parseInt(document.getElementById('modal-store-id').value);
       const orderId = document.getElementById('modal-order-id').value;
       const store = routeStores.find(s => s.id === storeId);
       const curDebt = parseFloat(document.getElementById('modal-current-debt').value);
+      const creditLimit = parseFloat(document.getElementById('modal-credit-limit').value) || 2000;
       const curBaskets = parseInt(document.getElementById('modal-basket-count').value) || 0;
-      const amount = parseFloat(document.getElementById('collect-amount').value);
+      const amount = parseFloat(document.getElementById('collect-amount').value) || 0;
       const discount = parseFloat(document.getElementById('collect-discount').value) || 0;
       const basketReturn = parseInt(document.getElementById('collect-basket-return').value) || 0;
       const basketDeduct = basketReturn * 15;
       const method = document.getElementById('collect-method').value;
-      const settlementType = document.getElementById('modal-settlement-type').value;
+      const netAmount = parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
 
-      if (isNaN(amount) || amount < 0) return alert('请输入有效的实收金额！');
       if (!isSigned) return alert('请让掌柜或负责人手写正楷签名确认！');
 
-      // 现结风控拦截
-      if (settlementType === 'cash' && amount <= 0 && discount <= 0 && basketDeduct <= 0) {
-        if (!confirm('【风控提醒】本单为随车现结，但实收现款为 0，是否确认掌柜已转账或经由总代特别许可？')) return;
+      const expectedNewDebt = Math.max(0, curDebt + netAmount - amount - discount - basketDeduct);
+      const isOverCredit = expectedNewDebt > creditLimit;
+
+      // 触发方案 B：授信超额，发起线上特批流程直达 hq.html
+      if (isOverCredit && amount < netAmount) {
+        const overAmount = expectedNewDebt - creditLimit;
+        if (!confirm(`【超额授信特批】\n当前超额 ¥${overAmount.toFixed(2)}，系统已锁定放行。\n是否立即向供货商调度后台 (hq.html) 发起特批申请？`)) return;
+
+        if (orderId) {
+          await supabase.from('store_order').update({
+            order_status: 'over_credit_pending',
+            over_credit_amount: overAmount,
+            driver_action_instruction: `【超额待批】超额 ¥${overAmount.toFixed(2)}，等待总代特批放行指令`
+          }).eq('id', parseInt(orderId));
+        }
+
+        alert(`🚨 超额特批申请已发至供货商调度中心！\n请等待供货商在电脑端审批放行，审批后本页面将自动解锁。`);
+        window.closeModal('collect-modal');
+        await window.loadDriverTasks();
+        return;
       }
 
       const signBase64 = canvas.toDataURL('image/png');
 
-      // 1. 记录司机收款交账日志 (流水台账)
-      const { error: logErr } = await supabase.from('driver_collection_log').insert([{
+      // 组装交接日志
+      const payload = {
         tenant_id: currentAgent,
         store_id: storeId,
         store_name: store ? store.name : '合作门店',
@@ -541,25 +657,35 @@
         basket_deduct_amount: basketDeduct,
         pay_method: method,
         sign_image_url: signBase64
-      }]);
+      };
 
-      if (logErr) return alert('记录失败: ' + logErr.message);
+      // 写入交接日志 (带字段降级保护)
+      let { error: logErr } = await supabase.from('driver_collection_log').insert([payload]);
+      if (logErr && logErr.message && logErr.message.includes('basket_deduct_amount')) {
+        delete payload.basket_deduct_amount;
+        delete payload.discount_amount;
+        delete payload.basket_return;
+        const retry = await supabase.from('driver_collection_log').insert([payload]);
+        logErr = retry.error;
+      }
 
-      // 2. 实时更新门店账本挂账与周转筐
-      const newDebt = Math.max(0, curDebt - amount - discount - basketDeduct);
+      if (logErr) return alert('交账写入失败: ' + logErr.message);
+
+      // 实时冲减门店账本
       const newBaskets = Math.max(0, curBaskets - basketReturn);
-      await supabase.from('store').update({ current_debt: newDebt, basket_count: newBaskets }).eq('id', storeId);
+      await supabase.from('store').update({ current_debt: expectedNewDebt, basket_count: newBaskets }).eq('id', storeId);
 
-      // 3. 联动更新订单履约状态与签字存根
+      // 联动更新订单履约状态
       if (orderId) {
         await supabase.from('store_order').update({
           delivery_status: 'delivered',
-          pay_status: amount > 0 ? 'paid' : (settlementType === 'cash' ? 'cash_zero_cleared' : 'credit_logged'),
+          order_status: 'delivered',
+          pay_status: amount > 0 ? 'paid' : (method === '现金' ? 'cash_zero_cleared' : 'credit_logged'),
           sign_image_url: signBase64
         }).eq('id', parseInt(orderId));
       }
 
-      alert(`✅ 核销完毕！\n实收金额: ¥${amount.toFixed(2)} (${method})\n退还空筐: ${basketReturn} 个 (折抵¥${basketDeduct})\n该店当前剩余挂账: ¥${newDebt.toFixed(2)}。已钱货两清归档！`);
+      alert(`✅ 交接核销完毕！\n实收金额: ¥${amount.toFixed(2)} (${method})\n退还空筐: ${basketReturn} 个 (折抵¥${basketDeduct})\n该店当前剩余总挂账: ¥${expectedNewDebt.toFixed(2)}。已完成平账归档！`);
       window.closeModal('collect-modal');
       await window.loadDriverTasks();
       await calculateTodayStats();
@@ -580,7 +706,7 @@
       list.forEach(l => {
         if (l.pay_method === '现金') totalCash += parseFloat(l.amount || 0);
         else if (l.pay_method === '微信转账') totalWechat += parseFloat(l.amount || 0);
-        else totalCash += parseFloat(l.amount || 0); // 其余扫码收款统一计入
+        else totalCash += parseFloat(l.amount || 0);
 
         totalBaskets += parseInt(l.basket_return || 0);
         totalDiscount += parseFloat(l.discount_amount || 0);
@@ -604,7 +730,6 @@
       window.openModal('checkout-modal');
     };
 
-    // 出纳点清钱箱与塑料筐，正式平账归档
     window.finalizeSettlement = async function() {
       if (!confirm('出纳已确认点清随车款项与回收塑料筐？确认后随车钱箱将归零归档。')) return;
 
