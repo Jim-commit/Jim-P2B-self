@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>总代供销调度与拓客中台</title>
+  <title>厂家直供与总销调度中枢</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -13,18 +13,22 @@
 <body class="bg-slate-100 text-slate-800 font-sans p-4 min-h-screen">
   <div class="max-w-7xl mx-auto space-y-4">
     
-    <!-- 顶栏：租户身份与经营概览 -->
+    <!-- 顶栏：主体身份自选与经营看板 -->
     <header class="bg-indigo-950 text-white p-5 rounded-3xl shadow-lg flex flex-wrap justify-between items-center gap-4">
       <div>
         <div class="flex items-center gap-2.5">
-          <h1 id="hq-title" class="text-lg font-bold">总代供销调度与管理中台</h1>
+          <h1 id="hq-title" class="text-lg font-bold">厂家直供与总销调度中枢</h1>
+          <select id="entity-type-selector" onchange="window.switchEntityType(this.value)" class="bg-indigo-900 border border-indigo-700 text-amber-300 text-xs px-2.5 py-0.5 rounded-full font-bold outline-none">
+            <option value="dealer" selected>🏢 区域总经销 (统仓总配)</option>
+            <option value="factory">🏭 品牌源头工厂 (直供统配)</option>
+          </select>
           <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 租户独立运行
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 专有账本
           </span>
         </div>
         <div class="text-xs text-indigo-200 mt-1 flex flex-wrap gap-4">
-          <span>当前总代: <b id="hq-tenant-id" class="font-mono text-white">BJ_SHUNDA</b></span>
-          <span>专属邀请码: <b id="hq-invite-code" class="font-mono text-amber-300 tracking-wider">888001</b></span>
+          <span>商号代码: <b id="hq-tenant-id" class="font-mono text-white">BJ_SHUNDA</b></span>
+          <span>终端认领码: <b id="hq-invite-code" class="font-mono text-amber-300 tracking-wider">888001</b></span>
           <span>在约供货店: <b id="stat-active-stores" class="font-mono text-white">0 家</b></span>
           <span>拓客线索池: <b id="stat-leads-count" class="font-mono text-amber-300">0 条</b></span>
         </div>
@@ -32,8 +36,8 @@
 
       <div class="flex items-center gap-2">
         <select id="agent-selector" onchange="window.switchAgent(this.value)" class="bg-indigo-900 border border-indigo-700 text-white text-xs px-3 py-2 rounded-xl outline-none">
-          <option value="BJ_SHUNDA">北京顺达商贸 (邀请码 888001)</option>
-          <option value="SH_LEGOU">上海乐购供应链 (邀请码 888002)</option>
+          <option value="BJ_SHUNDA">北京顺达商贸 (认领码 888001)</option>
+          <option value="SH_LEGOU">上海乐购供应链 (认领码 888002)</option>
         </select>
         <button onclick="window.loadHQData()" class="bg-white text-indigo-950 text-xs px-3.5 py-2 rounded-xl font-bold shadow hover:bg-slate-50 transition active:scale-95">
           刷新中台
@@ -41,7 +45,7 @@
       </div>
     </header>
 
-    <!-- 顶部三大板块 Tab -->
+    <!-- 导航 Tab -->
     <nav class="flex bg-white rounded-2xl shadow-sm border border-slate-200 p-1.5 gap-2 text-xs font-bold">
       <button id="tab-btn-stores" onclick="window.switchTab('stores')" class="flex-1 py-2 text-center rounded-xl bg-indigo-950 text-white transition">
         🏪 供货门店名册 (进货特权 · 授信周转额度)
@@ -61,16 +65,13 @@
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-slate-800">🏪 合作门店档案与风控授信</h2>
-            <p class="text-[11px] text-slate-400">总代精准控制每家店的【可见货品】、【赊销额度】与【跟车师傅】</p>
+            <p class="text-[11px] text-slate-400">精准控制每家店的【可见货品】、【赊销额度】与【跟车师傅】</p>
           </div>
           <button onclick="window.registerNewStore()" class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl font-bold hover:bg-indigo-100 transition active:scale-95">
             + 快速建档开户
           </button>
         </div>
-
-        <div id="store-list" class="divide-y divide-slate-100 text-xs">
-          <!-- 动态渲染 -->
-        </div>
+        <div id="store-list" class="divide-y divide-slate-100 text-xs"></div>
       </div>
     </section>
 
@@ -81,22 +82,20 @@
           <div class="flex justify-between items-center">
             <div>
               <h2 class="text-sm font-bold text-slate-800">🎯 地推扫街拓客线索池</h2>
-              <span class="text-[11px] text-slate-400">记录业务员沿街拜访意向，谈妥后一键转为正式供货店</span>
+              <span class="text-[11px] text-slate-400">记录业务员沿街拜访意向，谈妥后一键签约开户</span>
             </div>
             <button onclick="window.openAddLeadModal()" class="text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-xl shadow active:scale-95 transition">
               + 登记拜访线索
             </button>
           </div>
-          <div id="leads-list" class="space-y-2.5 text-xs">
-            <!-- 动态渲染 -->
-          </div>
+          <div id="leads-list" class="space-y-2.5 text-xs"></div>
         </div>
 
         <div class="space-y-4">
           <div class="bg-gradient-to-br from-indigo-50 to-emerald-50 border border-indigo-100 p-4 rounded-3xl space-y-2">
-            <b class="text-xs text-indigo-950 block">📲 掌柜自助扫码开户</b>
+            <b class="text-xs text-indigo-950 block">📲 掌柜扫码自助开户</b>
             <p class="text-[11px] text-slate-600 leading-relaxed">
-              地推时，只需让超市、饭店或小店负责人微信扫码，输入专属邀请码 <b class="text-amber-800 font-mono" id="invite-code-card">888001</b>，终端自动与本店账本绑定。
+              地推时，只需让超市、饭店或小店负责人微信扫码，输入专属认领码 <b class="text-amber-800 font-mono" id="invite-code-card">888001</b>，终端自动与本店账本绑定。
             </p>
           </div>
           <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 space-y-2 text-xs">
@@ -117,7 +116,7 @@
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
             <h2 class="text-sm font-bold text-slate-800">📦 现货库存管理与供货定价</h2>
-            <span class="text-[11px] text-slate-400">大类 ➔ 小类 ➔ 卖点贴 ➔ 规格条码 ➔ 供货价 (终端进货价) ➔ 相机扫码与实拍</span>
+            <span class="text-[11px] text-slate-400">大类 ➔ 小类 ➔ 卖点贴 ➔ 规格条码 ➔ 供货价 ➔ 相机扫码与实拍</span>
           </div>
           <button onclick="window.openAddProductModal()" class="text-xs bg-[#064e3b] text-white font-bold px-3.5 py-1.5 rounded-xl shadow active:scale-95 transition">
             + 上架新商品
@@ -135,15 +134,13 @@
                 <th class="p-2.5">卖点贴</th>
                 <th class="p-2.5">国际条码</th>
                 <th class="p-2.5">规格 / 单位</th>
-                <th class="p-2.5">供货价 (终端可见)</th>
+                <th class="p-2.5">供货价 (终端进货价)</th>
                 <th class="p-2.5">现有库存</th>
                 <th class="p-2.5">备注说明</th>
                 <th class="p-2.5 text-right">操作</th>
               </tr>
             </thead>
-            <tbody id="product-table-body" class="divide-y divide-slate-100">
-              <!-- 动态渲染 -->
-            </tbody>
+            <tbody id="product-table-body" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
       </div>
@@ -151,7 +148,7 @@
 
   </div>
 
-  <!-- 弹窗 1：品项可见性勾选 (进货特权) -->
+  <!-- 进货特权弹窗 -->
   <div id="visibility-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-4 text-slate-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-slate-100">
@@ -163,12 +160,10 @@
       </div>
 
       <div class="text-xs text-slate-600 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
-        💡 勾选的品项该店才能加购；未勾选的品种对该店隐蔽（保护独家供销品种）。
+        💡 勾选的品项该店才能加购；未勾选的品种对该店隐蔽（保护独家品种）。
       </div>
 
-      <div id="vis-checkbox-group" class="max-h-60 overflow-y-auto no-scrollbar divide-y divide-slate-100 text-xs">
-        <!-- 动态多选列表 -->
-      </div>
+      <div id="vis-checkbox-group" class="max-h-60 overflow-y-auto no-scrollbar divide-y divide-slate-100 text-xs"></div>
 
       <div class="flex gap-2 pt-2">
         <button onclick="window.saveVisibilitySettings()" class="flex-1 bg-indigo-950 text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
@@ -181,7 +176,7 @@
     </div>
   </div>
 
-  <!-- 弹窗 2：登记新拜访线索 -->
+  <!-- 登记拜访线索弹窗 -->
   <div id="lead-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-slate-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-slate-100">
@@ -190,8 +185,8 @@
       </div>
       <div class="space-y-2 text-xs">
         <div>
-          <label class="block text-slate-500 mb-1">门店/饭店招牌全称 *：</label>
-          <input type="text" id="lead-name" placeholder="如：利民平价超市 / 聚仙楼川菜馆" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-700">
+          <label class="block text-slate-500 mb-1">招牌全称 *：</label>
+          <input type="text" id="lead-name" placeholder="如：利民平价超市 / 聚仙楼饭庄" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-700">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
@@ -205,7 +200,7 @@
         </div>
         <div>
           <label class="block text-slate-500 mb-1">门店地址：</label>
-          <input type="text" id="lead-address" placeholder="如：双桥东路12号南门" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-700">
+          <input type="text" id="lead-address" placeholder="如：朝阳区双桥东路12号南门" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-700">
         </div>
         <div>
           <label class="block text-slate-500 mb-1">合作意向：</label>
@@ -231,7 +226,7 @@
     </div>
   </div>
 
-  <!-- 弹窗 3：规范化商品录入表单 (卖点贴 + 扫码 + 拍照) -->
+  <!-- 商品录入与编辑弹窗 -->
   <div id="product-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3.5 text-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-slate-100">
@@ -264,9 +259,7 @@
               <label class="font-bold text-slate-700 text-[11px]">品类细项 *</label>
               <button type="button" onclick="window.customAddCategory('sub')" class="text-[10px] text-indigo-700 font-medium hover:underline">+ 增自定细项</button>
             </div>
-            <select id="prod-cat-sub" class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none font-medium">
-              <!-- 动态级联 -->
-            </select>
+            <select id="prod-cat-sub" class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none font-medium"></select>
           </div>
         </div>
 
@@ -275,15 +268,13 @@
           <input type="text" id="prod-name" placeholder="例：金龙鱼 黄金比例食用调和油 5L" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-indigo-700 font-medium">
         </div>
 
-        <!-- 卖点贴 (替代自定义胶囊) -->
+        <!-- 卖点贴 -->
         <div class="bg-indigo-50/60 p-2.5 rounded-2xl border border-indigo-100 space-y-1.5">
           <div class="flex justify-between items-center">
             <label class="font-bold text-indigo-950 text-[11px]">🏷️ 本批次特色卖点贴：</label>
             <button type="button" onclick="window.promptAddTag()" class="text-[10px] text-indigo-700 font-bold hover:underline">+ 手动添加卖点</button>
           </div>
-          <div id="quick-tags-box" class="flex flex-wrap gap-1.5">
-            <!-- 预置卖点贴 -->
-          </div>
+          <div id="quick-tags-box" class="flex flex-wrap gap-1.5"></div>
         </div>
 
         <div>
@@ -312,7 +303,7 @@
         </div>
 
         <div class="bg-emerald-50/80 border border-emerald-200 p-3 rounded-2xl">
-          <label class="block text-[11px] font-bold text-emerald-950 mb-1">供货底价 / 批发价 (终端进货价) *：</label>
+          <label class="block text-[11px] font-bold text-emerald-950 mb-1">供货底价 / 出厂直供价 (终端进货价) *：</label>
           <div class="relative">
             <span class="absolute left-3 top-2 font-mono text-emerald-800 font-bold">¥</span>
             <input type="number" step="0.1" id="prod-price" placeholder="0.00" class="w-full bg-white border border-emerald-300 rounded-xl pl-7 pr-3 py-1.5 font-mono font-bold text-sm text-emerald-950 outline-none focus:border-emerald-600">
@@ -357,7 +348,7 @@
     </div>
   </div>
 
-  <!-- 弹窗 4：相机扫码 -->
+  <!-- 相机扫码弹窗 -->
   <div id="scanner-modal" class="hidden fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
     <div class="relative w-full max-w-sm rounded-3xl overflow-hidden bg-black flex flex-col items-center">
       <video id="scanner-video" class="w-full h-72 object-cover rounded-2xl"></video>
@@ -386,6 +377,13 @@
       '休闲零食': ['膨化饼干', '坚果炒货', '肉干熟食', '糖果巧克力'],
       '日用百货': ['日化洗涤', '抽纸湿巾', '一次性用品'],
       '乳品烘焙': ['常温纯奶', '酸奶饮品', '面包糕点']
+    };
+
+    window.switchEntityType = function(type) {
+      localStorage.setItem('hq_entity_type', type);
+      const isFactory = (type === 'factory');
+      document.getElementById('hq-title').innerText = isFactory ? '厂家营销直供与发运调度中枢' : '厂家直供与总销调度中枢';
+      alert(`已切换为主体：${isFactory ? '品牌生产厂家直销' : '区域总经销'}。供货口径已适配。`);
     };
 
     window.switchTab = function(tabName) {
