@@ -40,7 +40,7 @@
           <b id="today-cash-collected" class="text-amber-300 font-mono text-lg font-bold">¥0.00</b>
         </div>
         <div class="text-right space-y-0.5">
-          <span class="text-indigo-200 text-[10px] block font-mono">现钞: <span id="stat-cash">¥0</span> | 微信: <span id="stat-wechat">¥0</span></span>
+          <span class="text-indigo-200 text-[10px] block font-mono">现钞: <span id="stat-cash">¥0</span> | 电子转账: <span id="stat-wechat">¥0</span></span>
           <span class="text-emerald-300 text-[10px] block">已核销单据: <b id="stat-done-count">0</b> 笔</span>
         </div>
       </div>
@@ -143,11 +143,13 @@
           </div>
         </div>
 
+        <!-- 本次实收金额输入框 -->
         <div>
-          <label class="block text-slate-700 font-bold mb-1">本次实收真金白银 (元) *：</label>
+          <label class="block text-slate-700 font-bold mb-1">本次实收金额 (元) *：</label>
           <input type="number" step="0.1" id="collect-amount" oninput="window.updateDeliverBtnText()" placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-base font-bold text-emerald-950 outline-none focus:border-indigo-700">
         </div>
 
+        <!-- 现场抹零与规范化商业收款方式 (精简为三大类) -->
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-slate-500 mb-1">现场抹零让利：</label>
@@ -155,19 +157,18 @@
           </div>
           <div>
             <label class="block text-slate-500 mb-1">收款方式：</label>
-            <select id="collect-method" onchange="window.updateDeliverBtnText()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold outline-none">
-              <option value="现金">💵 实收现钞</option>
-              <option value="微信转账">📱 微信转给师傅</option>
-              <option value="公司码">🏦 扫车身聚合码</option>
-              <option value="挂账签收">📝 纯挂账/月结免收现</option>
+            <select id="collect-method" onchange="window.onCollectMethodChange()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold outline-none">
+              <option value="电子扫码/转账">📱 电子扫码 / 转账</option>
+              <option value="现金">💵 现场收取现钞</option>
+              <option value="挂账签收">📝 挂账 / 账期免收现</option>
             </select>
           </div>
         </div>
 
-        <!-- 掌柜手写电子签名板 -->
+        <!-- 规范化泛用商业签名确认区 -->
         <div>
           <div class="flex justify-between items-center mb-1">
-            <label class="text-[11px] font-bold text-slate-700">负责人/大厨 手写正楷签字确认 *：</label>
+            <label class="text-[11px] font-bold text-slate-700">收货人手写签名确认 *：</label>
             <button type="button" onclick="window.clearSignature()" class="text-[10px] text-rose-600 hover:underline">重签</button>
           </div>
           <div class="border border-slate-300 rounded-xl bg-slate-50 overflow-hidden">
@@ -176,7 +177,7 @@
         </div>
       </div>
 
-      <!-- 动态响应按钮组 -->
+      <!-- 动态响应确认按钮组 -->
       <div class="flex gap-2 pt-2 border-t border-slate-100">
         <button type="button" id="btn-submit-collection" onclick="window.submitCollection()" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
           确认交接
@@ -206,7 +207,7 @@
           <b id="chk-cash" class="font-mono text-emerald-800 font-bold">¥0.00</b>
         </div>
         <div class="flex justify-between">
-          <span class="text-slate-500">个人代收微信款（转账至出纳）：</span>
+          <span class="text-slate-500">电子扫码/转账（对账出纳）：</span>
           <b id="chk-wechat" class="font-mono text-emerald-800 font-bold">¥0.00</b>
         </div>
         <div class="flex justify-between">
@@ -493,17 +494,19 @@
         instBox.classList.add('hidden');
       }
 
-      const defaultCollect = (settlementType === 'cash') ? netAmount : 0;
-      document.getElementById('collect-amount').value = defaultCollect > 0 ? defaultCollect.toFixed(2) : '0';
+      // 根据单据约定的结算模式初始化收款方式下拉选项
+      const methodSelect = document.getElementById('collect-method');
+      if (settlementType === 'cash') {
+        methodSelect.value = '现金';
+      } else {
+        methodSelect.value = '挂账签收';
+      }
+
       document.getElementById('collect-discount').value = '0';
       document.getElementById('collect-basket-return').value = '0';
-      
-      const methodSelect = document.getElementById('collect-method');
-      if (settlementType === 'cash') methodSelect.value = '现金';
-      else methodSelect.value = '挂账签收';
 
       window.clearSignature();
-      window.updateDeliverBtnText();
+      window.onCollectMethodChange(); // 强制初始化收款方式与实收金额输入状态
       window.openModal('collect-modal');
     };
 
@@ -512,40 +515,62 @@
       const returnCount = parseInt(document.getElementById('collect-basket-return').value) || 0;
       const deductVal = returnCount * 15;
       const netAmount = parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
-      const settlementType = document.getElementById('modal-settlement-type').value;
+      const method = document.getElementById('collect-method').value;
 
-      if (settlementType === 'cash' && netAmount > 0) {
+      if (method !== '挂账签收' && netAmount > 0) {
         document.getElementById('collect-amount').value = Math.max(0, netAmount - deductVal).toFixed(2);
       }
     };
 
-    // ⭐ 核心重点：全场景动态按钮文案联动与超额刚性锁定判定
-    window.updateDeliverBtnText = function() {
-      const amount = parseFloat(document.getElementById('collect-amount').value) || 0;
-      const discount = parseFloat(document.getElementById('collect-discount').value) || 0;
+    // 收款方式切换联动处理
+    window.onCollectMethodChange = function() {
+      const method = document.getElementById('collect-method').value;
+      const amountInput = document.getElementById('collect-amount');
+      const netAmount = parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
       const basketReturn = parseInt(document.getElementById('collect-basket-return').value) || 0;
       const basketDeduct = basketReturn * 15;
-      const netAmount = parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
-      const curDebt = parseFloat(document.getElementById('modal-current-debt').value) || 0;
-      const creditLimit = parseFloat(document.getElementById('modal-credit-limit').value) || 2000;
-      const method = document.getElementById('collect-method').value;
+
+      if (method === '挂账签收') {
+        amountInput.value = '0';
+        amountInput.disabled = true;
+        amountInput.classList.add('bg-slate-200/60', 'text-slate-400');
+      } else {
+        amountInput.disabled = false;
+        amountInput.classList.remove('bg-slate-200/60', 'text-slate-400');
+        if (parseFloat(amountInput.value || '0') === 0 && netAmount > 0) {
+          amountInput.value = Math.max(0, netAmount - basketDeduct).toFixed(2);
+        }
+      }
+      window.updateDeliverBtnText();
+    };
+
+    // 严密且完备的动态按钮文案即时计算函数
+    window.updateDeliverBtnText = function() {
+      const amountInput = document.getElementById('collect-amount');
+      const amount = parseFloat(amountInput?.value) || 0;
+      const discount = parseFloat(document.getElementById('collect-discount')?.value) || 0;
+      const basketReturn = parseInt(document.getElementById('collect-basket-return')?.value) || 0;
+      const basketDeduct = basketReturn * 15;
+      const netAmount = parseFloat(document.getElementById('modal-net-amount-text')?.innerText.replace('¥', '')) || 0;
+      const curDebt = parseFloat(document.getElementById('modal-current-debt')?.value) || 0;
+      const creditLimit = parseFloat(document.getElementById('modal-credit-limit')?.value) || 2000;
+      const method = document.getElementById('collect-method')?.value || '挂账签收';
 
       const btn = document.getElementById('btn-submit-collection');
       const warnBanner = document.getElementById('over-credit-warning-banner');
       const warnDesc = document.getElementById('over-credit-warning-desc');
       if (!btn) return;
 
-      // 重置状态
       btn.disabled = false;
       btn.className = "flex-1 text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition ";
 
-      // 1. 负金额倒退款场景 (退货+退筐抵扣超出新订)
+      // 1. 负金额倒退款场景 (退货+退筐超出新订金额)
       if (netAmount < 0) {
         const refund = Math.abs(netAmount) + basketDeduct;
-        warnBanner.classList.add('hidden');
+        warnBanner?.classList.add('hidden');
         btn.classList.add('bg-indigo-700', 'hover:bg-indigo-800');
         if (amount > 0) {
-          btn.innerText = `💸 师傅退现 ¥${amount.toFixed(2)} · 掌柜收讫`;
+          btn.innerText = `💸 师傅退付 ¥${amount.toFixed(2)} · 收货人收讫`;
         } else if (curDebt > 0) {
           btn.innerText = `📉 差额 ¥${refund.toFixed(2)} 冲减旧欠款 · 签字确认`;
         } else {
@@ -555,23 +580,24 @@
       }
 
       // 2. 超额授信风控锁定判定：
-      // 本次结算后预期产生的新挂账 = 历史总欠款 + 本单净额 - 现场实收 - 现场抹零 - 空筐折抵
+      // 履约后总挂账 = 历史欠款 + 本单净额 - 现场实收 - 抹零 - 退筐抵扣
       const expectedNewDebt = Math.max(0, curDebt + netAmount - amount - discount - basketDeduct);
       const isOverCredit = expectedNewDebt > creditLimit;
 
       if (isOverCredit && amount < netAmount) {
         const overAmount = expectedNewDebt - creditLimit;
-        warnBanner.classList.remove('hidden');
-        warnDesc.innerText = `当前授信额度 ¥${creditLimit}，履约后总欠款将达 ¥${expectedNewDebt.toFixed(2)}，超额 ¥${overAmount.toFixed(2)}！系统刚性锁定挂账放行，请掌柜当面补齐现金，或发起特批！`;
-
+        warnBanner?.classList.remove('hidden');
+        if (warnDesc) {
+          warnDesc.innerText = `当前授信额度 ¥${creditLimit}，履约后总欠款将达 ¥${expectedNewDebt.toFixed(2)}，超额 ¥${overAmount.toFixed(2)}！系统刚性锁定挂账放行，请收货人当面补齐差额，或发起特批！`;
+        }
         btn.classList.add('bg-rose-600', 'hover:bg-rose-700');
         btn.innerText = `🚨 超额 ¥${overAmount.toFixed(2)} · 发起供货商特批`;
         return;
       } else {
-        warnBanner.classList.add('hidden');
+        warnBanner?.classList.add('hidden');
       }
 
-      // 3. 正常当面全额结清
+      // 3. 现场全款结清或超额结清旧款
       if (amount > 0 && (amount + discount + basketDeduct) >= netAmount && netAmount > 0) {
         btn.classList.add('bg-emerald-700', 'hover:bg-emerald-800');
         if (amount > netAmount) {
@@ -585,7 +611,7 @@
 
       // 4. 现场部分收款，余款转挂账
       if (amount > 0 && (amount + discount + basketDeduct) < netAmount) {
-        const remain = netAmount - amount - discount - basketDeduct;
+        const remain = Math.max(0, netAmount - amount - discount - basketDeduct);
         btn.classList.add('bg-amber-700', 'hover:bg-amber-800');
         btn.innerText = `✅ 实收 ¥${amount.toFixed(2)} · 余款 ¥${remain.toFixed(2)} 记账`;
         return;
@@ -596,10 +622,8 @@
         btn.classList.add('bg-[#064e3b]', 'hover:bg-[#043327]');
         if (netAmount === 0) {
           btn.innerText = `🔀 平价换新 / 冲抵平账 · 签字交接`;
-        } else if (method === '挂账签收') {
-          btn.innerText = `📝 掌柜签收核验 · ¥${netAmount.toFixed(2)} 计入账本`;
         } else {
-          btn.innerText = `📝 掌柜签字交接 · 货款转账期`;
+          btn.innerText = `📝 收货人签收核验 · 货款记入账本`;
         }
       }
     };
@@ -619,7 +643,7 @@
       const method = document.getElementById('collect-method').value;
       const netAmount = parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
 
-      if (!isSigned) return alert('请让掌柜或负责人手写正楷签名确认！');
+      if (!isSigned) return alert('请让收货人手写签名确认！');
 
       const expectedNewDebt = Math.max(0, curDebt + netAmount - amount - discount - basketDeduct);
       const isOverCredit = expectedNewDebt > creditLimit;
@@ -704,9 +728,13 @@
       let totalCash = 0, totalWechat = 0, totalBaskets = 0, totalDiscount = 0;
 
       list.forEach(l => {
-        if (l.pay_method === '现金') totalCash += parseFloat(l.amount || 0);
-        else if (l.pay_method === '微信转账') totalWechat += parseFloat(l.amount || 0);
-        else totalCash += parseFloat(l.amount || 0);
+        if (l.pay_method === '现金') {
+          totalCash += parseFloat(l.amount || 0);
+        } else if (l.pay_method === '电子扫码/转账' || l.pay_method === '微信转账' || l.pay_method === '公司码') {
+          totalWechat += parseFloat(l.amount || 0);
+        } else if (l.pay_method !== '挂账签收') {
+          totalCash += parseFloat(l.amount || 0);
+        }
 
         totalBaskets += parseInt(l.basket_return || 0);
         totalDiscount += parseFloat(l.discount_amount || 0);
