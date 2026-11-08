@@ -13,7 +13,6 @@
 <body class="bg-slate-900 text-slate-100 font-sans p-4 min-h-screen">
   <div class="max-w-6xl mx-auto space-y-4">
     
-    <!-- 运营看板 -->
     <header class="bg-slate-800 border border-slate-700 p-5 rounded-3xl shadow-xl flex flex-wrap justify-between items-center gap-4">
       <div>
         <div class="flex items-center gap-2.5">
@@ -23,8 +22,8 @@
           </span>
         </div>
         <div class="text-xs text-slate-400 mt-1 flex flex-wrap gap-4 font-mono">
-          <span>入驻总销/厂家: <b id="stat-tenants" class="text-white">0 家</b></span>
-          <span>服务中会员: <b id="stat-active-tenants" class="text-emerald-400">0 家</b></span>
+          <span>入驻厂家/总销: <b id="stat-tenants" class="text-white">0 家</b></span>
+          <span>在约服务会员: <b id="stat-active-tenants" class="text-emerald-400">0 家</b></span>
           <span>连接终端门店: <b id="stat-stores" class="text-amber-400">0 家</b></span>
           <span>全网商品主数据: <b id="stat-products" class="text-indigo-400">0 款</b></span>
         </div>
@@ -32,7 +31,7 @@
 
       <div class="flex items-center gap-2">
         <button onclick="window.openAddTenantModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow transition active:scale-95">
-          + 开通新租户
+          + 开通新租户入驻
         </button>
         <button onclick="window.loadPlatformData()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs px-3 py-2 rounded-xl font-bold transition">
           刷新大盘
@@ -40,28 +39,28 @@
       </div>
     </header>
 
-    <!-- 租户名册 -->
     <section class="bg-slate-800 border border-slate-700 p-5 rounded-3xl shadow space-y-3">
       <div class="flex flex-wrap justify-between items-center gap-2">
         <div>
           <h2 class="text-sm font-bold text-white">入驻厂家 / 区域总销名册</h2>
-          <p class="text-[11px] text-slate-400">管理租户代码、会员级别、服务期截止日与 6 位邀请码</p>
+          <p class="text-[11px] text-slate-400">管理租户身份（源头厂/总销）、会员级别、服务截止日与专属 6 位认领邀请码</p>
         </div>
-        <input type="text" id="search-tenant" oninput="window.filterTenants(this.value)" placeholder="搜索企业名称 / 租户代码..." class="bg-slate-900 border border-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-xl outline-none focus:border-indigo-500">
+        <input type="text" id="search-tenant" oninput="window.filterTenants(this.value)" placeholder="搜索商号名称 / 租户代码..." class="bg-slate-900 border border-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-xl outline-none focus:border-indigo-500">
       </div>
 
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs whitespace-nowrap">
           <thead class="bg-slate-900/60 text-slate-400 font-medium border-b border-slate-700">
             <tr>
-              <th class="p-3">租户代码 (Tenant ID)</th>
-              <th class="p-3">企业全称</th>
+              <th class="p-3">租户代号 (Tenant ID)</th>
+              <th class="p-3">商号全称</th>
+              <th class="p-3">经营主体</th>
               <th class="p-3">负责人 / 电话</th>
-              <th class="p-3">专属邀请码</th>
+              <th class="p-3">专属邀请码 (点击改号)</th>
               <th class="p-3">会员级别</th>
               <th class="p-3">有效期至</th>
               <th class="p-3">状态</th>
-              <th class="p-3 text-right">操作</th>
+              <th class="p-3 text-right">管理操作</th>
             </tr>
           </thead>
           <tbody id="tenant-table-body" class="divide-y divide-slate-700/60"></tbody>
@@ -71,7 +70,7 @@
 
   </div>
 
-  <!-- 开通租户弹窗 -->
+  <!-- 开通弹窗 -->
   <div id="add-tenant-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-3xl p-5 space-y-3 text-slate-200 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-slate-700">
@@ -79,46 +78,45 @@
         <button onclick="window.closeAddTenantModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
       </div>
 
-      <div class="space-y-2 text-xs">
+      <div class="space-y-2.5 text-xs">
         <div>
           <label class="block text-slate-400 mb-1">企业/商号全称 *：</label>
-          <input type="text" id="new-company-name" placeholder="如：北京顺达商贸有限公司 / 益海嘉里营销处" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500">
+          <input type="text" id="new-company-name" placeholder="如：北京顺达商贸有限公司 / 益海嘉里第一营销处" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-slate-400 mb-1">唯一租户代码 (大写) *：</label>
+            <label class="block text-slate-400 mb-1">唯一租户代码 (大写英文字母) *：</label>
             <input type="text" id="new-tenant-id" placeholder="如：BJ_SHUNDA" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 font-mono outline-none focus:border-indigo-500">
           </div>
           <div>
-            <label class="block text-slate-400 mb-1">6 位专属邀请码 *：</label>
-            <input type="text" id="new-invite-code" placeholder="如：888001" maxlength="6" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 font-mono text-center outline-none focus:border-indigo-500">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-slate-400 mb-1">负责人 *：</label>
-            <input type="text" id="new-contact" placeholder="如：李经理" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500">
-          </div>
-          <div>
-            <label class="block text-slate-400 mb-1">联系电话 *：</label>
-            <input type="tel" id="new-phone" placeholder="11位手机号" maxlength="11" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-slate-400 mb-1">会员级别：</label>
-            <select id="new-tier" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none text-slate-300">
-              <option value="pro">专业版 (无上限)</option>
-              <option value="standard">标准版 (限100店)</option>
-              <option value="trial">试用版 (14天)</option>
+            <label class="block text-slate-400 mb-1">经营主体属性：</label>
+            <select id="new-entity-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 outline-none text-slate-200">
+              <option value="dealer">🏢 区域总经销 (统仓总销)</option>
+              <option value="factory">🏭 品牌生产源头工厂 (直供)</option>
             </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">6 位专属邀请码 *：</label>
+            <input type="text" id="new-invite-code" placeholder="如：888001" maxlength="6" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 font-mono text-center outline-none focus:border-indigo-500 font-bold text-amber-400">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">负责人称呼 *：</label>
+            <input type="text" id="new-contact" placeholder="如：李总经理" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">联系手机 *：</label>
+            <input type="tel" id="new-phone" placeholder="11位手机号" maxlength="11" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500 font-mono">
           </div>
           <div>
             <label class="block text-slate-400 mb-1">授权有效期：</label>
-            <select id="new-period-years" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none text-slate-300">
-              <option value="1">1 年</option>
-              <option value="2">2 年</option>
-              <option value="0.25">3 个月</option>
+            <select id="new-period-years" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 outline-none text-slate-200">
+              <option value="1">开通 1 年</option>
+              <option value="2">开通 2 年</option>
+              <option value="0.25">开通 3 个月试用</option>
             </select>
           </div>
         </div>
@@ -126,7 +124,7 @@
 
       <div class="flex gap-2 pt-2 border-t border-slate-700">
         <button onclick="window.submitNewTenant()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs active:scale-95 transition">
-          确认开通
+          确认开通并建册
         </button>
         <button onclick="window.closeAddTenantModal()" class="bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs">
           取消
@@ -172,7 +170,7 @@
     function renderTenantTable(list) {
       const tbody = document.getElementById('tenant-table-body');
       if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-500">暂无入驻记录</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="p-8 text-center text-slate-500">暂无入驻记录</td></tr>';
         return;
       }
 
@@ -182,17 +180,22 @@
           ? `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full text-[10px]">已到期</span>`
           : `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[10px]">服务中</span>`;
 
-        const tierBadge = t.tier === 'pro'
-          ? `<span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold">专业版</span>`
-          : `<span class="bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full text-[10px]">标准版</span>`;
+        const entityLabel = (t.entity_type === 'factory') 
+          ? `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md text-[10px]">源头工厂</span>`
+          : `<span class="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-md text-[10px]">区域总销</span>`;
 
         return `
           <tr class="hover:bg-slate-800/60 transition">
             <td class="p-3 font-mono font-bold text-white">${t.tenant_id}</td>
             <td class="p-3 font-bold text-slate-200">${t.company_name}</td>
+            <td class="p-3">${entityLabel}</td>
             <td class="p-3 text-slate-400 font-mono">${t.contact_name} (${t.phone})</td>
-            <td class="p-3 font-mono font-bold text-amber-400">${t.invite_code}</td>
-            <td class="p-3">${tierBadge}</td>
+            <td class="p-3 font-mono font-bold text-amber-400">
+              <span class="cursor-pointer hover:underline" onclick="window.editInviteCode('${t.tenant_id}', '${t.invite_code}')">
+                ${t.invite_code} ✏️
+              </span>
+            </td>
+            <td class="p-3"><span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold">专业版</span></td>
             <td class="p-3 font-mono ${isExpired ? 'text-rose-400' : 'text-slate-300'}">${t.expire_date}</td>
             <td class="p-3">${statusBadge}</td>
             <td class="p-3 text-right space-x-2">
@@ -206,6 +209,17 @@
       }).join('');
     }
 
+    window.editInviteCode = async function(tenant_id, oldCode) {
+      const newCode = prompt(`为【${tenant_id}】修改 6 位专属下游认领码：`, oldCode);
+      if (newCode && newCode.trim().length === 6) {
+        await supabase.from('platform_tenant').update({ invite_code: newCode.trim() }).eq('tenant_id', tenant_id);
+        alert(`邀请码已更新为：${newCode.trim()}`);
+        window.loadPlatformData();
+      } else if (newCode) {
+        alert('邀请码必须为 6 位！');
+      }
+    };
+
     window.filterTenants = function(q) {
       if (!q.trim()) return renderTenantTable(allTenants);
       const filtered = allTenants.filter(t => 
@@ -218,14 +232,14 @@
     window.submitNewTenant = async function() {
       const company_name = document.getElementById('new-company-name').value.trim();
       const tenant_id = document.getElementById('new-tenant-id').value.trim().toUpperCase();
+      const entity_type = document.getElementById('new-entity-type').value;
       const invite_code = document.getElementById('new-invite-code').value.trim();
       const contact_name = document.getElementById('new-contact').value.trim();
       const phone = document.getElementById('new-phone').value.trim();
-      const tier = document.getElementById('new-tier').value;
       const years = parseFloat(document.getElementById('new-period-years').value);
 
       if (!company_name || !tenant_id || !invite_code || !phone) {
-        return alert('请完整填写企业全称、租户代码、邀请码与手机号！');
+        return alert('请完整填写商号全称、租户代码、邀请码与手机号！');
       }
 
       const exp = new Date();
@@ -233,20 +247,20 @@
       const expire_date = exp.toISOString().split('T')[0];
 
       const { error } = await supabase.from('platform_tenant').insert([{
-        tenant_id, company_name, contact_name, phone, invite_code, tier, status: 'active', expire_date
+        tenant_id, company_name, entity_type, contact_name, phone, invite_code, tier: 'pro', status: 'active', expire_date
       }]);
 
       if (error) {
         alert('开通失败: ' + error.message);
       } else {
-        alert(`总销/厂家【${company_name}】开通成功！\n租户代码：${tenant_id}\n专属邀请码：${invite_code}`);
+        alert(`厂家/总销【${company_name}】开通成功！\n邀请码：${invite_code}`);
         window.closeAddTenantModal();
         window.loadPlatformData();
       }
     };
 
     window.renewTenant = async function(tenant_id, company_name) {
-      const addYears = prompt(`为【${company_name}】延长授权，输入年数：`, '1');
+      const addYears = prompt(`为【${company_name}】延长授权，输入延长年数：`, '1');
       if (!addYears || isNaN(addYears)) return;
 
       const exp = new Date();
