@@ -30,20 +30,60 @@
             <button type="button" onclick="window.openMarketingCenter(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium">
               <span>🎨</span> 制作宣发海报
             </button>
-            <button type="button" onclick="window.openShopTypeModal(); window.closeAllMenus();" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium border-t border-stone-100">
+            <button type="button" onclick="window.toggleShopTypeDropdown(event)" class="w-full px-3.5 py-2.5 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium border-t border-stone-100">
               <span>🏪</span> 点选经营形态
             </button>
           </div>
         </div>
 
-        <!-- 居中：门店掌柜招牌（主视觉） -->
+        <!-- 居中：门店掌柜招牌与下拉菜单容器 -->
         <div class="flex flex-col items-center">
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-1.5 relative">
             <h1 id="store-title" class="text-base font-bold tracking-tight text-white">合作便民老店</h1>
-            <button type="button" onclick="window.openShopTypeModal()" id="shop-type-badge" class="bg-amber-400 text-stone-900 text-[10px] px-2 py-0.2 rounded-full font-bold flex items-center gap-0.5 active:scale-95 transition">
+            
+            <!-- 触发下拉的店型胶囊 -->
+            <button type="button" onclick="window.toggleShopTypeDropdown(event)" id="shop-type-badge" class="bg-amber-400 text-stone-900 text-[10px] px-2 py-0.2 rounded-full font-bold flex items-center gap-0.5 active:scale-95 transition">
               <span>🏪 社区超市</span> ▾
             </button>
+
+            <!-- 店型下拉气泡菜单（直接悬浮展开） -->
+            <div id="shop-type-dropdown" class="hidden absolute left-1/2 -translate-x-1/2 top-8 w-56 bg-white rounded-2xl shadow-2xl py-1.5 z-50 text-stone-800 border border-stone-200 text-xs">
+              <div class="px-3 py-1.5 text-[10px] font-bold text-stone-400 border-b border-stone-100">
+                点选本店经营形态
+              </div>
+              <div class="divide-y divide-stone-50">
+                <button type="button" onclick="window.selectShopType('社区超市')" class="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-center gap-2">
+                  <span class="text-lg">🏪</span>
+                  <div>
+                    <b class="block text-stone-800 text-xs leading-tight">社区超市</b>
+                    <span class="text-[9px] text-stone-400">整箱走量 · 邻里拼单</span>
+                  </div>
+                </button>
+                <button type="button" onclick="window.selectShopType('餐饮饭店')" class="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-center gap-2">
+                  <span class="text-lg">🍳</span>
+                  <div>
+                    <b class="block text-stone-800 text-xs leading-tight">餐饮饭店</b>
+                    <span class="text-[9px] text-stone-400">大客优惠 · 良心食材</span>
+                  </div>
+                </button>
+                <button type="button" onclick="window.selectShopType('精品商超')" class="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-center gap-2">
+                  <span class="text-lg">🏬</span>
+                  <div>
+                    <b class="block text-stone-800 text-xs leading-tight">精品商超</b>
+                    <span class="text-[9px] text-stone-400">品牌直供 · 保真高毛利</span>
+                  </div>
+                </button>
+                <button type="button" onclick="window.selectShopType('便利小铺')" class="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-center gap-2">
+                  <span class="text-lg">🏮</span>
+                  <div>
+                    <b class="block text-stone-800 text-xs leading-tight">便利小铺</b>
+                    <span class="text-[9px] text-stone-400">拆件快销 · 避峰配送</span>
+                  </div>
+                </button>
+              </div>
+            </div>
           </div>
+
           <div class="text-[10px] text-emerald-200/80 font-mono mt-0.5">
             掌柜: <b id="store-boss" class="text-white">负责人</b>
           </div>
@@ -75,7 +115,7 @@
         </div>
       </div>
 
-      <!-- ⭐ 多总代横向切换胶囊条 -->
+      <!-- 多总代横向切换胶囊条 -->
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
         <span class="text-[10px] text-emerald-300 font-bold whitespace-nowrap">供货商:</span>
         <div id="agents-nav-chips" class="flex gap-1.5 overflow-x-auto no-scrollbar"></div>
@@ -116,12 +156,12 @@
       </div>
     </div>
 
-    <!-- 货品列表区（自带 pb-32，杜绝底部按钮遮挡和中间断层） -->
+    <!-- 货品列表区 -->
     <main id="product-container" class="p-3 divide-y divide-stone-100 flex-1 pb-32">
       <div class="p-12 text-center text-stone-400 text-xs">正在调取在售货单...</div>
     </main>
 
-    <!-- 底部常驻报单栏（去除断层，贴合屏幕底部） -->
+    <!-- 底部常驻报单栏 -->
     <footer class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 space-y-2 z-30 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
       <!-- 捎句话便签栏 -->
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-[10px]">
@@ -129,7 +169,7 @@
         <div id="dynamic-notes-box" class="flex gap-1.5"></div>
       </div>
 
-      <!-- 结算合计与极简“订货”按钮 -->
+      <!-- 结算合计与“订货”按钮 -->
       <div class="flex justify-between items-center pt-0.5">
         <div>
           <div class="text-[10px] text-stone-400">进货合计:</div>
@@ -200,30 +240,6 @@
       <button type="button" onclick="window.closeModal('marketing-modal')" class="w-full bg-[#064e3b] text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition shadow">
         做妥完成 · 返回货单
       </button>
-    </div>
-  </div>
-
-  <!-- 店型点选 -->
-  <div id="shop-type-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
-      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-        <h3 class="font-bold text-sm text-stone-800">🏪 点选本店经营形态</h3>
-        <button type="button" onclick="window.closeModal('shop-type-modal')" class="text-stone-400 text-lg">✕</button>
-      </div>
-      <div class="grid grid-cols-2 gap-2 text-xs">
-        <button type="button" onclick="window.selectShopType('社区超市')" class="p-3 rounded-2xl border border-stone-200 hover:border-emerald-600 hover:bg-emerald-50 text-left">
-          <span class="text-xl">🏪</span><b class="block text-stone-800">社区超市</b><span class="text-[10px] text-stone-400">整箱走量·邻里拼单</span>
-        </button>
-        <button type="button" onclick="window.selectShopType('餐饮饭店')" class="p-3 rounded-2xl border border-stone-200 hover:border-amber-600 hover:bg-amber-50 text-left">
-          <span class="text-xl">🍳</span><b class="block text-stone-800">餐饮饭店</b><span class="text-[10px] text-stone-400">大客优惠·良心食材</span>
-        </button>
-        <button type="button" onclick="window.selectShopType('精品商超')" class="p-3 rounded-2xl border border-stone-200 hover:border-emerald-600 hover:bg-emerald-50 text-left">
-          <span class="text-xl">🏬</span><b class="block text-stone-800">精品商超</b><span class="text-[10px] text-stone-400">品牌直供·保真高毛利</span>
-        </button>
-        <button type="button" onclick="window.selectShopType('便利小铺')" class="p-3 rounded-2xl border border-stone-200 hover:border-emerald-600 hover:bg-emerald-50 text-left">
-          <span class="text-xl">🏮</span><b class="block text-stone-800">便利小铺</b><span class="text-[10px] text-stone-400">拆件快销·避峰配送</span>
-        </button>
-      </div>
     </div>
   </div>
 
