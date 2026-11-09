@@ -68,7 +68,7 @@
       </button>
     </nav>
 
-    <!-- 板块 1：门店档案与风控 -->
+    <!-- 板块 1：门店名册 -->
     <section id="tab-stores" class="space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
@@ -139,7 +139,7 @@
       </div>
     </section>
 
-    <!-- 板块 3：履约交割与对账 -->
+    <!-- 板块 3：履约与对账 -->
     <section id="tab-settle" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
@@ -181,7 +181,7 @@
       </div>
     </section>
 
-    <!-- 板块 4：地推客情池 -->
+    <!-- 板块 4：地推客情 -->
     <section id="tab-expansion" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex justify-between items-center">
@@ -636,7 +636,8 @@
 
     window.switchEntityType = function(type) {
       localStorage.setItem('hq_entity_type', type);
-      document.getElementById('hq-title').innerText = (type === 'factory') ? '厂家营销直供与发运调度中枢' : '厂家直供与总销调度中枢';
+      const isFactory = (type === 'factory');
+      document.getElementById('hq-title').innerText = isFactory ? '厂家营销直供与发运调度中枢' : '厂家直供与总销调度中枢';
     };
 
     window.switchTab = function(tabName) {
@@ -1715,11 +1716,13 @@
       w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
     };
 
-    // 初始化入口
-    const isAuthed = await checkHQAuthStatus();
-    if (isAuthed) {
-      window.loadHQData();
-    }
+    // 初始化入口 (使用标准自执行函数包装，彻底解决 Vite / esbuild Top-level await 编译报错)
+    (async () => {
+      const isAuthed = await checkHQAuthStatus();
+      if (isAuthed) {
+        window.loadHQData();
+      }
+    })();
   </script>
 </body>
 </html>
