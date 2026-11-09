@@ -3,131 +3,210 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SaaS 平台运营管理中心</title>
+  <title>供应链数字商贸 · 平台运营总控台</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans p-4 min-h-screen">
-  <div class="max-w-6xl mx-auto space-y-4">
+<body class="bg-stone-100 text-stone-800 font-sans p-4 min-h-screen">
+  <div class="max-w-7xl mx-auto space-y-4">
     
-    <header class="bg-slate-800 border border-slate-700 p-5 rounded-3xl shadow-xl flex flex-wrap justify-between items-center gap-4">
+    <header class="bg-stone-900 text-white p-5 rounded-3xl shadow-xl flex flex-wrap justify-between items-center gap-4 border border-stone-800">
       <div>
         <div class="flex items-center gap-2.5">
-          <h1 class="text-lg font-bold text-white tracking-wide">平台运营与入驻授权中枢</h1>
-          <span class="bg-indigo-500/20 text-indigo-300 text-[10px] px-2.5 py-0.5 rounded-full border border-indigo-400/30 font-mono">
-            角色 1 · Super Admin
+          <span class="w-7 h-7 rounded-lg bg-amber-400 text-stone-900 flex items-center justify-center font-bold text-sm shadow">🏛️</span>
+          <h1 class="text-lg font-bold tracking-tight">平台商道运营总控调度中枢</h1>
+          <span class="bg-amber-400/20 text-amber-300 text-[10px] px-2.5 py-0.5 rounded-full border border-amber-400/30 font-mono font-bold">
+            SUPER ADMIN
           </span>
         </div>
-        <div class="text-xs text-slate-400 mt-1 flex flex-wrap gap-4 font-mono">
-          <span>入驻厂家/总销: <b id="stat-tenants" class="text-white">0 家</b></span>
-          <span>在约服务会员: <b id="stat-active-tenants" class="text-emerald-400">0 家</b></span>
-          <span>连接终端门店: <b id="stat-stores" class="text-amber-400">0 家</b></span>
-          <span>全网商品主数据: <b id="stat-products" class="text-indigo-400">0 款</b></span>
+        <div class="text-xs text-stone-400 mt-1 flex flex-wrap gap-4 font-mono">
+          <span>正式在册厂商: <b id="stat-total-tenants" class="text-white">0 家</b></span>
+          <span>待审入驻申请: <b id="stat-pending-apps" class="text-amber-400 font-bold">0 份</b></span>
+          <span>标准化一级品类: <b id="stat-cat-l1" class="text-emerald-400">0 类</b></span>
+          <span>二级品类: <b id="stat-cat-l2" class="text-emerald-400">0 项</b></span>
         </div>
       </div>
 
       <div class="flex items-center gap-2">
-        <button onclick="window.openAddTenantModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow transition active:scale-95">
-          + 开通新租户入驻
+        <button onclick="window.openManualTenantModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-900 font-bold text-xs px-3.5 py-2 rounded-xl shadow active:scale-95 transition flex items-center gap-1">
+          <span>+</span> 手动特邀开户 (直通发证)
         </button>
-        <button onclick="window.loadPlatformData()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs px-3 py-2 rounded-xl font-bold transition">
+        <button onclick="window.loadPlatformData()" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs px-3.5 py-2 rounded-xl font-bold border border-stone-700 active:scale-95 transition">
           刷新大盘
         </button>
       </div>
     </header>
 
-    <section class="bg-slate-800 border border-slate-700 p-5 rounded-3xl shadow space-y-3">
-      <div class="flex flex-wrap justify-between items-center gap-2">
-        <div>
-          <h2 class="text-sm font-bold text-white">入驻厂家 / 区域总销名册</h2>
-          <p class="text-[11px] text-slate-400">管理租户身份（源头厂/总销）、会员级别、服务截止日与专属 6 位认领邀请码</p>
-        </div>
-        <input type="text" id="search-tenant" oninput="window.filterTenants(this.value)" placeholder="搜索商号名称 / 租户代码..." class="bg-slate-900 border border-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-xl outline-none focus:border-indigo-500">
-      </div>
+    <nav class="flex bg-white rounded-2xl shadow-sm border border-stone-200 p-1.5 gap-2 text-xs font-bold">
+      <button id="p-tab-btn-apps" onclick="window.switchTab('apps')" class="flex-1 py-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1.5">
+        📝 厂商入驻申请审核
+        <span id="badge-pending-count" class="bg-rose-500 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
+      </button>
+      <button id="p-tab-btn-tenants" onclick="window.switchTab('tenants')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
+        🏢 正式入驻商号名册 (独立账本与认领码管理)
+      </button>
+      <button id="p-tab-btn-categories" onclick="window.switchTab('categories')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
+        🗂️ 平台标准一二级品类大盘字典
+      </button>
+    </nav>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs whitespace-nowrap">
-          <thead class="bg-slate-900/60 text-slate-400 font-medium border-b border-slate-700">
-            <tr>
-              <th class="p-3">租户代号 (Tenant ID)</th>
-              <th class="p-3">商号全称</th>
-              <th class="p-3">经营主体</th>
-              <th class="p-3">负责人 / 电话</th>
-              <th class="p-3">专属邀请码 (点击改号)</th>
-              <th class="p-3">会员级别</th>
-              <th class="p-3">有效期至</th>
-              <th class="p-3">状态</th>
-              <th class="p-3 text-right">管理操作</th>
-            </tr>
-          </thead>
-          <tbody id="tenant-table-body" class="divide-y divide-slate-700/60"></tbody>
-        </table>
+    <section id="p-tab-apps" class="space-y-4">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">入驻申请核验池</h2>
+            <p class="text-[11px] text-stone-400">核对营业执照扫描件、主体真实性、核定入驻会籍费、发放6位下游认领码</p>
+          </div>
+          <span class="text-xs text-stone-500 font-mono">严格遵循企业实名资质准入规范</span>
+        </div>
+        <div id="applications-list" class="space-y-3 text-xs"></div>
+      </div>
+    </section>
+
+    <section id="p-tab-tenants" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">正式入驻商号管辖名册</h2>
+            <p class="text-[11px] text-stone-400">查验商号独立账本标识、认领信码分配、冻结/解冻会员使用权限</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs whitespace-nowrap">
+            <thead class="bg-stone-50 border-b border-stone-200 text-stone-500 font-medium">
+              <tr>
+                <th class="p-3">商号标识 (Tenant ID)</th>
+                <th class="p-3">主体执照全称</th>
+                <th class="p-3">行当类型</th>
+                <th class="p-3">供货模式</th>
+                <th class="p-3">下游认领码</th>
+                <th class="p-3">当家负责人</th>
+                <th class="p-3">联系电话</th>
+                <th class="p-3">会籍状态</th>
+                <th class="p-3 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody id="tenants-table-body" class="divide-y divide-stone-100 font-mono"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="p-tab-categories" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">平台标准一二级品类字典 (根基准绳)</h2>
+            <p class="text-[11px] text-stone-400">平台牢固管控一级大项与二级细项，确保全站索引规整；厂家发品时可自定延伸三级细分类</p>
+          </div>
+          <button onclick="window.openAddCategoryModal()" class="text-xs bg-stone-900 hover:bg-stone-800 text-white font-bold px-3 py-1.5 rounded-xl shadow active:scale-95 transition">
+            + 制定新标准品类
+          </button>
+        </div>
+
+        <div id="category-tree-display" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs pt-1"></div>
       </div>
     </section>
 
   </div>
 
-  <!-- 开通弹窗 -->
-  <div id="add-tenant-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-    <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-3xl p-5 space-y-3 text-slate-200 shadow-2xl">
-      <div class="flex justify-between items-center pb-2 border-b border-slate-700">
-        <h3 class="font-bold text-sm text-white">开通新厂家 / 总销入驻</h3>
-        <button onclick="window.closeAddTenantModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+  <div id="manual-tenant-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">🏛️ 线下特邀厂家直通开户</h3>
+        <button onclick="window.closeModal('manual-tenant-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
-
-      <div class="space-y-2.5 text-xs">
+      <div class="space-y-2.5">
         <div>
-          <label class="block text-slate-400 mb-1">企业/商号全称 *：</label>
-          <input type="text" id="new-company-name" placeholder="如：北京顺达商贸有限公司 / 益海嘉里第一营销处" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500">
+          <label class="block text-stone-600 font-medium mb-1">主体执照全称 *：</label>
+          <input type="text" id="m-company-name" placeholder="如：河北衡水老白干酒业总厂" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-slate-400 mb-1">唯一租户代码 (大写英文字母) *：</label>
-            <input type="text" id="new-tenant-id" placeholder="如：BJ_SHUNDA" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 font-mono outline-none focus:border-indigo-500">
+            <label class="block text-stone-600 font-medium mb-1">商号代号 (英数) *：</label>
+            <input type="text" id="m-tenant-id" placeholder="如：HB_LAOBAIGAN" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold">
           </div>
           <div>
-            <label class="block text-slate-400 mb-1">经营主体属性：</label>
-            <select id="new-entity-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 outline-none text-slate-200">
-              <option value="dealer">🏢 区域总经销 (统仓总销)</option>
-              <option value="factory">🏭 品牌生产源头工厂 (直供)</option>
+            <label class="block text-stone-600 font-medium mb-1">核发6位认领码 *：</label>
+            <input type="text" id="m-invite-code" maxlength="6" placeholder="如：888003" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono text-center font-bold text-amber-700">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-stone-600 font-medium mb-1">行当类型：</label>
+            <select id="m-business-type" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+              <option value="factory">🏭 品牌生产工厂</option>
+              <option value="dealer">🏢 区域总经销 (总代)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-stone-600 font-medium mb-1">供货业务模式：</label>
+            <select id="m-service-mode" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+              <option value="offline">🏬 线下实体车销</option>
+              <option value="online">🌐 线上网销直发</option>
+              <option value="both">🔄 实体/网销双轨</option>
             </select>
           </div>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-slate-400 mb-1">6 位专属邀请码 *：</label>
-            <input type="text" id="new-invite-code" placeholder="如：888001" maxlength="6" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 font-mono text-center outline-none focus:border-indigo-500 font-bold text-amber-400">
+            <label class="block text-stone-600 font-medium mb-1">负责人称呼：</label>
+            <input type="text" id="m-contact-person" placeholder="如：陈厂长" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
           </div>
           <div>
-            <label class="block text-slate-400 mb-1">负责人称呼 *：</label>
-            <input type="text" id="new-contact" placeholder="如：李总经理" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-slate-400 mb-1">联系手机 *：</label>
-            <input type="tel" id="new-phone" placeholder="11位手机号" maxlength="11" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500 font-mono">
-          </div>
-          <div>
-            <label class="block text-slate-400 mb-1">授权有效期：</label>
-            <select id="new-period-years" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 outline-none text-slate-200">
-              <option value="1">开通 1 年</option>
-              <option value="2">开通 2 年</option>
-              <option value="0.25">开通 3 个月试用</option>
-            </select>
+            <label class="block text-stone-600 font-medium mb-1">联系手机号：</label>
+            <input type="tel" id="m-contact-phone" maxlength="11" placeholder="11位手机号" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono">
           </div>
         </div>
       </div>
-
-      <div class="flex gap-2 pt-2 border-t border-slate-700">
-        <button onclick="window.submitNewTenant()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs active:scale-95 transition">
-          确认开通并建册
+      <div class="pt-2 border-t border-stone-100 flex gap-2">
+        <button onclick="window.submitManualTenant()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
+          确认直接建档激活
         </button>
-        <button onclick="window.closeAddTenantModal()" class="bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs">
+        <button onclick="window.closeModal('manual-tenant-modal')" class="bg-stone-100 text-stone-600 font-bold px-4 py-2.5 rounded-xl">
           取消
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="add-category-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">🗂️ 制定新标准平台品类</h3>
+        <button onclick="window.closeModal('add-category-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <div class="space-y-2">
+        <div>
+          <label class="block text-stone-600 mb-1">品类级别：</label>
+          <select id="cat-level-select" onchange="window.onCatLevelChange(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+            <option value="1">一级大项 (如：粮油副食、酒水饮料)</option>
+            <option value="2">二级细项 (归属于某大项)</option>
+          </select>
+        </div>
+        <div id="parent-cat-box" class="hidden">
+          <label class="block text-stone-600 mb-1">归属一级大项：</label>
+          <select id="cat-parent-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold"></select>
+        </div>
+        <div>
+          <label class="block text-stone-600 mb-1">品类规范名称 *：</label>
+          <input type="text" id="cat-name-input" placeholder="输入规范名" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+        </div>
+        <div>
+          <label class="block text-stone-600 mb-1">适用经营模式：</label>
+          <select id="cat-mode-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+            <option value="both">线上线下通用</option>
+            <option value="offline">仅线下实体适用</option>
+            <option value="online">仅线上网销适用</option>
+          </select>
+        </div>
+      </div>
+      <div class="pt-2 border-t border-stone-100 flex gap-2">
+        <button onclick="window.savePlatformCategory()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition">
+          存入标准字典
         </button>
       </div>
     </div>
@@ -136,148 +215,303 @@
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
 
+    let allApplications = [];
     let allTenants = [];
+    let allCategories = [];
 
-    window.openAddTenantModal = function() {
-      document.getElementById('new-company-name').value = '';
-      document.getElementById('new-tenant-id').value = '';
-      document.getElementById('new-invite-code').value = Math.floor(100000 + Math.random() * 900000).toString();
-      document.getElementById('new-contact').value = '';
-      document.getElementById('new-phone').value = '';
-      document.getElementById('add-tenant-modal').classList.remove('hidden');
-    };
+    window.openModal = id => document.getElementById(id).classList.remove('hidden');
+    window.closeModal = id => document.getElementById(id).classList.add('hidden');
 
-    window.closeAddTenantModal = function() {
-      document.getElementById('add-tenant-modal').classList.add('hidden');
+    window.switchTab = function(tabName) {
+      ['apps', 'tenants', 'categories'].forEach(t => {
+        document.getElementById(`p-tab-${t}`).classList.add('hidden');
+        document.getElementById(`p-tab-btn-${t}`).className = "flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition";
+      });
+      document.getElementById(`p-tab-${tabName}`).classList.remove('hidden');
+      document.getElementById(`p-tab-btn-${tabName}`).className = "flex-1 py-2 text-center rounded-xl bg-stone-900 text-white transition";
     };
 
     window.loadPlatformData = async function() {
+      const { data: apps } = await supabase.from('tenant_application').select('*').order('id', { ascending: false });
+      allApplications = apps || [];
+      const pendingApps = allApplications.filter(a => a.application_status === 'pending_review');
+      document.getElementById('stat-pending-apps').innerText = `${pendingApps.length} 份`;
+      
+      const badge = document.getElementById('badge-pending-count');
+      if (pendingApps.length > 0) {
+        badge.innerText = pendingApps.length;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+      renderApplications();
+
       const { data: tenants } = await supabase.from('platform_tenant').select('*').order('id', { ascending: false });
       allTenants = tenants || [];
+      document.getElementById('stat-total-tenants').innerText = `${allTenants.length} 家`;
+      renderTenantsTable();
 
-      document.getElementById('stat-tenants').innerText = `${allTenants.length} 家`;
-      const activeCount = allTenants.filter(t => t.status === 'active').length;
-      document.getElementById('stat-active-tenants').innerText = `${activeCount} 家`;
-
-      const { count: storeCount } = await supabase.from('store').select('*', { count: 'exact', head: true });
-      const { count: prodCount } = await supabase.from('product').select('*', { count: 'exact', head: true });
-      document.getElementById('stat-stores').innerText = `${storeCount || 0} 家`;
-      document.getElementById('stat-products').innerText = `${prodCount || 0} 款`;
-
-      renderTenantTable(allTenants);
+      const { data: cats } = await supabase.from('platform_category').select('*').order('sort_order', { ascending: true });
+      allCategories = cats || [];
+      const l1 = allCategories.filter(c => c.level === 1);
+      const l2 = allCategories.filter(c => c.level === 2);
+      document.getElementById('stat-cat-l1').innerText = `${l1.length} 类`;
+      document.getElementById('stat-cat-l2').innerText = `${l2.length} 项`;
+      renderCategoryTree();
     };
 
-    function renderTenantTable(list) {
-      const tbody = document.getElementById('tenant-table-body');
-      if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="p-8 text-center text-slate-500">暂无入驻记录</td></tr>';
+    function renderApplications() {
+      const container = document.getElementById('applications-list');
+      if (allApplications.length === 0) {
+        container.innerHTML = '<div class="py-12 text-center text-stone-400 text-xs">当前暂无入驻申请。</div>';
         return;
       }
 
-      tbody.innerHTML = list.map(t => {
-        const isExpired = new Date(t.expire_date) < new Date() || t.status === 'expired';
-        const statusBadge = isExpired
-          ? `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full text-[10px]">已到期</span>`
-          : `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[10px]">服务中</span>`;
-
-        const entityLabel = (t.entity_type === 'factory') 
-          ? `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md text-[10px]">源头工厂</span>`
-          : `<span class="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-md text-[10px]">区域总销</span>`;
-
+      container.innerHTML = allApplications.map(a => {
+        const isPending = a.application_status === 'pending_review';
+        const isApproved = a.application_status === 'approved';
         return `
-          <tr class="hover:bg-slate-800/60 transition">
-            <td class="p-3 font-mono font-bold text-white">${t.tenant_id}</td>
-            <td class="p-3 font-bold text-slate-200">${t.company_name}</td>
-            <td class="p-3">${entityLabel}</td>
-            <td class="p-3 text-slate-400 font-mono">${t.contact_name} (${t.phone})</td>
-            <td class="p-3 font-mono font-bold text-amber-400">
-              <span class="cursor-pointer hover:underline" onclick="window.editInviteCode('${t.tenant_id}', '${t.invite_code}')">
-                ${t.invite_code} ✏️
-              </span>
-            </td>
-            <td class="p-3"><span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold">专业版</span></td>
-            <td class="p-3 font-mono ${isExpired ? 'text-rose-400' : 'text-slate-300'}">${t.expire_date}</td>
-            <td class="p-3">${statusBadge}</td>
-            <td class="p-3 text-right space-x-2">
-              <button onclick="window.renewTenant('${t.tenant_id}', '${t.company_name}')" class="text-[11px] text-emerald-400 hover:underline font-bold">续期</button>
-              <button onclick="window.toggleTenantStatus('${t.tenant_id}', '${t.status}')" class="text-[11px] ${t.status === 'active' ? 'text-rose-400' : 'text-indigo-400'} hover:underline font-bold">
-                ${t.status === 'active' ? '冻结' : '恢复'}
-              </button>
-            </td>
-          </tr>
+          <div class="p-4 bg-stone-50 border ${isPending ? 'border-amber-300 shadow-sm' : 'border-stone-200'} rounded-2xl space-y-2.5">
+            <div class="flex flex-wrap justify-between items-start gap-2">
+              <div>
+                <div class="flex items-center gap-2">
+                  <b class="text-sm text-stone-900">${a.company_name}</b>
+                  <span class="text-[10px] bg-stone-200 text-stone-700 font-mono px-1.5 py-0.2 rounded font-bold">${a.tenant_id}</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    isPending ? 'bg-amber-100 text-amber-900 animate-pulse' :
+                    isApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                  }">
+                    ${isPending ? '⏳ 待审核资质' : isApproved ? '✅ 已发证激活' : '🚫 已驳回'}
+                  </span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${a.business_type === 'factory' ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-800'}">
+                    ${a.business_type === 'factory' ? '🏭 源头工厂' : '🏢 区域总代'}
+                  </span>
+                </div>
+                <div class="text-[11px] text-stone-500 font-mono mt-1">
+                  负责人: <b>${a.contact_person}</b> · 联系手机: <a href="tel:${a.contact_phone}" class="underline font-bold text-stone-800">${a.contact_phone}</a> · 模式: ${a.service_mode}
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-stone-400 block font-mono">核定会费</span>
+                <b class="font-mono text-sm text-stone-900 font-bold">¥${parseFloat(a.membership_fee || 0).toFixed(2)}</b>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 pt-1 border-t border-stone-200/60 text-[11px]">
+              <span class="text-stone-400">执照审查:</span>
+              ${a.license_image_url ? `
+                <img src="${a.license_image_url}" class="h-10 w-16 object-cover rounded-lg border border-stone-300 cursor-pointer shadow-sm hover:scale-105 transition" onclick="window.previewFullImage('${a.license_image_url}')" title="点击放大核对">
+                <span class="text-[10px] text-stone-500">(点击核验营业执照扫描大图)</span>
+              ` : '<span class="text-rose-500 font-bold">未上传执照附件</span>'}
+            </div>
+
+            ${isPending ? `
+              <div class="flex gap-2 justify-end pt-2 border-t border-stone-200/60">
+                <button onclick="window.rejectApplication(${a.id})" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-1.5 rounded-xl transition">
+                  退回修改
+                </button>
+                <button onclick="window.approveApplication(${a.id}, '${a.tenant_id}', '${a.company_name}')" class="text-xs bg-stone-900 hover:bg-stone-800 text-white font-bold px-4 py-1.5 rounded-xl shadow active:scale-95 transition">
+                  ✅ 资质合格 · 核定会费并放行发码
+                </button>
+              </div>
+            ` : `
+              <div class="flex justify-between items-center text-[10px] text-stone-400 pt-1 border-t border-stone-200/60 font-mono">
+                <span>认领信码: <b class="text-amber-800 font-bold">${a.invite_code || '-'}</b></span>
+                <span>审核时间: ${a.reviewed_at ? new Date(a.reviewed_at).toLocaleString() : '-'}</span>
+              </div>
+            `}
+          </div>
         `;
       }).join('');
     }
 
-    window.editInviteCode = async function(tenant_id, oldCode) {
-      const newCode = prompt(`为【${tenant_id}】修改 6 位专属下游认领码：`, oldCode);
-      if (newCode && newCode.trim().length === 6) {
-        await supabase.from('platform_tenant').update({ invite_code: newCode.trim() }).eq('tenant_id', tenant_id);
-        alert(`邀请码已更新为：${newCode.trim()}`);
-        window.loadPlatformData();
-      } else if (newCode) {
-        alert('邀请码必须为 6 位！');
-      }
-    };
+    function renderTenantsTable() {
+      const tbody = document.getElementById('tenants-table-body');
+      tbody.innerHTML = allTenants.map(t => `
+        <tr class="hover:bg-stone-50 transition">
+          <td class="p-3 font-bold text-stone-900">${t.tenant_id}</td>
+          <td class="p-3 font-sans font-medium">${t.company_name}</td>
+          <td class="p-3">${t.business_type === 'factory' ? '🏭 生产工厂' : '🏢 区域总销'}</td>
+          <td class="p-3">${t.service_mode || 'offline'}</td>
+          <td class="p-3 font-bold text-amber-700 tracking-wider">${t.invite_code}</td>
+          <td class="p-3 font-sans">${t.contact_person || '-'}</td>
+          <td class="p-3">${t.contact_phone || '-'}</td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+              ${t.is_active ? '正常在册' : '已冻结暂停'}
+            </span>
+          </td>
+          <td class="p-3 text-right">
+            <button onclick="window.toggleTenantActive(${t.id}, ${t.is_active})" class="text-[11px] font-bold ${t.is_active ? 'text-rose-600' : 'text-emerald-700'} hover:underline font-sans">
+              ${t.is_active ? '冻结账户' : '解冻恢复'}
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
 
-    window.filterTenants = function(q) {
-      if (!q.trim()) return renderTenantTable(allTenants);
-      const filtered = allTenants.filter(t => 
-        t.company_name.toLowerCase().includes(q.toLowerCase()) || 
-        t.tenant_id.toLowerCase().includes(q.toLowerCase())
-      );
-      renderTenantTable(filtered);
-    };
+    function renderCategoryTree() {
+      const container = document.getElementById('category-tree-display');
+      const l1List = allCategories.filter(c => c.level === 1);
 
-    window.submitNewTenant = async function() {
-      const company_name = document.getElementById('new-company-name').value.trim();
-      const tenant_id = document.getElementById('new-tenant-id').value.trim().toUpperCase();
-      const entity_type = document.getElementById('new-entity-type').value;
-      const invite_code = document.getElementById('new-invite-code').value.trim();
-      const contact_name = document.getElementById('new-contact').value.trim();
-      const phone = document.getElementById('new-phone').value.trim();
-      const years = parseFloat(document.getElementById('new-period-years').value);
+      container.innerHTML = l1List.map(l1 => {
+        const subs = allCategories.filter(c => c.level === 2 && c.parent_id === l1.id);
+        return `
+          <div class="p-3.5 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
+            <div class="flex justify-between items-center border-b border-stone-200 pb-1.5">
+              <div class="flex items-center gap-1.5 font-bold text-sm text-stone-900">
+                <span>🏷️ ${l1.name}</span>
+                <span class="text-[10px] font-mono text-stone-400 font-normal">#L1</span>
+              </div>
+              <button onclick="window.quickAddSubCategory(${l1.id}, '${l1.name}')" class="text-[10px] text-stone-600 hover:text-stone-900 font-bold bg-white px-2 py-0.5 rounded border border-stone-200">
+                + 加细项
+              </button>
+            </div>
+            <div class="space-y-1">
+              <span class="text-[10px] text-stone-400 block">标准二级细项：</span>
+              <div class="flex flex-wrap gap-1">
+                ${subs.length ? subs.map(s => `
+                  <span class="bg-white border border-stone-200 text-stone-700 px-2 py-0.5 rounded-lg text-[11px] font-medium">
+                    ${s.name}
+                  </span>
+                `).join('') : '<span class="text-stone-300">暂无细项</span>'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
 
-      if (!company_name || !tenant_id || !invite_code || !phone) {
-        return alert('请完整填写商号全称、租户代码、邀请码与手机号！');
-      }
+    window.approveApplication = async function(appId, tenantId, companyName) {
+      const fee = prompt(`为【${companyName}】核定年费会籍费（元）：`, '2000');
+      if (fee === null) return;
 
-      const exp = new Date();
-      exp.setDate(exp.getDate() + Math.round(years * 365));
-      const expire_date = exp.toISOString().split('T')[0];
+      const code = prompt('为该商号配置专属 6 位下游认领信码：', `888${Math.floor(100 + Math.random() * 900)}`);
+      if (!code || code.trim().length !== 6) return alert('请输入合法的 6 位认领信码！');
 
-      const { error } = await supabase.from('platform_tenant').insert([{
-        tenant_id, company_name, entity_type, contact_name, phone, invite_code, tier: 'pro', status: 'active', expire_date
+      const app = allApplications.find(a => a.id === appId);
+
+      await supabase.from('tenant_application').update({
+        application_status: 'approved',
+        payment_status: 'paid',
+        membership_fee: parseFloat(fee) || 0,
+        invite_code: code.trim(),
+        reviewed_at: new Date().toISOString()
+      }).eq('id', appId);
+
+      await supabase.from('platform_tenant').insert([{
+        tenant_id: tenantId,
+        company_name: companyName,
+        business_type: app ? app.business_type : 'dealer',
+        service_mode: app ? app.service_mode : 'offline',
+        contact_person: app ? app.contact_person : '掌柜',
+        contact_phone: app ? app.contact_phone : '',
+        invite_code: code.trim(),
+        membership_fee: parseFloat(fee) || 0,
+        is_active: true
       }]);
 
-      if (error) {
-        alert('开通失败: ' + error.message);
-      } else {
-        alert(`厂家/总销【${company_name}】开通成功！\n邀请码：${invite_code}`);
-        window.closeAddTenantModal();
+      alert(`✅ 审核通过！【${companyName}】已正式建档入驻！\n认领信码: ${code.trim()}`);
+      window.loadPlatformData();
+    };
+
+    window.rejectApplication = async function(appId) {
+      const reason = prompt('输入驳回说明（如：执照公章模糊、经营范围不符）：');
+      if (!reason) return;
+
+      await supabase.from('tenant_application').update({
+        application_status: 'rejected',
+        review_note: reason.trim(),
+        reviewed_at: new Date().toISOString()
+      }).eq('id', appId);
+
+      alert('已退回该申请！');
+      window.loadPlatformData();
+    };
+
+    window.openManualTenantModal = function() {
+      document.getElementById('m-invite-code').value = `888${Math.floor(100 + Math.random() * 900)}`;
+      window.openModal('manual-tenant-modal');
+    };
+
+    window.submitManualTenant = async function() {
+      const company_name = document.getElementById('m-company-name').value.trim();
+      const tenant_id = document.getElementById('m-tenant-id').value.trim().toUpperCase();
+      const invite_code = document.getElementById('m-invite-code').value.trim();
+      const business_type = document.getElementById('m-business-type').value;
+      const service_mode = document.getElementById('m-service-mode').value;
+      const contact_person = document.getElementById('m-contact-person').value.trim();
+      const contact_phone = document.getElementById('m-contact-phone').value.trim();
+
+      if (!company_name || !tenant_id || !invite_code) return alert('请完整填写主体全称、商号代号与认领码！');
+
+      const { error } = await supabase.from('platform_tenant').insert([{
+        tenant_id, company_name, business_type, service_mode, invite_code,
+        contact_person, contact_phone, is_active: true
+      }]);
+
+      if (error) alert('开户失败: ' + error.message);
+      else {
+        alert(`🎉 厂家【${company_name}】直通开户成功！`);
+        window.closeModal('manual-tenant-modal');
         window.loadPlatformData();
       }
     };
 
-    window.renewTenant = async function(tenant_id, company_name) {
-      const addYears = prompt(`为【${company_name}】延长授权，输入延长年数：`, '1');
-      if (!addYears || isNaN(addYears)) return;
-
-      const exp = new Date();
-      exp.setDate(exp.getDate() + Math.round(parseFloat(addYears) * 365));
-      const newExp = exp.toISOString().split('T')[0];
-
-      await supabase.from('platform_tenant').update({ expire_date: newExp, status: 'active' }).eq('tenant_id', tenant_id);
-      alert(`已续期至 ${newExp}`);
+    window.toggleTenantActive = async function(id, curState) {
+      const actStr = curState ? '冻结挂起' : '恢复激活';
+      if (!confirm(`确认${actStr}该商号的会员权限？`)) return;
+      await supabase.from('platform_tenant').update({ is_active: !curState }).eq('id', id);
       window.loadPlatformData();
     };
 
-    window.toggleTenantStatus = async function(tenant_id, currentStatus) {
-      const target = currentStatus === 'active' ? 'expired' : 'active';
-      if (!confirm(`确认${target === 'expired' ? '冻结该租户' : '恢复该租户'}？`)) return;
+    window.openAddCategoryModal = function() {
+      window.onCatLevelChange('1');
+      window.openModal('add-category-modal');
+    };
 
-      await supabase.from('platform_tenant').update({ status: target }).eq('tenant_id', tenant_id);
+    window.onCatLevelChange = function(lvl) {
+      const parentBox = document.getElementById('parent-cat-box');
+      if (lvl === '2') {
+        const l1List = allCategories.filter(c => c.level === 1);
+        document.getElementById('cat-parent-select').innerHTML = l1List.map(c => `
+          <option value="${c.id}">${c.name}</option>
+        `).join('');
+        parentBox.classList.remove('hidden');
+      } else {
+        parentBox.classList.add('hidden');
+      }
+    };
+
+    window.quickAddSubCategory = function(parentId, parentName) {
+      const name = prompt(`为【${parentName}】制定二级细项名称：`);
+      if (name && name.trim()) {
+        supabase.from('platform_category').insert([{
+          name: name.trim(), level: 2, parent_id: parentId, applicable_mode: 'both'
+        }]).then(() => window.loadPlatformData());
+      }
+    };
+
+    window.savePlatformCategory = async function() {
+      const level = parseInt(document.getElementById('cat-level-select').value);
+      const name = document.getElementById('cat-name-input').value.trim();
+      const parent_id = level === 2 ? parseInt(document.getElementById('cat-parent-select').value) : null;
+      const applicable_mode = document.getElementById('cat-mode-select').value;
+
+      if (!name) return alert('请输入品类名称！');
+
+      await supabase.from('platform_category').insert([{
+        name, level, parent_id, applicable_mode
+      }]);
+
+      alert('品类已存入平台标准字典！');
+      window.closeModal('add-category-modal');
       window.loadPlatformData();
+    };
+
+    window.previewFullImage = function(url) {
+      const w = window.open('');
+      w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
     };
 
     window.loadPlatformData();
