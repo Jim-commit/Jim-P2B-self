@@ -9,7 +9,7 @@ import { SETTLEMENT_CONFIG, RETURN_REASONS, EXCHANGE_REASONS } from './constants
 // ==========================================
 const MY_AGENTS_KEY = 'b2b_my_agents_list';
 const DEFAULT_AGENTS = [
-  { id: 'BJ_SHUNDA', name: '北京顺达 (粮油日化)' },
+  { id: 'BJ_SHUNDA', name: '北京顺达 (粮油副食)' },
   { id: 'SH_LEGOU', name: '上海乐购 (酒水副食)' }
 ];
 
@@ -26,6 +26,7 @@ let shopType = localStorage.getItem('active_shop_type') || '社区便利';
 let allProducts = [];
 let currentCategory = '全部';
 let currentTagFilter = '全部';
+let currentAgentFilterCategory = '全部';
 
 let cart = {};
 
@@ -95,7 +96,7 @@ window.openModal = id => document.getElementById(id)?.classList.remove('hidden')
 window.closeModal = id => document.getElementById(id)?.classList.add('hidden');
 
 // ==========================================
-// 3. 多总代平滑切换与红点监控
+// 3. 供货商导航：适配小店与海量厂商大商超
 // ==========================================
 window.switchActiveAgent = async function (agentId) {
   currentAgent = agentId;
@@ -107,60 +108,109 @@ window.switchActiveAgent = async function (agentId) {
 
 function renderAgentSelector() {
   const box = document.getElementById('agents-nav-chips');
+  const btnAll = document.getElementById('btn-all-agents');
+  const countEl = document.getElementById('total-agents-count');
   if (!box) return;
-  box.innerHTML = myAgents.map(ag => {
+
+  if (countEl) countEl.innerText = myAgents.length;
+
+  // 厂商超过 4 家时自动开启大超矩阵入口
+  if (myAgents.length > 4) {
+    btnAll?.classList.remove('hidden');
+  } else {
+    btnAll?.classList.add('hidden');
+  }
+
+  // 顶栏胶囊最多展示当前厂商及前 3 家，防止横向失控
+  const displayAgents = myAgents.slice(0, 4);
+  if (!displayAgents.some(a => a.id === currentAgent)) {
+    const curObj = myAgents.find(a => a.id === currentAgent);
+    if (curObj) displayAgents[0] = curObj;
+  }
+
+  box.innerHTML = displayAgents.map(ag => {
     const isCur = ag.id === currentAgent;
     return `
       <button type="button" onclick="window.switchActiveAgent('${ag.id}')" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap transition active:scale-95 ${
         isCur 
           ? 'bg-amber-400 text-stone-900 border-amber-300 shadow-sm' 
-          : 'bg-white/10 text-stone-300 border-white/20 hover:bg-white/20'
+          : 'bg-[#143628] text-emerald-100 border-emerald-700/60 hover:bg-[#1b4332]'
       }">
         ${ag.name || ag.id} ${isCur ? '●' : ''}
       </button>
     `;
-  }).join('') + `
-    <button type="button" onclick="window.openModal('bind-agent-modal')" class="px-2 py-0.5 rounded-full text-[10px] text-stone-300 border border-dashed border-white/30 hover:bg-white/10 whitespace-nowrap active:scale-95">
-      + 绑新庄
-    </button>
-  `;
+  }).join('');
 }
 
-async function checkVendorProposalBadge() {
-  if (!currentStore) return;
-  const { data: proposals } = await supabase
-    .from('store_order')
-    .select('id')
-    .eq('store_id', currentStore.id)
-    .eq('tenant_id', currentAgent)
-    .eq('order_status', 'counter_proposal');
+window.openAllAgentsModal = function() {
+  window.renderAllAgentsList(myAgents);
+  window.openModal('all-agents-modal');
+};
 
-  const count = proposals ? proposals.length : 0;
-  const badgePing = document.getElementById('badge-vendor-feedback');
-  const dot = document.getElementById('dot-vendor-feedback');
-  const menuCount = document.getElementById('menu-proposal-count');
+window.renderAllAgentsList = function(list) {
+  const container = document.getElementById('all-agents-container');
+  if (!container) return;
 
-  if (count > 0) {
-    badgePing?.classList.remove('hidden');
-    dot?.classList.remove('hidden');
-    if (menuCount) {
-      menuCount.innerText = `${count}条修润建议`;
-      menuCount.classList.remove('hidden');
-    }
-  } else {
-    badgePing?.classList.add('hidden');
-    dot?.classList.add('hidden');
-    menuCount?.classList.add('hidden');
+  if (list.length === 0) {
+    container.innerHTML = '<div class="py-6 text-center text-stone-400 text-xs">未找到符合条件的供货厂商</div>';
+    return;
   }
-}
 
+  container.innerHTML = list.map(ag => {
+    const isCur = ag.id === currentAgent;
+    return `
+      <div class="py-2.5 px-2 flex justify-between items-center hover:bg-stone-50 rounded-xl transition ${isCur ? 'bg-amber-50/60' : ''}">
+        <div onclick="window.switchActiveAgent('${ag.id}'); window.closeModal('all-agents-modal');" class="flex-1 cursor-pointer">
+          <b class="text-xs text-stone-900 block">${ag.name || ag.id}</b>
+          <span class="text-[10px] text-stone-400 font-mono">商号代号: ${ag.id}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          ${isCur 
+            ? '<span class="text-[10px] bg-amber-400 text-stone-900 px-2 py-0.5 rounded-full font-bold">正供货中</span>' 
+            : `<button type="button" onclick="window.switchActiveAgent('${ag.id}'); window.closeModal('all-agents-modal');" class="text-xs text-stone-600 hover:text-stone-900 font-bold bg-stone-100 hover:bg-stone-200 px-2.5 py-1 rounded-lg transition">进庄 ➔</button>`
+          }
+          <button type="button" onclick="window.confirmUnbindAgent('${ag.id}')" class="text-[10px] text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2 py-1 rounded-lg transition font-medium" title="解除合作">
+            解绑
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+};
+
+window.filterAgentList = function(keyword) {
+  const kw = (keyword || '').trim().toLowerCase();
+  let filtered = myAgents;
+  if (currentAgentFilterCategory !== '全部') {
+    filtered = filtered.filter(a => (a.name || '').includes(currentAgentFilterCategory));
+  }
+  if (kw) {
+    filtered = filtered.filter(a => (a.name || '').toLowerCase().includes(kw) || a.id.toLowerCase().includes(kw));
+  }
+  window.renderAllAgentsList(filtered);
+};
+
+window.filterAgentByCategory = function(cat) {
+  currentAgentFilterCategory = cat;
+  document.querySelectorAll('.agent-cat-pill').forEach(btn => {
+    btn.className = (btn.innerText === cat)
+      ? 'agent-cat-pill bg-stone-900 text-white px-2 py-0.5 rounded-lg font-bold'
+      : 'agent-cat-pill bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg';
+  });
+  const kw = document.getElementById('agent-search-input')?.value || '';
+  window.filterAgentList(kw);
+};
+
+// ==========================================
+// 4. 结识与解绑供货商 (信义拦截机制)
+// ==========================================
 window.bindByCode = async function () {
   const code = document.getElementById('bind-input-code')?.value.trim();
   let targetAgentId = '';
   let targetAgentName = '';
 
   if (code === '888001') {
-    targetAgentId = 'BJ_SHUNDA'; targetAgentName = '北京顺达 (粮油日化)';
+    targetAgentId = 'BJ_SHUNDA'; targetAgentName = '北京顺达 (粮油副食)';
   } else if (code === '888002') {
     targetAgentId = 'SH_LEGOU'; targetAgentName = '上海乐购 (酒水副食)';
   } else {
@@ -201,8 +251,89 @@ window.bindByPhone = async () => {
   }
 };
 
+window.confirmUnbindAgent = async function(targetAgentId) {
+  if (myAgents.length <= 1) {
+    return alert('⚠️ 至少需要保留一家供货厂商，无法解绑全部商号！');
+  }
+
+  const targetAgent = myAgents.find(a => a.id === targetAgentId);
+  const targetName = targetAgent ? (targetAgent.name || targetAgent.id) : targetAgentId;
+
+  // 刚性商道风控：账清筐还方可解绑
+  const storeRecord = await StoreService.getStoreByTenant(targetAgentId);
+  const debt = parseFloat(storeRecord?.current_debt || 0);
+  const baskets = parseInt(storeRecord?.basket_count || 0);
+
+  if (debt > 0 || baskets > 0) {
+    let reason = [];
+    if (debt > 0) reason.push(`尚有挂账货资 ¥${debt.toFixed(2)} 未结清`);
+    if (baskets > 0) reason.push(`借存周转空筐 ${baskets} 个未归还`);
+    
+    return alert(
+      `🤝 君子之交 · 善始善终：\n\n` +
+      `本店在【${targetName}】处：\n• ${reason.join('\n• ')}\n\n` +
+      `商道贵在诚信相照，请联系随车师傅核销清账、交还周转筐后，方可解除合作。`
+    );
+  }
+
+  const myOrders = await StoreService.getMyOrders(storeRecord?.id, targetAgentId);
+  const hasPending = myOrders.some(o => o.delivery_status !== 'delivered' && o.order_status !== 'cancelled');
+  if (hasPending) {
+    return alert(`⚠️ 本店在【${targetName}】尚有正在配发中的随车单据，请待货物送达点验平账后再行解绑！`);
+  }
+
+  if (confirm(`【解绑确认】\n\n确认与供货商【${targetName}】解除合作？\n• 该厂商当前账款已结清 (¥0.00)\n• 解绑后将从掌中宝名册中移出该厂商货单`)) {
+    localStorage.removeItem(`b2b_cart_v3_${targetAgentId}`);
+    myAgents = myAgents.filter(a => a.id !== targetAgentId);
+    localStorage.setItem(MY_AGENTS_KEY, JSON.stringify(myAgents));
+
+    alert(`✅ 已与【${targetName}】解除合作关联。聚散皆是缘，祝两家生意兴隆！`);
+
+    if (currentAgent === targetAgentId) {
+      currentAgent = myAgents[0].id;
+      localStorage.setItem('active_agent', currentAgent);
+    }
+
+    window.closeModal('all-agents-modal');
+    window.closeAllMenus();
+    await initTerminal();
+  }
+};
+
+window.confirmUnbindCurrentAgent = function() {
+  window.confirmUnbindAgent(currentAgent);
+};
+
+async function checkVendorProposalBadge() {
+  if (!currentStore) return;
+  const { data: proposals } = await supabase
+    .from('store_order')
+    .select('id')
+    .eq('store_id', currentStore.id)
+    .eq('tenant_id', currentAgent)
+    .eq('order_status', 'counter_proposal');
+
+  const count = proposals ? proposals.length : 0;
+  const badgePing = document.getElementById('badge-vendor-feedback');
+  const dot = document.getElementById('dot-vendor-feedback');
+  const menuCount = document.getElementById('menu-proposal-count');
+
+  if (count > 0) {
+    badgePing?.classList.remove('hidden');
+    dot?.classList.remove('hidden');
+    if (menuCount) {
+      menuCount.innerText = `${count}条修润建议`;
+      menuCount.classList.remove('hidden');
+    }
+  } else {
+    badgePing?.classList.add('hidden');
+    dot?.classList.add('hidden');
+    menuCount?.classList.add('hidden');
+  }
+}
+
 // ==========================================
-// 4. 货品卡片三态集成操作 (订 / 退 / 换)
+// 5. 货品卡片三态集成操作 (订 / 退 / 换)
 // ==========================================
 window.initProdItemState = (id) => {
   if (!cart[id]) {
@@ -367,7 +498,7 @@ function updateCartSummary() {
 }
 
 // ==========================================
-// 5. 结算凭单弹窗：自适应普通单与特殊单，未授权项不展示
+// 6. 结算凭单弹窗：自适应普通单与特殊单，未授权项不展示
 // ==========================================
 window.openSettlementModal = () => {
   const orderItems = [];
@@ -407,14 +538,13 @@ window.openSettlementModal = () => {
     return alert('当前购物车空空如也，请先挑选品物！');
   }
 
-  // ⭐ 核心优化 1：下拉菜单未授权项目直接不生成，清爽利落
+  // 严格过滤：未授权项直接不生成 option
   const allowed = (currentStore && Array.isArray(currentStore.allowed_settlements))
     ? currentStore.allowed_settlements
     : ['cash', 'credit'];
 
   const curSettlementSelect = document.getElementById('slip-settlement-select');
   if (curSettlementSelect) {
-    // 严格过滤：只有在 allowed 数组里的项才渲染 option
     const validEntries = Object.entries(SETTLEMENT_CONFIG).filter(([key]) => allowed.includes(key));
     curSettlementSelect.innerHTML = validEntries.map(([key, val]) => {
       return `<option value="${key}" ${key === currentSettlementType ? 'selected' : ''}>
@@ -423,7 +553,7 @@ window.openSettlementModal = () => {
     }).join('');
   }
 
-  // ⭐ 核心优化 2：常规单 vs 调退冲抵特殊单 分流展示
+  // 常规单 vs 特殊单 动静分流展示
   const isSpecialOrder = (returnItems.length > 0 || exchangeItems.length > 0);
   
   const headerTitle = document.getElementById('slip-modal-header-title');
@@ -435,16 +565,14 @@ window.openSettlementModal = () => {
   const proofBox = document.getElementById('slip-proof-upload-box');
 
   if (isSpecialOrder) {
-    // 特殊单状态
     if (headerTitle) headerTitle.innerText = '随车送货履约契单';
     badgeSpecial?.classList.remove('hidden');
     boxReturn?.classList.toggle('hidden', returnItems.length === 0);
     boxExchange?.classList.toggle('hidden', exchangeItems.length === 0);
     summaryRows?.classList.remove('hidden');
     if (netLabel) netLabel.innerText = '实结净资额度：';
-    proofBox?.classList.remove('hidden'); // 调退时显示异常凭证拍照
+    proofBox?.classList.remove('hidden');
   } else {
-    // 普通订货单状态：彻底隐藏空占位
     if (headerTitle) headerTitle.innerText = '随车送货签收凭单';
     badgeSpecial?.classList.add('hidden');
     boxReturn?.classList.add('hidden');
@@ -454,7 +582,6 @@ window.openSettlementModal = () => {
     proofBox?.classList.add('hidden');
   }
 
-  // 渲染采购明细
   renderSlipItemList('slip-order-items-list', orderItems, 'order');
   if (returnItems.length > 0) renderSlipItemList('slip-return-items-list', returnItems, 'return');
   if (exchangeItems.length > 0) renderSlipItemList('slip-exchange-items-list', exchangeItems, 'exchange');
@@ -578,7 +705,7 @@ window.confirmAndSubmitOrder = async () => {
       currentDebt: currentStore?.current_debt || 0
     });
 
-    alert(`🎉 货契已顺利传达供货厂家！\n应付净额: ¥${netTotal.toFixed(2)}\n厂家应允后师傅随车送抵！`);
+    alert(`🎉 凭单已顺利传达供货厂商！\n应付净额: ¥${netTotal.toFixed(2)}\n厂家应允后师傅随车送抵！`);
 
     for (const k of Object.keys(cart)) delete cart[k];
     saveAgentCart();
@@ -591,13 +718,64 @@ window.confirmAndSubmitOrder = async () => {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerText = '✅ 确认货单 · 传至供货商';
+      btn.innerText = '✅ 确认凭单 · 传至供货庄';
     }
   }
 };
 
 // ==========================================
-// 6. 快捷工具与锦囊
+// 7. 捎话机制：自由随心输入 + 常用气泡 + 记忆
+// ==========================================
+const STORE_CUSTOM_NOTES_KEY = 'b2b_store_custom_notes';
+let myCustomNotes = [];
+try {
+  myCustomNotes = JSON.parse(localStorage.getItem(STORE_CUSTOM_NOTES_KEY)) || [];
+} catch (e) {
+  myCustomNotes = [];
+}
+
+window.renderDynamicNotes = function() {
+  const box = document.getElementById('dynamic-notes-box');
+  if (!box) return;
+
+  const systemNotes = ShopTypeManager.getDynamicNotes(shopType);
+  const combined = Array.from(new Set([...myCustomNotes, ...systemNotes]));
+
+  box.innerHTML = combined.map(n => `
+    <button type="button" onclick="window.appendDeliveryNote('${n}')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 px-2 py-0.5 rounded-lg whitespace-nowrap active:scale-95 transition">
+      ${n}
+    </button>
+  `).join('');
+};
+
+window.promptCustomDeliveryNote = function() {
+  const current = deliveryNote || '';
+  const input = prompt('💬 随车捎话 / 存放口信（如：放后厨二号货架、送前提前10分钟来电等）：', current);
+  if (input === null) return;
+  const clean = input.trim();
+  if (!clean) return;
+
+  deliveryNote = clean;
+
+  if (!myCustomNotes.includes(clean)) {
+    if (confirm(`是否将「${clean}」保存为本店常用口信标签，方便下次一键点选？`)) {
+      myCustomNotes.unshift(clean);
+      if (myCustomNotes.length > 6) myCustomNotes.pop();
+      localStorage.setItem(STORE_CUSTOM_NOTES_KEY, JSON.stringify(myCustomNotes));
+      window.renderDynamicNotes();
+    }
+  }
+
+  alert(`✅ 随车口信已记下：「${deliveryNote}」`);
+};
+
+window.appendDeliveryNote = (txt) => {
+  deliveryNote = deliveryNote ? `${deliveryNote}；${txt}` : txt;
+  alert(`已附加随车口信：「${deliveryNote}」`);
+};
+
+// ==========================================
+// 8. 快捷工具与锦囊
 // ==========================================
 window.repeatLastOrder = async function () {
   if (!currentStore) return alert('当前供货厂家未绑定有效小店档案！');
@@ -675,7 +853,7 @@ window.focusProductSearch = function () {
 };
 
 // ==========================================
-// 7. 宣发画报中心
+// 9. 宣发画报中心
 // ==========================================
 window.openMarketingCenter = () => {
   if (allProducts.length === 0) return alert('当前没有可做画报的货品！');
@@ -763,13 +941,13 @@ window.renderLiveFlyerPreview = async () => {
 };
 
 // ==========================================
-// 8. 业态选择与捎话
+// 10. 业态选择
 // ==========================================
 window.selectShopType = (type) => {
   shopType = type;
   localStorage.setItem('active_shop_type', shopType);
   renderShopType();
-  renderDynamicNotes();
+  window.renderDynamicNotes();
   renderProductList();
   updateCartSummary();
   document.getElementById('shop-type-dropdown')?.classList.add('hidden');
@@ -780,21 +958,6 @@ function renderShopType() {
   if (el) el.innerHTML = `<span>${ShopTypeManager.icons[shopType] || '🏪'} ${shopType}</span> ▾`;
 }
 
-function renderDynamicNotes() {
-  const box = document.getElementById('dynamic-notes-box');
-  if (!box) return;
-  box.innerHTML = ShopTypeManager.getDynamicNotes(shopType).map(n => `
-    <button type="button" onclick="window.appendDeliveryNote('${n}')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 px-2 py-0.5 rounded-lg whitespace-nowrap active:scale-95 transition">
-      ${n}
-    </button>
-  `).join('');
-}
-
-window.appendDeliveryNote = (txt) => {
-  deliveryNote = deliveryNote ? `${deliveryNote}；${txt}` : txt;
-  alert(`已附随车口信：「${deliveryNote}」`);
-};
-
 window.callDriver = () => {
   const driver = currentStore ? (currentStore.driver_name || '老张师傅') : '配送长兄';
   alert(`正连线送货长兄【${driver}】...`);
@@ -802,7 +965,7 @@ window.callDriver = () => {
 };
 
 // ==========================================
-// 9. 货品列表渲染
+// 11. 货品列表渲染
 // ==========================================
 function renderCategoryTabs() {
   const categories = ['全部', ...new Set(allProducts.map(p => p.category_main).filter(Boolean))];
@@ -911,7 +1074,7 @@ function renderProductList() {
 }
 
 // ==========================================
-// 10. 单据存根与收条查验
+// 12. 单据存根与收据查验
 // ==========================================
 window.openReceiptsModal = async () => {
   if (!currentStore) return alert('当前供货商未绑定有效小店档案！');
@@ -1026,7 +1189,7 @@ window.acceptProposalAndReload = async (orderId) => {
 };
 
 // ==========================================
-// 11. 初始化
+// 13. 系统初始化入口
 // ==========================================
 async function initTerminal() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -1067,7 +1230,7 @@ async function initTerminal() {
   }
 
   renderShopType();
-  renderDynamicNotes();
+  window.renderDynamicNotes();
 
   allProducts = await StoreService.getProducts(currentAgent, currentStore?.visible_product_ids);
   renderCategoryTabs();
