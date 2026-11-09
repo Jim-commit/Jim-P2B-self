@@ -14,7 +14,7 @@
   
   <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-2xl relative">
     
-    <!-- 经典松林翠绿顶栏（原色完整保留） -->
+    <!-- 经典松林翠绿顶栏（原色完整保留，沉稳大气） -->
     <header class="bg-gradient-to-br from-[#1b4332] via-[#2d6a4f] to-[#1b4332] text-white p-4 pt-3.5 rounded-b-[2rem] shadow-lg space-y-2.5 relative">
       <div class="flex justify-between items-center text-xs relative">
         
@@ -99,7 +99,7 @@
           </div>
         </div>
 
-        <!-- 右侧：互信履约与供货商服务 (···) -->
+        <!-- 右侧：供货商服务 (···) -->
         <div class="relative">
           <button type="button" onclick="window.toggleRightNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white relative" title="供货相照">
             <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
@@ -159,14 +159,22 @@
               <span class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center text-xs">🏢</span>
               <div class="font-bold text-stone-700 text-[11px]">结识新供货商 (认领)</div>
             </button>
+
+            <button type="button" onclick="window.confirmUnbindCurrentAgent(); window.closeAllMenus();" class="w-full px-2.5 py-1.5 text-left hover:bg-rose-50/70 rounded-xl flex items-center gap-2.5 transition">
+              <span class="w-6 h-6 rounded-lg bg-stone-100 text-stone-400 flex items-center justify-center text-[10px]">⚠️</span>
+              <div class="font-medium text-stone-600 text-[11px]">解绑当前供货商</div>
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- 厂商胶囊导航 -->
+      <!-- 厂商胶囊导航：弹性适配小店（胶囊）与大超大终端（矩阵搜索弹窗） -->
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
         <span class="text-[10px] text-emerald-200 font-bold whitespace-nowrap">供货商庄:</span>
-        <div id="agents-nav-chips" class="flex gap-1.5 overflow-x-auto no-scrollbar"></div>
+        <div id="agents-nav-chips" class="flex gap-1.5 overflow-x-auto no-scrollbar items-center"></div>
+        <button type="button" onclick="window.openAllAgentsModal()" id="btn-all-agents" class="hidden px-2 py-0.5 rounded-full text-[10px] bg-amber-400 text-stone-900 font-bold whitespace-nowrap active:scale-95 shadow-sm">
+          🗂️ 全部庄号 (<span id="total-agents-count">0</span>)
+        </button>
       </div>
 
       <!-- 信用账本看板（经典原色，沉稳雅致） -->
@@ -209,11 +217,15 @@
       <div class="p-12 text-center text-stone-400 text-xs">调取品物中，稍候即现...</div>
     </main>
 
-    <!-- 底部常驻货单条 -->
+    <!-- 底部常驻货单条：捎话区域升级为【常用气泡 + 行内自由打字 + 记忆】 -->
     <footer class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 space-y-2 z-30 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-[10px]">
-        <span class="text-stone-400 whitespace-nowrap font-medium">💬 捎句暖心话:</span>
-        <div id="dynamic-notes-box" class="flex gap-1.5"></div>
+        <span class="text-stone-400 whitespace-nowrap font-medium">💬 捎句话:</span>
+        <div id="dynamic-notes-box" class="flex gap-1.5 items-center"></div>
+        <!-- 自由随心写输入按钮 -->
+        <button type="button" onclick="window.promptCustomDeliveryNote()" class="px-2 py-0.5 rounded-lg border border-dashed border-stone-300 text-stone-600 bg-stone-50 hover:bg-stone-100 whitespace-nowrap font-medium active:scale-95 transition">
+          ✎ 自定义输入...
+        </button>
       </div>
 
       <div class="flex justify-between items-center pt-0.5">
@@ -234,7 +246,7 @@
 
   </div>
 
-  <!-- ⭐ 核心重塑：随车送货凭单弹窗（下半部大气舒朗，无突兀黑板色块，自然素雅，与白底契单融为一体） -->
+  <!-- 随车送货凭单弹窗（下半部大气舒朗，无突兀黑板色块，自然素雅，与白底契单融为一体） -->
   <div id="settlement-slip-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-3.5">
     <div class="bg-white w-full max-w-sm rounded-[2rem] p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar border border-stone-200/80">
       
@@ -275,9 +287,8 @@
         </div>
       </div>
 
-      <!-- ⭐ 彻底重塑的金额汇总下半部：摒弃深绿黑板大色块，采用大方通透的素雅卡片 -->
+      <!-- 金额汇总下半部：摒弃深绿黑板大色块，采用大方通透的素雅卡片 -->
       <div class="bg-stone-50/90 border border-stone-200/90 rounded-2xl p-3.5 space-y-2 text-xs">
-        <!-- 只有在退货特殊单时展示折抵拆分行，常规单自动折叠 -->
         <div id="slip-summary-rows" class="hidden space-y-1 text-[11px] text-stone-500 pb-2 border-b border-stone-200">
           <div class="flex justify-between">
             <span>进货总值:</span>
@@ -310,7 +321,7 @@
         </div>
       </div>
 
-      <!-- 底部双按钮：左浅右深，比例舒朗，典雅端庄 -->
+      <!-- 底部双按钮：比例舒朗，典雅端庄 -->
       <div class="flex gap-2.5 pt-1 border-t border-stone-100">
         <button type="button" onclick="window.closeModal('settlement-slip-modal')" class="w-1/3 bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold py-2.5 rounded-2xl text-[11px] active:scale-95 transition">
           ✕ 稍作斟酌
@@ -320,6 +331,39 @@
         </button>
       </div>
 
+    </div>
+  </div>
+
+  <!-- 大超/特大终端专用：海量供货厂商检索、行当分类与解绑管理弹窗 -->
+  <div id="all-agents-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3.5">
+    <div class="bg-white w-full max-w-sm rounded-[2rem] p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar border border-stone-100 flex flex-col">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🏢 大商超供货商庄名册</h3>
+          <p class="text-[10px] text-stone-400">快速检索厂商、行当筛选、进庄与解绑</p>
+        </div>
+        <button type="button" onclick="window.closeModal('all-agents-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div class="relative">
+        <input type="text" id="agent-search-input" oninput="window.filterAgentList(this.value)" placeholder="🔍 键入厂商全名、品类或代号检索..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs outline-none text-stone-800">
+      </div>
+
+      <div class="flex gap-1.5 overflow-x-auto no-scrollbar text-[10px] py-0.5">
+        <button type="button" onclick="window.filterAgentByCategory('全部')" class="agent-cat-pill bg-stone-900 text-white px-2 py-0.5 rounded-lg font-bold">全部行当</button>
+        <button type="button" onclick="window.filterAgentByCategory('粮油副食')" class="agent-cat-pill bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg">粮油副食</button>
+        <button type="button" onclick="window.filterAgentByCategory('酒水饮料')" class="agent-cat-pill bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg">酒水饮料</button>
+        <button type="button" onclick="window.filterAgentByCategory('冷冻生鲜')" class="agent-cat-pill bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg">冷冻生鲜</button>
+        <button type="button" onclick="window.filterAgentByCategory('日化消杀')" class="agent-cat-pill bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg">日化消杀</button>
+      </div>
+
+      <div id="all-agents-container" class="divide-y divide-stone-100 flex-1 overflow-y-auto no-scrollbar space-y-1"></div>
+
+      <div class="pt-2 border-t border-stone-100 flex gap-2">
+        <button type="button" onclick="window.openModal('bind-agent-modal'); window.closeModal('all-agents-modal');" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2 rounded-xl text-xs active:scale-95 transition">
+          + 绑定接入新供货厂家
+        </button>
+      </div>
     </div>
   </div>
 
@@ -359,9 +403,9 @@
         <div class="flex justify-between items-center">
           <label class="text-[10px] text-stone-500 font-bold">掌柜交心叮咛 (点选或手写)：</label>
           <div class="flex gap-1 text-[9px]">
-            <button type="button" onclick="window.applyQuickNote('daily')" class="text-emerald-800 hover:underline">日化居家</button>
-            <button type="button" onclick="window.applyQuickNote('general')" class="text-emerald-800 hover:underline">厚道百货</button>
-            <button type="button" onclick="window.applyQuickNote('food')" class="text-emerald-800 hover:underline">良心粮油</button>
+            <button type="button" onclick="window.applyQuickNote('daily')" class="text-stone-700 hover:underline">日化居家</button>
+            <button type="button" onclick="window.applyQuickNote('general')" class="text-stone-700 hover:underline">厚道百货</button>
+            <button type="button" onclick="window.applyQuickNote('food')" class="text-stone-700 hover:underline">良心粮油</button>
           </div>
         </div>
         <textarea id="flyer-note-input" rows="2" oninput="window.renderLiveFlyerPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none text-stone-800 text-xs"></textarea>
