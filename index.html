@@ -10,12 +10,12 @@
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-[#f7f5f0] text-stone-800 font-sans min-h-screen">
+<body class="bg-[#f8f9fa] text-stone-800 font-sans min-h-screen">
   
   <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-2xl relative">
     
-    <!-- 顶栏：远山翠渐变，典雅大方，蕴含守望互信之意 -->
-    <header class="bg-gradient-to-br from-[#1b4332] via-[#2d6a4f] to-[#1b4332] text-white p-4 pt-3.5 rounded-b-[2rem] shadow-lg space-y-2.5 relative">
+    <!-- 顶栏：雅致青黛墨色，典雅温润，耐看大气 -->
+    <header class="bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 text-white p-4 pt-3.5 rounded-b-[2rem] shadow-md space-y-2.5 relative">
       <div class="flex justify-between items-center text-xs relative">
         
         <!-- 左侧：经营助手 (☰) -->
@@ -27,27 +27,27 @@
           </button>
 
           <!-- 掌柜锦囊浮层 -->
-          <div id="left-nav-menu" class="hidden absolute left-0 top-11 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all">
+          <div id="left-nav-menu" class="hidden absolute left-0 top-11 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200 text-xs transition-all">
             <div class="px-2.5 py-1 text-[10px] font-bold text-stone-400">掌柜经营锦囊</div>
             
-            <button type="button" onclick="window.openMarketingCenter(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-emerald-50/60 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
-              <span class="w-6 h-6 rounded-lg bg-emerald-100/70 text-emerald-800 flex items-center justify-center text-xs">🎨</span>
+            <button type="button" onclick="window.openMarketingCenter(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-stone-50 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
+              <span class="w-6 h-6 rounded-lg bg-amber-50 text-amber-800 flex items-center justify-center text-xs">🎨</span>
               <div>
                 <div class="font-bold text-stone-800 text-[11px]">邻里宣发画报</div>
                 <div class="text-[9px] text-stone-400">真品海报 · 拼单共惠</div>
               </div>
             </button>
 
-            <button type="button" onclick="window.openStoreOverview(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-amber-50/60 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
-              <span class="w-6 h-6 rounded-lg bg-amber-100/70 text-amber-800 flex items-center justify-center text-xs">📜</span>
+            <button type="button" onclick="window.openStoreOverview(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-stone-50 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
+              <span class="w-6 h-6 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center text-xs">📜</span>
               <div>
                 <div class="font-bold text-stone-800 text-[11px]">各家账本总览</div>
                 <div class="text-[9px] text-stone-400">仁和信义 · 账目明澈</div>
               </div>
             </button>
 
-            <button type="button" onclick="window.focusProductSearch(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-indigo-50/60 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
-              <span class="w-6 h-6 rounded-lg bg-indigo-100/70 text-indigo-800 flex items-center justify-center text-xs">🔍</span>
+            <button type="button" onclick="window.focusProductSearch(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-stone-50 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
+              <span class="w-6 h-6 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center text-xs">🔍</span>
               <div>
                 <div class="font-bold text-stone-800 text-[11px]">快捷查寻好物</div>
                 <div class="text-[9px] text-stone-400">品类、存量、底价</div>
@@ -61,12 +61,12 @@
           <div class="flex items-center gap-1.5 relative">
             <h1 id="store-title" class="text-base font-bold tracking-tight text-white">厚德便民老店</h1>
             
-            <button type="button" onclick="window.toggleShopTypeDropdown(event)" id="shop-type-badge" class="bg-[#d4a373] text-stone-900 text-[10px] px-2 py-0.2 rounded-full font-bold flex items-center gap-0.5 active:scale-95 transition shadow-sm">
+            <button type="button" onclick="window.toggleShopTypeDropdown(event)" id="shop-type-badge" class="bg-amber-400 text-stone-900 text-[10px] px-2 py-0.2 rounded-full font-bold flex items-center gap-0.5 active:scale-95 transition shadow-sm">
               <span>🏪 社区便利</span> ▾
             </button>
 
             <!-- 业态切换菜单 -->
-            <div id="shop-type-dropdown" class="hidden absolute left-1/2 -translate-x-1/2 top-9 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-1.5 z-50 text-stone-800 border border-stone-200/80 text-xs">
+            <div id="shop-type-dropdown" class="hidden absolute left-1/2 -translate-x-1/2 top-9 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-1.5 z-50 text-stone-800 border border-stone-200 text-xs">
               <div class="px-2.5 py-1 text-[10px] font-semibold text-stone-400">选择经营业态</div>
               <div class="space-y-0.5">
                 <button type="button" onclick="window.selectShopType('社区便利')" class="w-full px-2.5 py-2 text-left hover:bg-stone-50 rounded-xl flex items-center gap-2 transition">
@@ -94,30 +94,30 @@
             </div>
           </div>
 
-          <div class="text-[10px] text-emerald-100/80 font-mono mt-0.5">
+          <div class="text-[10px] text-stone-300 font-mono mt-0.5">
             当家掌柜: <b id="store-boss" class="text-white">主人家</b>
           </div>
         </div>
 
-        <!-- 右侧：互信履约与供货商服务 (···) -->
+        <!-- 右侧：供货商服务 (···) -->
         <div class="relative">
           <button type="button" onclick="window.toggleRightNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white relative" title="供货相照">
             <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
               <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
             </svg>
-            <span id="badge-vendor-feedback" class="hidden absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-amber-400 border-2 border-[#1b4332] rounded-full animate-ping"></span>
-            <span id="dot-vendor-feedback" class="hidden absolute top-0.5 right-0.5 w-2 h-2 bg-amber-400 border-2 border-[#1b4332] rounded-full"></span>
+            <span id="badge-vendor-feedback" class="hidden absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-amber-400 border-2 border-stone-900 rounded-full animate-ping"></span>
+            <span id="dot-vendor-feedback" class="hidden absolute top-0.5 right-0.5 w-2 h-2 bg-amber-400 border-2 border-stone-900 rounded-full"></span>
           </button>
 
           <!-- 供货商服务菜单 -->
-          <div id="right-nav-menu" class="hidden absolute right-0 top-11 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all">
+          <div id="right-nav-menu" class="hidden absolute right-0 top-11 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200 text-xs transition-all">
             <div class="px-2.5 py-1 text-[10px] font-semibold text-stone-400 flex justify-between items-center border-b border-stone-100 pb-1.5 mb-1">
               <span>共赢供货商</span>
-              <span id="menu-current-agent-tag" class="text-emerald-800 font-mono font-bold truncate max-w-[90px]"></span>
+              <span id="menu-current-agent-tag" class="text-stone-900 font-mono font-bold truncate max-w-[90px]"></span>
             </div>
             
             <button type="button" onclick="window.repeatLastOrder(); window.closeAllMenus();" class="w-full px-2.5 py-1.5 text-left hover:bg-stone-50 rounded-xl flex items-center gap-2.5 transition">
-              <span class="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-800 flex items-center justify-center text-xs">📋</span>
+              <span class="w-6 h-6 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center text-xs">📋</span>
               <div>
                 <div class="font-bold text-stone-800 text-[11px]">回填常进货品</div>
                 <div class="text-[9px] text-stone-400">一键复载上次良品</div>
@@ -138,17 +138,17 @@
               <div class="flex items-center gap-2.5">
                 <span class="w-6 h-6 rounded-lg bg-amber-50 text-amber-800 flex items-center justify-center text-xs">📜</span>
                 <div>
-                  <div class="font-bold text-stone-800 text-[11px]">历次交接契单与收条</div>
+                  <div class="font-bold text-stone-800 text-[11px]">历次单据与收据</div>
                   <div class="text-[9px] text-stone-400">来往明细 · 相互照看</div>
                 </div>
               </div>
               <span id="menu-proposal-count" class="hidden text-[9px] bg-amber-500 text-white font-bold px-1.5 py-0.2 rounded-full">有修润建议</span>
             </button>
 
-            <button type="button" onclick="window.callDriver(); window.closeAllMenus();" class="w-full px-2.5 py-1.5 text-left hover:bg-emerald-50 rounded-xl flex items-center gap-2.5 transition">
-              <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-900 flex items-center justify-center text-xs">📞</span>
+            <button type="button" onclick="window.callDriver(); window.closeAllMenus();" class="w-full px-2.5 py-1.5 text-left hover:bg-stone-50 rounded-xl flex items-center gap-2.5 transition">
+              <span class="w-6 h-6 rounded-lg bg-stone-100 text-stone-800 flex items-center justify-center text-xs">📞</span>
               <div>
-                <div class="font-bold text-emerald-900 text-[11px]">致电送货师傅</div>
+                <div class="font-bold text-stone-900 text-[11px]">致电送货师傅</div>
                 <div class="text-[9px] text-stone-400">随车问候 · 方便迎客</div>
               </div>
             </button>
@@ -165,28 +165,28 @@
 
       <!-- 厂商胶囊导航 -->
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-        <span class="text-[10px] text-emerald-200 font-bold whitespace-nowrap">供货商庄:</span>
+        <span class="text-[10px] text-stone-400 font-bold whitespace-nowrap">供货商庄:</span>
         <div id="agents-nav-chips" class="flex gap-1.5 overflow-x-auto no-scrollbar"></div>
       </div>
 
-      <!-- 信用账本看板：信立天下，度量有序 -->
-      <div class="bg-[#143628]/80 p-2.5 rounded-2xl border border-emerald-600/30 space-y-1">
+      <!-- 信用账本看板：大方素雅沉稳 -->
+      <div class="bg-white/10 backdrop-blur-sm p-3 rounded-2xl border border-white/15 space-y-1">
         <div class="flex justify-between items-center text-xs">
           <div>
-            <span class="text-emerald-200 text-[9px] block">🤝 互信授信可用余量</span>
+            <span class="text-stone-300 text-[10px] block">🤝 互信授信可用额度</span>
             <b id="credit-avail" class="text-amber-300 font-mono text-sm font-bold">¥2000.00</b>
           </div>
           <div class="text-center">
-            <span class="text-emerald-200 text-[9px] block">借用周转筐</span>
-            <b id="store-basket-count" class="text-amber-200 font-mono text-xs font-bold">0 个</b>
+            <span class="text-stone-300 text-[10px] block">借用周转筐</span>
+            <b id="store-basket-count" class="text-stone-100 font-mono text-xs font-bold">0 个</b>
           </div>
           <div class="text-right">
-            <span class="text-emerald-200 text-[9px] block">待平账期存量</span>
+            <span class="text-stone-300 text-[10px] block">待平账期存量</span>
             <b id="credit-debt" class="text-white font-mono text-xs font-bold">¥0.00</b>
           </div>
         </div>
-        <div class="text-[9px] text-emerald-200/80 pt-0.5 border-t border-emerald-700/50 flex justify-between items-center">
-          <span>随车送货长兄: <b id="store-driver" class="text-white font-bold">老张师傅</b></span>
+        <div class="text-[10px] text-stone-300 pt-1 border-t border-white/10 flex justify-between items-center">
+          <span>送货长兄: <b id="store-driver" class="text-white font-bold">老张师傅</b></span>
           <span class="text-amber-200">诚信往来 · 账目自洽</span>
         </div>
       </div>
@@ -196,7 +196,7 @@
     <div class="sticky top-0 z-10 bg-white border-b border-stone-100 p-2.5 space-y-1.5 shadow-sm">
       <div id="category-bar" class="flex gap-2 overflow-x-auto no-scrollbar text-xs"></div>
       <div id="quick-tag-pills" class="flex gap-1.5 overflow-x-auto no-scrollbar text-[11px] pt-0.5">
-        <button type="button" onclick="window.filterBySpecialTag('全部')" class="tag-filter-chip bg-stone-800 text-white px-2.5 py-0.5 rounded-lg whitespace-nowrap font-bold">全选品类</button>
+        <button type="button" onclick="window.filterBySpecialTag('全部')" class="tag-filter-chip bg-stone-900 text-white px-2.5 py-0.5 rounded-lg whitespace-nowrap font-bold">全选品类</button>
         <button type="button" onclick="window.filterBySpecialTag('🔥 街坊抢手')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap">🔥 街坊抢手</button>
         <button type="button" onclick="window.filterBySpecialTag('⏳ 临期捡漏')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap">⏳ 临期捡漏</button>
         <button type="button" onclick="window.filterBySpecialTag('💎 高毛利')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap">💎 丰厚毛利</button>
@@ -218,87 +218,100 @@
 
       <div class="flex justify-between items-center pt-0.5">
         <div>
-          <div class="text-[10px] text-stone-400">本次预结净资 (进-退):</div>
-          <div class="text-emerald-950 font-mono font-bold text-xl leading-tight">
+          <div class="text-[10px] text-stone-400" id="cart-total-label">本次应付金额:</div>
+          <div class="text-stone-900 font-mono font-bold text-xl leading-tight">
             ¥<span id="cart-total-amount">0.00</span>
           </div>
-          <div id="cart-detail-subtext" class="text-[9px] text-stone-400 font-mono">进 0 | 退 0 | 换 0</div>
+          <div id="cart-detail-subtext" class="text-[9px] text-stone-400 font-mono">进 0 箱</div>
         </div>
         
-        <button type="button" onclick="window.openSettlementModal()" id="btn-submit-order" class="bg-[#1b4332] hover:bg-[#143628] text-white text-xs font-bold px-5 py-2.5 rounded-2xl shadow active:scale-95 transition flex items-center gap-2">
-          <span>生成互信货契</span>
-          <span id="cart-count-badge" class="bg-[#d4a373] text-stone-900 text-[11px] px-2 py-0.2 rounded-full font-mono font-bold">0</span>
+        <button type="button" onclick="window.openSettlementModal()" id="btn-submit-order" class="bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold px-5 py-2.5 rounded-2xl shadow active:scale-95 transition flex items-center gap-2">
+          <span id="btn-submit-order-text">生成送货凭单</span>
+          <span id="cart-count-badge" class="bg-amber-400 text-stone-900 text-[11px] px-2 py-0.2 rounded-full font-mono font-bold">0</span>
         </button>
       </div>
     </footer>
 
   </div>
 
-  <!-- 随车结算凭据契单 (去机器冷漠感，守契约诚实之礼) -->
-  <div id="settlement-slip-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar border border-stone-200">
+  <!-- 随车结算单弹窗：大气、干练，常规单极简，特殊单清晰 -->
+  <div id="settlement-slip-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar border border-stone-100">
       
-      <div class="border-b border-stone-100 pb-2 text-center relative">
-        <h3 class="font-bold text-sm text-stone-900 tracking-wide">🤝 供采相照 · 随车送货履约契单</h3>
-        <p class="text-[9px] text-stone-400 mt-0.5">依单点验 · 钱物两清 · 互谅互让</p>
-        <button type="button" onclick="window.closeModal('settlement-slip-modal')" class="absolute right-0 top-0 text-stone-400 text-lg">✕</button>
+      <!-- 弹窗顶栏：根据有无退换货动态区分普通单与特殊单 -->
+      <div class="border-b border-stone-100 pb-2.5 text-center relative">
+        <div class="flex items-center justify-center gap-1.5">
+          <h3 class="font-bold text-sm text-stone-900 tracking-wide" id="slip-modal-header-title">随车送货签收凭单</h3>
+          <span id="badge-special-order" class="hidden bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-bold px-1.5 py-0.2 rounded">⚡ 调退冲抵特单</span>
+        </div>
+        <p class="text-[10px] text-stone-400 mt-0.5">点验货品 · 依约履约 · 相互照看</p>
+        <button type="button" onclick="window.closeModal('settlement-slip-modal')" class="absolute right-0 top-0 text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
 
-      <!-- 结算方式选择 -->
-      <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200/80 space-y-1.5 text-xs">
+      <!-- 结算方式选择区 (仅显示供货商真实授权的有效项) -->
+      <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 space-y-1.5 text-xs">
         <div class="flex justify-between items-center">
           <span class="font-bold text-[11px] text-stone-700">💳 约定履约交接方式：</span>
-          <select id="slip-settlement-select" class="bg-white border border-stone-200 rounded-lg px-2 py-1 font-bold text-stone-800 outline-none text-[10px]"></select>
+          <select id="slip-settlement-select" class="bg-white border border-stone-200 rounded-lg px-2.5 py-1 font-bold text-stone-800 outline-none text-[10px] shadow-sm"></select>
         </div>
-        <input type="text" id="slip-custom-note" placeholder="如有特别口信、存放约定，请在此注记备忘..." class="w-full bg-white border border-stone-200 rounded-lg px-2 py-1 text-[10px] outline-none">
+        <input type="text" id="slip-custom-note" placeholder="如有特别口信、存放约定，在此留个备忘..." class="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1 text-[10px] outline-none text-stone-700">
       </div>
 
-      <!-- 三大分区明细 (进 / 退 / 换) -->
+      <!-- 货品清单区：没有退货/换货时，绝对不显示空板块 -->
       <div class="space-y-2 text-xs">
-        <div>
-          <b class="text-[10px] text-emerald-800 block">① 选进新好物 (增)</b>
-          <div id="slip-order-items-list" class="divide-y divide-stone-100 max-h-24 overflow-y-auto no-scrollbar"></div>
+        <!-- ① 采购新进 -->
+        <div id="box-order-items">
+          <b class="text-[10px] text-stone-600 block mb-1">📦 采购订购明细</b>
+          <div id="slip-order-items-list" class="divide-y divide-stone-100 max-h-36 overflow-y-auto no-scrollbar"></div>
         </div>
 
-        <div>
-          <b class="text-[10px] text-rose-700 block">② 依约验退旧品 (减 · 追溯原单进价)</b>
-          <div id="slip-return-items-list" class="divide-y divide-stone-100 max-h-24 overflow-y-auto no-scrollbar"></div>
+        <!-- ② 授权退货 (仅有退货时展示) -->
+        <div id="box-return-items" class="hidden bg-rose-50/50 p-2 rounded-xl border border-rose-100">
+          <b class="text-[10px] text-rose-700 block mb-1">🔄 依约验退旧品 (冲减抵扣 · 锁定原进价)</b>
+          <div id="slip-return-items-list" class="divide-y divide-rose-100/60 max-h-24 overflow-y-auto no-scrollbar"></div>
         </div>
 
-        <div>
-          <b class="text-[10px] text-amber-800 block">③ 平价换新交接 (平 · 一新换一旧)</b>
-          <div id="slip-exchange-items-list" class="divide-y divide-stone-100 max-h-20 overflow-y-auto no-scrollbar"></div>
+        <!-- ③ 调换平换 (仅有换货时展示) -->
+        <div id="box-exchange-items" class="hidden bg-amber-50/50 p-2 rounded-xl border border-amber-100">
+          <b class="text-[10px] text-amber-800 block mb-1">🔀 平价换新交接 (一新换一旧 · 差额¥0.00)</b>
+          <div id="slip-exchange-items-list" class="divide-y divide-amber-100/60 max-h-20 overflow-y-auto no-scrollbar"></div>
         </div>
       </div>
 
-      <!-- 金额统计 -->
-      <div class="bg-[#1b4332] text-white p-3 rounded-2xl space-y-1 text-xs shadow-inner">
-        <div class="flex justify-between text-[11px] text-emerald-200">
-          <span>进货金资: <b id="slip-order-total" class="font-mono text-white">¥0.00</b></span>
-          <span>退验冲抵: <b id="slip-return-total" class="font-mono text-rose-300">-¥0.00</b></span>
+      <!-- 金额汇总看板：大气温和，弃用刺眼的大色块 -->
+      <div class="bg-stone-50 border border-stone-200 p-3 rounded-2xl space-y-1 text-xs">
+        <div id="slip-summary-rows" class="hidden space-y-0.5 text-[11px] text-stone-500 pb-1 border-b border-stone-200/80">
+          <div class="flex justify-between">
+            <span>订购总额:</span>
+            <b id="slip-order-total" class="font-mono text-stone-800">¥0.00</b>
+          </div>
+          <div class="flex justify-between text-rose-700">
+            <span>退品冲减:</span>
+            <b id="slip-return-total" class="font-mono">-¥0.00</b>
+          </div>
         </div>
-        <div class="flex justify-between items-center pt-1 border-t border-emerald-700/60">
-          <span class="font-bold text-sm">【实结净资额度】：</span>
-          <b id="slip-net-total" class="text-amber-300 font-mono text-lg font-bold">¥0.00</b>
+        <div class="flex justify-between items-center pt-0.5">
+          <span class="font-bold text-stone-700 text-xs" id="slip-net-label">本次应付金额：</span>
+          <b id="slip-net-total" class="text-stone-900 font-mono text-lg font-bold">¥0.00</b>
         </div>
       </div>
 
-      <!-- 异常凭证备存上传 -->
-      <div id="slip-proof-upload-box" class="hidden p-2.5 bg-rose-50/70 border border-rose-200 rounded-2xl space-y-1.5 text-xs">
-        <b class="text-rose-800 block text-[10px]">📷 存在随车调退或破损货物，请拍照附存于单据存根：</b>
+      <!-- 异常凭证备存上传 (仅有退/换货时自适应呈现) -->
+      <div id="slip-proof-upload-box" class="hidden p-2.5 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5 text-xs">
+        <b class="text-stone-700 block text-[10px]">📷 存在随车调退或破损货物，请拍照附存于契单存根：</b>
         <div class="flex items-center gap-2">
-          <input type="file" id="slip-proof-file" accept="image/*" capture="environment" onchange="window.handleProofUpload(event)" class="text-[10px] text-stone-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:bg-[#1b4332] file:text-white">
+          <input type="file" id="slip-proof-file" accept="image/*" capture="environment" onchange="window.handleProofUpload(event)" class="text-[10px] text-stone-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:bg-stone-800 file:text-white">
           <div id="proof-preview-container" class="flex gap-1"></div>
         </div>
       </div>
 
-      <!-- 操作按钮：主客谦和，随时可改 -->
+      <!-- 操作按钮：大气低调沉稳 -->
       <div class="flex gap-2 pt-1 border-t border-stone-100">
-        <button type="button" onclick="window.closeModal('settlement-slip-modal')" class="w-1/3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-2xl text-[11px] active:scale-95 transition">
+        <button type="button" onclick="window.closeModal('settlement-slip-modal')" class="w-1/3 bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold py-2.5 rounded-2xl text-[11px] active:scale-95 transition">
           ✕ 稍作斟酌
         </button>
-        <button type="button" onclick="window.confirmAndSubmitOrder()" id="btn-slip-confirm" class="w-2/3 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl text-xs active:scale-95 transition shadow">
-          ✅ 确认货单 · 传至供货庄
+        <button type="button" onclick="window.confirmAndSubmitOrder()" id="btn-slip-confirm" class="w-2/3 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-2xl text-xs active:scale-95 transition shadow">
+          ✅ 确认货单 · 传至供货商
         </button>
       </div>
 
@@ -341,9 +354,9 @@
         <div class="flex justify-between items-center">
           <label class="text-[10px] text-stone-500 font-bold">掌柜交心叮咛 (点选或手写)：</label>
           <div class="flex gap-1 text-[9px]">
-            <button type="button" onclick="window.applyQuickNote('daily')" class="text-emerald-800 hover:underline">日化居家</button>
-            <button type="button" onclick="window.applyQuickNote('general')" class="text-emerald-800 hover:underline">厚道百货</button>
-            <button type="button" onclick="window.applyQuickNote('food')" class="text-emerald-800 hover:underline">良心粮油</button>
+            <button type="button" onclick="window.applyQuickNote('daily')" class="text-stone-700 hover:underline">日化居家</button>
+            <button type="button" onclick="window.applyQuickNote('general')" class="text-stone-700 hover:underline">厚道百货</button>
+            <button type="button" onclick="window.applyQuickNote('food')" class="text-stone-700 hover:underline">良心粮油</button>
           </div>
         </div>
         <textarea id="flyer-note-input" rows="2" oninput="window.renderLiveFlyerPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none text-stone-800 text-xs"></textarea>
@@ -355,13 +368,13 @@
 
       <p class="text-[10px] text-stone-400 text-center">长按即可存下图片，传与街坊邻里分享</p>
 
-      <button type="button" onclick="window.closeModal('marketing-modal')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition shadow">
+      <button type="button" onclick="window.closeModal('marketing-modal')" class="w-full bg-stone-900 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition shadow">
         收好画报 · 返回货单
       </button>
     </div>
   </div>
 
-  <!-- 单据与收条核照 (带建议一键修润重新报单) -->
+  <!-- 单据与收条核照 -->
   <div id="receipts-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[88vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -379,7 +392,7 @@
     </div>
   </div>
 
-  <!-- 结识新总代/供货商 -->
+  <!-- 结识新供货商 -->
   <div id="bind-agent-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -390,8 +403,8 @@
         <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
           <label class="block font-bold text-stone-700 text-xs">方式 1：输入供货庄 6 位认领信码</label>
           <div class="flex gap-2">
-            <input type="text" id="bind-input-code" placeholder="如 888001 / 888002" maxlength="6" class="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-center font-bold text-emerald-800 outline-none">
-            <button type="button" onclick="window.bindByCode()" class="bg-[#1b4332] text-white font-bold px-3 py-1.5 rounded-xl active:scale-95">验证绑定</button>
+            <input type="text" id="bind-input-code" placeholder="如 888001 / 888002" maxlength="6" class="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-center font-bold text-stone-900 outline-none">
+            <button type="button" onclick="window.bindByCode()" class="bg-stone-900 text-white font-bold px-3 py-1.5 rounded-xl active:scale-95">验证绑定</button>
           </div>
         </div>
         <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
