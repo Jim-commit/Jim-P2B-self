@@ -13,6 +13,7 @@
 <body class="bg-stone-100 text-stone-800 font-sans p-4 min-h-screen">
   <div class="max-w-7xl mx-auto space-y-4">
     
+    <!-- 运营总控顶栏 -->
     <header class="bg-stone-900 text-white p-5 rounded-3xl shadow-xl flex flex-wrap justify-between items-center gap-4 border border-stone-800">
       <div>
         <div class="flex items-center gap-2.5">
@@ -37,9 +38,13 @@
         <button onclick="window.loadPlatformData()" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs px-3.5 py-2 rounded-xl font-bold border border-stone-700 active:scale-95 transition">
           刷新大盘
         </button>
+        <button onclick="window.logoutPlatform()" class="bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-xs px-3 py-2 rounded-xl font-bold border border-rose-700/50 transition">
+          退出登录
+        </button>
       </div>
     </header>
 
+    <!-- 导航切换 -->
     <nav class="flex bg-white rounded-2xl shadow-sm border border-stone-200 p-1.5 gap-2 text-xs font-bold">
       <button id="p-tab-btn-apps" onclick="window.switchTab('apps')" class="flex-1 py-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1.5">
         📝 厂商入驻申请审核
@@ -53,12 +58,13 @@
       </button>
     </nav>
 
+    <!-- 板块 1：入驻审核 -->
     <section id="p-tab-apps" class="space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-stone-900">入驻申请核验池</h2>
-            <p class="text-[11px] text-stone-400">核对营业执照扫描件、主体真实性、核定入驻会籍费、发放6位下游认领码</p>
+            <p class="text-[11px] text-stone-400">核对营业执照扫描件、主体真实性、核定会籍年费、发放6位下游认领码与后台访问密钥</p>
           </div>
           <span class="text-xs text-stone-500 font-mono">严格遵循企业实名资质准入规范</span>
         </div>
@@ -66,12 +72,13 @@
       </div>
     </section>
 
+    <!-- 板块 2：已入驻正式厂商名册 -->
     <section id="p-tab-tenants" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-stone-900">正式入驻商号管辖名册</h2>
-            <p class="text-[11px] text-stone-400">查验商号独立账本标识、认领信码分配、冻结/解冻会员使用权限</p>
+            <p class="text-[11px] text-stone-400">查验商号独立账本标识、认领信码分配、重置密钥、冻结/解冻会员使用权限</p>
           </div>
         </div>
         <div class="overflow-x-auto">
@@ -84,7 +91,7 @@
                 <th class="p-3">供货模式</th>
                 <th class="p-3">下游认领码</th>
                 <th class="p-3">当家负责人</th>
-                <th class="p-3">联系电话</th>
+                <th class="p-3">后台安全密钥</th>
                 <th class="p-3">会籍状态</th>
                 <th class="p-3 text-right">操作</th>
               </tr>
@@ -95,6 +102,7 @@
       </div>
     </section>
 
+    <!-- 板块 3：平台标准一二级品类主字典 -->
     <section id="p-tab-categories" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
@@ -106,13 +114,65 @@
             + 制定新标准品类
           </button>
         </div>
-
         <div id="category-tree-display" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs pt-1"></div>
       </div>
     </section>
 
   </div>
 
+  <!-- 平台总控安全凭证登录拦截模态窗 (零短信：管理密钥 / 微信免密扫码) -->
+  <div id="platform-auth-gate" class="fixed inset-0 bg-stone-950/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+    <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-white shadow-2xl">
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 bg-amber-400 text-stone-950 rounded-2xl flex items-center justify-center font-bold text-xl mx-auto shadow-lg">🏛️</div>
+        <h2 class="text-base font-bold tracking-tight text-white pt-1">平台运营总控安全核验</h2>
+        <p class="text-[11px] text-stone-400">出示管理密钥凭证或微信扫码登入中枢</p>
+      </div>
+
+      <div class="flex bg-stone-800 p-1 rounded-xl text-xs font-bold gap-1">
+        <button type="button" onclick="window.switchPAuthTab('pwd')" id="p-tab-pwd" class="flex-1 py-1.5 rounded-lg bg-stone-700 text-white shadow-sm transition">
+          🔑 管理令牌
+        </button>
+        <button type="button" onclick="window.switchPAuthTab('wx')" id="p-tab-wx" class="flex-1 py-1.5 rounded-lg text-stone-400 hover:text-white transition">
+          💬 微信扫码
+        </button>
+      </div>
+
+      <!-- 令牌密码 -->
+      <form id="pane-p-pwd" onsubmit="window.verifyPlatformAuthPwd(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-stone-400 font-medium mb-1">总控管理账号：</label>
+          <input type="text" id="p-auth-account" required placeholder="如：admin" value="admin" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 outline-none text-white focus:border-amber-400 font-mono">
+        </div>
+        <div>
+          <label class="block text-stone-400 font-medium mb-1">平台安全总控令牌 (Token)：</label>
+          <input type="password" id="p-auth-token" required placeholder="输入专属安全密钥" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 outline-none text-white focus:border-amber-400 font-mono">
+        </div>
+        <button type="submit" id="btn-platform-auth" class="w-full bg-amber-400 hover:bg-amber-500 text-stone-950 font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+          安全验证 · 登入总控台
+        </button>
+      </form>
+
+      <!-- 微信扫码 -->
+      <div id="pane-p-wx" class="hidden text-center space-y-2 py-1">
+        <div class="w-40 h-40 bg-white rounded-2xl mx-auto flex items-center justify-center p-2 relative">
+          <img id="p-wx-qrcode" src="" alt="管理员微信扫码" class="w-full h-full object-contain">
+          <div id="p-wx-qr-expired" class="hidden absolute inset-0 bg-stone-950/85 backdrop-blur-xs rounded-2xl flex flex-col items-center justify-center text-white p-2">
+            <span class="text-xs">二维码已失效</span>
+            <button type="button" onclick="window.refreshPWxQRCode()" class="text-[10px] bg-amber-400 text-stone-950 font-bold px-2 py-1 rounded-lg mt-1 active:scale-95">重新刷新</button>
+          </div>
+        </div>
+        <p class="text-[11px] text-stone-400">使用平台绑定的管理员微信扫一扫登入</p>
+      </div>
+
+      <div id="p-auth-error" class="hidden text-rose-400 text-[11px] font-bold text-center"></div>
+      <div class="text-center">
+        <span class="text-[10px] text-stone-500 font-mono">SYSTEM ACCESS AUTHENTICATOR</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手动特邀开户弹窗 -->
   <div id="manual-tenant-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -157,8 +217,8 @@
             <input type="text" id="m-contact-person" placeholder="如：陈厂长" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
           </div>
           <div>
-            <label class="block text-stone-600 font-medium mb-1">联系手机号：</label>
-            <input type="tel" id="m-contact-phone" maxlength="11" placeholder="11位手机号" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono">
+            <label class="block text-stone-600 font-medium mb-1">后台初始访问密钥 *：</label>
+            <input type="text" id="m-access-key" value="888888" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono font-bold text-emerald-800">
           </div>
         </div>
       </div>
@@ -173,6 +233,7 @@
     </div>
   </div>
 
+  <!-- 制定新平台品类弹窗 -->
   <div id="add-category-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -215,9 +276,11 @@
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
 
+    const P_AUTH_SESSION_KEY = 'platform_admin_session_token';
     let allApplications = [];
     let allTenants = [];
     let allCategories = [];
+    let pWxPollInterval = null;
 
     window.openModal = id => document.getElementById(id).classList.remove('hidden');
     window.closeModal = id => document.getElementById(id).classList.add('hidden');
@@ -231,6 +294,126 @@
       document.getElementById(`p-tab-btn-${tabName}`).className = "flex-1 py-2 text-center rounded-xl bg-stone-900 text-white transition";
     };
 
+    // --------------------------------------------------
+    // 安全登录守门逻辑 (纯密钥 / 微信扫码)
+    // --------------------------------------------------
+    window.switchPAuthTab = function(mode) {
+      document.getElementById('pane-p-pwd').classList.toggle('hidden', mode !== 'pwd');
+      document.getElementById('pane-p-wx').classList.toggle('hidden', mode !== 'wx');
+      document.getElementById('p-tab-pwd').className = (mode === 'pwd') ? 'flex-1 py-1.5 rounded-lg bg-stone-700 text-white shadow-sm transition' : 'flex-1 py-1.5 rounded-lg text-stone-400 hover:text-white transition';
+      document.getElementById('p-tab-wx').className = (mode === 'wx') ? 'flex-1 py-1.5 rounded-lg bg-stone-700 text-white shadow-sm transition' : 'flex-1 py-1.5 rounded-lg text-stone-400 hover:text-white transition';
+      document.getElementById('p-auth-error').classList.add('hidden');
+
+      if (mode === 'wx') {
+        window.refreshPWxQRCode();
+      } else {
+        if (pWxPollInterval) clearInterval(pWxPollInterval);
+      }
+    };
+
+    window.verifyPlatformAuthPwd = async function(e) {
+      e.preventDefault();
+      const account = document.getElementById('p-auth-account').value.trim();
+      const token = document.getElementById('p-auth-token').value.trim();
+      const errBox = document.getElementById('p-auth-error');
+      const btn = document.getElementById('btn-platform-auth');
+
+      btn.disabled = true;
+      btn.innerText = '正在核对密钥...';
+      errBox.classList.add('hidden');
+
+      const { data, error } = await supabase
+        .from('platform_admin_credential')
+        .select('*')
+        .eq('admin_account', account)
+        .eq('secret_token', token)
+        .eq('is_active', true)
+        .limit(1);
+
+      if (error || !data || data.length === 0) {
+        btn.disabled = false;
+        btn.innerText = '安全验证 · 登入总控台';
+        errBox.innerText = '⚠️ 安全凭证无效或账号已被锁定，拒绝接入！';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      sessionStorage.setItem(P_AUTH_SESSION_KEY, token);
+      document.getElementById('platform-auth-gate').classList.add('hidden');
+      alert(`✅ 凭证核验通过！欢迎：${data[0].admin_name}`);
+      window.loadPlatformData();
+    };
+
+    window.refreshPWxQRCode = async function() {
+      document.getElementById('p-wx-qr-expired')?.classList.add('hidden');
+      const ticket = `wx_admin_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      
+      const qrImg = document.getElementById('p-wx-qrcode');
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`https://goods-lucky.vercel.app/wx_admin_mock?ticket=${ticket}`)}`;
+
+      if (pWxPollInterval) clearInterval(pWxPollInterval);
+      const startTime = Date.now();
+      pWxPollInterval = setInterval(async () => {
+        if (Date.now() - startTime > 120000) {
+          clearInterval(pWxPollInterval);
+          document.getElementById('p-wx-qr-expired')?.classList.remove('hidden');
+          return;
+        }
+
+        const { data } = await supabase
+          .from('sys_qr_session')
+          .select('*')
+          .eq('ticket', ticket)
+          .eq('role', 'admin')
+          .eq('is_verified', true)
+          .limit(1);
+
+        if (data && data.length > 0) {
+          clearInterval(pWxPollInterval);
+          sessionStorage.setItem(P_AUTH_SESSION_KEY, 'wx_admin_verified');
+          document.getElementById('platform-auth-gate').classList.add('hidden');
+          alert('✅ 管理员微信扫码通过！');
+          window.loadPlatformData();
+        }
+      }, 2000);
+    };
+
+    async function checkPlatformAuthStatus() {
+      const savedToken = sessionStorage.getItem(P_AUTH_SESSION_KEY);
+      if (!savedToken) {
+        document.getElementById('platform-auth-gate').classList.remove('hidden');
+        return false;
+      }
+      if (savedToken === 'wx_admin_verified') {
+        document.getElementById('platform-auth-gate').classList.add('hidden');
+        return true;
+      }
+
+      const { data } = await supabase
+        .from('platform_admin_credential')
+        .select('*')
+        .eq('secret_token', savedToken)
+        .eq('is_active', true)
+        .limit(1);
+
+      if (data && data.length > 0) {
+        document.getElementById('platform-auth-gate').classList.add('hidden');
+        return true;
+      } else {
+        sessionStorage.removeItem(P_AUTH_SESSION_KEY);
+        document.getElementById('platform-auth-gate').classList.remove('hidden');
+        return false;
+      }
+    }
+
+    window.logoutPlatform = function() {
+      sessionStorage.removeItem(P_AUTH_SESSION_KEY);
+      document.getElementById('platform-auth-gate').classList.remove('hidden');
+    };
+
+    // --------------------------------------------------
+    // 数据加载与管理业务
+    // --------------------------------------------------
     window.loadPlatformData = async function() {
       const { data: apps } = await supabase.from('tenant_application').select('*').order('id', { ascending: false });
       allApplications = apps || [];
@@ -311,7 +494,7 @@
                   退回修改
                 </button>
                 <button onclick="window.approveApplication(${a.id}, '${a.tenant_id}', '${a.company_name}')" class="text-xs bg-stone-900 hover:bg-stone-800 text-white font-bold px-4 py-1.5 rounded-xl shadow active:scale-95 transition">
-                  ✅ 资质合格 · 核定会费并放行发码
+                  ✅ 资质合格 · 核发认领码与后台密钥
                 </button>
               </div>
             ` : `
@@ -335,7 +518,11 @@
           <td class="p-3">${t.service_mode || 'offline'}</td>
           <td class="p-3 font-bold text-amber-700 tracking-wider">${t.invite_code}</td>
           <td class="p-3 font-sans">${t.contact_person || '-'}</td>
-          <td class="p-3">${t.contact_phone || '-'}</td>
+          <td class="p-3 font-mono font-bold text-emerald-800">
+            <span class="hover:bg-emerald-50 px-1 py-0.5 rounded cursor-pointer" onclick="window.resetTenantKeyPrompt(${t.id}, '${t.tenant_id}', '${t.access_key || '123456'}')">
+              ${t.access_key || '123456'} ✏️
+            </span>
+          </td>
           <td class="p-3">
             <span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
               ${t.is_active ? '正常在册' : '已冻结暂停'}
@@ -349,6 +536,15 @@
         </tr>
       `).join('');
     }
+
+    window.resetTenantKeyPrompt = async function(id, tenantId, oldKey) {
+      const newKey = prompt(`【重置商号访问密钥】\n商号：${tenantId}\n当前密钥：${oldKey}\n输入新密码密钥：`, oldKey);
+      if (newKey && newKey.trim()) {
+        await supabase.from('platform_tenant').update({ access_key: newKey.trim() }).eq('id', id);
+        alert('密钥重置成功！请通知该厂商负责人。');
+        window.loadPlatformData();
+      }
+    };
 
     function renderCategoryTree() {
       const container = document.getElementById('category-tree-display');
@@ -389,6 +585,9 @@
       const code = prompt('为该商号配置专属 6 位下游认领信码：', `888${Math.floor(100 + Math.random() * 900)}`);
       if (!code || code.trim().length !== 6) return alert('请输入合法的 6 位认领信码！');
 
+      const accessKey = prompt('配置该厂商后台初始访问密钥 (Access Key)：', `${tenantId.toLowerCase()}@${new Date().getFullYear()}`);
+      if (!accessKey) return;
+
       const app = allApplications.find(a => a.id === appId);
 
       await supabase.from('tenant_application').update({
@@ -405,13 +604,21 @@
         business_type: app ? app.business_type : 'dealer',
         service_mode: app ? app.service_mode : 'offline',
         contact_person: app ? app.contact_person : '掌柜',
-        contact_phone: app ? app.contact_phone : '',
+        phone: app ? app.contact_phone : '',
         invite_code: code.trim(),
+        access_key: accessKey.trim(),
         membership_fee: parseFloat(fee) || 0,
         is_active: true
       }]);
 
-      alert(`✅ 审核通过！【${companyName}】已正式建档入驻！\n认领信码: ${code.trim()}`);
+      alert(
+        `🎉 审核通过并激活建档！\n\n` +
+        `• 厂商全称: ${companyName}\n` +
+        `• 商号代号: ${tenantId}\n` +
+        `• 下游认领信码: ${code.trim()}\n` +
+        `• 后台登录密钥: ${accessKey.trim()}\n\n` +
+        `凭证可直接复制交付给厂商负责人！`
+      );
       window.loadPlatformData();
     };
 
@@ -441,18 +648,18 @@
       const business_type = document.getElementById('m-business-type').value;
       const service_mode = document.getElementById('m-service-mode').value;
       const contact_person = document.getElementById('m-contact-person').value.trim();
-      const contact_phone = document.getElementById('m-contact-phone').value.trim();
+      const access_key = document.getElementById('m-access-key').value.trim() || '888888';
 
       if (!company_name || !tenant_id || !invite_code) return alert('请完整填写主体全称、商号代号与认领码！');
 
       const { error } = await supabase.from('platform_tenant').insert([{
         tenant_id, company_name, business_type, service_mode, invite_code,
-        contact_person, contact_phone, is_active: true
+        contact_person, access_key, is_active: true
       }]);
 
       if (error) alert('开户失败: ' + error.message);
       else {
-        alert(`🎉 厂家【${company_name}】直通开户成功！`);
+        alert(`🎉 厂家【${company_name}】直通开户成功！\n初始密钥: ${access_key}`);
         window.closeModal('manual-tenant-modal');
         window.loadPlatformData();
       }
@@ -514,7 +721,11 @@
       w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
     };
 
-    window.loadPlatformData();
+    // 页面初始化鉴权拦截
+    const isAuthed = await checkPlatformAuthStatus();
+    if (isAuthed) {
+      window.loadPlatformData();
+    }
   </script>
 </body>
 </html>
