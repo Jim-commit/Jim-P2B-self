@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>供应链数字商贸 · 平台运营总控台</title>
+  <title>供应链数字商贸 · 平台商道运营总控台</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -13,7 +13,7 @@
 <body class="bg-stone-100 text-stone-800 font-sans p-4 min-h-screen">
   <div class="max-w-7xl mx-auto space-y-4">
     
-    <!-- 运营总控顶栏 -->
+    <!-- 运营总控顶栏：庄严厚重、礼待天下 -->
     <header class="bg-stone-900 text-white p-5 rounded-3xl shadow-xl flex flex-wrap justify-between items-center gap-4 border border-stone-800">
       <div>
         <div class="flex items-center gap-2.5">
@@ -21,6 +21,9 @@
           <h1 class="text-lg font-bold tracking-tight">平台商道运营总控调度中枢</h1>
           <span id="totp-status-pill" class="bg-stone-800 text-stone-400 text-[10px] px-2.5 py-0.5 rounded-full border border-stone-700 font-mono font-bold flex items-center gap-1">
             <span class="w-1.5 h-1.5 rounded-full bg-stone-500"></span> TOTP 未激活
+          </span>
+          <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 font-mono">
+            AI 谋士当席
           </span>
         </div>
         <div class="text-xs text-stone-400 mt-1 flex flex-wrap gap-4 font-mono">
@@ -32,20 +35,32 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <button onclick="window.openBindTOTPModal()" class="bg-stone-800 hover:bg-stone-700 text-amber-300 font-bold text-xs px-3.5 py-2 rounded-xl border border-stone-700 active:scale-95 transition flex items-center gap-1">
-          <span>📱</span> 绑定身份验证器
+        <button onclick="window.openPlatformTotpSetup()" class="bg-stone-800 hover:bg-stone-700 text-amber-300 text-xs px-3.5 py-2 rounded-xl font-bold border border-amber-400/30 active:scale-95 transition flex items-center gap-1.5">
+          <span>🛡️</span> 绑定总控验证器
         </button>
         <button onclick="window.openManualTenantModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-900 font-bold text-xs px-3.5 py-2 rounded-xl shadow active:scale-95 transition flex items-center gap-1">
-          <span>+</span> 手动特邀开户
+          <span>+</span> 手动特邀开户 (直通发证)
         </button>
         <button onclick="window.loadPlatformData()" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs px-3.5 py-2 rounded-xl font-bold border border-stone-700 active:scale-95 transition">
           刷新大盘
         </button>
         <button onclick="window.logoutPlatform()" class="bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-xs px-3 py-2 rounded-xl font-bold border border-rose-700/50 transition">
-          退出登录
+          安全退出
         </button>
       </div>
     </header>
+
+    <!-- AI 谋士：商道大局与生态研判提示卡 -->
+    <div id="ai-platform-adviser" class="bg-gradient-to-r from-stone-900 via-stone-800 to-emerald-950 text-white p-4 rounded-3xl shadow-sm border border-stone-700 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-2xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-lg">💡</div>
+        <div>
+          <b class="text-amber-300 font-bold block text-xs">AI 谋士 · 商道生态体察简报</b>
+          <span id="ai-adviser-text" class="text-stone-300 text-[11px] leading-relaxed">全盘数据调和安泰，在册厂商商道守信良好，各品类供销两旺。</span>
+        </div>
+      </div>
+      <span class="text-[10px] text-stone-400 font-mono">辅佐人断 · 宽猛相济</span>
+    </div>
 
     <!-- 导航切换 -->
     <nav class="flex bg-white rounded-2xl shadow-sm border border-stone-200 p-1.5 gap-2 text-xs font-bold">
@@ -54,7 +69,7 @@
         <span id="badge-pending-count" class="bg-rose-500 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
       </button>
       <button id="p-tab-btn-tenants" onclick="window.switchTab('tenants')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
-        🏢 正式入驻商号名册 (独立账本与认领码管理)
+        🏢 正式入驻商号名册 (独立账本与商契和合管辖)
       </button>
       <button id="p-tab-btn-categories" onclick="window.switchTab('categories')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
         🗂️ 平台标准一二级品类大盘字典
@@ -67,9 +82,9 @@
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-stone-900">入驻申请核验池</h2>
-            <p class="text-[11px] text-stone-400">核对营业执照扫描件、主体真实性、核定会籍年费、发放6位下游认领码与后台访问密钥</p>
+            <p class="text-[11px] text-stone-400">核对营业执照扫描件、主体真实性、核定会籍年费、发放6位下游认领码与安家初始信码</p>
           </div>
-          <span class="text-xs text-stone-500 font-mono">严格遵循企业实名资质准入规范</span>
+          <span class="text-xs text-stone-500 font-mono">实名资质审查 · 和合共生入驻</span>
         </div>
         <div id="applications-list" class="space-y-3 text-xs"></div>
       </div>
@@ -81,7 +96,7 @@
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-stone-900">正式入驻商号管辖名册</h2>
-            <p class="text-[11px] text-stone-400">查验商号独立账本标识、认领信码分配、重置密钥、冻结/解冻会员使用权限 (关键动作均受2FA守护)</p>
+            <p class="text-[11px] text-stone-400">密码脱敏知雄守雌，支持签发自立新约信码；依商道情理行使春风宽待、护盘存续或暂歇调养</p>
           </div>
         </div>
         <div class="overflow-x-auto">
@@ -94,9 +109,9 @@
                 <th class="p-3">供货模式</th>
                 <th class="p-3">下游认领码</th>
                 <th class="p-3">当家负责人</th>
-                <th class="p-3">后台安全密钥</th>
-                <th class="p-3">会籍状态</th>
-                <th class="p-3 text-right">操作</th>
+                <th class="p-3">后台安全凭证</th>
+                <th class="p-3">商契会籍气象</th>
+                <th class="p-3 text-right">商契调控</th>
               </tr>
             </thead>
             <tbody id="tenants-table-body" class="divide-y divide-stone-100 font-mono"></tbody>
@@ -123,7 +138,7 @@
 
   </div>
 
-  <!-- 平台总控安全凭证登录门禁 -->
+  <!-- 平台总控安全凭证登录拦截模态窗 -->
   <div id="platform-auth-gate" class="fixed inset-0 bg-stone-950/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
     <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-white shadow-2xl">
       <div class="text-center space-y-1">
@@ -141,10 +156,6 @@
           <label class="block text-stone-400 font-medium mb-1">平台安全总控令牌 (Token)：</label>
           <input type="password" id="p-auth-token" required placeholder="输入专属安全密钥" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 outline-none text-white focus:border-amber-400 font-mono">
         </div>
-        <div id="p-login-totp-box" class="hidden space-y-1 bg-stone-950 p-2.5 rounded-xl border border-stone-800">
-          <label class="block text-amber-300 font-bold text-[11px]">🛡️ 身份验证器 6 位动态口令：</label>
-          <input type="text" id="p-login-totp-code" maxlength="6" placeholder="000000" class="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 font-mono text-center tracking-widest text-base font-bold text-white outline-none focus:border-amber-400">
-        </div>
         <button type="submit" id="btn-platform-auth" class="w-full bg-amber-400 hover:bg-amber-500 text-stone-950 font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
           安全验证 · 登入总控台
         </button>
@@ -152,57 +163,138 @@
 
       <div id="p-auth-error" class="hidden text-rose-400 text-[11px] font-bold text-center"></div>
       <div class="text-center">
-        <span class="text-[10px] text-stone-500 font-mono">TOTP POWERED AUTHENTICATOR</span>
+        <span class="text-[10px] text-stone-500 font-mono">SYSTEM ACCESS AUTHENTICATOR</span>
       </div>
     </div>
   </div>
 
-  <!-- 绑定 TOTP 身份验证器弹窗 -->
-  <div id="bind-totp-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-    <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-white shadow-2xl text-xs">
-      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
-        <b class="text-amber-400 text-sm flex items-center gap-1">📱 绑定 TOTP 身份验证器</b>
-        <button type="button" onclick="window.closeModal('bind-totp-modal')" class="text-stone-400 text-lg hover:text-white">✕</button>
+  <!-- 平台总控专属 TOTP 绑定配置弹窗 -->
+  <div id="modal-platform-totp-setup" class="hidden fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+    <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-white shadow-2xl text-xs">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-800">
+        <div>
+          <h3 class="font-bold text-sm text-amber-400">🛡️ 平台总控 TOTP 身份验证器绑定</h3>
+          <p class="text-[10px] text-stone-400">守护最高开户、重置与商契裁定权限</p>
+        </div>
+        <button onclick="window.closeModal('modal-platform-totp-setup')" class="text-stone-400 hover:text-white text-lg">✕</button>
       </div>
-      <p class="text-[11px] text-stone-400 leading-relaxed">
-        使用微信小程序【腾讯身份验证器】或手机【Google/Microsoft Authenticator】扫描下方二维码录入：
-      </p>
-      <div class="bg-white p-3 rounded-2xl w-44 h-44 mx-auto flex items-center justify-center">
-        <img id="totp-qrcode-img" src="" alt="TOTP 二维码" class="w-full h-full object-contain">
+
+      <div class="space-y-3">
+        <p class="text-[11px] text-stone-300 leading-relaxed">
+          请使用手机“腾讯身份验证器”或“Google Authenticator”扫描下方二维码绑定：
+        </p>
+
+        <div class="w-40 h-40 bg-white rounded-2xl mx-auto flex items-center justify-center p-2">
+          <img id="platform-totp-qr" src="" alt="总控 TOTP 二维码" class="w-full h-full object-contain">
+        </div>
+
+        <div class="bg-stone-950 p-2.5 rounded-xl border border-stone-800 space-y-1">
+          <span class="text-[10px] text-stone-400 block">手动输入密钥 (Secret Key)：</span>
+          <div class="flex justify-between items-center font-mono font-bold text-amber-300">
+            <span id="platform-totp-secret-display">JBSWY3DPEHPK3PXP</span>
+            <button onclick="window.copyPlatformTotpSecret()" class="text-emerald-400 text-[10px] underline">复制</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-stone-300 mb-1">输入 App 生成的 6 位测试验证码：</label>
+          <input type="text" id="platform-totp-test-code" maxlength="6" placeholder="000000" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 font-mono text-center font-bold text-base outline-none text-white focus:border-amber-400">
+        </div>
       </div>
-      <div class="bg-stone-950 p-2.5 rounded-xl border border-stone-800 text-center font-mono">
-        <span class="text-[10px] text-stone-500 block">若无法扫码，可手动录入密钥：</span>
-        <span id="totp-secret-text" class="text-amber-300 font-bold select-all tracking-wider text-xs"></span>
-      </div>
-      <div>
-        <label class="block text-stone-400 mb-1">输入 App 上显示的 6 位动态口令进行初次核验：</label>
-        <input type="text" id="bind-totp-test-code" maxlength="6" placeholder="000000" class="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 font-mono text-center tracking-widest text-base font-bold text-white outline-none focus:border-amber-400">
-      </div>
-      <div class="flex gap-2 pt-1">
-        <button type="button" onclick="window.submitBindTOTP()" class="flex-1 bg-amber-400 hover:bg-amber-500 text-stone-950 font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
-          完成绑定并开启保护
+
+      <div class="flex gap-2 pt-2 border-t border-stone-800">
+        <button onclick="window.verifyAndSavePlatformTotp()" class="flex-1 bg-amber-400 hover:bg-amber-500 text-stone-950 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition shadow">
+          验证并保存绑定
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 平台总控 2FA 关键业务二次核验模态窗 (TOTP 驱动) -->
-  <div id="modal-platform-2fa" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+  <!-- 平台总控 2FA 关键业务二次核验模态窗 (支持 TOTP 动态码或总控密钥兜底) -->
+  <div id="modal-platform-2fa" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
     <div class="bg-stone-900 border border-stone-800 w-full max-w-xs rounded-3xl p-5 space-y-3 text-white shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-800 pb-2">
         <b class="text-amber-400 text-xs flex items-center gap-1">🛡️ 平台总控 2FA 高危操作核验</b>
         <button type="button" onclick="window.closePlatform2FAModal()" class="text-stone-400 text-lg hover:text-white">✕</button>
       </div>
       <p class="text-[11px] text-stone-300 leading-relaxed" id="modal-platform-2fa-desc">
-        当前业务涉及关键数据变动，需核验身份验证器动态口令。
+        当前业务涉及商号重置或直通资质签发，需出示 6 位 TOTP 动态口令或管理令牌。
       </p>
       <div>
-        <label class="block text-stone-400 mb-1">输入身份验证器 6 位动态口令：</label>
-        <input type="text" id="input-platform-2fa-token" maxlength="6" placeholder="000000" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 font-mono text-center font-bold text-base tracking-widest outline-none text-white focus:border-amber-400">
+        <label class="block text-stone-400 mb-1">输入 6 位动态码 或 总控管理令牌：</label>
+        <input type="password" id="input-platform-2fa-token" placeholder="6位动态码 / 管理密钥" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 font-mono text-center font-bold text-sm outline-none text-white focus:border-amber-400">
       </div>
       <div class="pt-1 flex gap-2">
         <button type="button" onclick="window.submitPlatform2FAVerification()" class="flex-1 bg-amber-400 hover:bg-amber-500 text-stone-950 font-bold py-2 rounded-xl active:scale-95 transition shadow">
           确认授权执行
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 商契气象调控弹窗 (温和替代生硬冻结) -->
+  <div id="modal-status-adjust" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">⚖️ 商道和合 · 契约状态体恤调控</h3>
+          <p id="adjust-tenant-title" class="text-[10px] text-stone-400">商号名称</p>
+        </div>
+        <button onclick="window.closeModal('modal-status-adjust')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <input type="hidden" id="adjust-tenant-id" value="">
+
+      <!-- AI 师爷为人情研判辅助 -->
+      <div class="bg-amber-50/70 border border-amber-200/60 p-3 rounded-2xl space-y-1">
+        <b class="text-amber-900 text-[11px] flex items-center gap-1">🤖 AI 账房谋士研判建议：</b>
+        <p id="adjust-ai-insight" class="text-[11px] text-amber-800 leading-relaxed">
+          正在研判该商号履约历史...
+        </p>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-stone-700 font-bold">设定当前商契气象：</label>
+        <div class="grid grid-cols-1 gap-2">
+          <label class="p-2.5 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+            <input type="radio" name="membership_status_choice" value="active" class="mt-0.5 text-emerald-800">
+            <div>
+              <b class="text-emerald-900 block">🟢 和合在册 · 畅行全盘</b>
+              <span class="text-[10px] text-stone-500">正常供配、发新商品、随车平账无任何约束。</span>
+            </div>
+          </label>
+          <label class="p-2.5 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+            <input type="radio" name="membership_status_choice" value="grace" class="mt-0.5 text-amber-700">
+            <div>
+              <b class="text-amber-800 block">🍃 春风宽待 · 提请关照 (宽猛相济)</b>
+              <span class="text-[10px] text-stone-500">业务完全不中断，仅在厂商端弹出温情礼帖，提请闲暇时通融续会。</span>
+            </div>
+          </label>
+          <label class="p-2.5 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+            <input type="radio" name="membership_status_choice" value="restricted" class="mt-0.5 text-blue-800">
+            <div>
+              <b class="text-blue-900 block">🛡️ 停新保旧 · 护盘存续 (事缓则圆)</b>
+              <span class="text-[10px] text-stone-500">允许已有订单交割、小店正常还款，仅暂停发售全新批次良品。</span>
+            </div>
+          </label>
+          <label class="p-2.5 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+            <input type="radio" name="membership_status_choice" value="paused" class="mt-0.5 text-rose-700">
+            <div>
+              <b class="text-rose-900 block">🛑 商道暂歇 · 设案调停 (慎之又慎)</b>
+              <span class="text-[10px] text-stone-500">确有重大伪劣或失信时，暂挂该商号访问权，待双方执手商榷后恢复。</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-stone-600 mb-1 font-bold">平台寄语 / 宽待嘱咐备忘：</label>
+        <input type="text" id="adjust-note-input" placeholder="例：年节旺季周转不易，特宽待半月，共勉同行" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
+      </div>
+
+      <div class="pt-2 border-t border-stone-100 flex gap-2">
+        <button onclick="window.saveTenantStatusAdjustment()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
+          依礼颁布生效
         </button>
       </div>
     </div>
@@ -253,14 +345,14 @@
             <input type="text" id="m-contact-person" placeholder="如：陈厂长" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
           </div>
           <div>
-            <label class="block text-stone-600 font-medium mb-1">后台初始访问密钥 *：</label>
+            <label class="block text-stone-600 font-medium mb-1">初始安家信码 (仅首次交付)：</label>
             <input type="text" id="m-access-key" value="888888" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono font-bold text-emerald-800">
           </div>
         </div>
       </div>
       <div class="pt-2 border-t border-stone-100 flex gap-2">
         <button onclick="window.submitManualTenant()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
-          🛡️ 2FA特批直通激活
+          🛡️ 2FA 特批直通激活
         </button>
         <button onclick="window.closeModal('manual-tenant-modal')" class="bg-stone-100 text-stone-600 font-bold px-4 py-2.5 rounded-xl">
           取消
@@ -311,11 +403,8 @@
 
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
-    import { generateBase32Secret, verifyTOTP, getTOTPKeyURI } from './src/lib/totp.js';
 
     const P_AUTH_SESSION_KEY = 'platform_admin_session_token';
-    let currentAdminRecord = null;
-    let tempBindSecret = '';
     let allApplications = [];
     let allTenants = [];
     let allCategories = [];
@@ -333,19 +422,128 @@
       document.getElementById(`p-tab-btn-${tabName}`).className = "flex-1 py-2 text-center rounded-xl bg-stone-900 text-white transition";
     };
 
+    // =========================================================================
+    // RFC 6238 原生纯前端 TOTP 算法引擎 (平台端内嵌，免外部依赖)
+    // =========================================================================
+    const TOTP = {
+      base32chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567',
+      base32ToBytes(base32) {
+        let clean = base32.toUpperCase().replace(/=+$/, '');
+        let bits = 0, value = 0, index = 0;
+        let bytes = new Uint8Array((clean.length * 5 / 8) | 0);
+        for (let i = 0; i < clean.length; i++) {
+          let val = this.base32chars.indexOf(clean.charAt(i));
+          if (val === -1) continue;
+          value = (value << 5) | val;
+          bits += 5;
+          if (bits >= 8) {
+            bytes[index++] = (value >>> (bits - 8)) & 255;
+            bits -= 8;
+          }
+        }
+        return bytes;
+      },
+      bytesToBase32(bytes) {
+        let bits = 0, value = 0, output = '';
+        for (let i = 0; i < bytes.length; i++) {
+          value = (value << 8) | bytes[i];
+          bits += 8;
+          while (bits >= 5) {
+            output += this.base32chars[(value >>> (bits - 5)) & 31];
+            bits -= 5;
+          }
+        }
+        if (bits > 0) output += this.base32chars[(value << (5 - bits)) & 31];
+        return output;
+      },
+      async generateHOTP(secretBytes, counter) {
+        const counterBuffer = new ArrayBuffer(8);
+        const counterView = new DataView(counterBuffer);
+        counterView.setUint32(0, Math.floor(counter / 0x100000000));
+        counterView.setUint32(4, counter & 0xffffffff);
+        const key = await crypto.subtle.importKey('raw', secretBytes, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+        const signature = await crypto.subtle.sign('HMAC', key, counterBuffer);
+        const hmac = new Uint8Array(signature);
+        const offset = hmac[hmac.length - 1] & 0x0f;
+        const binary = ((hmac[offset] & 0x7f) << 24) | ((hmac[offset + 1] & 0xff) << 16) | ((hmac[offset + 2] & 0xff) << 8) | (hmac[offset + 3] & 0xff);
+        return (binary % 1000000).toString().padStart(6, '0');
+      },
+      async verifyTOTP(secretBase32, token, windowSteps = 1) {
+        if (!secretBase32 || !token) return false;
+        try {
+          const secretBytes = this.base32ToBytes(secretBase32);
+          const currentCounter = Math.floor(Date.now() / 1000 / 30);
+          const cleanToken = token.trim();
+          for (let step = -windowSteps; step <= windowSteps; step++) {
+            const expectedOtp = await this.generateHOTP(secretBytes, currentCounter + step);
+            if (expectedOtp === cleanToken) return true;
+          }
+          return false;
+        } catch (e) {
+          return false;
+        }
+      },
+      generateRandomSecret(byteLength = 16) {
+        const randomBytes = new Uint8Array(byteLength);
+        crypto.getRandomValues(randomBytes);
+        return this.bytesToBase32(randomBytes);
+      }
+    };
+
     // --------------------------------------------------
-    // 安全登录守门逻辑 (密钥 + TOTP 动态口令)
+    // 平台总控专属 TOTP 绑定向导
+    // --------------------------------------------------
+    window.openPlatformTotpSetup = async function() {
+      const account = sessionStorage.getItem('p_auth_account') || 'admin';
+      const { data: admin } = await supabase.from('platform_admin_credential').select('*').eq('admin_account', account).single();
+      let secret = admin?.totp_secret;
+      if (!secret) {
+        secret = TOTP.generateRandomSecret();
+        await supabase.from('platform_admin_credential').update({ totp_secret: secret }).eq('admin_account', account);
+      }
+
+      document.getElementById('platform-totp-secret-display').innerText = secret;
+      document.getElementById('platform-totp-test-code').value = '';
+
+      const issuer = encodeURIComponent('供应链总控');
+      const otpauthUrl = `otpauth://totp/${issuer}:${account}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
+      document.getElementById('platform-totp-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(otpauthUrl)}`;
+      window.openModal('modal-platform-totp-setup');
+    };
+
+    window.copyPlatformTotpSecret = function() {
+      const secret = document.getElementById('platform-totp-secret-display').innerText;
+      navigator.clipboard.writeText(secret).then(() => alert('总控 TOTP 密钥已复制到剪贴板！'));
+    };
+
+    window.verifyAndSavePlatformTotp = async function() {
+      const code = document.getElementById('platform-totp-test-code').value.trim();
+      const secret = document.getElementById('platform-totp-secret-display').innerText.trim();
+      const account = sessionStorage.getItem('p_auth_account') || 'admin';
+
+      if (!code || code.length !== 6) return alert('请输入验证器中显示的 6 位动态口令！');
+
+      const isValid = await TOTP.verifyTOTP(secret, code, 1);
+      if (!isValid) return alert('⚠️ 动态口令校验未通过！请核对手机时间是否与网络同步。');
+
+      await supabase.from('platform_admin_credential').update({ totp_secret: secret, totp_enabled: true }).eq('admin_account', account);
+      alert('🎉 平台总控身份验证器绑定成功！后续最高决策已受 TOTP 护航。');
+      window.closeModal('modal-platform-totp-setup');
+      checkPlatformAuthStatus();
+    };
+
+    // --------------------------------------------------
+    // 安全登录守门逻辑 (纯密钥密码)
     // --------------------------------------------------
     window.verifyPlatformAuthPwd = async function(e) {
       e.preventDefault();
       const account = document.getElementById('p-auth-account').value.trim();
       const token = document.getElementById('p-auth-token').value.trim();
-      const totpCode = document.getElementById('p-login-totp-code').value.trim();
       const errBox = document.getElementById('p-auth-error');
       const btn = document.getElementById('btn-platform-auth');
 
       btn.disabled = true;
-      btn.innerText = '正在核对凭证...';
+      btn.innerText = '正在核对密钥...';
       errBox.classList.add('hidden');
 
       const { data, error } = await supabase
@@ -364,83 +562,12 @@
         return;
       }
 
-      const admin = data[0];
-
-      // 若已开启 TOTP，必须核验 6 位动态口令
-      if (admin.totp_enabled && admin.totp_secret) {
-        const totpBox = document.getElementById('p-login-totp-box');
-        if (totpBox.classList.contains('hidden') || !totpCode) {
-          totpBox.classList.remove('hidden');
-          btn.disabled = false;
-          btn.innerText = '出示 6 位动态口令 · 登录';
-          errBox.innerText = '🔐 账号已启用 TOTP 双重认证，请输入身份验证器上的 6 位实时口令！';
-          errBox.classList.remove('hidden');
-          document.getElementById('p-login-totp-code').focus();
-          return;
-        }
-
-        const isValidTOTP = await verifyTOTP(admin.totp_secret, totpCode);
-        if (!isValidTOTP) {
-          btn.disabled = false;
-          btn.innerText = '出示 6 位动态口令 · 登录';
-          errBox.innerText = '⚠️ 动态口令错误或已过期，请核对手机身份验证器！';
-          errBox.classList.remove('hidden');
-          return;
-        }
-      }
-
-      currentAdminRecord = admin;
       sessionStorage.setItem(P_AUTH_SESSION_KEY, token);
+      sessionStorage.setItem('p_auth_account', account);
       document.getElementById('platform-auth-gate').classList.add('hidden');
-      updateTOTPBadgeStatus();
-      alert(`✅ 凭证核验通过！欢迎：${admin.admin_name}`);
+      alert(`✅ 凭证核验通过！欢迎：${data[0].admin_name}`);
       window.loadPlatformData();
-    };
-
-    function updateTOTPBadgeStatus() {
-      const pill = document.getElementById('totp-status-pill');
-      if (currentAdminRecord?.totp_enabled) {
-        pill.className = "bg-emerald-950/80 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-600/50 font-mono font-bold flex items-center gap-1";
-        pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> TOTP 双重保护中';
-      } else {
-        pill.className = "bg-stone-800 text-stone-400 text-[10px] px-2.5 py-0.5 rounded-full border border-stone-700 font-mono font-bold flex items-center gap-1";
-        pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-stone-500"></span> TOTP 未激活';
-      }
-    }
-
-    // 绑定 TOTP 流程
-    window.openBindTOTPModal = function() {
-      tempBindSecret = generateBase32Secret(16);
-      document.getElementById('totp-secret-text').innerText = tempBindSecret;
-      document.getElementById('bind-totp-test-code').value = '';
-
-      const uri = getTOTPKeyURI('PlatformAdmin', 'ShanLiWanJia', tempBindSecret);
-      document.getElementById('totp-qrcode-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(uri)}`;
-
-      window.openModal('bind-totp-modal');
-    };
-
-    window.submitBindTOTP = async function() {
-      const testCode = document.getElementById('bind-totp-test-code').value.trim();
-      const isValid = await verifyTOTP(tempBindSecret, testCode);
-      if (!isValid) {
-        return alert('⚠️ 验证码不匹配！请确认 App 扫码成功并输入正确的 6 位动态口令。');
-      }
-
-      const account = currentAdminRecord?.admin_account || 'admin';
-      await supabase.from('platform_admin_credential').update({
-        totp_secret: tempBindSecret,
-        totp_enabled: true
-      }).eq('admin_account', account);
-
-      if (currentAdminRecord) {
-        currentAdminRecord.totp_secret = tempBindSecret;
-        currentAdminRecord.totp_enabled = true;
-      }
-
-      updateTOTPBadgeStatus();
-      alert('🎉 恭喜！身份验证器已成功绑定，后续登录与高危指令将受到银行级 2FA 保护！');
-      window.closeModal('bind-totp-modal');
+      checkPlatformAuthStatus();
     };
 
     async function checkPlatformAuthStatus() {
@@ -458,9 +585,15 @@
         .limit(1);
 
       if (data && data.length > 0) {
-        currentAdminRecord = data[0];
         document.getElementById('platform-auth-gate').classList.add('hidden');
-        updateTOTPBadgeStatus();
+        const pill = document.getElementById('totp-status-pill');
+        if (data[0].totp_enabled) {
+          pill.className = "bg-emerald-500/20 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-400/40 font-mono font-bold flex items-center gap-1";
+          pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> TOTP 已护航';
+        } else {
+          pill.className = "bg-stone-800 text-stone-400 text-[10px] px-2.5 py-0.5 rounded-full border border-stone-700 font-mono font-bold flex items-center gap-1";
+          pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-stone-500"></span> TOTP 未激活';
+        }
         return true;
       } else {
         sessionStorage.removeItem(P_AUTH_SESSION_KEY);
@@ -471,29 +604,19 @@
 
     window.logoutPlatform = function() {
       sessionStorage.removeItem(P_AUTH_SESSION_KEY);
+      sessionStorage.removeItem('p_auth_account');
       document.getElementById('platform-auth-gate').classList.remove('hidden');
     };
 
     // --------------------------------------------------
-    // 平台总控 2FA 拦截器 (TOTP 校验)
+    // 平台总控 2FA 高危操作拦截器 (优先验 TOTP，无 TOTP 则验总控令牌)
     // --------------------------------------------------
-    window.triggerPlatform2FA = function(actionDesc, onVerifiedCallback) {
-      if (!currentAdminRecord?.totp_enabled) {
-        // 若未绑定 TOTP，降级提示或允许使用管理密钥授权
-        const pin = prompt(`【平台总控安全确认】\n${actionDesc}\n请输入总控管理口令：`);
-        if (pin === sessionStorage.getItem(P_AUTH_SESSION_KEY)) {
-          onVerifiedCallback();
-        } else if (pin !== null) {
-          alert('⚠️ 口令错误，操作已被取消！');
-        }
-        return;
-      }
-
+    window.triggerPlatform2FA = async function(actionDesc, onVerifiedCallback) {
       document.getElementById('modal-platform-2fa-desc').innerText = actionDesc;
       document.getElementById('input-platform-2fa-token').value = '';
       pendingPlatform2FACallback = onVerifiedCallback;
       window.openModal('modal-platform-2fa');
-      document.getElementById('input-platform-2fa-token').focus();
+      setTimeout(() => document.getElementById('input-platform-2fa-token').focus(), 150);
     };
 
     window.closePlatform2FAModal = function() {
@@ -502,11 +625,21 @@
     };
 
     window.submitPlatform2FAVerification = async function() {
-      const code = document.getElementById('input-platform-2fa-token').value.trim();
-      const isValid = await verifyTOTP(currentAdminRecord?.totp_secret, code);
+      const inputVal = document.getElementById('input-platform-2fa-token').value.trim();
+      const account = sessionStorage.getItem('p_auth_account') || 'admin';
+      const curToken = sessionStorage.getItem(P_AUTH_SESSION_KEY);
 
-      if (!isValid) {
-        return alert('⚠️ 动态验证码错误或已过期，请核对身份验证器！');
+      const { data: admin } = await supabase.from('platform_admin_credential').select('*').eq('admin_account', account).single();
+
+      let isSuccess = false;
+      if (admin?.totp_enabled && admin?.totp_secret && inputVal.length === 6 && /^\d+$/.test(inputVal)) {
+        isSuccess = await TOTP.verifyTOTP(admin.totp_secret, inputVal, 1);
+      } else {
+        isSuccess = (inputVal === curToken);
+      }
+
+      if (!isSuccess) {
+        return alert('⚠️ 身份核身失败！口令或总控令牌不符，操作已被中止。');
       }
 
       window.closePlatform2FAModal();
@@ -516,7 +649,7 @@
     };
 
     // --------------------------------------------------
-    // 数据调度主流程
+    // 数据加载与管理业务
     // --------------------------------------------------
     window.loadPlatformData = async function() {
       const { data: apps } = await supabase.from('tenant_application').select('*').order('id', { ascending: false });
@@ -545,7 +678,30 @@
       document.getElementById('stat-cat-l1').innerText = `${l1.length} 类`;
       document.getElementById('stat-cat-l2').innerText = `${l2.length} 项`;
       renderCategoryTree();
+
+      // AI 谋士大局生态研判
+      updateAISummaryInsight();
     };
+
+    function updateAISummaryInsight() {
+      const activeCount = allTenants.filter(t => (t.membership_status || 'active') === 'active').length;
+      const graceCount = allTenants.filter(t => t.membership_status === 'grace').length;
+      const restCount = allTenants.filter(t => t.membership_status === 'restricted').length;
+      
+      let insight = `当前在册商号 ${allTenants.length} 家，和合畅运 ${activeCount} 家。`;
+      if (graceCount > 0) {
+        insight += ` 有 ${graceCount} 家商号处于【春风宽待期】，建议总控运营以礼电联温和慰问，切勿草率施压；`;
+      }
+      if (restCount > 0) {
+        insight += ` ${restCount} 家处于【护盘存续】，平稳过渡旧契约中；`;
+      }
+      if (allCategories.length < 5) {
+        insight += ` 标准品类尚少，建议丰富米面粮油与节令果蔬标准细项。`;
+      } else {
+        insight += ` 粮道稳固，货品供给规制严整。`;
+      }
+      document.getElementById('ai-adviser-text').innerText = insight;
+    }
 
     function renderApplications() {
       const container = document.getElementById('applications-list');
@@ -568,7 +724,7 @@
                     isPending ? 'bg-amber-100 text-amber-900 animate-pulse' :
                     isApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                   }">
-                    ${isPending ? '⏳ 待审核资质' : isApproved ? '✅ 已发证激活' : '🚫 已驳回'}
+                    ${isPending ? '⏳ 待审核资质' : isApproved ? '✅ 已发证激活' : '🚫 已退回商榷'}
                   </span>
                   <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${a.business_type === 'factory' ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-800'}">
                     ${a.business_type === 'factory' ? '🏭 源头工厂' : '🏢 区域总代'}
@@ -579,7 +735,7 @@
                 </div>
               </div>
               <div class="text-right">
-                <span class="text-[10px] text-stone-400 block font-mono">核定会费</span>
+                <span class="text-[10px] text-stone-400 block font-mono">核定年契会费</span>
                 <b class="font-mono text-sm text-stone-900 font-bold">¥${parseFloat(a.membership_fee || 0).toFixed(2)}</b>
               </div>
             </div>
@@ -595,15 +751,15 @@
             ${isPending ? `
               <div class="flex gap-2 justify-end pt-2 border-t border-stone-200/60">
                 <button onclick="window.rejectApplication(${a.id})" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-1.5 rounded-xl transition">
-                  退回修改
+                  退回商榷修润
                 </button>
                 <button onclick="window.approveApplication(${a.id}, '${a.tenant_id}', '${a.company_name}')" class="text-xs bg-stone-900 hover:bg-stone-800 text-white font-bold px-4 py-1.5 rounded-xl shadow active:scale-95 transition">
-                  ✅ 资质合格 · 核发认领码与后台密钥
+                  ✅ 资质合格 · 核发认领码与安家信物
                 </button>
               </div>
             ` : `
               <div class="flex justify-between items-center text-[10px] text-stone-400 pt-1 border-t border-stone-200/60 font-mono">
-                <span>认领信码: <b class="text-amber-800 font-bold">${a.invite_code || '-'}</b></span>
+                <span>下游认领信码: <b class="text-amber-800 font-bold">${a.invite_code || '-'}</b></span>
                 <span>审核时间: ${a.reviewed_at ? new Date(a.reviewed_at).toLocaleString() : '-'}</span>
               </div>
             `}
@@ -614,56 +770,92 @@
 
     function renderTenantsTable() {
       const tbody = document.getElementById('tenants-table-body');
-      tbody.innerHTML = allTenants.map(t => `
-        <tr class="hover:bg-stone-50 transition">
-          <td class="p-3 font-bold text-stone-900">${t.tenant_id}</td>
-          <td class="p-3 font-sans font-medium">${t.company_name}</td>
-          <td class="p-3">${t.business_type === 'factory' ? '🏭 生产工厂' : '🏢 区域总销'}</td>
-          <td class="p-3">${t.service_mode || 'offline'}</td>
-          <td class="p-3 font-bold text-amber-700 tracking-wider">${t.invite_code}</td>
-          <td class="p-3 font-sans">${t.contact_person || '-'}</td>
-          <td class="p-3 font-mono font-bold text-emerald-800">
-            <span class="hover:bg-emerald-50 px-1 py-0.5 rounded cursor-pointer" onclick="window.resetTenantKeyPrompt(${t.id}, '${t.tenant_id}', '${t.access_key || '123456'}')">
-              ${t.access_key || '123456'} ✏️
-            </span>
-          </td>
-          <td class="p-3">
-            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
-              ${t.is_active ? '正常在册' : '已冻结暂停'}
-            </span>
-          </td>
-          <td class="p-3 text-right">
-            <button onclick="window.toggleTenantActive(${t.id}, ${t.is_active}, '${t.company_name}')" class="text-[11px] font-bold ${t.is_active ? 'text-rose-600' : 'text-emerald-700'} hover:underline font-sans">
-              ${t.is_active ? '冻结账户' : '解冻恢复'}
-            </button>
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = allTenants.map(t => {
+        const status = t.membership_status || (t.is_active ? 'active' : 'paused');
+        let statusTag = '';
+        if (status === 'active') {
+          statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">🟢 和合在册</span>';
+        } else if (status === 'grace') {
+          statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">🍃 春风宽待中</span>';
+        } else if (status === 'restricted') {
+          statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">🛡️ 护盘存续</span>';
+        } else {
+          statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">🛑 商道暂歇</span>';
+        }
+
+        return `
+          <tr class="hover:bg-stone-50 transition">
+            <td class="p-3 font-bold text-stone-900">${t.tenant_id}</td>
+            <td class="p-3 font-sans font-medium">${t.company_name}</td>
+            <td class="p-3">${t.business_type === 'factory' ? '🏭 生产工厂' : '🏢 区域总销'}</td>
+            <td class="p-3">${t.service_mode || 'offline'}</td>
+            <td class="p-3 font-bold text-amber-700 tracking-wider">${t.invite_code}</td>
+            <td class="p-3 font-sans">${t.contact_person || '-'}</td>
+            <td class="p-3 font-mono text-stone-400">
+              <span class="tracking-widest font-bold">••••••••</span>
+              <button onclick="window.issueResetTokenPrompt(${t.id}, '${t.tenant_id}', '${t.company_name}')" class="text-emerald-800 text-[11px] font-bold hover:underline ml-1.5 font-sans">
+                签发自立新约信码
+              </button>
+            </td>
+            <td class="p-3">${statusTag}</td>
+            <td class="p-3 text-right">
+              <button onclick="window.openTenantStatusModal(${t.id}, '${t.tenant_id}', '${t.company_name}', '${status}')" class="text-[11px] font-bold text-stone-700 hover:text-stone-900 bg-white border border-stone-200 px-2.5 py-1 rounded-xl shadow-xs hover:border-stone-400 transition font-sans">
+                ⚖️ 商契调控
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
-    // 2FA 场景 1：重置厂商后台专属访问密钥
-    window.resetTenantKeyPrompt = function(id, tenantId, oldKey) {
-      const newKey = prompt(`【重置商号访问密钥】\n商号：${tenantId}\n当前密钥：${oldKey}\n输入新密码密钥：`, oldKey);
-      if (newKey && newKey.trim()) {
-        window.triggerPlatform2FA(
-          `您正在为商号【${tenantId}】重置后台访问密钥，请核验 2FA 动态口令：`,
-          async () => {
-            await supabase.from('platform_tenant').update({ access_key: newKey.trim() }).eq('id', id);
-            alert('🎉 厂商后台访问密钥已通过 2FA 授权成功重置！');
-            window.loadPlatformData();
-          }
-        );
-      }
+    // 平台不窥视厂商密码，只签发单次自立新约兑换码
+    window.issueResetTokenPrompt = function(id, tenantId, companyName) {
+      window.triggerPlatform2FA(
+        `您正在为商号【${companyName}】签发专属【自立新约重置信码】。由厂商当家掌柜凭信码在后台自行重置密码，平台不留存也不窥探密码，请核验证书令牌：`,
+        async () => {
+          const resetToken = 'CLAIM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+          await supabase.from('platform_tenant').update({ reset_claim_token: resetToken }).eq('id', id);
+          alert(
+            `📜 已为【${companyName}】签发自立新约信码！\n\n` +
+            `• 单次重置信码：${resetToken}\n` +
+            `• 交付说明：请将信码安全转交该企业法人掌柜，厂商在 hq.html 凭此信码即可自立新密码。`
+          );
+          window.loadPlatformData();
+        }
+      );
     };
 
-    // 2FA 场景 2：冻结 / 解冻厂商会籍资格
-    window.toggleTenantActive = function(id, curState, companyName) {
-      const actStr = curState ? '冻结挂起' : '恢复激活';
+    // 打开商契调控弹窗
+    window.openTenantStatusModal = function(id, tenantId, companyName, currentStatus) {
+      document.getElementById('adjust-tenant-id').value = id;
+      document.getElementById('adjust-tenant-title').innerText = `${companyName} (${tenantId})`;
+
+      const radios = document.getElementsByName('membership_status_choice');
+      radios.forEach(r => r.checked = (r.value === currentStatus));
+
+      // AI 谋士给出情理研判
+      let aiInsight = `该商号在册合作良好。建议：若遇年节或款项周转期，优先采用【春风宽待】或【护盘存续】，保障末端几十家夫妻小店正常进货谋生；除非出现不可调和之重大失信，方行使【商道暂歇】。`;
+      document.getElementById('adjust-ai-insight').innerText = aiInsight;
+
+      window.openModal('modal-status-adjust');
+    };
+
+    window.saveTenantStatusAdjustment = function() {
+      const id = document.getElementById('adjust-tenant-id').value;
+      const status = document.querySelector('input[name="membership_status_choice"]:checked').value;
+      const note = document.getElementById('adjust-note-input').value.trim();
+
       window.triggerPlatform2FA(
-        `您正在对厂商【${companyName}】执行【${actStr}】操作，请核验 2FA 动态口令：`,
+        `您正在调整该商号的商契气象为【${status}】，依中华商道礼数，请核验证书令牌：`,
         async () => {
-          await supabase.from('platform_tenant').update({ is_active: !curState }).eq('id', id);
-          alert(`商号【${companyName}】已成功${actStr}！`);
+          const is_active = (status !== 'paused');
+          await supabase.from('platform_tenant').update({
+            membership_status: status,
+            is_active: is_active
+          }).eq('id', parseInt(id));
+
+          alert('商契调控已依礼颁布生效！');
+          window.closeModal('modal-status-adjust');
           window.loadPlatformData();
         }
       );
@@ -702,14 +894,14 @@
     }
 
     window.approveApplication = async function(appId, tenantId, companyName) {
-      const fee = prompt(`为【${companyName}】核定年费会籍费（元）：`, '2000');
+      const fee = prompt(`为【${companyName}】核定年契会费（元）：`, '2000');
       if (fee === null) return;
 
       const code = prompt('为该商号配置专属 6 位下游认领信码：', `888${Math.floor(100 + Math.random() * 900)}`);
       if (!code || code.trim().length !== 6) return alert('请输入合法的 6 位认领信码！');
 
-      const accessKey = prompt('配置该厂商后台初始访问密钥 (Access Key)：', `${tenantId.toLowerCase()}@${new Date().getFullYear()}`);
-      if (!accessKey) return;
+      const initialKey = prompt('配置初始安家信物密码 (厂商入驻后可自助立约修改)：', `${tenantId.toLowerCase()}@${new Date().getFullYear()}`);
+      if (!initialKey) return;
 
       const app = allApplications.find(a => a.id === appId);
 
@@ -729,8 +921,9 @@
         contact_person: app ? app.contact_person : '掌柜',
         phone: app ? app.contact_phone : '',
         invite_code: code.trim(),
-        access_key: accessKey.trim(),
+        access_key: initialKey.trim(),
         membership_fee: parseFloat(fee) || 0,
+        membership_status: 'active',
         is_active: true
       }]);
 
@@ -739,14 +932,14 @@
         `• 厂商全称: ${companyName}\n` +
         `• 商号代号: ${tenantId}\n` +
         `• 下游认领信码: ${code.trim()}\n` +
-        `• 后台登录密钥: ${accessKey.trim()}\n\n` +
-        `凭证可直接复制交付给厂商负责人！`
+        `• 初始安家密码: ${initialKey.trim()}\n\n` +
+        `信物可直接复制交付给厂商负责人，提示其登录后在顶栏自立新约修改密码！`
       );
       window.loadPlatformData();
     };
 
     window.rejectApplication = async function(appId) {
-      const reason = prompt('输入驳回说明（如：执照公章模糊、经营范围不符）：');
+      const reason = prompt('输入商榷退回说明（以礼相待，写明修润建议）：', '执照公章略有反光模糊，请掌柜重新拍摄上传，以便早日结缘。');
       if (!reason) return;
 
       await supabase.from('tenant_application').update({
@@ -755,7 +948,7 @@
         reviewed_at: new Date().toISOString()
       }).eq('id', appId);
 
-      alert('已退回该申请！');
+      alert('已依礼退回修润建议！');
       window.loadPlatformData();
     };
 
@@ -764,7 +957,6 @@
       window.openModal('manual-tenant-modal');
     };
 
-    // 2FA 场景 3：线下特邀免审直通开户
     window.submitManualTenant = function() {
       const company_name = document.getElementById('m-company-name').value.trim();
       const tenant_id = document.getElementById('m-tenant-id').value.trim().toUpperCase();
@@ -777,16 +969,16 @@
       if (!company_name || !tenant_id || !invite_code) return alert('请完整填写主体全称、商号代号与认领码！');
 
       window.triggerPlatform2FA(
-        `您正在直接为【${company_name}】特邀开立独立账本商号【${tenant_id}】，请核验 2FA 动态口令：`,
+        `您正在免审核直接为【${company_name}】特邀开立独立账本商号【${tenant_id}】，请核验总控 2FA 凭证：`,
         async () => {
           const { error } = await supabase.from('platform_tenant').insert([{
             tenant_id, company_name, business_type, service_mode, invite_code,
-            contact_person, access_key, is_active: true
+            contact_person, access_key, membership_status: 'active', is_active: true
           }]);
 
           if (error) alert('开户失败: ' + error.message);
           else {
-            alert(`🎉 厂家【${company_name}】直通开户成功！\n初始密钥: ${access_key}`);
+            alert(`🎉 厂家【${company_name}】直通开户成功！\n初始安家密码: ${access_key}`);
             window.closeModal('manual-tenant-modal');
             window.loadPlatformData();
           }
@@ -843,6 +1035,7 @@
       w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
     };
 
+    // 初始化入口：自执行函数封装杜绝编译抛错
     (async () => {
       const isAuthed = await checkPlatformAuthStatus();
       if (isAuthed) {
