@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>百工天街 · 數字商貿專櫃市集</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-[#f7f5f0] text-stone-800 font-sans pb-24 min-h-screen select-none">
+
+  <!-- 頂部導航與模式切換標頭 -->
+  <header class="bg-[#1b4332] text-white sticky top-0 z-40 shadow-lg">
+    <!-- 頂層狀態欄 -->
+    <div class="px-4 py-3 flex justify-between items-center border-b border-emerald-800/50">
+      <div class="flex items-center gap-2">
+        <span class="w-8 h-8 rounded-xl bg-amber-400 text-stone-900 font-bold flex items-center justify-center text-sm shadow">
+          🛍️
+        </span>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h1 id="mall-header-title" class="text-sm font-bold tracking-tight">百工天街 · 正品大集市</h1>
+            <span id="mall-mode-badge" class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.2 rounded-full border border-emerald-400/30 font-mono">
+              生態公域
+            </span>
+          </div>
+          <p id="mall-header-sub" class="text-[10px] text-emerald-200">物勒工名 · 源頭直發 · 誠信共生</p>
+        </div>
+      </div>
+
+      <!-- 右側動作：天街與專櫃平滑切換 -->
+      <div class="flex items-center gap-1.5 text-xs">
+        <button id="btn-back-street" onclick="window.exitToTianJie()" class="hidden bg-white/10 hover:bg-white/20 text-amber-300 px-2.5 py-1.5 rounded-xl border border-amber-400/30 text-[11px] font-bold transition active:scale-95">
+          🏛️ 返回天街
+        </button>
+        <button onclick="window.openShareModal()" class="bg-[#2d6a4f] hover:bg-[#143628] text-white px-2.5 py-1.5 rounded-xl border border-emerald-400/30 text-[11px] font-bold transition active:scale-95 flex items-center gap-1">
+          <span>🤝</span> 分享分潤
+        </button>
+      </div>
+    </div>
+
+    <!-- 掌櫃推客血緣宣告條 (有推客參數時彈性呈現) -->
+    <div id="referrer-banner" class="hidden bg-amber-500 text-stone-950 px-4 py-1.5 flex justify-between items-center text-[11px] font-bold shadow-inner">
+      <div class="flex items-center gap-1.5">
+        <span>🏪</span>
+        <span>實體門店結緣：<b id="ref-store-name">便民小店</b> 專享關照通道</span>
+      </div>
+      <span class="text-[10px] bg-stone-900 text-amber-300 px-2 py-0.5 rounded-full font-mono">穿透分潤中</span>
+    </div>
+
+    <!-- 分類水平滾動滑軌 -->
+    <div class="px-3 py-2 bg-[#143628] overflow-x-auto no-scrollbar flex gap-2 text-xs whitespace-nowrap">
+      <button onclick="window.filterMallCategory('all')" class="mall-cat-chip bg-amber-400 text-stone-950 px-3 py-1 rounded-xl font-bold transition">
+        全部精選
+      </button>
+      <div id="dynamic-cat-chips" class="flex gap-2"></div>
+    </div>
+  </header>
+
+  <!-- 態型 A：廠商私域專賣店品牌門面 (僅特定商號時呈現) -->
+  <section id="brand-hero-section" class="hidden px-4 pt-4">
+    <div class="bg-gradient-to-br from-stone-900 to-[#1b4332] text-white p-4 rounded-3xl shadow-md border border-stone-800 space-y-2">
+      <div class="flex justify-between items-start">
+        <div>
+          <span class="text-[10px] font-mono text-emerald-300 tracking-wider block">OFFICIAL BRAND STORE</span>
+          <h2 class="text-base font-bold text-amber-300" id="hero-brand-name">品牌商號專櫃</h2>
+          <p class="text-[11px] text-stone-300 mt-0.5" id="hero-brand-desc">匠心傳承 · 物勒工名 · 源頭良品</p>
+        </div>
+        <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/40 font-mono font-bold">
+          廠家直發
+        </span>
+      </div>
+      <div class="flex items-center gap-4 text-[10px] text-stone-400 pt-1 border-t border-stone-700/50 font-mono">
+        <span>商號代碼: <b id="hero-tenant-id" class="text-white">--</b></span>
+        <span>認領信碼: <b id="hero-invite-code" class="text-amber-300">--</b></span>
+        <span>正品驗真: <b class="text-emerald-400">100% PASS</b></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 商品網格貨架 -->
+  <main class="p-3">
+    <div id="mall-goods-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div class="col-span-full py-16 text-center text-stone-400 text-xs">正調閱百工物勒正品行貨...</div>
+    </div>
+  </main>
+
+  <!-- 底部常駐購物車結算膠囊 -->
+  <footer class="fixed bottom-0 max-w-md left-1/2 -translate-x-1/2 w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-2.5 px-4 z-30 shadow-2xl flex justify-between items-center rounded-t-3xl">
+    <div class="flex items-center gap-3">
+      <div class="relative cursor-pointer" onclick="window.openCartModal()">
+        <span class="w-10 h-10 rounded-2xl bg-[#1b4332] text-white flex items-center justify-center text-lg shadow">
+          🧺
+        </span>
+        <span id="cart-badge-count" class="hidden absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] w-4 h-4 rounded-full font-bold flex items-center justify-center font-mono">
+          0
+        </span>
+      </div>
+      <div>
+        <span class="text-[10px] text-stone-400 block font-mono">訂購淨計 (一件代發包郵)</span>
+        <b id="cart-total-price" class="text-sm font-bold text-stone-900 font-mono">¥0.00</b>
+      </div>
+    </div>
+
+    <button onclick="window.openCheckoutModal()" class="bg-[#1b4332] hover:bg-[#143628] text-white font-bold text-xs px-5 py-2.5 rounded-2xl shadow active:scale-95 transition flex items-center gap-1.5">
+      <span>立即結算下單</span>
+      <span>➔</span>
+    </button>
+  </footer>
+
+  <!-- 物勒工名 · 正品溯源驗真模態窗 -->
+  <div id="modal-trace" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-xs rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900 flex items-center gap-1">
+          <span>📜</span> 物勒工名 · 正品溯源印記
+        </h3>
+        <button onclick="window.closeModal('modal-trace')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
+      </div>
+
+      <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl space-y-1.5">
+        <div class="flex justify-between items-center">
+          <span class="text-emerald-950 font-bold" id="trace-prod-name">良品名稱</span>
+          <span class="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">正品官方驗真</span>
+        </div>
+        <div class="text-[11px] font-mono text-emerald-900">
+          工名專屬溯源印記: <b id="trace-code" class="text-emerald-950 font-bold">--</b>
+        </div>
+      </div>
+
+      <div class="space-y-1.5 bg-stone-50 p-2.5 rounded-2xl border border-stone-200 text-[11px]">
+        <div class="flex justify-between">
+          <span class="text-stone-400">出品工坊：</span>
+          <b id="trace-tenant-name" class="text-stone-800">--</b>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-stone-400">源頭產地證明：</span>
+          <b id="trace-origin" class="text-stone-800">源頭工坊原產</b>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-stone-400">標準品類規制：</span>
+          <b id="trace-category" class="text-stone-800">--</b>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-stone-400">度量衡規格：</span>
+          <b id="trace-spec" class="text-stone-800">--</b>
+        </div>
+      </div>
+
+      <p class="text-[10px] text-stone-400 leading-relaxed text-center">
+        古者物勒工名，以考其誠。源頭可溯，去偽存真。
+      </p>
+
+      <button onclick="window.closeModal('modal-trace')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl active:scale-95 transition">
+        驗真完畢 · 放心進購
+      </button>
+    </div>
+  </div>
+
+  <!-- 分享分潤推客二維碼彈窗 -->
+  <div id="modal-share" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-xs rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">🤝 社交裂變 · 專屬分享分潤</h3>
+        <button onclick="window.closeModal('modal-share')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <p class="text-[11px] text-stone-500 leading-relaxed">
+        實體小店掌櫃或推客分享專屬連結，好友下單一件代發，分潤穿透直達小店銀囊：
+      </p>
+
+      <div class="w-36 h-36 bg-stone-100 border border-stone-200 rounded-2xl mx-auto flex items-center justify-center p-2">
+        <img id="share-qr-code" src="" alt="分享二維碼" class="w-full h-full object-contain">
+      </div>
+
+      <div class="bg-stone-50 p-2.5 rounded-xl border border-stone-200 space-y-1">
+        <span class="text-[10px] text-stone-400 block font-mono">推客結緣連結：</span>
+        <div class="text-[11px] font-mono break-all text-stone-700" id="share-link-text">
+          --
+        </div>
+      </div>
+
+      <button onclick="window.copyShareLink()" class="w-full bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
+        📋 複製分潤推客連結
+      </button>
+    </div>
+  </div>
+
+  <!-- 購物車抽屜彈窗 -->
+  <div id="modal-cart" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end justify-center">
+    <div class="bg-white w-full max-w-md rounded-t-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[80vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <b class="text-sm font-bold text-stone-900">🧺 結緣清單購物籃</b>
+        <button onclick="window.clearCart()" class="text-rose-600 text-[11px] hover:underline">清空</button>
+      </div>
+      <div id="cart-items-list" class="space-y-2 divide-y divide-stone-100"></div>
+      <div class="pt-2 flex justify-between items-center border-t border-stone-100">
+        <span class="font-bold">合計：<b id="cart-drawer-total" class="text-sm font-mono text-emerald-950">¥0.00</b></span>
+        <button onclick="window.closeModal('modal-cart'); window.openCheckoutModal();" class="bg-[#1b4332] text-white px-4 py-2 rounded-xl font-bold">
+          前往下單
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 終端消費者下單結算彈窗 (一件代發) -->
+  <div id="modal-checkout" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">📦 一件代發 · 結算下單</h3>
+        <button onclick="window.closeModal('modal-checkout')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div class="space-y-2.5">
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">收件人姓名 *：</label>
+          <input type="text" id="order-cust-name" placeholder="如：張先生" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold">
+        </div>
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">收件人手機號碼 *：</label>
+          <input type="tel" id="order-cust-phone" maxlength="11" placeholder="11位手機號" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono outline-none font-bold">
+        </div>
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">快遞配送詳細地址 *：</label>
+          <textarea id="order-cust-addr" rows="2" placeholder="詳細收件街道地址" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">備註叮嚀 (可選)：</label>
+          <input type="text" id="order-cust-note" placeholder="如：送前電話聯繫" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+        </div>
+
+        <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200 flex justify-between items-center font-mono">
+          <span class="text-stone-500">應付金銀淨款：</span>
+          <b id="checkout-amount-display" class="text-base font-bold text-emerald-950">¥0.00</b>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-stone-100 flex gap-2">
+        <button onclick="window.submitConsumerOrder()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition text-xs">
+          ✅ 確認訂購 · 提交廠家出庫
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from './src/lib/supabase.js';
+
+    let currentTenantParam = new URLSearchParams(window.location.search).get('t');
+    let refStoreParam = new URLSearchParams(window.location.search).get('ref');
+
+    let allProducts = [];
+    let allTenants = [];
+    let allCategories = [];
+    let currentCategoryFilter = 'all';
+    let cart = []; // [{ prod, qty }]
+
+    window.openModal = id => document.getElementById(id).classList.remove('hidden');
+    window.closeModal = id => document.getElementById(id).classList.add('hidden');
+
+    window.exitToTianJie = function() {
+      window.location.href = 'mall.html';
+    };
+
+    window.openCartModal = function() {
+      renderCartDrawer();
+      window.openModal('modal-cart');
+    };
+
+    window.openCheckoutModal = function() {
+      if (cart.length === 0) return alert('購物籃尚無好物，請先挑選良品！');
+      const total = cart.reduce((sum, item) => sum + (item.prod.tier_1_price * item.qty), 0);
+      document.getElementById('checkout-amount-display').innerText = `¥${total.toFixed(2)}`;
+      window.openModal('modal-checkout');
+    };
+
+    // =========================================================================
+    // 數據載入中樞
+    // =========================================================================
+    async function initMall() {
+      // 1. 載入在冊商號
+      const { data: tenants } = await supabase.from('platform_tenant').select('*').eq('is_active', true);
+      allTenants = tenants || [];
+
+      // 2. 載入標準品類
+      const { data: cats } = await supabase.from('platform_category').select('*').eq('is_active', true).order('sort_order', { ascending: true });
+      allCategories = cats || [];
+      renderCategoryChips();
+
+      // 3. 研判當前是一態（廠商獨立專賣店）還是二態（百工天街大集市）
+      if (currentTenantParam) {
+        setupBrandStoreMode(currentTenantParam);
+      } else {
+        setupTianJieMode();
+      }
+
+      // 4. 檢查推客血緣綁定 (ref=STORE_ID)
+      if (refStoreParam) {
+        checkRefStore(refStoreParam);
+      }
+
+      // 5. 載入好物
+      await loadMallProducts();
+    }
+
+    function setupTianJieMode() {
+      document.getElementById('mall-header-title').innerText = '百工天街 · 正品大集市';
+      document.getElementById('mall-mode-badge').innerText = '生態公域';
+      document.getElementById('mall-header-sub').innerText = '物勒工名 · 源頭直發 · 誠信共生';
+      document.getElementById('btn-back-street').classList.add('hidden');
+      document.getElementById('brand-hero-section').classList.add('hidden');
+    }
+
+    function setupBrandStoreMode(tenantId) {
+      const tenant = allTenants.find(t => t.tenant_id === tenantId);
+      const name = tenant ? tenant.company_name : tenantId;
+      document.getElementById('mall-header-title').innerText = `${name} · 品牌數字專櫃`;
+      document.getElementById('mall-mode-badge').innerText = '私域專賣';
+      document.getElementById('mall-header-sub').innerText = '匠心直供 · 一件代發包郵';
+      document.getElementById('btn-back-street').classList.remove('hidden');
+
+      // 填充專櫃門面卡
+      document.getElementById('hero-brand-name').innerText = name;
+      document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '源頭工坊 · 匠心正品';
+      document.getElementById('hero-tenant-id').innerText = tenantId;
+      document.getElementById('hero-invite-code').innerText = tenant?.invite_code || '--';
+      document.getElementById('brand-hero-section').classList.remove('hidden');
+    }
+
+    async function checkRefStore(storeId) {
+      const { data: s } = await supabase.from('store').select('*').eq('id', parseInt(storeId)).single();
+      if (s) {
+        document.getElementById('ref-store-name').innerText = s.name;
+        document.getElementById('referrer-banner').classList.remove('hidden');
+      }
+    }
+
+    function renderCategoryChips() {
+      const l1Cats = allCategories.filter(c => c.level === 1);
+      document.getElementById('dynamic-cat-chips').innerHTML = l1Cats.map(c => `
+        <button onclick="window.filterMallCategory('${c.name}')" class="mall-cat-chip bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-xl transition">
+          ${c.name}
+        </button>
+      `).join('');
+    }
+
+    window.filterMallCategory = function(catName) {
+      currentCategoryFilter = catName;
+      document.querySelectorAll('.mall-cat-chip').forEach(b => {
+        const isMatch = (catName === 'all' && b.innerText.includes('全部精選')) || b.innerText.includes(catName);
+        b.className = isMatch 
+          ? 'mall-cat-chip bg-amber-400 text-stone-950 px-3 py-1 rounded-xl font-bold transition'
+          : 'mall-cat-chip bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-xl transition';
+      });
+      renderGoodsGrid();
+    };
+
+    async function loadMallProducts() {
+      let query = supabase.from('product').select('*').eq('status', 'active');
+      
+      // 若在專賣店模式，鎖定當前商號良品
+      if (currentTenantParam) {
+        query = query.eq('tenant_id', currentTenantParam);
+      } else {
+        // 天街大集市：只展示允許線上網銷或雙軌通用的良品
+        query = query.in('sales_channel_type', ['online', 'both']);
+      }
+
+      const { data: prods } = await query.order('id', { ascending: false });
+      allProducts = prods || [];
+      renderGoodsGrid();
+    }
+
+    function renderGoodsGrid() {
+      const container = document.getElementById('mall-goods-grid');
+      let filtered = (currentCategoryFilter === 'all') 
+        ? allProducts 
+        : allProducts.filter(p => p.category_main === currentCategoryFilter);
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="col-span-full py-16 text-center text-stone-400 text-xs">當前行當尚無上架良品。</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(p => {
+        const tenant = allTenants.find(t => t.tenant_id === p.tenant_id);
+        const tenantName = tenant ? tenant.company_name : p.tenant_id;
+        const tags = Array.isArray(p.tags) ? p.tags : [];
+        const isSingleShop = !!currentTenantParam;
+
+        return `
+          <div class="bg-white rounded-3xl p-3 border border-stone-200/80 shadow-sm flex flex-col justify-between space-y-2 hover:shadow-md transition">
+            <div class="space-y-1.5">
+              <!-- 商品圖片 -->
+              <div class="relative w-full h-32 rounded-2xl bg-stone-100 overflow-hidden flex items-center justify-center">
+                ${p.image_url ? `<img src="${p.image_url}" class="w-full h-full object-cover">` : `<span class="text-stone-300 text-xs">正品封裝</span>`}
+                <span class="absolute top-1.5 left-1.5 bg-[#1b4332]/80 backdrop-blur-sm text-white text-[9px] px-2 py-0.5 rounded-full font-mono">
+                  ${p.measure_unit || '件'}裝
+                </span>
+                <button onclick="window.viewProductTrace(${p.id})" class="absolute bottom-1.5 right-1.5 bg-white/90 backdrop-blur-sm text-emerald-900 border border-emerald-200 text-[9px] font-bold px-2 py-0.5 rounded-lg active:scale-95 shadow-xs">
+                  📜 驗真
+                </button>
+              </div>
+
+              <!-- 標題與標籤 -->
+              <div>
+                <b class="text-xs text-stone-900 font-bold block line-clamp-1">${p.name}</b>
+                <span class="text-[10px] text-stone-400 font-mono block">${p.spec || '標配'} · ${p.category_main}</span>
+                ${tags.length ? `
+                  <div class="flex flex-wrap gap-1 mt-1">
+                    ${tags.slice(0, 2).map(t => `<span class="bg-amber-50 text-amber-900 border border-amber-200 text-[9px] px-1.5 rounded">${t}</span>`).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- 底欄價格與加購 -->
+            <div class="pt-2 border-t border-stone-100 flex justify-between items-center">
+              <div>
+                <span class="text-[9px] text-stone-400 block font-mono">零售正價</span>
+                <b class="font-mono text-sm text-emerald-900 font-bold">¥${p.tier_1_price}</b>
+              </div>
+
+              <div class="flex items-center gap-1">
+                ${!isSingleShop ? `
+                  <button onclick="window.goToBrandStore('${p.tenant_id}')" class="text-[10px] bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold px-2 py-1.5 rounded-xl transition" title="進該廠專櫃">
+                    專櫃
+                  </button>
+                ` : ''}
+                <button onclick="window.addToCart(${p.id})" class="bg-[#1b4332] hover:bg-[#143628] text-white font-bold text-xs w-7 h-7 rounded-xl flex items-center justify-center active:scale-95 shadow transition">
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.goToBrandStore = function(tenantId) {
+      window.location.href = `mall.html?t=${tenantId}`;
+    };
+
+    // =========================================================================
+    // 購物車與一件代發訂購邏輯
+    // =========================================================================
+    window.addToCart = function(prodId) {
+      const p = allProducts.find(x => x.id === prodId);
+      if (!p) return;
+
+      const item = cart.find(x => x.prod.id === prodId);
+      if (item) item.qty += 1;
+      else cart.push({ prod: p, qty: 1 });
+
+      updateCartBadge();
+    };
+
+    function updateCartBadge() {
+      const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+      const totalAmt = cart.reduce((sum, item) => sum + (item.prod.tier_1_price * item.qty), 0);
+
+      const badge = document.getElementById('cart-badge-count');
+      if (totalQty > 0) {
+        badge.innerText = totalQty;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+
+      document.getElementById('cart-total-price').innerText = `¥${totalAmt.toFixed(2)}`;
+      document.getElementById('cart-drawer-total').innerText = `¥${totalAmt.toFixed(2)}`;
+    }
+
+    function renderCartDrawer() {
+      const list = document.getElementById('cart-items-list');
+      if (cart.length === 0) {
+        list.innerHTML = '<div class="py-8 text-center text-stone-400 text-xs">購物籃尚無品項。</div>';
+        return;
+      }
+
+      list.innerHTML = cart.map(item => `
+        <div class="py-2 flex justify-between items-center text-xs">
+          <div>
+            <b class="text-stone-900 block">${item.prod.name}</b>
+            <span class="font-mono text-[10px] text-stone-400">單價: ¥${item.prod.tier_1_price}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="window.changeCartQty(${item.prod.id}, -1)" class="w-6 h-6 bg-stone-100 rounded-lg font-bold font-mono">-</button>
+            <span class="font-bold font-mono">${item.qty}</span>
+            <button onclick="window.changeCartQty(${item.prod.id}, 1)" class="w-6 h-6 bg-stone-100 rounded-lg font-bold font-mono">+</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    window.changeCartQty = function(prodId, delta) {
+      const item = cart.find(x => x.prod.id === prodId);
+      if (!item) return;
+
+      item.qty += delta;
+      if (item.qty <= 0) {
+        cart = cart.filter(x => x.prod.id !== prodId);
+      }
+      updateCartBadge();
+      renderCartDrawer();
+    };
+
+    window.clearCart = function() {
+      cart = [];
+      updateCartBadge();
+      renderCartDrawer();
+    };
+
+    window.submitConsumerOrder = async function() {
+      const name = document.getElementById('order-cust-name').value.trim();
+      const phone = document.getElementById('order-cust-phone').value.trim();
+      const addr = document.getElementById('order-cust-addr').value.trim();
+      const note = document.getElementById('order-cust-note').value.trim();
+
+      if (!name || !phone || phone.length < 11 || !addr) {
+        return alert('請填全收件人姓名、11位手機號與配送詳細地址！');
+      }
+
+      const totalAmt = cart.reduce((sum, item) => sum + (item.prod.tier_1_price * item.qty), 0);
+      const itemsPayload = cart.map(item => ({
+        id: item.prod.id,
+        name: item.prod.name,
+        price: item.prod.tier_1_price,
+        qty: item.qty,
+        measure_unit: item.prod.measure_unit || '件'
+      }));
+
+      // 商號歸屬（單店模式下歸該商號，天街多品項預設取第一件品項商號）
+      const targetTenant = currentTenantParam || cart[0].prod.tenant_id;
+      const orderNo = `ON-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const { error } = await supabase.from('store_order').insert([{
+        order_no: orderNo,
+        tenant_id: targetTenant,
+        order_source: 'online_mall',
+        settlement_type: 'online_paid',
+        items: itemsPayload,
+        items_return: [],
+        items_exchange: [],
+        total_amount: totalAmt,
+        return_amount: 0,
+        net_settle_amount: totalAmt,
+        order_status: 'confirmed',
+        delivery_status: 'ordered',
+        note: `[線上代發] 收件人: ${name} (${phone}) 地址: ${addr} ${note ? `叮嚀: ${note}` : ''} ${refStoreParam ? `[推客門店ID: ${refStoreParam}]` : ''}`,
+        driver_action_instruction: `【網銷一件代發】由庫管打單發快遞。收件人: ${name} ${phone}`
+      }]);
+
+      if (error) alert('下單失敗: ' + error.message);
+      else {
+        alert(`🎉 訂單提交成功！\n\n• 單據標識: ${orderNo}\n• 總額: ¥${totalAmt.toFixed(2)}\n• 配送: 廠家庫管已接單打包，將由順豐/京東快遞發出！`);
+        window.clearCart();
+        window.closeModal('modal-checkout');
+      }
+    };
+
+    // =========================================================================
+    // 物勒工名正品溯源驗真彈窗
+    // =========================================================================
+    window.viewProductTrace = function(prodId) {
+      const p = allProducts.find(x => x.id === prodId);
+      if (!p) return;
+
+      const tenant = allTenants.find(t => t.tenant_id === p.tenant_id);
+      document.getElementById('trace-prod-name').innerText = p.name;
+      document.getElementById('trace-code').innerText = `${p.trace_code_prefix || 'SHUNDA-QC-'}${p.id}`;
+      document.getElementById('trace-tenant-name').innerText = tenant ? tenant.company_name : p.tenant_id;
+      document.getElementById('trace-origin').innerText = p.origin_place || '源頭工坊原產';
+      document.getElementById('trace-category').innerText = `${p.category_main} ➔ ${p.category_sub || '常規'}`;
+      document.getElementById('trace-spec').innerText = `${p.spec || '整裝'} / ${p.measure_unit || '件'}`;
+
+      window.openModal('modal-trace');
+    };
+
+    // =========================================================================
+    // 社交分潤與推客二維碼
+    // =========================================================================
+    window.openShareModal = function() {
+      const currentUrl = new URL(window.location.href);
+      if (currentTenantParam) currentUrl.searchParams.set('t', currentTenantParam);
+      if (refStoreParam) currentUrl.searchParams.set('ref', refStoreParam);
+
+      const shareLink = currentUrl.toString();
+      document.getElementById('share-link-text').innerText = shareLink;
+      document.getElementById('share-qr-code').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareLink)}`;
+      window.openModal('modal-share');
+    };
+
+    window.copyShareLink = function() {
+      const link = document.getElementById('share-link-text').innerText;
+      navigator.clipboard.writeText(link).then(() => alert('專屬分潤推客連結已複製到剪貼簿！'));
+    };
+
+    (async () => {
+      await initMall();
+    })();
+  </script>
+</body>
+</html>
