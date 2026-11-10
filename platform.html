@@ -484,7 +484,7 @@
         let length = clean.length;
         let bits = 0, value = 0, index = 0;
         let bytes = new Uint8Array((length * 5 / 8) | 0);
-        for (let i = 0; i < clean.length; i++) {
+        for (let i = 0; i < length; i++) {
           let val = this.base32chars.indexOf(clean.charAt(i));
           if (val === -1) continue;
           value = (value << 5) | val;
@@ -576,10 +576,26 @@
       const isValid = await TOTP.verifyTOTP(secret, code, 1);
       if (!isValid) return alert('⚠️ 動態口令驗證未通過！請核對手機時間是否與網路同步。');
 
-      await supabase.from('platform_admin_credential').update({ totp_secret: secret, totp_enabled: true }).eq('admin_account', account);
-      alert('🎉 平台總控身份驗證器綁定成功！');
+      // 執行更新並捕捉錯誤（避免 RLS 未放開導致靜默失敗）
+      const { error } = await supabase
+        .from('platform_admin_credential')
+        .update({ totp_secret: secret, totp_enabled: true })
+        .eq('admin_account', account);
+
+      if (error) {
+        return alert('❌ 儲存失敗，數據庫權限不足: ' + error.message);
+      }
+
+      // 即時更新頂欄狀態膠囊，不等待重查時延
+      const pill = document.getElementById('totp-status-pill');
+      if (pill) {
+        pill.className = "bg-emerald-500/20 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-400/40 font-mono font-bold flex items-center gap-1";
+        pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> TOTP 已護航';
+      }
+
+      alert('🎉 平台總控身份驗證器綁定成功！後續最高決策已受 TOTP 護航。');
       window.closeModal('modal-platform-totp-setup');
-      checkPlatformAuthStatus();
+      await checkPlatformAuthStatus();
     };
 
     window.verifyPlatformAuthPwd = async function(e) {
