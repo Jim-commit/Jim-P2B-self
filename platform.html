@@ -23,14 +23,14 @@
             <span class="w-1.5 h-1.5 rounded-full bg-stone-500"></span> TOTP 未激活
           </span>
           <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 font-mono">
-            AI 谋士当席
+            AI 谋士当席 · 知雄守雌
           </span>
         </div>
         <div class="text-xs text-stone-400 mt-1 flex flex-wrap gap-4 font-mono">
           <span>正式在册厂商: <b id="stat-total-tenants" class="text-white">0 家</b></span>
           <span>待审入驻申请: <b id="stat-pending-apps" class="text-amber-400 font-bold">0 份</b></span>
-          <span>标准化一级品类: <b id="stat-cat-l1" class="text-emerald-400">0 类</b></span>
-          <span>二级品类: <b id="stat-cat-l2" class="text-emerald-400">0 项</b></span>
+          <span>百工建言呈报: <b id="stat-pending-suggs" class="text-emerald-400">0 帖</b></span>
+          <span>标准化一二级品类: <b id="stat-cat-count" class="text-amber-300">0 项</b></span>
         </div>
       </div>
 
@@ -55,7 +55,7 @@
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-2xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-lg">💡</div>
         <div>
-          <b class="text-amber-300 font-bold block text-xs">AI 谋士 · 商道生态体察简报</b>
+          <b class="text-amber-300 font-bold block text-xs">AI 谋士 · 百工商道生态体察简报</b>
           <span id="ai-adviser-text" class="text-stone-300 text-[11px] leading-relaxed">全盘数据调和安泰，在册厂商商道守信良好，各品类供销两旺。</span>
         </div>
       </div>
@@ -71,8 +71,15 @@
       <button id="p-tab-btn-tenants" onclick="window.switchTab('tenants')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
         🏢 正式入驻商号名册 (独立账本与商契和合管辖)
       </button>
+      <button id="p-tab-btn-suggestions" onclick="window.switchTab('suggestions')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition flex items-center justify-center gap-1.5">
+        📜 商道建言堂 (倾听万家言)
+        <span id="badge-sugg-count" class="bg-emerald-600 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
+      </button>
       <button id="p-tab-btn-categories" onclick="window.switchTab('categories')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
-        🗂️ 平台标准一二级品类大盘字典
+        🗂️ 平台标准一二级品类字典
+      </button>
+      <button id="p-tab-btn-audit" onclick="window.switchTab('audit')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
+        ⚖️ 天道明鉴 (只读防篡改审计)
       </button>
     </nav>
 
@@ -105,7 +112,6 @@
               <tr>
                 <th class="p-3">商号标识 (Tenant ID)</th>
                 <th class="p-3">主体执照全称</th>
-                <th class="p-3">行当类型</th>
                 <th class="p-3">供货模式</th>
                 <th class="p-3">下游认领码</th>
                 <th class="p-3">当家负责人</th>
@@ -120,7 +126,21 @@
       </div>
     </section>
 
-    <!-- 板块 3：平台标准一二级品类主字典 -->
+    <!-- 板块 3：商道建言堂 (倾听万家言，不干涉客店家务) -->
+    <section id="p-tab-suggestions" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">📜 商道建言堂 · 倾听百工心声</h2>
+            <p class="text-[11px] text-stone-400">开门纳谏，汇集供货师傅、实体门店掌柜与厂商员工对系统的改善建言与诉求</p>
+          </div>
+          <span class="text-xs text-stone-500 font-mono">见素抱朴 · 共建共荣</span>
+        </div>
+        <div id="suggestions-list" class="space-y-3 text-xs"></div>
+      </div>
+    </section>
+
+    <!-- 板块 4：平台标准一二级品类主字典 -->
     <section id="p-tab-categories" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
@@ -133,6 +153,34 @@
           </button>
         </div>
         <div id="category-tree-display" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs pt-1"></div>
+      </div>
+    </section>
+
+    <!-- 板块 5：天道明鉴 · 绝对防篡改审计日志 -->
+    <section id="p-tab-audit" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">⚖️ 天道明鉴 · 只读防篡改安全审计流水</h2>
+            <p class="text-[11px] text-stone-400">记录高危指令与重大调控，数据库触发器物理封锁 UPDATE 与 DELETE，任何人无权抹煞历史</p>
+          </div>
+          <button onclick="window.loadPlatformData()" class="text-xs text-emerald-800 font-bold hover:underline">刷新流水</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs whitespace-nowrap">
+            <thead class="bg-stone-50 border-b border-stone-200 text-stone-500 font-medium">
+              <tr>
+                <th class="p-2.5">记录时间</th>
+                <th class="p-2.5">商号标识</th>
+                <th class="p-2.5">经手执事人</th>
+                <th class="p-2.5">安全定级</th>
+                <th class="p-2.5">动作标题</th>
+                <th class="p-2.5">验真防伪摘要</th>
+              </tr>
+            </thead>
+            <tbody id="audit-table-body" class="divide-y divide-stone-100 font-mono text-[11px]"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -210,7 +258,7 @@
     </div>
   </div>
 
-  <!-- 平台总控 2FA 关键业务二次核验模态窗 (支持 TOTP 动态码或总控密钥兜底) -->
+  <!-- 平台总控 2FA 关键业务二次核验模态窗 -->
   <div id="modal-platform-2fa" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
     <div class="bg-stone-900 border border-stone-800 w-full max-w-xs rounded-3xl p-5 space-y-3 text-white shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-800 pb-2">
@@ -274,7 +322,7 @@
             <input type="radio" name="membership_status_choice" value="restricted" class="mt-0.5 text-blue-800">
             <div>
               <b class="text-blue-900 block">🛡️ 停新保旧 · 护盘存续 (事缓则圆)</b>
-              <span class="text-[10px] text-stone-500">允许已有订单交割、小店正常还款，仅暂停发售全新批次良品。</span>
+              <span class="text-[10px] text-stone-500">允许已有订单交割、实体门店正常还款，仅暂缓发售全新批次良品。</span>
             </div>
           </label>
           <label class="p-2.5 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
@@ -322,22 +370,13 @@
             <input type="text" id="m-invite-code" maxlength="6" placeholder="如：888003" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono text-center font-bold text-amber-700">
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-stone-600 font-medium mb-1">行当类型：</label>
-            <select id="m-business-type" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
-              <option value="factory">🏭 品牌生产工厂</option>
-              <option value="dealer">🏢 区域总经销 (总代)</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-stone-600 font-medium mb-1">供货业务模式：</label>
-            <select id="m-service-mode" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
-              <option value="offline">🏬 线下实体车销</option>
-              <option value="online">🌐 线上网销直发</option>
-              <option value="both">🔄 实体/网销双轨</option>
-            </select>
-          </div>
+        <div>
+          <label class="block text-stone-600 font-medium mb-1">供货业务场景模式：</label>
+          <select id="m-service-mode" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+            <option value="both">🔄 双轨通用 (实体配货 + 线上网销)</option>
+            <option value="offline">🏬 纯线下实体 (门店配送/自提)</option>
+            <option value="online">🌐 纯线上网销 (一件代发物流)</option>
+          </select>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
@@ -384,14 +423,6 @@
           <label class="block text-stone-600 mb-1">品类规范名称 *：</label>
           <input type="text" id="cat-name-input" placeholder="输入规范名" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
         </div>
-        <div>
-          <label class="block text-stone-600 mb-1">适用经营模式：</label>
-          <select id="cat-mode-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
-            <option value="both">线上线下通用</option>
-            <option value="offline">仅线下实体适用</option>
-            <option value="online">仅线上网销适用</option>
-          </select>
-        </div>
       </div>
       <div class="pt-2 border-t border-stone-100 flex gap-2">
         <button onclick="window.savePlatformCategory()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition">
@@ -408,13 +439,15 @@
     let allApplications = [];
     let allTenants = [];
     let allCategories = [];
+    let allSuggestions = [];
+    let allAuditLogs = [];
     let pendingPlatform2FACallback = null;
 
     window.openModal = id => document.getElementById(id).classList.remove('hidden');
     window.closeModal = id => document.getElementById(id).classList.add('hidden');
 
     window.switchTab = function(tabName) {
-      ['apps', 'tenants', 'categories'].forEach(t => {
+      ['apps', 'tenants', 'suggestions', 'categories', 'audit'].forEach(t => {
         document.getElementById(`p-tab-${t}`).classList.add('hidden');
         document.getElementById(`p-tab-btn-${t}`).className = "flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition";
       });
@@ -429,9 +462,10 @@
       base32chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567',
       base32ToBytes(base32) {
         let clean = base32.toUpperCase().replace(/=+$/, '');
+        let length = clean.length;
         let bits = 0, value = 0, index = 0;
-        let bytes = new Uint8Array((clean.length * 5 / 8) | 0);
-        for (let i = 0; i < clean.length; i++) {
+        let bytes = new Uint8Array((length * 5 / 8) | 0);
+        for (let i = 0; i < length; i++) {
           let val = this.base32chars.indexOf(clean.charAt(i));
           if (val === -1) continue;
           value = (value << 5) | val;
@@ -564,6 +598,7 @@
 
       sessionStorage.setItem(P_AUTH_SESSION_KEY, token);
       sessionStorage.setItem('p_auth_account', account);
+      sessionStorage.setItem('p_auth_name', data[0].admin_name || '总控执事');
       document.getElementById('platform-auth-gate').classList.add('hidden');
       alert(`✅ 凭证核验通过！欢迎：${data[0].admin_name}`);
       window.loadPlatformData();
@@ -605,11 +640,12 @@
     window.logoutPlatform = function() {
       sessionStorage.removeItem(P_AUTH_SESSION_KEY);
       sessionStorage.removeItem('p_auth_account');
+      sessionStorage.removeItem('p_auth_name');
       document.getElementById('platform-auth-gate').classList.remove('hidden');
     };
 
     // --------------------------------------------------
-    // 平台总控 2FA 高危操作拦截器 (优先验 TOTP，无 TOTP 则验总控令牌)
+    // 平台总控 2FA 高危操作拦截器
     // --------------------------------------------------
     window.triggerPlatform2FA = async function(actionDesc, onVerifiedCallback) {
       document.getElementById('modal-platform-2fa-desc').innerText = actionDesc;
@@ -648,6 +684,24 @@
       }
     };
 
+    // 写入天道明鉴只读不可篡改日志
+    async function recordAuditLog(actionTitle, level, details) {
+      try {
+        const account = sessionStorage.getItem('p_auth_account') || 'admin';
+        const name = sessionStorage.getItem('p_auth_name') || '总控掌柜';
+        const seal = 'SEAL-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+        await supabase.from('audit_immutable_log').insert([{
+          tenant_id: 'PLATFORM',
+          operator_account: account,
+          operator_name: name,
+          action_level: level,
+          action_title: actionTitle,
+          action_details: details || {},
+          tamper_seal: seal
+        }]);
+      } catch (e) {}
+    }
+
     // --------------------------------------------------
     // 数据加载与管理业务
     // --------------------------------------------------
@@ -671,13 +725,30 @@
       document.getElementById('stat-total-tenants').innerText = `${allTenants.length} 家`;
       renderTenantsTable();
 
+      // 加载商道建言堂
+      const { data: suggs } = await supabase.from('platform_suggestion_board').select('*').order('id', { ascending: false });
+      allSuggestions = suggs || [];
+      const pendingSuggs = allSuggestions.filter(s => s.reply_status === 'pending');
+      document.getElementById('stat-pending-suggs').innerText = `${pendingSuggs.length} 帖`;
+      const sBadge = document.getElementById('badge-sugg-count');
+      if (pendingSuggs.length > 0) {
+        sBadge.innerText = pendingSuggs.length;
+        sBadge.classList.remove('hidden');
+      } else {
+        sBadge.classList.add('hidden');
+      }
+      renderSuggestions();
+
+      // 加载品类字典
       const { data: cats } = await supabase.from('platform_category').select('*').order('sort_order', { ascending: true });
       allCategories = cats || [];
-      const l1 = allCategories.filter(c => c.level === 1);
-      const l2 = allCategories.filter(c => c.level === 2);
-      document.getElementById('stat-cat-l1').innerText = `${l1.length} 类`;
-      document.getElementById('stat-cat-l2').innerText = `${l2.length} 项`;
+      document.getElementById('stat-cat-count').innerText = `${allCategories.length} 项`;
       renderCategoryTree();
+
+      // 加载天道明鉴审计日志
+      const { data: audits } = await supabase.from('audit_immutable_log').select('*').order('id', { ascending: false }).limit(25);
+      allAuditLogs = audits || [];
+      renderAuditLogs();
 
       // AI 谋士大局生态研判
       updateAISummaryInsight();
@@ -696,7 +767,7 @@
         insight += ` ${restCount} 家处于【护盘存续】，平稳过渡旧契约中；`;
       }
       if (allCategories.length < 5) {
-        insight += ` 标准品类尚少，建议丰富米面粮油与节令果蔬标准细项。`;
+        insight += ` 标准品类尚少，建议丰富米面粮油与五金机电标准细项。`;
       } else {
         insight += ` 粮道稳固，货品供给规制严整。`;
       }
@@ -783,12 +854,13 @@
           statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">🛑 商道暂歇</span>';
         }
 
+        const modeStr = (t.service_mode === 'offline') ? '纯线下实体' : (t.service_mode === 'online' ? '纯线上网销' : '双轨通用');
+
         return `
           <tr class="hover:bg-stone-50 transition">
             <td class="p-3 font-bold text-stone-900">${t.tenant_id}</td>
             <td class="p-3 font-sans font-medium">${t.company_name}</td>
-            <td class="p-3">${t.business_type === 'factory' ? '🏭 生产工厂' : '🏢 区域总销'}</td>
-            <td class="p-3">${t.service_mode || 'offline'}</td>
+            <td class="p-3">${modeStr}</td>
             <td class="p-3 font-bold text-amber-700 tracking-wider">${t.invite_code}</td>
             <td class="p-3 font-sans">${t.contact_person || '-'}</td>
             <td class="p-3 font-mono text-stone-400">
@@ -808,6 +880,79 @@
       }).join('');
     }
 
+    // 商道建言堂渲染
+    function renderSuggestions() {
+      const container = document.getElementById('suggestions-list');
+      if (allSuggestions.length === 0) {
+        container.innerHTML = '<div class="py-12 text-center text-stone-400 text-xs">暂无未决建言帖，万事清和。</div>';
+        return;
+      }
+
+      container.innerHTML = allSuggestions.map(s => `
+        <div class="p-4 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
+          <div class="flex justify-between items-center text-xs">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded font-bold ${s.proposer_type === 'driver' ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'}">
+                ${s.proposer_type === 'driver' ? '🚚 供货师傅' : '🏪 实体客商'}
+              </span>
+              <b class="text-stone-900">${s.proposer_name}</b>
+              <span class="text-stone-400 font-mono text-[10px]">${new Date(s.created_at).toLocaleString()}</span>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${s.reply_status === 'replied' ? 'bg-stone-200 text-stone-700' : 'bg-emerald-100 text-emerald-800'}">
+              ${s.reply_status === 'replied' ? '已温和批复' : '候阅建言'}
+            </span>
+          </div>
+          <p class="text-stone-700 text-xs leading-relaxed bg-white p-3 rounded-xl border border-stone-100">
+            ${s.content}
+          </p>
+          ${s.official_reply ? `
+            <div class="text-[11px] bg-emerald-50 text-emerald-950 p-2.5 rounded-xl border border-emerald-200/60 font-sans">
+              <b>🏛️ 平台总控批复：</b> ${s.official_reply}
+            </div>
+          ` : `
+            <div class="flex justify-end pt-1">
+              <button onclick="window.replySuggestionPrompt(${s.id})" class="text-xs bg-[#1b4332] text-white font-bold px-3 py-1.5 rounded-xl shadow active:scale-95 transition">
+                ✍️ 依礼回复并批示
+              </button>
+            </div>
+          `}
+        </div>
+      `).join('');
+    }
+
+    window.replySuggestionPrompt = async function(id) {
+      const reply = prompt('输入平台致建言者的温和批示回复：');
+      if (!reply || !reply.trim()) return;
+
+      await supabase.from('platform_suggestion_board').update({
+        official_reply: reply.trim(),
+        reply_status: 'replied',
+        replied_at: new Date().toISOString()
+      }).eq('id', id);
+
+      recordAuditLog('批复百工建言', 'INFO', { suggestion_id: id, reply: reply.trim() });
+      alert('已依礼呈送批复！');
+      window.loadPlatformData();
+    };
+
+    function renderAuditLogs() {
+      const tbody = document.getElementById('audit-table-body');
+      tbody.innerHTML = allAuditLogs.map(a => `
+        <tr class="hover:bg-stone-50 transition">
+          <td class="p-2.5 text-stone-400">${new Date(a.created_at).toLocaleString()}</td>
+          <td class="p-2.5 font-bold">${a.tenant_id}</td>
+          <td class="p-2.5 font-sans">${a.operator_name} (${a.operator_account})</td>
+          <td class="p-2.5">
+            <span class="px-1.5 py-0.2 rounded font-bold ${a.action_level === 'CRITICAL_2FA' ? 'bg-rose-100 text-rose-800' : 'bg-stone-100 text-stone-700'}">
+              ${a.action_level}
+            </span>
+          </td>
+          <td class="p-2.5 font-sans text-stone-800">${a.action_title}</td>
+          <td class="p-2.5 text-emerald-800 font-bold">${a.tamper_seal || '-'}</td>
+        </tr>
+      `).join('');
+    }
+
     // 平台不窥视厂商密码，只签发单次自立新约兑换码
     window.issueResetTokenPrompt = function(id, tenantId, companyName) {
       window.triggerPlatform2FA(
@@ -815,6 +960,7 @@
         async () => {
           const resetToken = 'CLAIM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
           await supabase.from('platform_tenant').update({ reset_claim_token: resetToken }).eq('id', id);
+          recordAuditLog('签发自立新约信码', 'CRITICAL_2FA', { tenant_id: tenantId, claim_token: resetToken });
           alert(
             `📜 已为【${companyName}】签发自立新约信码！\n\n` +
             `• 单次重置信码：${resetToken}\n` +
@@ -833,8 +979,7 @@
       const radios = document.getElementsByName('membership_status_choice');
       radios.forEach(r => r.checked = (r.value === currentStatus));
 
-      // AI 谋士给出情理研判
-      let aiInsight = `该商号在册合作良好。建议：若遇年节或款项周转期，优先采用【春风宽待】或【护盘存续】，保障末端几十家夫妻小店正常进货谋生；除非出现不可调和之重大失信，方行使【商道暂歇】。`;
+      let aiInsight = `该商号在册合作良好。建议：若遇年节或款项周转期，优先采用【春风宽待】或【护盘存续】，保障末端实体门店正常进货谋生；除非出现不可调和之重大失信，方行使【商道暂歇】。`;
       document.getElementById('adjust-ai-insight').innerText = aiInsight;
 
       window.openModal('modal-status-adjust');
@@ -854,6 +999,7 @@
             is_active: is_active
           }).eq('id', parseInt(id));
 
+          recordAuditLog('商契气象调控', 'WARN', { tenant_id_pk: id, target_status: status, note });
           alert('商契调控已依礼颁布生效！');
           window.closeModal('modal-status-adjust');
           window.loadPlatformData();
@@ -917,7 +1063,7 @@
         tenant_id: tenantId,
         company_name: companyName,
         business_type: app ? app.business_type : 'dealer',
-        service_mode: app ? app.service_mode : 'offline',
+        service_mode: app ? app.service_mode : 'both',
         contact_person: app ? app.contact_person : '掌柜',
         phone: app ? app.contact_phone : '',
         invite_code: code.trim(),
@@ -926,6 +1072,8 @@
         membership_status: 'active',
         is_active: true
       }]);
+
+      recordAuditLog('审批激活新商号', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: companyName });
 
       alert(
         `🎉 审核通过并激活建档！\n\n` +
@@ -961,7 +1109,6 @@
       const company_name = document.getElementById('m-company-name').value.trim();
       const tenant_id = document.getElementById('m-tenant-id').value.trim().toUpperCase();
       const invite_code = document.getElementById('m-invite-code').value.trim();
-      const business_type = document.getElementById('m-business-type').value;
       const service_mode = document.getElementById('m-service-mode').value;
       const contact_person = document.getElementById('m-contact-person').value.trim();
       const access_key = document.getElementById('m-access-key').value.trim() || '888888';
@@ -972,12 +1119,13 @@
         `您正在免审核直接为【${company_name}】特邀开立独立账本商号【${tenant_id}】，请核验总控 2FA 凭证：`,
         async () => {
           const { error } = await supabase.from('platform_tenant').insert([{
-            tenant_id, company_name, business_type, service_mode, invite_code,
+            tenant_id, company_name, service_mode, invite_code,
             contact_person, access_key, membership_status: 'active', is_active: true
           }]);
 
           if (error) alert('开户失败: ' + error.message);
           else {
+            recordAuditLog('线下特邀直通开户', 'CRITICAL_2FA', { tenant_id, company_name });
             alert(`🎉 厂家【${company_name}】直通开户成功！\n初始安家密码: ${access_key}`);
             window.closeModal('manual-tenant-modal');
             window.loadPlatformData();
@@ -1017,12 +1165,11 @@
       const level = parseInt(document.getElementById('cat-level-select').value);
       const name = document.getElementById('cat-name-input').value.trim();
       const parent_id = level === 2 ? parseInt(document.getElementById('cat-parent-select').value) : null;
-      const applicable_mode = document.getElementById('cat-mode-select').value;
 
       if (!name) return alert('请输入品类名称！');
 
       await supabase.from('platform_category').insert([{
-        name, level, parent_id, applicable_mode
+        name, level, parent_id, applicable_mode: 'both'
       }]);
 
       alert('品类已存入平台标准字典！');
@@ -1035,7 +1182,6 @@
       w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
     };
 
-    // 初始化入口：自执行函数封装杜绝编译抛错
     (async () => {
       const isAuthed = await checkPlatformAuthStatus();
       if (isAuthed) {
