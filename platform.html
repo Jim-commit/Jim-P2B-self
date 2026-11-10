@@ -260,7 +260,7 @@
     </div>
   </div>
 
-  <!-- 總控 2FA 高危二次核驗模態窗 -->
+  <!-- 總控 2FA 高危二次核驗模態窗 (z-index 提高至 z-[120]，確保高於調控窗口) -->
   <div id="modal-platform-2fa" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
     <div class="bg-stone-900 border border-stone-800 w-full max-w-xs rounded-3xl p-5 space-y-3 text-white shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-800 pb-2">
@@ -576,7 +576,6 @@
       const isValid = await TOTP.verifyTOTP(secret, code, 1);
       if (!isValid) return alert('⚠️ 動態口令驗證未通過！請核對手機時間是否與網路同步。');
 
-      // 執行更新並捕捉錯誤（避免 RLS 未放開導致靜默失敗）
       const { error } = await supabase
         .from('platform_admin_credential')
         .update({ totp_secret: secret, totp_enabled: true })
@@ -586,7 +585,6 @@
         return alert('❌ 儲存失敗，數據庫權限不足: ' + error.message);
       }
 
-      // 即時更新頂欄狀態膠囊，不等待重查時延
       const pill = document.getElementById('totp-status-pill');
       if (pill) {
         pill.className = "bg-emerald-500/20 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-400/40 font-mono font-bold flex items-center gap-1";
@@ -992,7 +990,7 @@
     };
 
     window.openTenantStatusModal = function(id, tenantId, companyName, currentStatus) {
-      document.getElementById('adjust-tenant-id').value = id;
+      document.getElementById('adjust-tenant-id').value = tenantId || id;
       document.getElementById('adjust-tenant-title').innerText = `${companyName} (${tenantId})`;
 
       const radios = document.getElementsByName('membership_status_choice');
@@ -1004,43 +1002,72 @@
       window.openModal('modal-status-adjust');
     };
 
-    window.saveTenantStatusAdjustment = function() {
-      const id = document.getElementById('adjust-tenant-id').value;
+    window.saveTenantStatusAdjustment = async function() {
+      const tenantKey = document.getElementById('adjust-tenant-id').value;
       const statusEl = document.querySelector('input[name="membership_status_choice"]:checked');
       if (!statusEl) return alert('請選擇一種商契氣象狀態！');
 
       const status = statusEl.value;
       const note = document.getElementById('adjust-note-input').value.trim();
 
-      window.triggerPlatform2FA(
-        `您正在調整該商號的商契氣象為【${status}】，依中華商道禮數，請核驗憑證令牌：`,
-        async () => {
+      const executeUpdate = async () => {
+        try {
           const is_active = (status !== 'paused');
-          const targetId = isNaN(id) ? id : parseInt(id);
 
-          const { data, error } = await supabase
-            .from('platform_tenant')
-            .update({
-              membership_status: status,
-              is_active: is_active
-            })
-            .eq('id', targetId)
-            .select();
-
-          if (error) {
-            return alert('❌ 狀態調整失敗，資料庫拒絕寫入: ' + error.message);
+          let res;
+          if (!isNaN(tenantKey) && Number.isInteger(parseFloat(tenantKey))) {
+            res = await supabase
+              .from('platform_tenant')
+              .update({ membership_status: status, is_active: is_active })
+              .or(`id.eq.${tenantKey},tenant_id.eq.${tenantKey}`)
+              .select();
+          } else {
+            res = await supabase
+              .from('platform_tenant')
+              .update({ membership_status: status, is_active: is_active })
+              .eq('tenant_id', tenantKey)
+              .select();
           }
 
-          if (!data || data.length === 0) {
-            return alert('⚠️ 找不到對應的商號紀錄，未更新任何資料列。請確認該商號是否存在！');
+          if (res.error) {
+            console.error('更新失敗:', res.error);
+            return alert('❌ 資料庫更新失敗: ' + res.error.message);
           }
 
-          await recordAuditLog('商契氣象調控', 'WARN', { tenant_id_pk: id, target_status: status, note });
-          alert('✅ 商契氣象調控已依禮頒布生效！');
+          if (!res.data || res.data.length === 0) {
+            const retry = await supabase
+              .from('platform_tenant')
+              .update({ membership_status: status, is_active: is_active })
+              .eq('tenant_id', tenantKey)
+              .select();
+
+            if (!retry.data || retry.data.length === 0) {
+              return alert(`⚠️ 未找到標識為【${tenantKey}】的商號紀錄！`);
+            }
+          }
+
+          await recordAuditLog('商契氣象調控', 'WARN', { tenant_key: tenantKey, target_status: status, note });
+
+          alert(`✅ 商契氣象已成功調控為【${status}】！`);
           window.closeModal('modal-status-adjust');
           await window.loadPlatformData();
+        } catch (err) {
+          console.error('執行例外:', err);
+          alert('❌ 執行出錯: ' + err.message);
         }
-      );
+      };
+
+      const modal2FA = document.getElementById('modal-platform-2fa');
+      if (modal2FA && typeof window.triggerPlatform2FA === 'function') {
+        window.triggerPlatform2FA(
+          `您正在調整商號【${tenantKey}】的商契氣象為【${status}】，請輸入動態碼授權：`,
+          executeUpdate
+        );
+      } else {
+        if (confirm(`【商道調控確認】\n確認將商號【${tenantKey}】的商契氣象變更為【${status}】？`)) {
+          await executeUpdate();
+        }
+      }
     };
 
     function renderCategoryTree() {
