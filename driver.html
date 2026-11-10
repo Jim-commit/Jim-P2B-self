@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>随车交割 · 供货师傅掌中宝</title>
+  <title>隨車交割 · 供貨師傅掌中寶</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -15,18 +15,18 @@
   
   <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-xl relative">
     
-    <!-- 顶栏：师傅随车行囊与钱箱 -->
+    <!-- 頂欄：師傅隨車行囊與錢箱 -->
     <header class="bg-[#1b4332] text-white p-4 pt-5 rounded-b-3xl shadow-md space-y-3">
       <div class="flex justify-between items-start">
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-base font-bold">🚚 随车送达 · 现场点验核销</h1>
+            <h1 class="text-base font-bold">🚚 隨車送達 · 現場點驗核銷</h1>
             <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 font-mono">
-              随车管家
+              隨車管家
             </span>
           </div>
           <div class="text-[11px] text-emerald-200 mt-1">
-            供货师傅: <b id="driver-name-display" class="text-white">老张师傅</b> · 厂商代号: <span id="tenant-display" class="font-mono text-amber-300">BJ_SHUNDA</span>
+            供貨師傅: <b id="driver-name-display" class="text-white">老張師傅</b> · 廠商代號: <span id="tenant-display" class="font-mono text-amber-300">BJ_SHUNDA</span>
           </div>
         </div>
         <div class="flex items-center gap-1.5">
@@ -34,115 +34,115 @@
             建言堂
           </button>
           <button onclick="window.switchDriverPrompt()" class="text-[10px] bg-white/10 hover:bg-white/20 text-emerald-100 border border-emerald-400/30 px-2 py-1 rounded-xl transition">
-            切换师傅
+            切換師傅
           </button>
         </div>
       </div>
 
-      <!-- 钱箱汇总看板 -->
+      <!-- 錢箱匯總看板 -->
       <div class="bg-[#143628] p-3 rounded-2xl border border-emerald-700/50 flex justify-between items-center text-xs shadow-inner">
         <div>
-          <span class="text-emerald-300 text-[10px] block">今日随车已收钱款 (随车钱箱)</span>
+          <span class="text-emerald-300 text-[10px] block">今日隨車已收錢款 (隨車錢箱)</span>
           <b id="today-cash-collected" class="text-amber-300 font-mono text-lg font-bold">¥0.00</b>
         </div>
         <div class="text-right space-y-0.5">
-          <span class="text-emerald-200 text-[10px] block font-mono">现钞: <span id="stat-cash">¥0</span> | 电子扫码: <span id="stat-wechat">¥0</span></span>
-          <span class="text-emerald-300 text-[10px] block">已交割完成: <b id="stat-done-count">0</b> 笔</span>
+          <span class="text-emerald-200 text-[10px] block font-mono">現鈔: <span id="stat-cash">¥0</span> | 電子掃碼: <span id="stat-wechat">¥0</span></span>
+          <span class="text-emerald-300 text-[10px] block">已交割完成: <b id="stat-done-count">0</b> 筆</span>
         </div>
       </div>
     </header>
 
-    <!-- 工作模式切换：送货核销 / 巡街拓客 -->
+    <!-- 工作模式切換：送貨核銷 / 巡街拓客 -->
     <div class="p-3 pb-0">
       <div class="bg-stone-100 p-1 rounded-2xl flex gap-1 text-xs font-bold shadow-inner">
         <button id="tab-btn-deliver" onclick="window.switchWorkTab('deliver')" class="flex-1 py-2 rounded-xl bg-[#1b4332] text-white shadow transition flex items-center justify-center gap-1">
-          <span>🚚</span> 随车送货路线
+          <span>🚚</span> 隨車送貨路線
         </button>
         <button id="tab-btn-explore" onclick="window.switchWorkTab('explore')" class="flex-1 py-2 rounded-xl text-stone-600 hover:text-stone-900 transition flex items-center justify-center gap-1">
-          <span>🎯</span> 空车巡街拓客
+          <span>🎯</span> 空車巡街拓客
         </button>
       </div>
     </div>
 
-    <!-- 配送任务路线 -->
+    <!-- 配送任務路線 -->
     <main id="pane-deliver" class="p-3 flex-1 space-y-3">
       <div class="flex justify-between items-center px-1">
-        <h2 class="text-xs font-bold text-stone-700">📋 今日路线待送实体门店</h2>
+        <h2 class="text-xs font-bold text-stone-700">📋 今日路線待送實體門店</h2>
         <button onclick="window.loadDriverTasks()" class="text-[11px] text-emerald-800 font-bold hover:underline">
-          刷新路线
+          刷新路線
         </button>
       </div>
 
       <div id="route-container" class="space-y-3">
-        <div class="p-12 text-center text-stone-400 text-xs">正调阅待配路线...</div>
+        <div class="p-12 text-center text-stone-400 text-xs">正調閱待配路線...</div>
       </div>
     </main>
 
-    <!-- 空车巡街拓客面板 -->
+    <!-- 空車巡街拓客面板 (拍照/語音多模態預留) -->
     <main id="pane-explore" class="hidden p-3 flex-1 space-y-3">
       <div class="bg-stone-50 border border-stone-200 p-4 rounded-3xl space-y-3 text-xs">
         <div>
-          <h2 class="text-sm font-bold text-stone-900">🎯 巡街结缘 · 登记意向实体门店</h2>
-          <p class="text-[10px] text-stone-400 mt-0.5">回程途中顺手记下店名与电话，大当家跟进成单计师傅引荐功劳</p>
+          <h2 class="text-sm font-bold text-stone-900">🎯 巡街結緣 · 登記意向實體門店</h2>
+          <p class="text-[10px] text-stone-400 mt-0.5">回程途中順手記下店名與電話，大當家成單計師傅引薦功勞</p>
         </div>
 
         <div class="space-y-2.5">
           <div>
-            <label class="block text-stone-600 font-bold mb-1">实体门店招牌全名 *：</label>
-            <input type="text" id="lead-name-input" placeholder="如：利民五金电料 / 旺顺家常小馆" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none font-bold">
+            <label class="block text-stone-600 font-bold mb-1">實體門店招牌全名 *：</label>
+            <input type="text" id="lead-name-input" placeholder="如：利民五金電料 / 旺順家常小館" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none font-bold">
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block text-stone-600 font-bold mb-1">百工行当业态：</label>
+              <label class="block text-stone-600 font-bold mb-1">百工行當業態：</label>
               <select id="lead-cat-input" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-2 text-xs outline-none font-bold">
-                <option value="社区便民超市">社区超市/便利店</option>
-                <option value="饭庄酒楼后厨">饭庄酒楼/后厨大客</option>
-                <option value="五金机电工料">五金建材/机电工料</option>
-                <option value="汽修养护工坊">汽修汽配工坊</option>
-                <option value="粮油副食批发">粮油副食商行</option>
-                <option value="其他百工营生">其他百工实体</option>
+                <option value="社區便民超市">社區超市/便利店</option>
+                <option value="飯店酒樓後廚">飯店酒樓/後廚大客</option>
+                <option value="五金機電工料">五金建材/機電工料</option>
+                <option value="汽修養護工坊">汽修汽配工坊</option>
+                <option value="糧油副食批發">糧油副食商行</option>
+                <option value="其他百工營生">其他百工實體</option>
               </select>
             </div>
             <div>
-              <label class="block text-stone-600 font-bold mb-1">当家掌柜称呼：</label>
-              <input type="text" id="lead-boss-input" placeholder="如：刘掌柜 / 赵大厨" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
+              <label class="block text-stone-600 font-bold mb-1">當家掌櫃稱呼：</label>
+              <input type="text" id="lead-boss-input" placeholder="如：劉掌櫃 / 趙大廚" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
             </div>
           </div>
           <div>
-            <label class="block text-stone-600 font-bold mb-1">掌柜联系电话 *：</label>
-            <input type="tel" id="lead-phone-input" maxlength="11" placeholder="11位手机号码" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm font-mono outline-none font-bold">
+            <label class="block text-stone-600 font-bold mb-1">掌櫃聯繫電話 *：</label>
+            <input type="tel" id="lead-phone-input" maxlength="11" placeholder="11位手機號碼" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm font-mono outline-none font-bold">
           </div>
           <div>
-            <label class="block text-stone-600 font-bold mb-1">门市街区地址：</label>
-            <input type="text" id="lead-addr-input" placeholder="如：安居南路与向阳街十字东侧" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
+            <label class="block text-stone-600 font-bold mb-1">門市街區地址：</label>
+            <input type="text" id="lead-addr-input" placeholder="如：安居南路與向陽街十字東側" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
           </div>
           <div>
-            <label class="block text-stone-600 font-bold mb-1">交谈意向与备忘叮咛：</label>
-            <input type="text" id="lead-note-input" placeholder="例：对粮油调味品感兴趣，下周送样品来看看" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
+            <label class="block text-stone-600 font-bold mb-1">交談意向與備忘叮嚀：</label>
+            <input type="text" id="lead-note-input" placeholder="例：對食用油與調味料感興趣，下週送樣品來看看" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
           </div>
           <button onclick="window.submitLeadByDriver()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-2xl text-sm shadow active:scale-95 transition">
-            登记结缘 · 存入商号拓客池
+            登記結緣 · 存入商號拓客池
           </button>
         </div>
       </div>
     </main>
 
-    <!-- 底部常驻回库交账按钮 -->
+    <!-- 底部常駐回庫交賬按鈕 -->
     <footer class="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 z-20">
       <button onclick="window.openCheckoutSummaryModal()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-3 rounded-2xl text-xs shadow active:scale-95 transition flex justify-center items-center gap-2">
-        <span>📦 今日跑车交割完毕 · 生成回库对账单</span>
+        <span>📦 今日跑車交割完畢 · 生成回庫對賬單</span>
       </button>
     </footer>
 
   </div>
 
-  <!-- 现场核销签收弹窗 -->
+  <!-- 現場核銷簽收彈窗 -->
   <div id="collect-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
-          <h3 class="font-bold text-sm text-stone-900" id="modal-shop-title">实体门店</h3>
-          <p class="text-[10px] text-stone-400">细心点验 · 迎回旧件 · 结算清楚 · 彼此安心</p>
+          <h3 class="font-bold text-sm text-stone-900" id="modal-shop-title">實體門店</h3>
+          <p class="text-[10px] text-stone-400">細心點驗 · 迎回舊件 · 結算清楚 · 彼此安心</p>
         </div>
         <button onclick="window.closeModal('collect-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
@@ -156,88 +156,88 @@
 
       <div class="space-y-2 text-xs">
         
-        <!-- 随车刚性指令 (供货商叮咛) -->
+        <!-- 隨車剛性指令 (供貨商叮嚀) -->
         <div id="modal-instruction-box" class="hidden bg-amber-50 border border-amber-300 p-2 rounded-xl text-amber-950 text-[11px] font-bold leading-tight"></div>
 
-        <!-- 财务账目明细 -->
+        <!-- 財務賬目明細 -->
         <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200 space-y-1">
           <div class="flex justify-between items-center">
-            <span class="text-stone-500">本单新进货物：</span>
+            <span class="text-stone-500">本單新進貨物：</span>
             <b id="modal-order-amount-text" class="font-mono text-stone-800 font-bold">¥0.00</b>
           </div>
           <div class="flex justify-between items-center text-rose-700">
-            <span>依约退验冲抵 (历史原价)：</span>
+            <span>依約退驗沖抵 (歷史原價)：</span>
             <b id="modal-return-amount-text" class="font-mono font-bold">-¥0.00</b>
           </div>
           <div class="flex justify-between items-center pt-1 border-t border-stone-200">
-            <span class="font-bold text-emerald-950">当期应结净额：</span>
+            <span class="font-bold text-emerald-950">當期應結淨額：</span>
             <b id="modal-net-amount-text" class="font-mono text-emerald-900 font-bold text-sm">¥0.00</b>
           </div>
           <div class="flex justify-between text-[11px] text-stone-500 pt-0.5">
-            <span>历次在账: <b id="modal-debt-text" class="font-mono text-rose-600">¥0.00</b> / 授信: <b id="modal-limit-text" class="font-mono text-stone-700">¥2000</b></span>
-            <span>店内周转载具: <b id="modal-basket-text" class="font-mono text-amber-800 font-bold">0 件</b></span>
+            <span>歷次在賬: <b id="modal-debt-text" class="font-mono text-rose-600">¥0.00</b> / 授信: <b id="modal-limit-text" class="font-mono text-stone-700">¥2000</b></span>
+            <span>店內周轉載具: <b id="modal-basket-text" class="font-mono text-amber-800 font-bold">0 件</b></span>
           </div>
         </div>
 
-        <!-- 授信超额告警 -->
+        <!-- 授信超額告警 -->
         <div id="over-credit-warning-banner" class="hidden bg-rose-50 border border-rose-300 p-2.5 rounded-2xl text-rose-900 space-y-1 text-xs">
-          <b class="font-bold block text-[11px]">🚨 授信度量超额提醒：</b>
+          <b class="font-bold block text-[11px]">🚨 授信度量超額提醒：</b>
           <div id="over-credit-warning-desc" class="text-[10px] leading-tight"></div>
         </div>
 
-        <!-- 点验货物清单 (增/减/平，融合物勒工名正品溯源) -->
+        <!-- 點驗貨物清單 (增/減/平，融合物勒工名正品溯源) -->
         <div class="space-y-1.5 bg-stone-50 p-2.5 rounded-2xl border border-stone-200 text-[11px]">
           <div>
-            <b class="text-[10px] text-emerald-800 block">① 应点交新货 (物勒工名正品溯源 · 逐件点清)：</b>
-            <div id="modal-items-order-list" class="text-stone-700 pl-1 space-y-0.5 mt-0.5">无新到品物</div>
+            <b class="text-[10px] text-emerald-800 block">① 應點交新貨 (物勒工名正品溯源 · 逐件點清)：</b>
+            <div id="modal-items-order-list" class="text-stone-700 pl-1 space-y-0.5 mt-0.5">無新到品物</div>
           </div>
           <div class="pt-1 border-t border-stone-200">
-            <b class="text-[10px] text-rose-700 block">② 依约验退带回 (旧件清点带回)：</b>
-            <div id="modal-items-return-list" class="text-rose-700 pl-1 space-y-0.5 mt-0.5">无须带回旧品</div>
+            <b class="text-[10px] text-rose-700 block">② 依約驗退帶回 (舊件清點帶回)：</b>
+            <div id="modal-items-return-list" class="text-rose-700 pl-1 space-y-0.5 mt-0.5">無須帶回舊品</div>
           </div>
           <div class="pt-1 border-t border-stone-200">
-            <b class="text-[10px] text-amber-800 block">③ 平价对调换新 (一新换一旧)：</b>
-            <div id="modal-items-exchange-list" class="text-amber-800 pl-1 space-y-0.5 mt-0.5">无对调品物</div>
+            <b class="text-[10px] text-amber-800 block">③ 平價對調換新 (一新換一舊)：</b>
+            <div id="modal-items-exchange-list" class="text-amber-800 pl-1 space-y-0.5 mt-0.5">無對調品物</div>
           </div>
         </div>
 
-        <!-- 周转载具回收折抵 (15元/件) -->
+        <!-- 周轉載具回收折抵 (15元/件) -->
         <div class="bg-amber-50/80 border border-amber-200 p-2 rounded-xl flex items-center justify-between">
-          <span class="font-bold text-amber-950">带回收回周转载具 (15元/件抵款):</span>
+          <span class="font-bold text-amber-950">帶回收回周轉載具 (15元/件抵款):</span>
           <div class="flex items-center gap-1">
             <input type="number" id="collect-basket-return" value="0" min="0" oninput="window.calcBasketDeduct(); window.updateDeliverBtnText();" class="w-14 bg-white border border-amber-300 rounded-lg px-2 py-1 text-center font-bold font-mono outline-none">
             <span class="text-amber-800">件</span>
           </div>
         </div>
 
-        <!-- 本次实收实付金额输入框 -->
+        <!-- 本次實收實付金額輸入框 -->
         <div>
-          <label class="block text-stone-700 font-bold mb-1">本次实收实付金银 (元) *：</label>
+          <label class="block text-stone-700 font-bold mb-1">本次實收實付金銀 (元) *：</label>
           <input type="number" step="0.1" id="collect-amount" oninput="window.updateDeliverBtnText()" placeholder="0.00" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-base font-bold text-emerald-950 outline-none focus:border-emerald-700">
         </div>
 
-        <!-- 现场抹零礼让与清算方式 -->
+        <!-- 現場抹零禮讓與清算方式 -->
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-stone-500 mb-1">随车抹零礼让：</label>
+            <label class="block text-stone-500 mb-1">隨車抹零禮讓：</label>
             <input type="number" id="collect-discount" value="0" oninput="window.updateDeliverBtnText()" placeholder="0" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 font-mono outline-none">
           </div>
           <div>
             <label class="block text-stone-500 mb-1">清款交割方式：</label>
             <select id="collect-method" onchange="window.onCollectMethodChange()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 font-bold outline-none">
-              <option value="电子扫码/转账">📱 电子扫码 / 转账</option>
-              <option value="现金">💵 现场收取现钞</option>
-              <option value="挂账签收">📝 挂账 / 账期免收现</option>
-              <option value="仅签收回单">📜 仅验货签回单 (期末统对)</option>
+              <option value="電子掃碼/轉賬">📱 電子掃碼 / 轉賬</option>
+              <option value="現金">💵 現場收取現鈔</option>
+              <option value="掛賬簽收">📝 掛賬 / 賬期免收現</option>
+              <option value="僅簽收回單">📜 僅驗貨簽回單 (期末統對)</option>
             </select>
           </div>
         </div>
 
-        <!-- 泛用手写签名 -->
+        <!-- 手寫簽名板 -->
         <div>
           <div class="flex justify-between items-center mb-1">
-            <label class="text-[11px] font-bold text-stone-700">收货人立信手写签名 *：</label>
-            <button type="button" onclick="window.clearSignature()" class="text-[10px] text-rose-600 hover:underline">重签</button>
+            <label class="text-[11px] font-bold text-stone-700">收貨人立信手寫簽名 *：</label>
+            <button type="button" onclick="window.clearSignature()" class="text-[10px] text-rose-600 hover:underline">重簽</button>
           </div>
           <div class="border border-stone-300 rounded-xl bg-stone-50 overflow-hidden">
             <canvas id="sign-pad" width="300" height="100" class="w-full h-24 touch-none cursor-crosshair"></canvas>
@@ -245,10 +245,10 @@
         </div>
       </div>
 
-      <!-- 动态响应确认按钮组 (永久保有文字，永无留白) -->
+      <!-- 動態回應確認按鈕組 -->
       <div class="flex gap-2 pt-2 border-t border-stone-100">
         <button type="button" id="btn-submit-collection" onclick="window.submitCollection()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
-          ✅ 确认收讫 · 钱货结清
+          ✅ 確認收訖 · 錢貨結清
         </button>
         <button type="button" onclick="window.closeModal('collect-modal')" class="bg-stone-100 text-stone-600 font-bold px-4 py-2.5 rounded-2xl text-xs">
           取消
@@ -257,64 +257,64 @@
     </div>
   </div>
 
-  <!-- 回库清算汇总弹窗 -->
+  <!-- 回庫清算匯總彈窗 -->
   <div id="checkout-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-        <h3 class="font-bold text-sm text-stone-800">🏁 今日跑车清算对账单</h3>
+        <h3 class="font-bold text-sm text-stone-800">🏁 今日跑車清算對賬單</h3>
         <button onclick="window.closeModal('checkout-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
 
       <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200 text-xs space-y-2">
         <div class="flex justify-between">
-          <span class="text-stone-500">配送负责人：</span>
-          <b id="chk-driver" class="font-bold">老张师傅</b>
+          <span class="text-stone-500">配送負責人：</span>
+          <b id="chk-driver" class="font-bold">老張師傅</b>
         </div>
         <div class="flex justify-between">
-          <span class="text-stone-500">实收现钞 (点清交出纳)：</span>
+          <span class="text-stone-500">實收現鈔 (點清交出納)：</span>
           <b id="chk-cash" class="font-mono text-emerald-800 font-bold">¥0.00</b>
         </div>
         <div class="flex justify-between">
-          <span class="text-stone-500">电子扫码/转账 (出纳对账)：</span>
+          <span class="text-stone-500">電子掃碼/轉賬 (出納對賬)：</span>
           <b id="chk-wechat" class="font-mono text-emerald-800 font-bold">¥0.00</b>
         </div>
         <div class="flex justify-between">
-          <span class="text-stone-500">收回周转载具：</span>
+          <span class="text-stone-500">收回周轉載具：</span>
           <b id="chk-baskets" class="font-mono text-amber-800 font-bold">0 件</b>
         </div>
         <div class="flex justify-between">
-          <span class="text-stone-500">抹零让利总计：</span>
+          <span class="text-stone-500">抹零讓利總計：</span>
           <b id="chk-discount" class="font-mono text-rose-600">¥0.00</b>
         </div>
         <div class="pt-2 border-t border-stone-200 flex justify-between items-center text-sm">
-          <span class="font-bold text-stone-800">交缴金银真款合计：</span>
+          <span class="font-bold text-stone-800">交繳金銀真款合計：</span>
           <b id="chk-total" class="font-mono text-lg font-bold text-emerald-950">¥0.00</b>
         </div>
       </div>
 
-      <p class="text-[10px] text-stone-400 text-center">出纳核对无误后，钱箱清零，安心收工。</p>
+      <p class="text-[10px] text-stone-400 text-center">出納核對無誤後，錢箱清零，安心收工。</p>
 
       <button onclick="window.finalizeSettlement()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
-        出纳已清点入库 · 随车钱箱归零
+        出納已清點入庫 · 隨車錢箱歸零
       </button>
     </div>
   </div>
 
-  <!-- 商道建言堂模态窗 (倾听万家言) -->
+  <!-- 商道建言堂模態窗 -->
   <div id="modal-suggestion" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">📜 供货师傅 · 呈递商道建言</h3>
+        <h3 class="font-bold text-sm text-stone-900">📜 供貨師傅 · 呈遞商道建言</h3>
         <button onclick="window.closeModal('modal-suggestion')" class="text-stone-400 text-lg">✕</button>
       </div>
       <p class="text-[11px] text-stone-500 leading-relaxed">
-        行车送货辛苦！对掌中宝操作、随车钱箱点验或系统使用有何建议，敬请直言：
+        行車送貨辛苦！對掌中寶操作、隨車錢箱點驗或系統使用有何建議，敬請直言：
       </p>
       <div>
-        <textarea id="driver-suggestion-text" rows="3" placeholder="写下您的意见或遇到的操作不便..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none text-xs"></textarea>
+        <textarea id="driver-suggestion-text" rows="3" placeholder="寫下您的意見或遇到的操作不便..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none text-xs"></textarea>
       </div>
       <button onclick="window.submitDriverSuggestion()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
-        呈达平台总控
+        呈達平台總控
       </button>
     </div>
   </div>
@@ -323,7 +323,7 @@
     import { supabase } from './src/lib/supabase.js';
 
     let currentAgent = localStorage.getItem('active_agent') || 'BJ_SHUNDA';
-    let currentDriver = localStorage.getItem('active_driver') || '老张师傅';
+    let currentDriver = localStorage.getItem('active_driver') || '老張師傅';
     let routeStores = [];
     let isSigned = false;
     let canvas, ctx, drawing = false;
@@ -343,7 +343,7 @@
     };
 
     window.switchDriverPrompt = function() {
-      const name = prompt('输入送货员姓名：', currentDriver);
+      const name = prompt('輸入送貨員姓名：', currentDriver);
       if (name && name.trim()) {
         currentDriver = name.trim();
         localStorage.setItem('active_driver', currentDriver);
@@ -411,7 +411,7 @@
 
     window.loadDriverTasks = async function() {
       const container = document.getElementById('route-container');
-      container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">路线门店调阅中...</div>';
+      container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">路線門店調閱中...</div>';
 
       const { data: stores } = await supabase
         .from('store')
@@ -432,7 +432,7 @@
       const orders = pendingOrders || [];
 
       if (routeStores.length === 0) {
-        container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">暂无待送实体门店。</div>';
+        container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">暫無待送實體門店。</div>';
         return;
       }
 
@@ -457,11 +457,11 @@
             <div class="bg-stone-50 border ${isOverCreditPending ? 'border-rose-400 bg-rose-50/40' : 'border-stone-200'} rounded-xl p-2.5 text-[11px] text-stone-800 mt-1 space-y-1">
               <div class="flex justify-between items-center font-bold">
                 <div class="flex items-center gap-1.5">
-                  <span>契单 #${o.order_no || o.id}</span>
+                  <span>契約 #${o.order_no || o.id}</span>
                   ${isOverCreditPending ? '<span class="text-[9px] bg-rose-500 text-white px-1.5 py-0.2 rounded font-bold animate-pulse">待特信放行</span>' : ''}
-                  ${isOverCreditApproved ? '<span class="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">总代已特批</span>' : ''}
+                  ${isOverCreditApproved ? '<span class="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">總代已特批</span>' : ''}
                 </div>
-                <span class="text-rose-700 font-mono font-bold">净付: ¥${netAmount.toFixed(2)}</span>
+                <span class="text-rose-700 font-mono font-bold">淨付: ¥${netAmount.toFixed(2)}</span>
               </div>
 
               ${o.driver_action_instruction ? `
@@ -471,12 +471,12 @@
               ` : ''}
 
               <div class="text-[10px] space-y-0.5 text-stone-600">
-                <div>📦 送抵正品: ${orderStr || '无'}</div>
-                ${itemsReturn.length ? `<div class="text-rose-700 font-bold">🔄 验退旧品: ${returnStr}</div>` : ''}
-                ${itemsExchange.length ? `<div class="text-amber-800 font-bold">🔀 对调品物: ${exchangeStr}</div>` : ''}
+                <div>📦 送抵正品: ${orderStr || '無'}</div>
+                ${itemsReturn.length ? `<div class="text-rose-700 font-bold">🔄 驗退舊品: ${returnStr}</div>` : ''}
+                ${itemsExchange.length ? `<div class="text-amber-800 font-bold">🔀 對調品物: ${exchangeStr}</div>` : ''}
               </div>
 
-              ${o.note ? `<div class="text-[10px] text-amber-900 font-medium">💬 附言叮咛: ${o.note}</div>` : ''}
+              ${o.note ? `<div class="text-[10px] text-amber-900 font-medium">💬 附言叮嚀: ${o.note}</div>` : ''}
             </div>
           `;
         }).join('');
@@ -491,17 +491,17 @@
                 <div class="flex items-center gap-1.5">
                   <span class="font-mono text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.2 rounded font-bold">#${idx + 1}</span>
                   <b class="text-xs text-stone-800">${s.name}</b>
-                  <span class="text-[9px] bg-stone-200/80 text-stone-600 px-1.5 py-0.2 rounded">${s.shop_category || '实体百工'}</span>
+                  <span class="text-[9px] bg-stone-200/80 text-stone-600 px-1.5 py-0.2 rounded">${s.shop_category || '實體百工'}</span>
                   ${storeOrders.length > 0 ? `<span class="bg-amber-600 text-white text-[9px] px-1.5 py-0.2 rounded-full font-bold">待交割</span>` : ''}
                 </div>
                 <div class="text-[11px] text-stone-400 mt-0.5">
-                  掌柜: ${s.contact || '掌柜'} · 电话: <a href="tel:${s.phone}" class="text-emerald-800 font-bold underline font-mono">${s.phone}</a>
+                  掌櫃: ${s.contact || '掌櫃'} · 電話: <a href="tel:${s.phone}" class="text-emerald-800 font-bold underline font-mono">${s.phone}</a>
                 </div>
-                <div class="text-[10px] text-stone-500 mt-0.5">地址: ${s.address || '临街门面'}</div>
+                <div class="text-[10px] text-stone-500 mt-0.5">地址: ${s.address || '臨街門面'}</div>
               </div>
 
               <div class="text-right">
-                <span class="text-[10px] text-stone-400 block">待清账期</span>
+                <span class="text-[10px] text-stone-400 block">待清賬期</span>
                 <b class="font-mono text-sm ${debt > 0 ? 'text-rose-700' : 'text-emerald-800'} font-bold">
                   ¥${debt.toFixed(2)}
                 </b>
@@ -512,10 +512,10 @@
 
             <div class="pt-2 border-t border-stone-200/60 flex justify-between items-center gap-2">
               <a href="tel:${s.phone}" class="text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 active:scale-95">
-                📞 致电
+                📞 致電
               </a>
               <button onclick="window.openCollectModal(${s.id}, '${s.name}', ${debt}, '${firstOrder ? firstOrder.id : ''}', ${totalNetOrderAmount}, ${s.carrier_hold_count || s.basket_count || 0}, ${s.credit_limit || 2000})" class="flex-1 text-[11px] bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-1.5 rounded-xl shadow active:scale-95 transition">
-                🤝 现场点验核销 (收退/归具/平账)
+                🤝 現場點驗核銷 (收退/歸具/平賬)
               </button>
             </div>
           </div>
@@ -563,16 +563,16 @@
       document.getElementById('modal-basket-text').innerText = `${basketCount} 件`;
 
       document.getElementById('modal-items-order-list').innerHTML = itemsOrder.length 
-        ? itemsOrder.map(i => `<div>• ${i.name} (${i.spec || '整装'}) x <b>${i.qty}${i.measure_unit || '件'}</b> <span class="text-[9px] text-emerald-800 font-mono">[物勒工名正品]</span></div>`).join('') 
-        : '无新到品物';
+        ? itemsOrder.map(i => `<div>• ${i.name} (${i.spec || '整裝'}) x <b>${i.qty}${i.measure_unit || '件'}</b> <span class="text-[9px] text-emerald-800 font-mono">[物勒工名正品]</span></div>`).join('') 
+        : '無新到品物';
 
       document.getElementById('modal-items-return-list').innerHTML = itemsReturn.length 
-        ? itemsReturn.map(i => `<div>• ${i.name} x <b>${i.qty}${i.measure_unit || '件'}</b> (抵-¥${i.price}) [原由: ${i.reason || '破损/退货'}]</div>`).join('') 
-        : '无须带回旧品';
+        ? itemsReturn.map(i => `<div>• ${i.name} x <b>${i.qty}${i.measure_unit || '件'}</b> (抵-¥${i.price}) [原由: ${i.reason || '破損/退貨'}]</div>`).join('') 
+        : '無須帶回舊品';
 
       document.getElementById('modal-items-exchange-list').innerHTML = itemsExchange.length 
-        ? itemsExchange.map(i => `<div>• ${i.name} x <b>${i.qty}${i.measure_unit || '件'}</b> [对调: ${i.reason || '同款换新'}]</div>`).join('') 
-        : '无对调品物';
+        ? itemsExchange.map(i => `<div>• ${i.name} x <b>${i.qty}${i.measure_unit || '件'}</b> [對調: ${i.reason || '同款換新'}]</div>`).join('') 
+        : '無對調品物';
 
       const instBox = document.getElementById('modal-instruction-box');
       if (instructionText) {
@@ -584,11 +584,11 @@
 
       const methodSelect = document.getElementById('collect-method');
       if (settlementType === 'cash') {
-        methodSelect.value = '现金';
+        methodSelect.value = '現金';
       } else if (settlementType === 'receipt_only') {
-        methodSelect.value = '仅签收回单';
+        methodSelect.value = '僅簽收回單';
       } else {
-        methodSelect.value = '挂账签收';
+        methodSelect.value = '掛賬簽收';
       }
 
       document.getElementById('collect-discount').value = '0';
@@ -605,7 +605,7 @@
       const netAmount = parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
       const method = document.getElementById('collect-method').value;
 
-      if (method !== '挂账签收' && method !== '仅签收回单' && netAmount > 0) {
+      if (method !== '掛賬簽收' && method !== '僅簽收回單' && netAmount > 0) {
         document.getElementById('collect-amount').value = Math.max(0, netAmount - deductVal).toFixed(2);
       }
     };
@@ -617,7 +617,7 @@
       const basketReturn = parseInt(document.getElementById('collect-basket-return').value) || 0;
       const basketDeduct = basketReturn * 15;
 
-      if (method === '挂账签收' || method === '仅签收回单') {
+      if (method === '掛賬簽收' || method === '僅簽收回單') {
         amountInput.value = '0';
         amountInput.disabled = true;
         amountInput.classList.add('bg-stone-200/60', 'text-stone-400');
@@ -631,9 +631,6 @@
       window.updateDeliverBtnText();
     };
 
-    /**
-     * ⭐ 严格保留的按钮动态状态机决策树 (永不留白、字字有着落)
-     */
     window.updateDeliverBtnText = function() {
       const amountInput = document.getElementById('collect-amount');
       const amountVal = parseFloat(amountInput?.value);
@@ -648,7 +645,7 @@
       const netAmount = parseFloat(document.getElementById('modal-net-amount-text')?.innerText.replace('¥', '')) || 0;
       const curDebt = parseFloat(document.getElementById('modal-current-debt')?.value) || 0;
       const creditLimit = parseFloat(document.getElementById('modal-credit-limit')?.value) || 2000;
-      const method = document.getElementById('collect-method')?.value || '挂账签收';
+      const method = document.getElementById('collect-method')?.value || '掛賬簽收';
 
       const btn = document.getElementById('btn-submit-collection');
       const warnBanner = document.getElementById('over-credit-warning-banner');
@@ -658,74 +655,74 @@
       btn.disabled = false;
       btn.className = "flex-1 text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition ";
 
-      // 1. 负金额倒找退款场景 (退品+退具折抵超出本次进货)
+      // 1. 負金額倒找退款場景
       if (netAmount < 0) {
         const refund = Math.abs(netAmount) + basketDeduct;
         warnBanner?.classList.add('hidden');
         btn.classList.add('bg-indigo-800', 'hover:bg-indigo-900');
         if (amount > 0) {
-          btn.innerText = `💸 师傅退现 ¥${amount.toFixed(2)} · 收货人收讫`;
+          btn.innerText = `💸 師傅退現 ¥${amount.toFixed(2)} · 收貨人收訖`;
         } else if (curDebt > 0) {
-          btn.innerText = `📉 差额 ¥${refund.toFixed(2)} 冲减旧款 · 签字相照`;
+          btn.innerText = `📉 差額 ¥${refund.toFixed(2)} 沖減舊款 · 簽字相照`;
         } else {
-          btn.innerText = `💳 差额 ¥${refund.toFixed(2)} 留存抵后款 · 签字确认`;
+          btn.innerText = `💳 差額 ¥${refund.toFixed(2)} 留存抵後款 · 簽字確認`;
         }
         return;
       }
 
-      // 2. 超额授信拦截判定
+      // 2. 超額授信攔截判定
       const expectedNewDebt = Math.max(0, curDebt + netAmount - amount - discount - basketDeduct);
       const isOverCredit = expectedNewDebt > creditLimit;
 
-      if (isOverCredit && amount < netAmount && method !== '仅签收回单') {
+      if (isOverCredit && amount < netAmount && method !== '僅簽收回單') {
         const overAmount = expectedNewDebt - creditLimit;
         warnBanner?.classList.remove('hidden');
         if (warnDesc) {
-          warnDesc.innerText = `门店授信宽限 ¥${creditLimit}，履约后挂账将达 ¥${expectedNewDebt.toFixed(2)}，超出 ¥${overAmount.toFixed(2)}！依商道规矩暂锁，请收货人补交现款，或请厂商特批放行。`;
+          warnDesc.innerText = `門店授信寬限 ¥${creditLimit}，履約後掛賬將達 ¥${expectedNewDebt.toFixed(2)}，超出 ¥${overAmount.toFixed(2)}！依商道規矩暫鎖，請收貨人補交現款，或請廠商特批放行。`;
         }
         btn.classList.add('bg-rose-600', 'hover:bg-rose-700');
-        btn.innerText = `🚨 超出授信 ¥${overAmount.toFixed(2)} · 请厂商特批放行`;
+        btn.innerText = `🚨 超出授信 ¥${overAmount.toFixed(2)} · 請廠商特批放行`;
         return;
       } else {
         warnBanner?.classList.add('hidden');
       }
 
-      // 3. 现场全款结清或顺带多还旧欠
+      // 3. 現場全款結清或順帶多還舊欠
       if (amount > 0 && (amount + discount + basketDeduct) >= netAmount && netAmount > 0) {
         btn.classList.add('bg-[#1b4332]', 'hover:bg-[#143628]');
         if (amount > netAmount) {
           const payOld = amount - netAmount;
-          btn.innerText = `💰 结清本单并多交还旧欠 ¥${payOld.toFixed(1)} · 确认收讫`;
+          btn.innerText = `💰 結清本單並多交還舊欠 ¥${payOld.toFixed(1)} · 確認收訖`;
         } else {
-          btn.innerText = `✅ 确认收讫 ¥${amount.toFixed(2)} · 钱货结清`;
+          btn.innerText = `✅ 確認收訖 ¥${amount.toFixed(2)} · 錢貨結清`;
         }
         return;
       }
 
-      // 4. 现场部分收款，余款转挂账
+      // 4. 現場部分收款，餘款轉掛賬
       if (amount > 0 && (amount + discount + basketDeduct) < netAmount) {
         const remain = Math.max(0, netAmount - amount - discount - basketDeduct);
         btn.classList.add('bg-amber-700', 'hover:bg-amber-800');
-        btn.innerText = `✅ 实收 ¥${amount.toFixed(2)} · 余款 ¥${remain.toFixed(2)} 记入账期`;
+        btn.innerText = `✅ 實收 ¥${amount.toFixed(2)} · 餘款 ¥${remain.toFixed(2)} 記入賬期`;
         return;
       }
 
-      // 5. 无现款发生 (实收为 0)
+      // 5. 無現款發生
       if (amount === 0) {
         btn.classList.add('bg-[#1b4332]', 'hover:bg-[#143628]');
-        if (method === '仅签收回单') {
-          btn.innerText = `📜 仅验货签回单 · 期末统对入账`;
+        if (method === '僅簽收回單') {
+          btn.innerText = `📜 僅驗貨簽回單 · 期末統對入賬`;
         } else if (netAmount === 0) {
-          btn.innerText = `🔀 平价换新 / 冲抵平账 · 签字交接`;
+          btn.innerText = `🔀 平價換新 / 沖抵平賬 · 簽字交接`;
         } else {
-          btn.innerText = `📝 收货人签收核验 · 货资计入账本`;
+          btn.innerText = `📝 收貨人簽收核驗 · 貨資計入賬本`;
         }
         return;
       }
 
-      // 6. 全局终极保底
+      // 6. 全局保底
       btn.classList.add('bg-[#1b4332]', 'hover:bg-[#143628]');
-      btn.innerText = '✅ 点验交割 · 签名存信';
+      btn.innerText = '✅ 點驗交割 · 簽名存信';
     };
 
     window.submitCollection = async function() {
@@ -742,24 +739,24 @@
       const method = document.getElementById('collect-method').value;
       const netAmount = parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
 
-      if (!isSigned) return alert('请请收货人手写正楷签名，以存商道信义！');
+      if (!isSigned) return alert('請請收貨人手寫正楷簽名，以存商道信義！');
 
       const expectedNewDebt = Math.max(0, curDebt + netAmount - amount - discount - basketDeduct);
       const isOverCredit = expectedNewDebt > creditLimit;
 
-      if (isOverCredit && amount < netAmount && method !== '仅签收回单') {
+      if (isOverCredit && amount < netAmount && method !== '僅簽收回單') {
         const overAmount = expectedNewDebt - creditLimit;
-        if (!confirm(`【商道通融】当前实体门店挂账超出宽限 ¥${overAmount.toFixed(2)}。\n是否立即传信至厂家总调度中心 (hq.html) 请求特信通融？`)) return;
+        if (!confirm(`【商道通融】當前實體門店掛賬超出寬限 ¥${overAmount.toFixed(2)}。\n是否立即傳信至廠家總調度中心 (hq.html) 請求特信通融？`)) return;
 
         if (orderId) {
           await supabase.from('store_order').update({
             order_status: 'over_credit_pending',
             over_credit_amount: overAmount,
-            driver_action_instruction: `【待厂家特批】超授信 ¥${overAmount.toFixed(2)}，待厂商特信放行`
+            driver_action_instruction: `【待廠家特批】超授信 ¥${overAmount.toFixed(2)}，待廠商特信放行`
           }).eq('id', parseInt(orderId));
         }
 
-        alert(`🚨 特信通融请示已传达厂商！\n厂商点允后本页面自动解锁，稍候即可交接。`);
+        alert(`🚨 特信通融請示已傳達廠商！\n廠商點允後本頁面自動解鎖，稍候即可交接。`);
         window.closeModal('collect-modal');
         await window.loadDriverTasks();
         return;
@@ -770,14 +767,14 @@
       let collectType = 'order_delivery';
       if (netAmount < 0) {
         collectType = 'refund_payout';
-      } else if (method === '挂账签收' || method === '仅签收回单' || amount === 0) {
+      } else if (method === '掛賬簽收' || method === '僅簽收回單' || amount === 0) {
         collectType = 'credit_sign';
       }
 
       const payload = {
         tenant_id: currentAgent,
         store_id: storeId,
-        store_name: store ? store.name : '合作实体门店',
+        store_name: store ? store.name : '合作實體門店',
         driver_name: currentDriver,
         collect_type: collectType,
         amount: amount,
@@ -798,7 +795,7 @@
         logErr = retry.error;
       }
 
-      if (logErr) return alert('记录失败: ' + logErr.message);
+      if (logErr) return alert('記錄失敗: ' + logErr.message);
 
       const newBaskets = Math.max(0, curBaskets - basketReturn);
       await supabase.from('store').update({ 
@@ -811,20 +808,17 @@
         await supabase.from('store_order').update({
           delivery_status: 'delivered',
           order_status: 'delivered',
-          pay_status: amount > 0 ? 'paid' : (method === '现金' ? 'cash_zero_cleared' : 'credit_logged'),
+          pay_status: amount > 0 ? 'paid' : (method === '現金' ? 'cash_zero_cleared' : 'credit_logged'),
           sign_image_url: signBase64
         }).eq('id', parseInt(orderId));
       }
 
-      alert(`✅ 交割完好！\n实收金银: ¥${amount.toFixed(2)} (${method})\n迎回周转载具: ${basketReturn} 件 (抵¥${basketDeduct})\n门店剩余在账: ¥${expectedNewDebt.toFixed(2)}。仁信共生！`);
+      alert(`✅ 交割完好！\n實收金銀: ¥${amount.toFixed(2)} (${method})\n迎回周轉載具: ${basketReturn} 件 (抵¥${basketDeduct})\n門店剩餘在賬: ¥${expectedNewDebt.toFixed(2)}。仁信共生！`);
       window.closeModal('collect-modal');
       await window.loadDriverTasks();
       await calculateTodayStats();
     };
 
-    // ----------------------------------------------------
-    // 空车巡街寻坊拓客 (极简录入客情)
-    // ----------------------------------------------------
     window.submitLeadByDriver = async function() {
       const name = document.getElementById('lead-name-input').value.trim();
       const cat = document.getElementById('lead-cat-input').value;
@@ -834,29 +828,26 @@
       const note = document.getElementById('lead-note-input').value.trim();
 
       if (!name || !phone || phone.length < 11) {
-        return alert('请写全招牌全名与 11 位联系手机号！');
+        return alert('請寫全招牌全名與 11 位聯繫手機號！');
       }
 
       await supabase.from('store_lead').insert([{
         tenant_id: currentAgent,
         shop_name: name,
-        boss_name: boss || '当家掌柜',
+        boss_name: boss || '當家掌櫃',
         phone: phone,
-        address: addr || '巡街拜访',
-        intent_level: '供货师傅沿街引荐',
-        note: `[行业: ${cat}] 师傅${currentDriver}引荐: ${note}`
+        address: addr || '巡街拜訪',
+        intent_level: '供貨師傅沿街引薦',
+        note: `[行業: ${cat}] 師傅${currentDriver}引薦: ${note}`
       }]);
 
-      alert(`🎉 结缘成功！已存入【${name}】客情池，大当家成单将记师傅引荐功劳！`);
+      alert(`🎉 結緣成功！已存入【${name}】拓客池，大當家成單將記師傅引薦功勞！`);
       document.getElementById('lead-name-input').value = '';
       document.getElementById('lead-phone-input').value = '';
       document.getElementById('lead-note-input').value = '';
       window.switchWorkTab('deliver');
     };
 
-    // ----------------------------------------------------
-    // 商道建言堂
-    // ----------------------------------------------------
     window.openSuggestionModal = function() {
       document.getElementById('driver-suggestion-text').value = '';
       window.openModal('modal-suggestion');
@@ -864,16 +855,16 @@
 
     window.submitDriverSuggestion = async function() {
       const content = document.getElementById('driver-suggestion-text').value.trim();
-      if (!content) return alert('请写下您的宝贵建言！');
+      if (!content) return alert('請寫下您的寶貴建言！');
 
       await supabase.from('platform_suggestion_board').insert([{
         proposer_type: 'driver',
         proposer_name: `${currentDriver}(${currentAgent})`,
-        category: '供货师傅一线体验',
+        category: '供貨師傅一線體驗',
         content: content
       }]);
 
-      alert('建言已呈达平台总控，感谢师傅为百工生态添砖加瓦！');
+      alert('建言已呈達平台總控，感謝師傅為百工生態添磚加瓦！');
       window.closeModal('modal-suggestion');
     };
 
@@ -889,11 +880,11 @@
       let totalCash = 0, totalWechat = 0, totalBaskets = 0, totalDiscount = 0;
 
       list.forEach(l => {
-        if (l.pay_method === '现金') {
+        if (l.pay_method === '現金') {
           totalCash += parseFloat(l.amount || 0);
-        } else if (l.pay_method === '电子扫码/转账' || l.pay_method === '微信转账' || l.pay_method === '公司码') {
+        } else if (l.pay_method === '電子掃碼/轉賬' || l.pay_method === '微信轉賬' || l.pay_method === '公司碼') {
           totalWechat += parseFloat(l.amount || 0);
-        } else if (l.pay_method !== '挂账签收' && l.pay_method !== '仅签收回单') {
+        } else if (l.pay_method !== '掛賬簽收' && l.pay_method !== '僅簽收回單') {
           totalCash += parseFloat(l.amount || 0);
         }
 
@@ -920,7 +911,7 @@
     };
 
     window.finalizeSettlement = async function() {
-      if (!confirm('账房财务已清点真金现钞、转账与周转载具？确认后随车钱箱归零，平账收工。')) return;
+      if (!confirm('賬房財務已清點真金現鈔、轉賬與周轉載具？確認後隨車錢箱歸零，平賬收工。')) return;
 
       await supabase
         .from('driver_collection_log')
@@ -929,7 +920,7 @@
         .eq('driver_name', currentDriver)
         .eq('settled_to_hq', false);
 
-      alert('🎉 归库平账圆满！辛苦师傅，钱箱清爽入库。');
+      alert('🎉 歸庫平賬圓滿！辛苦師傅，錢箱清爽入庫。');
       window.closeModal('checkout-modal');
       await calculateTodayStats();
     };
