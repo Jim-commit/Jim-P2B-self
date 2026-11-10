@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>源头出厂与总销调度中枢 · 善利万家</title>
+  <title>源頭出廠與總銷調度中樞 · 數字商貿精靈</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -13,50 +13,50 @@
 <body class="bg-[#f7f5f0] text-stone-800 font-sans p-4 min-h-screen">
   <div class="max-w-7xl mx-auto space-y-4">
     
-    <!-- 顶栏：东方墨韵、松石绿结合，温润礼敬 -->
+    <!-- 頂欄：東方墨韻與松石綠，溫潤厚重 -->
     <header class="bg-[#1b4332] text-white p-5 rounded-3xl shadow-lg flex flex-wrap justify-between items-center gap-4">
       <div>
         <div class="flex items-center gap-2.5">
-          <h1 id="hq-title" class="text-lg font-bold">厂家直供与总销调度中枢</h1>
+          <h1 id="hq-title" class="text-lg font-bold">廠家直供與總銷調度中樞</h1>
           <select id="entity-type-selector" onchange="window.switchEntityType(this.value)" class="bg-[#143628] border border-emerald-600/50 text-amber-300 text-xs px-2.5 py-0.5 rounded-full font-bold outline-none">
-            <option value="dealer" selected>🏢 区域总经销 (统仓调配)</option>
-            <option value="factory">🏭 品牌制造工坊 (出厂直供)</option>
+            <option value="dealer" selected>🏢 區域總經銷 (統倉調配)</option>
+            <option value="factory">🏭 品牌製造工坊 (出廠直供)</option>
           </select>
           <span id="tenant-membership-badge" class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 和合在册 · TOTP 2FA GUARD
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 和合在冊 · TOTP 2FA GUARD
           </span>
         </div>
         <div class="text-xs text-emerald-200 mt-1 flex flex-wrap gap-4 font-mono">
-          <span>商号代号: <b id="hq-tenant-id" class="text-white">--</b></span>
-          <span>下游认领码: <b id="hq-invite-code" class="text-amber-300 tracking-wider">--</b></span>
-          <span>实体门店: <b id="stat-active-stores" class="text-white">0 家</b></span>
-          <span>在外周转载具: <b id="stat-baskets" class="text-amber-300">0 件</b></span>
-          <span>随车待缴现款: <b id="stat-pending-cash" class="text-emerald-300">¥0.00</b></span>
+          <span>商號標識: <b id="hq-tenant-id" class="text-white">--</b></span>
+          <span>下游認領碼: <b id="hq-invite-code" class="text-amber-300 tracking-wider">--</b></span>
+          <span>實體門店: <b id="stat-active-stores" class="text-white">0 家</b></span>
+          <span>在庫周轉資材: <b id="stat-baskets" class="text-amber-300">0 件</b></span>
+          <span>隨車待繳現款: <b id="stat-pending-cash" class="text-emerald-300">¥0.00</b></span>
         </div>
       </div>
 
       <div class="flex items-center gap-2">
         <button onclick="window.openPushOrderModal()" class="bg-[#2d6a4f] hover:bg-[#1b4332] text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow active:scale-95 transition flex items-center gap-1.5 border border-emerald-500/30">
-          <span>📦</span> 主动关照配货
+          <span>📦</span> 主動關照配發
         </button>
         <button onclick="window.openChangePasswordModal()" class="bg-[#143628] hover:bg-[#0e271d] text-amber-300 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition flex items-center gap-1">
-          <span>🔑</span> 自立新约
+          <span>🔑</span> 自立新約
         </button>
         <button onclick="window.openTotpSetupModal()" class="bg-[#143628] hover:bg-[#0e271d] text-emerald-300 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition flex items-center gap-1">
-          <span>🛡️</span> 验证器绑定
+          <span>🛡️</span> 驗證器綁定
         </button>
 
-        <!-- 当前商号专属盾徽：严格锁定当前租户，杜绝横向越权 -->
+        <!-- 當前商號專屬租戶鎖定徽章：杜絕水平越權 -->
         <div class="bg-[#143628] border border-emerald-600/50 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
           <div>
-            <b id="hq-company-badge" class="text-white text-xs block font-bold">校验中...</b>
-            <span class="text-[9px] text-emerald-300 font-mono">专属租户隔离锁定</span>
+            <b id="hq-company-badge" class="text-white text-xs block font-bold">校驗中...</b>
+            <span class="text-[9px] text-emerald-300 font-mono">專屬獨立賬本</span>
           </div>
         </div>
 
         <button onclick="window.loadHQData()" class="bg-white text-emerald-950 text-xs px-3.5 py-2 rounded-xl font-bold shadow hover:bg-stone-50 transition active:scale-95">
-          刷新调度盘
+          刷新調度盤
         </button>
         <button onclick="window.logoutHQ()" class="bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-xs px-3 py-2 rounded-xl font-bold border border-rose-700/50 transition">
           安全退出
@@ -64,53 +64,53 @@
       </div>
     </header>
 
-    <!-- 温情礼帖：商契关照提示条 (春风宽待或通融提示) -->
+    <!-- 溫情禮帖：商契關照提示條 (春風寬待或通融提示) -->
     <div id="hq-grace-banner" class="hidden bg-amber-50 border border-amber-300 text-amber-950 p-3.5 rounded-2xl flex items-center justify-between text-xs">
       <div class="flex items-center gap-2.5">
         <span class="text-base">🍃</span>
         <div>
-          <b class="font-bold">春风和合 · 提请关照：</b>
-          <span id="hq-grace-msg">岁序更迭，商道相勉。平台特奉上宽待期，所有业务畅行无碍，请掌柜于闲暇时续办会籍新契。</span>
+          <b class="font-bold">春風和合 · 提請關照：</b>
+          <span id="hq-grace-msg">歲序更迭，商道相勉。平台特奉上寬待期，所有業務暢行無礙，請掌櫃於閒暇時續辦會籍新契。</span>
         </div>
       </div>
-      <span class="text-[10px] text-amber-800 font-mono">商道相携 · 宽猛相济</span>
+      <span class="text-[10px] text-amber-800 font-mono">商道相攜 · 寬猛相濟</span>
     </div>
 
-    <!-- 导航标签 -->
+    <!-- 導航標籤組 -->
     <nav class="flex bg-white rounded-2xl shadow-sm border border-stone-200/80 p-1.5 gap-2 text-xs font-bold">
       <button id="tab-btn-stores" onclick="window.switchTab('stores')" class="flex-1 py-2 text-center rounded-xl bg-[#1b4332] text-white transition">
-        🏪 实体门店名册 (脾性便签 · 授信与周转载具)
+        🏪 實體門店名冊 (脾性便簽 · 授信與周轉資材)
       </button>
       <button id="tab-btn-products" onclick="window.switchTab('products')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition">
-        📦 现货库存仓储 (物勒工名溯源 · 双轨投送 · 卖点贴)
+        📦 現貨庫存倉儲 (物勒工名溯源 · 雙軌投送 · 賣點貼)
       </button>
       <button id="tab-btn-settle" onclick="window.switchTab('settle')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition flex items-center justify-center gap-1">
-        💵 履约交割与回库对账
-        <span id="unsettled-badge" class="bg-rose-600 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">待点款</span>
+        💵 履約交割與回庫對賬
+        <span id="unsettled-badge" class="bg-rose-600 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">待點款</span>
       </button>
       <button id="tab-btn-rbac" onclick="window.switchTab('rbac')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition">
-        👥 属员四权分立 (钱账货单分立 · 子账号)
+        👥 屬員四權分立 (錢賬貨單互斥 · 子賬號)
       </button>
     </nav>
 
-    <!-- 板块 1：实体门店名册与风控 -->
+    <!-- 板塊 1：實體門店名冊與風控 -->
     <section id="tab-stores" class="space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">🏪 合作实体门店档案与风控授信</h2>
-            <p class="text-[11px] text-stone-400">体谅熟客脾气、指派相熟供货师傅送货、定下免息授信与包容退换额度</p>
+            <h2 class="text-sm font-bold text-stone-800">🏪 合作實體門店檔案與風控授信</h2>
+            <p class="text-[11px] text-stone-400">體諒熟客脾氣、指派相熟供貨師傅送貨、定下免息授信與包容退換額度</p>
           </div>
           <button onclick="window.registerNewStore()" class="text-xs bg-emerald-50 text-emerald-900 border border-emerald-200 px-3 py-1.5 rounded-xl font-bold hover:bg-emerald-100 transition active:scale-95">
-            + 快速建档开户
+            + 快速建檔開戶
           </button>
         </div>
 
         <div id="store-tags-filter" class="flex flex-wrap gap-1.5 pt-1 text-xs">
-          <span class="text-stone-400 text-[11px] self-center mr-1">脾性快筛:</span>
-          <button onclick="window.filterStoreByTag('全部')" class="store-filter-btn bg-[#1b4332] text-white px-2 py-0.5 rounded-lg text-[10px] font-bold">全部门店</button>
-          <button onclick="window.filterStoreByTag('#饭庄大客')" class="store-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]">#饭庄大客</button>
-          <button onclick="window.filterStoreByTag('#社区便利')" class="store-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]">#社区便利</button>
+          <span class="text-stone-400 text-[11px] self-center mr-1">脾性快篩:</span>
+          <button onclick="window.filterStoreByTag('全部')" class="store-filter-btn bg-[#1b4332] text-white px-2 py-0.5 rounded-lg text-[10px] font-bold">全部門店</button>
+          <button onclick="window.filterStoreByTag('#飯店大客')" class="store-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]">#飯店大客</button>
+          <button onclick="window.filterStoreByTag('#社區便利')" class="store-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]">#社區便利</button>
           <button onclick="window.filterStoreByTag('#五金工料')" class="store-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]">#五金工料</button>
         </div>
 
@@ -118,13 +118,13 @@
       </div>
     </section>
 
-    <!-- 板块 2：商品库存管理与物勒工名正品溯源 -->
+    <!-- 板塊 2：商品庫存管理與物勒工名正品溯源 -->
     <section id="tab-products" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">📦 现货库存管理与物勒工名溯源</h2>
-            <span class="text-[11px] text-stone-400">支持纯线下实体与纯线上网销双轨投送，品类规制严整，百业度量衡自适应</span>
+            <h2 class="text-sm font-bold text-stone-800">📦 現貨庫存管理與物勒工名溯源</h2>
+            <span class="text-[11px] text-stone-400">支援純線下實體與純線上網銷雙軌投送，品類規制嚴整，百業度量衡自適應</span>
           </div>
           <button onclick="window.openAddProductModal()" class="text-xs bg-[#1b4332] text-white font-bold px-3.5 py-1.5 rounded-xl shadow active:scale-95 transition">
             + 上架良品
@@ -132,11 +132,11 @@
         </div>
 
         <div id="product-tags-filter" class="flex flex-wrap gap-1.5 pt-1 text-xs">
-          <span class="text-stone-400 text-[11px] self-center mr-1">卖点快筛:</span>
+          <span class="text-stone-400 text-[11px] self-center mr-1">賣點快篩:</span>
           <button onclick="window.filterProductByTag('全部')" class="prod-filter-btn bg-[#1b4332] text-white px-2 py-0.5 rounded-lg text-[10px] font-bold">全部</button>
-          <button onclick="window.filterProductByTag('🔥 街坊抢手')" class="prod-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]">🔥 街坊抢手</button>
-          <button onclick="window.filterProductByTag('⏳ 临期捡漏')" class="prod-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]">⏳ 临期捡漏</button>
-          <button onclick="window.filterProductByTag('💎 高毛利')" class="prod-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]">💎 丰厚毛利</button>
+          <button onclick="window.filterProductByTag('🔥 街坊搶手')" class="prod-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]">🔥 街坊搶手</button>
+          <button onclick="window.filterProductByTag('⏳ 臨期撿漏')" class="prod-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]">⏳ 臨期撿漏</button>
+          <button onclick="window.filterProductByTag('💎 高毛利')" class="prod-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]">💎 豐厚毛利</button>
           <button onclick="window.filterProductByTag('❄️ 需冷藏')" class="prod-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]">❄️ 需冷藏</button>
         </div>
 
@@ -144,18 +144,18 @@
           <table class="w-full text-left text-xs whitespace-nowrap">
             <thead class="bg-stone-50 border-b border-stone-100 text-stone-500 font-medium">
               <tr>
-                <th class="p-2.5">实拍照</th>
+                <th class="p-2.5">實拍照</th>
                 <th class="p-2.5">投送模式</th>
                 <th class="p-2.5">正品工名溯源</th>
-                <th class="p-2.5">品类 (大项/细项/三级细分)</th>
-                <th class="p-2.5">商品全称</th>
-                <th class="p-2.5">卖点标签</th>
-                <th class="p-2.5">条码 (69码)</th>
-                <th class="p-2.5">度量衡规制</th>
-                <th class="p-2.5">门市进价 (底价)</th>
-                <th class="p-2.5">大客惠价</th>
+                <th class="p-2.5">品類 (大項/細項/三級細分)</th>
+                <th class="p-2.5">商品全稱</th>
+                <th class="p-2.5">賣點標籤</th>
+                <th class="p-2.5">條碼 (69碼)</th>
+                <th class="p-2.5">度量衡規制</th>
+                <th class="p-2.5">門市進價 (底價)</th>
+                <th class="p-2.5">大客惠價</th>
                 <th class="p-2.5">存量</th>
-                <th class="p-2.5">备忘叮咛</th>
+                <th class="p-2.5">備忘叮嚀</th>
                 <th class="p-2.5 text-right">操作</th>
               </tr>
             </thead>
@@ -165,29 +165,29 @@
       </div>
     </section>
 
-    <!-- 板块 3：履约交割与回库对账 -->
+    <!-- 板塊 3：履約交割與回庫對賬 -->
     <section id="tab-settle" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">📋 供采对账凭单审阅与履约调度</h2>
-            <p class="text-[11px] text-stone-400">订/退/换三合一净额审核、商道度量AI风控打分、超额特信放行裁决</p>
+            <h2 class="text-sm font-bold text-stone-800">📋 供採對賬憑單審閱與履約調度</h2>
+            <p class="text-[11px] text-stone-400">訂/退/換三合一淨額審核、商道度量 AI 風控打分、超額特信放行裁決</p>
           </div>
           <div class="flex flex-wrap gap-1.5 text-xs font-bold">
             <button onclick="window.filterOrderStatus('pending_confirm')" id="order-filter-pending" class="px-3 py-1 rounded-xl bg-[#1b4332] text-white transition">
-              待确认订货 <span id="count-pending-confirm" class="bg-amber-400 text-stone-900 px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
+              待確認訂貨 <span id="count-pending-confirm" class="bg-amber-400 text-stone-900 px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
             </button>
             <button onclick="window.filterOrderStatus('over_credit_pending')" id="order-filter-over-credit" class="px-3 py-1 rounded-xl bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100 transition">
-              🚨 特信请示待裁 <span id="count-over-credit" class="bg-rose-600 text-white px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
+              🚨 特信請示待裁 <span id="count-over-credit" class="bg-rose-600 text-white px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
             </button>
             <button onclick="window.filterOrderStatus('confirmed')" id="order-filter-confirmed" class="px-3 py-1 rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 transition">
-              已排单发运
+              已排單發運
             </button>
             <button onclick="window.filterOrderStatus('delivered')" id="order-filter-delivered" class="px-3 py-1 rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 transition">
-              已核销交割
+              已核銷交割
             </button>
             <button onclick="window.filterOrderStatus('all')" id="order-filter-all" class="px-3 py-1 rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 transition">
-              全部单据
+              全部單據
             </button>
           </div>
         </div>
@@ -198,25 +198,25 @@
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">💵 供货师傅钱箱清点入账 (财务当面点验)</h2>
-            <p class="text-[11px] text-stone-400">实收现钞与电子扫码款，大额平账由 TOTP 2FA 风控二次核验</p>
+            <h2 class="text-sm font-bold text-stone-800">💵 供貨師傅錢箱清點入賬 (財務當面點驗)</h2>
+            <p class="text-[11px] text-stone-400">實收現鈔與電子掃碼款，大額平賬由 TOTP 2FA 風控二次核驗</p>
           </div>
-          <button onclick="window.loadHQData()" class="text-xs text-emerald-800 font-bold hover:underline">刷新对账</button>
+          <button onclick="window.loadHQData()" class="text-xs text-emerald-800 font-bold hover:underline">刷新對賬</button>
         </div>
         <div id="driver-settle-list" class="space-y-2 text-xs"></div>
       </div>
     </section>
 
-    <!-- 板块 4：属员四权分立管理 (钱账货单分立) -->
+    <!-- 板塊 4：屬員四權分立管理 (錢、賬、貨、單互斥互鎖) -->
     <section id="tab-rbac" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">👥 属员四权分立体系 (钱、账、货、单互斥互锁)</h2>
-            <p class="text-[11px] text-stone-400">账房财务管账审单不过手现金，供货师傅管钱管单不管总账，仓管人员见货不沾钱账</p>
+            <h2 class="text-sm font-bold text-stone-800">👥 屬員四權分立體系 (錢、賬、貨、單互斥互鎖)</h2>
+            <p class="text-[11px] text-stone-400">賬房財務管賬審單不過手現金，供貨師傅管錢管單不管總賬，倉管人員見貨不沾錢賬</p>
           </div>
           <button onclick="window.openAddSubUserModal()" class="text-xs bg-[#1b4332] text-white font-bold px-3.5 py-1.5 rounded-xl shadow active:scale-95 transition">
-            + 授任新属员
+            + 授任新屬員
           </button>
         </div>
 
@@ -224,11 +224,11 @@
           <table class="w-full text-left text-xs whitespace-nowrap">
             <thead class="bg-stone-50 border-b border-stone-100 text-stone-500 font-medium">
               <tr>
-                <th class="p-2.5">登录账号</th>
-                <th class="p-2.5">执事姓名</th>
-                <th class="p-2.5">权责职能 (互斥角色)</th>
-                <th class="p-2.5">联系手机</th>
-                <th class="p-2.5">在位状态</th>
+                <th class="p-2.5">登入賬號</th>
+                <th class="p-2.5">執事姓名</th>
+                <th class="p-2.5">權責職能 (互斥角色)</th>
+                <th class="p-2.5">聯繫手機</th>
+                <th class="p-2.5">在位狀態</th>
                 <th class="p-2.5 text-right">管理</th>
               </tr>
             </thead>
@@ -240,192 +240,192 @@
 
   </div>
 
-  <!-- 厂商安全登录门禁 (专属商号 + 密钥口令) -->
+  <!-- 廠商安全登入門禁 (專屬商號 + 金鑰口令) -->
   <div id="hq-auth-gate" class="fixed inset-0 bg-[#0c1e16]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-stone-800 shadow-2xl">
       <div class="text-center space-y-1">
         <div class="w-12 h-12 bg-[#1b4332] text-amber-300 rounded-2xl flex items-center justify-center font-bold text-xl mx-auto shadow-md">🔐</div>
-        <h2 class="text-base font-bold text-stone-900 pt-1">厂商直供与调度中枢登录</h2>
-        <p class="text-[11px] text-stone-400">请输入分配的商号代号与专属密钥</p>
+        <h2 class="text-base font-bold text-stone-900 pt-1">廠商直供與調度中樞登入</h2>
+        <p class="text-[11px] text-stone-400">請輸入分配的商號標識與專屬金鑰</p>
       </div>
 
       <form id="pane-login-pwd" onsubmit="window.verifyHQAuthPwd(event)" class="space-y-3 text-xs">
         <div>
-          <label class="block text-stone-600 font-medium mb-1">商号代号 (Tenant ID) *：</label>
+          <label class="block text-stone-600 font-medium mb-1">商號代號 (Tenant ID) *：</label>
           <input type="text" id="hq-login-tenant" required placeholder="如：BJ_SHUNDA" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono uppercase font-bold text-stone-900 focus:border-emerald-700">
         </div>
         <div>
-          <label class="block text-stone-600 font-medium mb-1">专属访问密钥 (Access Key) *：</label>
-          <input type="password" id="hq-login-key" required placeholder="输入核发的专属密码" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono text-stone-900 focus:border-emerald-700">
+          <label class="block text-stone-600 font-medium mb-1">專屬訪問密碼 (Access Key) *：</label>
+          <input type="password" id="hq-login-key" required placeholder="輸入核發的專屬密碼" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono text-stone-900 focus:border-emerald-700">
         </div>
         <button type="submit" id="btn-hq-pwd" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
-          核验密钥 · 登入调度台
+          核驗金鑰 · 登入調度台
         </button>
       </form>
 
       <div id="hq-auth-error" class="hidden text-rose-600 text-[11px] font-bold text-center"></div>
 
       <div class="text-center pt-1 border-t border-stone-100 flex justify-between items-center text-[10px]">
-        <a href="join.html" class="text-emerald-800 font-bold hover:underline">尚未入驻？提交资质申请</a>
-        <span class="text-stone-400">RFC 6238 TOTP 守护</span>
+        <a href="join.html" class="text-emerald-800 font-bold hover:underline">尚未入駐？提交資質申請</a>
+        <span class="text-stone-400">RFC 6238 TOTP 守護</span>
       </div>
     </div>
   </div>
 
-  <!-- 掌柜自立新约 (自主修改密钥密码) 模态窗 -->
+  <!-- 掌櫃自立新約 (自主修改金鑰密碼) 模態窗 -->
   <div id="modal-change-password" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
-          <h3 class="font-bold text-sm text-stone-900">🔑 掌柜自立新约 · 自助改密</h3>
-          <p class="text-[10px] text-stone-400">密码仅属掌柜自家掌握，平台不窥视留存</p>
+          <h3 class="font-bold text-sm text-stone-900">🔑 掌櫃自立新約 · 自助改密</h3>
+          <p class="text-[10px] text-stone-400">密碼僅屬掌櫃自家掌握，平台不窺視留存</p>
         </div>
         <button onclick="window.closeModal('modal-change-password')" class="text-stone-400 text-lg">✕</button>
       </div>
 
       <div class="space-y-2.5">
         <div>
-          <label class="block text-stone-600 mb-1">原访问密钥 或 平台签发的信物重置码 *：</label>
-          <input type="password" id="chg-old-key" placeholder="输入旧密钥 或 CLAIM-XXXX" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
+          <label class="block text-stone-600 mb-1">原訪問密碼 或 平台簽發的重置信碼 *：</label>
+          <input type="password" id="chg-old-key" placeholder="輸入舊密碼 或 CLAIM-XXXX" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
         </div>
         <div>
-          <label class="block text-stone-600 mb-1">新立访问密钥 (密码) *：</label>
-          <input type="password" id="chg-new-key" placeholder="设置新密码 (建议含字母与数字)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
+          <label class="block text-stone-600 mb-1">新立訪問密碼 *：</label>
+          <input type="password" id="chg-new-key" placeholder="設置新密碼 (建議含字母與數字)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
         </div>
         <div>
-          <label class="block text-stone-600 mb-1">再次确认新密钥 *：</label>
-          <input type="password" id="chg-confirm-key" placeholder="重复新密码" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
+          <label class="block text-stone-600 mb-1">再次確認新密碼 *：</label>
+          <input type="password" id="chg-confirm-key" placeholder="重複新密碼" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
         </div>
         <div>
-          <label class="block text-stone-600 mb-1 font-bold">手机验证器 6 位动态码 (TOTP 二次核身) *：</label>
+          <label class="block text-stone-600 mb-1 font-bold">手機驗證器 6 位動態碼 (TOTP 二次核身) *：</label>
           <input type="text" id="chg-totp-code" maxlength="6" placeholder="000000" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base outline-none text-emerald-950">
         </div>
       </div>
 
       <div class="pt-2 border-t border-stone-100 flex gap-2">
         <button onclick="window.submitChangePassword()" class="flex-1 bg-[#1b4332] text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
-          立约存盘生效
+          立約存盤生效
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 2FA 关键业务 TOTP 6位动态口令核验模态窗 -->
+  <!-- 2FA 關鍵業務 TOTP 6位動態口令核驗模態窗 -->
   <div id="modal-2fa-verify" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-xs rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <b class="text-stone-900 text-xs flex items-center gap-1">🛡️ TOTP 2FA 关键业务二次核身</b>
+        <b class="text-stone-900 text-xs flex items-center gap-1">🛡️ TOTP 2FA 關鍵業務二次核身</b>
         <button type="button" onclick="window.close2FAModal()" class="text-stone-400 text-lg">✕</button>
       </div>
       <p class="text-[11px] text-stone-500 leading-relaxed" id="modal-2fa-desc">
-        涉及重大资金或价格变动，请打开手机身份验证器输入 6 位动态口令。
+        涉及重大資金或價格變動，請打開手機身份驗證器輸入 6 位動態口令。
       </p>
       <div>
-        <label class="block text-stone-600 mb-1 text-center font-bold">6 位实时滚动动态码：</label>
+        <label class="block text-stone-600 mb-1 text-center font-bold">6 位實時滾動動態碼：</label>
         <input type="text" id="input-2fa-code" maxlength="6" placeholder="000000" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-xl tracking-widest outline-none focus:border-emerald-700 text-stone-900">
       </div>
       <div class="pt-1 flex gap-2">
         <button type="button" onclick="window.submit2FAVerification()" class="flex-1 bg-[#1b4332] text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
-          核验口令 · 授权放行
+          核驗口令 · 授權放行
         </button>
       </div>
       <div class="text-center pt-1">
-        <span class="text-[10px] text-stone-400">基于 RFC 6238 时间步长算法 · 30秒滚动</span>
+        <span class="text-[10px] text-stone-400">基於 RFC 6238 時間步長算法 · 30秒滾動</span>
       </div>
     </div>
   </div>
 
-  <!-- TOTP 身份验证器绑定配置弹窗 -->
+  <!-- TOTP 身份驗證器綁定配置彈窗 -->
   <div id="modal-totp-setup" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
-          <h3 class="font-bold text-sm text-stone-800">🛡️ 手机身份验证器 (TOTP) 配置</h3>
-          <p class="text-[10px] text-stone-400">支持腾讯身份验证器、Google Authenticator 等</p>
+          <h3 class="font-bold text-sm text-stone-800">🛡️ 手機身份驗證器 (TOTP) 配置</h3>
+          <p class="text-[10px] text-stone-400">支援 Authenticator / 微信身份驗證器等</p>
         </div>
         <button onclick="window.closeModal('modal-totp-setup')" class="text-stone-400 text-lg">✕</button>
       </div>
 
       <div class="space-y-3">
         <p class="text-[11px] text-stone-600 leading-relaxed">
-          打开手机身份验证器 App 扫描下方二维码，或手动输入秘钥完成添加：
+          打開手機身份驗證器 App 掃描下方二維碼，或手動輸入密匙完成綁定：
         </p>
 
         <div class="w-40 h-40 bg-stone-50 border border-stone-200 rounded-2xl mx-auto flex items-center justify-center p-2">
-          <img id="totp-setup-qr" src="" alt="TOTP 二维码" class="w-full h-full object-contain">
+          <img id="totp-setup-qr" src="" alt="TOTP 二維碼" class="w-full h-full object-contain">
         </div>
 
         <div class="bg-stone-50 p-2.5 rounded-xl border border-stone-200 space-y-1">
-          <span class="text-[10px] text-stone-400 block">手动添加密匙 (Secret Key)：</span>
+          <span class="text-[10px] text-stone-400 block">手動添加密匙 (Secret Key)：</span>
           <div class="flex justify-between items-center font-mono font-bold text-stone-900">
             <span id="totp-secret-display">JBSWY3DPEHPK3PXP</span>
-            <button onclick="window.copyTotpSecret()" class="text-emerald-800 text-[10px] underline">复制</button>
+            <button onclick="window.copyTotpSecret()" class="text-emerald-800 text-[10px] underline">複製</button>
           </div>
         </div>
 
         <div>
-          <label class="block text-stone-600 mb-1">输入 App 生成的 6 位测试验证码：</label>
+          <label class="block text-stone-600 mb-1">輸入 App 生成的 6 位測試驗證碼：</label>
           <input type="text" id="totp-test-code" maxlength="6" placeholder="000000" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-center font-bold text-base outline-none">
         </div>
       </div>
 
       <div class="flex gap-2 pt-2 border-t border-stone-100">
         <button onclick="window.verifyAndSaveTotp()" class="flex-1 bg-[#1b4332] text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition shadow">
-          验证并保存绑定
+          驗證並儲存綁定
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 授任新属员弹窗 (四权分立细分) -->
+  <!-- 授任新屬員彈窗 (四權分立細分) -->
   <div id="modal-add-subuser" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-        <h3 class="font-bold text-sm text-stone-900">👥 授任新属员 (权责分立)</h3>
+        <h3 class="font-bold text-sm text-stone-900">👥 授任新屬員 (權責分立)</h3>
         <button onclick="window.closeModal('modal-add-subuser')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="space-y-2.5">
         <div>
-          <label class="block text-stone-600 font-bold mb-1">属员登录账号 *：</label>
+          <label class="block text-stone-600 font-bold mb-1">屬員登入賬號 *：</label>
           <input type="text" id="sub-account-input" placeholder="如：wh_li" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none font-mono font-bold">
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">属员真实姓名 *：</label>
+          <label class="block text-stone-600 font-bold mb-1">屬員真實姓名 *：</label>
           <input type="text" id="sub-name-input" placeholder="如：李四" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none font-bold">
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">分立岗位权能 *：</label>
+          <label class="block text-stone-600 font-bold mb-1">分立崗位權能 *：</label>
           <select id="sub-role-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 outline-none font-bold">
-            <option value="finance">账房财务 (只审单平总账 · 绝不过手现金)</option>
-            <option value="warehouse">仓储调度 (线下出入库验货+网销发货 · 见货不碰钱账)</option>
-            <option value="driver">供货师傅 (行商随车出纳 · 验货收现金扫码 · 不管总账)</option>
-            <option value="auditor">厂商独立稽核 (只读查看人员操作天道流水)</option>
+            <option value="finance">賬房財務 (只審單平總賬 · 絕不過手現金)</option>
+            <option value="warehouse">倉儲調度 (線下出入庫驗貨+網銷發貨 · 見貨不碰錢賬)</option>
+            <option value="driver">供貨師傅 (行商隨車出納 · 驗貨收現掃碼 · 不管總賬)</option>
+            <option value="auditor">廠商獨立稽核 (只讀查看屬員操作天道流水)</option>
           </select>
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">初始密码 *：</label>
+          <label class="block text-stone-600 font-bold mb-1">初始密碼 *：</label>
           <input type="password" id="sub-pwd-input" value="123456" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none font-mono">
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">联系手机：</label>
-          <input type="tel" id="sub-phone-input" placeholder="11位手机号" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none font-mono">
+          <label class="block text-stone-600 font-bold mb-1">聯繫手機：</label>
+          <input type="tel" id="sub-phone-input" placeholder="11位手機號" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none font-mono">
         </div>
       </div>
       <div class="pt-2 border-t border-stone-100 flex gap-2">
         <button onclick="window.saveSubUser()" class="flex-1 bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
-          授任立册
+          授任立冊
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 实体门店结算策略与风控额度配置弹窗 -->
+  <!-- 實體門店結算策略與風控額度配置彈窗 -->
   <div id="store-policy-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-4 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
-          <h3 class="font-bold text-sm text-stone-800">⚙️ 客户商契结算与相照额度</h3>
-          <p id="policy-store-name" class="text-[10px] text-stone-400">实体门店名称</p>
+          <h3 class="font-bold text-sm text-stone-800">⚙️ 客戶商契結算與相照額度</h3>
+          <p id="policy-store-name" class="text-[10px] text-stone-400">實體門店名稱</p>
         </div>
         <button onclick="window.closeModal('store-policy-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
@@ -435,77 +435,77 @@
       <div class="space-y-3">
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-stone-600 font-bold mb-1">免息相照授信宽限 (元)：</label>
+            <label class="block text-stone-600 font-bold mb-1">免息相照授信寬限 (元)：</label>
             <input type="number" id="policy-credit-limit" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 font-mono font-bold outline-none">
           </div>
           <div>
-            <label class="block text-stone-600 font-bold mb-1">月度退货免批配额 (元)：</label>
+            <label class="block text-stone-600 font-bold mb-1">月度退貨免批配額 (元)：</label>
             <input type="number" id="policy-return-quota" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 font-mono font-bold outline-none">
           </div>
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">默认优选结算交割方式：</label>
+          <label class="block text-stone-600 font-bold mb-1">預設優選結算交割方式：</label>
           <select id="policy-default-settlement" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none font-bold">
-            <option value="credit">相照授信 (账期流转)</option>
-            <option value="cash">当面现结 (现款扫码)</option>
-            <option value="monthly">月度期结 (按期统对)</option>
-            <option value="rolling">压批流转 (压一付一)</option>
-            <option value="consignment">铺市代销 (实销实结)</option>
-            <option value="custom">商契专约约定</option>
+            <option value="credit">相照授信 (賬期流轉)</option>
+            <option value="cash">當面現結 (現款掃碼)</option>
+            <option value="monthly">月度期結 (按期統對)</option>
+            <option value="rolling">壓批流轉 (壓一付一)</option>
+            <option value="consignment">鋪市代銷 (實銷實結)</option>
+            <option value="custom">商契專案約定</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">授权开放的结算白名单：</label>
+          <label class="block text-stone-600 font-bold mb-1">授權開放的結算白名單：</label>
           <div id="policy-allowed-checkboxes" class="grid grid-cols-2 gap-1.5 bg-stone-50 p-2.5 rounded-xl border border-stone-200 text-[11px]">
-            <label class="flex items-center gap-1.5"><input type="checkbox" value="cash" class="policy-cb"> 当面现结</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" value="cash" class="policy-cb"> 當面現結</label>
             <label class="flex items-center gap-1.5"><input type="checkbox" value="credit" class="policy-cb"> 相照授信</label>
-            <label class="flex items-center gap-1.5"><input type="checkbox" value="monthly" class="policy-cb"> 月度期结</label>
-            <label class="flex items-center gap-1.5"><input type="checkbox" value="rolling" class="policy-cb"> 压批流转</label>
-            <label class="flex items-center gap-1.5"><input type="checkbox" value="bi_weekly" class="policy-cb"> 半月/旬结</label>
-            <label class="flex items-center gap-1.5"><input type="checkbox" value="consignment" class="policy-cb"> 铺市代销</label>
-            <label class="flex items-center gap-1.5 col-span-2"><input type="checkbox" value="custom" class="policy-cb"> 允许专案商契条款</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" value="monthly" class="policy-cb"> 月度期結</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" value="rolling" class="policy-cb"> 壓批流轉</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" value="bi_weekly" class="policy-cb"> 半月/旬結</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" value="consignment" class="policy-cb"> 鋪市代銷</label>
+            <label class="flex items-center gap-1.5 col-span-2"><input type="checkbox" value="custom" class="policy-cb"> 允許專案商契條款</label>
           </div>
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">交割结算工作流形态：</label>
+          <label class="block text-stone-600 font-bold mb-1">交割結算工作流形態：</label>
           <select id="policy-workflow-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none font-bold">
-            <option value="cash_on_delivery">💵 随车收款核销 (快消生鲜 · 现场收讫)</option>
-            <option value="receipt_only">📜 仅验货签回单 (五金建材汽配 · 期末统对)</option>
+            <option value="cash_on_delivery">💵 隨車收款核銷 (快消生鮮 · 現場收訖)</option>
+            <option value="receipt_only">📜 僅驗貨簽回單 (五金建材汽配 · 期末統對)</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">专案约定备忘：</label>
-          <input type="text" id="policy-custom-terms" placeholder="如：节令过后第一个周一统对" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+          <label class="block text-stone-600 font-bold mb-1">專案約定備忘：</label>
+          <input type="text" id="policy-custom-terms" placeholder="如：節令過後第一個週一統對" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
         </div>
       </div>
 
       <div class="flex gap-2 pt-2 border-t border-stone-100">
         <button onclick="window.saveStorePolicySettings()" class="flex-1 bg-[#1b4332] text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition shadow">
-          保存策略
+          儲存商約策略
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 进货专享特权通道弹窗 (门市可见性白名单) -->
+  <!-- 進貨專享特權通道彈窗 (門市可見性白名單) -->
   <div id="visibility-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-4 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
-          <h3 class="font-bold text-sm text-stone-800">🎯 设定门店专供货品通道</h3>
-          <p id="vis-store-title" class="text-[10px] text-stone-400">实体门店名称</p>
+          <h3 class="font-bold text-sm text-stone-800">🎯 設定門店專供貨品通道</h3>
+          <p id="vis-store-title" class="text-[10px] text-stone-400">實體門店名稱</p>
         </div>
         <button onclick="window.closeModal('visibility-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
 
       <div class="flex justify-between items-center text-xs">
-        <span class="text-stone-500">勾选允许进货的品项：</span>
+        <span class="text-stone-500">勾選允許進貨的品項：</span>
         <div class="space-x-2">
-          <button onclick="window.selectAllVisibility(true)" class="text-emerald-800 font-bold hover:underline">全部开放</button>
+          <button onclick="window.selectAllVisibility(true)" class="text-emerald-800 font-bold hover:underline">全部開放</button>
           <button onclick="window.selectAllVisibility(false)" class="text-stone-400 hover:underline">清空</button>
         </div>
       </div>
@@ -514,174 +514,176 @@
 
       <div class="flex gap-2 pt-2">
         <button onclick="window.saveVisibilitySettings()" class="flex-1 bg-[#1b4332] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
-          保存专供配置
+          儲存專供配置
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 主动配发制单弹窗 -->
+  <!-- 主動配發制單彈窗 -->
   <div id="push-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <b class="text-sm font-bold text-stone-900">📦 发起关照主动配发</b>
+        <b class="text-sm font-bold text-stone-900">📦 發起關照主動配發</b>
         <button onclick="window.closeModal('push-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
 
       <div class="space-y-2.5">
         <div>
-          <label class="block text-stone-600 font-bold mb-1">受照实体门店：</label>
+          <label class="block text-stone-600 font-bold mb-1">受照實體門店：</label>
           <select id="push-store-select" onchange="window.onPushStoreChange(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 font-bold outline-none"></select>
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">本次配发结算方式：</label>
+          <label class="block text-stone-600 font-bold mb-1">本次配發結算方式：</label>
           <select id="push-settlement-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
-            <option value="credit">相照授信 (账期记存)</option>
-            <option value="cash">当面现结 (现场收讫)</option>
-            <option value="consignment">铺市代销 (未销不计资)</option>
-            <option value="rolling">压批流转 (压一付一)</option>
-            <option value="monthly">月度期结</option>
-            <option value="custom">专案商约</option>
+            <option value="credit">相照授信 (賬期記存)</option>
+            <option value="cash">當面現結 (現場收訖)</option>
+            <option value="consignment">鋪市代銷 (未銷不計資)</option>
+            <option value="rolling">壓批流轉 (壓一付一)</option>
+            <option value="monthly">月度期結</option>
+            <option value="custom">專案商約</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">托付供货师傅：</label>
-          <input type="text" id="push-driver-name" value="张师傅" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+          <label class="block text-stone-600 font-bold mb-1">托付供貨師傅：</label>
+          <input type="text" id="push-driver-name" value="張師傅" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">挑选配发品物件数：</label>
+          <label class="block text-stone-600 font-bold mb-1">挑選配發品物件數：</label>
           <div id="push-products-list" class="space-y-1.5 max-h-40 overflow-y-auto border border-stone-100 p-2 rounded-xl"></div>
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">随车交接温情叮咛：</label>
-          <input type="text" id="push-note-input" placeholder="例：新批次试销铺底，好销再算，免掌柜顾虑" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
+          <label class="block text-stone-600 font-bold mb-1">隨車交接溫情叮嚀：</label>
+          <input type="text" id="push-note-input" placeholder="例：新批次試銷鋪底，好銷再算，免掌櫃顧慮" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
         </div>
       </div>
 
       <button onclick="window.submitVendorPushOrder()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
-        确认生成配发契单 · 传至门店
+        確認生成配發契單 · 傳至門店
       </button>
     </div>
   </div>
 
-  <!-- 商品录入与全功能编辑弹窗 (物勒工名正品溯源) -->
+  <!-- 商品錄入與全功能編輯彈窗 (物勒工名正品溯源) -->
   <div id="product-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
           <h3 class="font-bold text-sm text-stone-800" id="prod-modal-title">📦 物勒工名 · 上架良品</h3>
-          <p class="text-[10px] text-stone-400">工名溯源 ➔ 百工度量衡 ➔ 平台一二级 ➔ 底价实拍</p>
+          <p class="text-[10px] text-stone-400">工名溯源 ➔ 百工度量衡 ➔ 平台一二級 ➔ 底價實拍</p>
         </div>
         <button onclick="window.closeAddProductModal()" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
 
       <input type="hidden" id="editing-prod-id" value="">
 
-      <!-- 模式选择 -->
+      <!-- 供貨場景模式 -->
       <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200 flex items-center justify-between">
-        <span class="font-bold text-stone-700 text-[11px]">商品供货场景通道：</span>
+        <span class="font-bold text-stone-700 text-[11px]">商品供貨場景通道：</span>
         <div class="flex gap-4">
           <label class="flex items-center gap-1 font-bold cursor-pointer">
             <input type="radio" name="sales_channel_type" value="offline" checked class="text-emerald-800">
-            🏬 纯线下实体 (门店配货)
+            🏬 純線下實體 (門店配貨)
           </label>
           <label class="flex items-center gap-1 font-bold cursor-pointer">
             <input type="radio" name="sales_channel_type" value="online" class="text-emerald-800">
-            🌐 纯线上网销 (一件代发物流)
+            🌐 純線上網銷 (一件代發物流)
           </label>
         </div>
       </div>
 
-      <!-- 物勒工名正品溯源码前缀 -->
+      <!-- 物勒工名正品溯源前綴與原產地 -->
       <div class="grid grid-cols-2 gap-2 bg-emerald-50/60 p-2.5 rounded-2xl border border-emerald-200">
         <div>
-          <label class="font-bold text-emerald-950 text-[11px] block mb-1">工名溯源码前缀 (品牌刻印)：</label>
+          <label class="font-bold text-emerald-950 text-[11px] block mb-1">工名溯源碼前綴 (品牌刻印)：</label>
           <input type="text" id="prod-trace-prefix" placeholder="如：SHUNDA-QC-" class="w-full bg-white border border-emerald-300 rounded-xl px-2 py-1.5 font-mono text-xs outline-none">
         </div>
         <div>
-          <label class="font-bold text-emerald-950 text-[11px] block mb-1">产地源头证明：</label>
-          <input type="text" id="prod-origin-place" placeholder="如：山东原生态压榨原产" class="w-full bg-white border border-emerald-300 rounded-xl px-2 py-1.5 text-xs outline-none">
+          <label class="font-bold text-emerald-950 text-[11px] block mb-1">產地源頭證明：</label>
+          <input type="text" id="prod-origin-place" placeholder="如：原生態物理壓榨原產" class="w-full bg-white border border-emerald-300 rounded-xl px-2 py-1.5 text-xs outline-none">
         </div>
       </div>
 
-      <!-- 一级大项(平台)、二级细项(平台)、自定三级(厂家自定) -->
+      <!-- 一級大項(平台)、二級細項(平台)、自定三級(廠商管) -->
       <div class="grid grid-cols-3 gap-2 bg-stone-50 p-2.5 rounded-2xl border border-stone-200">
         <div>
-          <label class="font-bold text-stone-700 text-[11px] block mb-1">一级大项 (平台管)</label>
+          <label class="font-bold text-stone-700 text-[11px] block mb-1">一級大項 (平台管)</label>
           <select id="prod-cat-main" onchange="window.onMainCategoryChange(this.value)" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 outline-none font-medium"></select>
         </div>
         <div>
-          <label class="font-bold text-stone-700 text-[11px] block mb-1">二级细项 (平台管)</label>
+          <label class="font-bold text-stone-700 text-[11px] block mb-1">二級細項 (平台管)</label>
           <select id="prod-cat-sub" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 outline-none font-medium"></select>
         </div>
         <div>
-          <label class="font-bold text-stone-700 text-[11px] block mb-1">自定三级细分类 (厂家管)</label>
-          <input type="text" id="prod-cat-tertiary" placeholder="如：物理压榨花生油" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 outline-none font-medium text-xs">
+          <label class="font-bold text-stone-700 text-[11px] block mb-1">自定三級細分類 (廠商管)</label>
+          <input type="text" id="prod-cat-tertiary" placeholder="如：物理壓榨花生油" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 outline-none font-medium text-xs">
         </div>
       </div>
 
       <div>
-        <label class="block text-[11px] font-bold text-stone-700 mb-1">商品全称 *：</label>
-        <input type="text" id="prod-name" placeholder="例：鲁花 5S物理压榨一级花生油 5L装" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-700 font-medium">
+        <label class="block text-[11px] font-bold text-stone-700 mb-1">商品全稱 *：</label>
+        <input type="text" id="prod-name" placeholder="例：魯花 5S物理壓榨一級花生油 5L裝" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-700 font-medium">
       </div>
 
-      <!-- 卖点贴标签库 -->
+      <!-- 賣點貼標籤庫 -->
       <div class="bg-emerald-50/60 p-2.5 rounded-2xl border border-emerald-100 space-y-1.5">
         <div class="flex justify-between items-center">
-          <label class="font-bold text-emerald-950 text-[11px]">🏷️ 本批次卖点标签：</label>
-          <button type="button" onclick="window.promptAddTag()" class="text-[10px] text-emerald-800 font-bold hover:underline">+ 手写卖点贴</button>
+          <label class="font-bold text-emerald-950 text-[11px]">🏷️ 本批次賣點標籤：</label>
+          <button type="button" onclick="window.promptAddTag()" class="text-[10px] text-emerald-800 font-bold hover:underline">+ 手寫賣點貼</button>
         </div>
         <div id="quick-tags-box" class="flex flex-wrap gap-1.5"></div>
       </div>
 
-      <!-- 国际商品 69 码与镜头识码 -->
+      <!-- 國際商品 69 碼與鏡頭識碼 -->
       <div>
-        <label class="block text-[11px] font-bold text-stone-700 mb-1">国际商品条码 (69码) *：</label>
+        <label class="block text-[11px] font-bold text-stone-700 mb-1">國際商品條碼 (69碼) *：</label>
         <div class="flex gap-2">
-          <input type="text" id="prod-barcode" placeholder="支持条码枪直扫或手输" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-xs outline-none focus:border-emerald-700">
+          <input type="text" id="prod-barcode" placeholder="支援條碼槍直掃或手輸" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-xs outline-none focus:border-emerald-700">
           <button type="button" onclick="window.triggerBarcodeScan()" class="bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 active:scale-95">
-            📷 镜头识码
+            📷 鏡頭識碼
           </button>
         </div>
       </div>
 
+      <!-- 度量衡與包裝規格 -->
       <div class="grid grid-cols-3 gap-2">
         <div>
-          <label class="block text-[11px] text-stone-500 mb-1">主计量单位 (度量衡)：</label>
-          <input type="text" id="prod-measure-unit" placeholder="箱 / 斤 / 件 / 卷 / 托盘" value="箱" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+          <label class="block text-[11px] text-stone-500 mb-1">主計量單位 (度量衡)：</label>
+          <input type="text" id="prod-measure-unit" placeholder="箱 / 斤 / 件 / 卷 / 托盤" value="箱" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
         </div>
         <div>
-          <label class="block text-[11px] text-stone-500 mb-1">装箱规格：</label>
-          <input type="text" id="prod-spec" placeholder="例：4桶/箱" value="整装" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+          <label class="block text-[11px] text-stone-500 mb-1">裝箱規格：</label>
+          <input type="text" id="prod-spec" placeholder="例：4桶/箱" value="整裝" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
         </div>
         <div>
-          <label class="block text-[11px] text-stone-500 mb-1">库内存量：</label>
+          <label class="block text-[11px] text-stone-500 mb-1">庫內存量：</label>
           <input type="number" id="prod-stock" value="999" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 font-mono text-xs outline-none">
         </div>
       </div>
 
+      <!-- 批發底價與大客惠價 -->
       <div class="grid grid-cols-2 gap-2 bg-emerald-50/80 border border-emerald-200 p-3 rounded-2xl">
         <div>
-          <label class="block text-[11px] font-bold text-emerald-950 mb-1">门市批发进价 (底价) *：</label>
+          <label class="block text-[11px] font-bold text-emerald-950 mb-1">門市批發進價 (底價) *：</label>
           <input type="number" step="0.1" id="prod-price" placeholder="0.00" class="w-full bg-white border border-emerald-300 rounded-xl pl-3 pr-3 py-1.5 font-mono font-bold text-sm text-emerald-950 outline-none">
         </div>
         <div>
-          <label class="block text-[11px] font-bold text-emerald-950 mb-1">大客惠价 (饭庄专享)：</label>
+          <label class="block text-[11px] font-bold text-emerald-950 mb-1">大客惠價 (飯店專享)：</label>
           <input type="number" step="0.1" id="prod-price-tier2" placeholder="0.00" class="w-full bg-white border border-emerald-300 rounded-xl pl-3 pr-3 py-1.5 font-mono font-bold text-sm text-emerald-950 outline-none">
         </div>
       </div>
 
       <div>
-        <label class="block text-[11px] font-bold text-stone-700 mb-1">实拍照 *：</label>
+        <label class="block text-[11px] font-bold text-stone-700 mb-1">實拍照 *：</label>
         <div class="flex items-center gap-3">
-          <div id="image-preview-box" class="w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center overflow-hidden text-stone-400 text-xs">无图</div>
+          <div id="image-preview-box" class="w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center overflow-hidden text-stone-400 text-xs">無圖</div>
           <div class="flex gap-2">
             <label class="cursor-pointer bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-stone-200 active:scale-95 transition">
-              📷 选图/拍照
+              📷 選圖/拍照
               <input type="file" accept="image/*" onchange="window.handleImageUpload(event)" class="hidden">
             </label>
             <button type="button" onclick="window.clearProductImage()" class="text-rose-600 text-[11px] hover:underline self-center">清除</button>
@@ -690,26 +692,26 @@
       </div>
 
       <div>
-        <label class="block text-[11px] font-bold text-stone-700 mb-1">备忘叮咛：</label>
-        <input type="text" id="prod-remark" placeholder="例：新批次防潮密封，常温存放" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs outline-none">
+        <label class="block text-[11px] font-bold text-stone-700 mb-1">備忘叮嚀：</label>
+        <input type="text" id="prod-remark" placeholder="例：新批次防潮密封，常溫存放" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs outline-none">
       </div>
 
       <div class="flex gap-2.5 pt-2 border-t border-stone-100">
         <button onclick="window.submitProductForm()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
-          物勒工名 · 保存发布
+          物勒工名 · 儲存發布
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 镜头识码模态窗 -->
+  <!-- 鏡頭識碼模態窗 -->
   <div id="scanner-modal" class="hidden fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
     <div class="relative w-full max-w-sm rounded-3xl overflow-hidden bg-black flex flex-col items-center">
       <video id="scanner-video" class="w-full h-72 object-cover rounded-2xl"></video>
       <div class="absolute inset-0 border-2 border-emerald-400 rounded-2xl pointer-events-none opacity-60 m-8 animate-pulse"></div>
-      <p class="text-white text-xs mt-3">对准国际商品条码自动识入</p>
+      <p class="text-white text-xs mt-3">對準國際商品條碼自動識入</p>
       <button onclick="window.stopBarcodeScan()" class="mt-4 bg-white/20 text-white font-bold text-xs px-5 py-2 rounded-xl backdrop-blur-sm">
-        关闭识码
+        關閉識碼
       </button>
     </div>
   </div>
@@ -717,21 +719,25 @@
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
 
-    // 内置 AI 商道度量打分容灾降级函数
+    // 內嵌 AI 商道風控體察打分降級算法
     function analyzeOrderRiskAI(data) {
       let score = 100;
       const tips = [];
       const overDebt = (data.currentDebt || 0) - (data.creditLimit || 2000);
       if (overDebt > 0) {
         score -= 30;
-        tips.push(`当前挂账超出相照宽限 ¥${overDebt.toFixed(2)}，建议顺手人情审阅`);
+        tips.push(`當前在賬超出相照寬限 ¥${overDebt.toFixed(2)}，建議審閱人情歷史；`);
       }
       if ((data.basketCount || 0) > 20) {
         score -= 10;
-        tips.push(`在外周转载具达 ${data.basketCount} 个，建议回车时提醒供货师傅收回`);
+        tips.push(`在外周轉資材達 ${data.basketCount} 件，建議回車時提醒師傅迎回收回；`);
       }
-      if (tips.length === 0) tips.push('商契往来信义安泰，建议直接应允接单装车');
-      return { healthScore: Math.max(score, 10), healthLevel: score >= 80 ? 'green' : (score >= 50 ? 'amber' : 'red'), tips };
+      if (tips.length === 0) tips.push('商契往來信義安泰，建議正常應允接單裝車。');
+      return { 
+        healthScore: Math.max(score, 10), 
+        healthLevel: score >= 80 ? 'green' : (score >= 50 ? 'amber' : 'red'), 
+        tips 
+      };
     }
 
     let currentAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
@@ -754,7 +760,7 @@
     window.closeModal = id => document.getElementById(id).classList.add('hidden');
 
     // =========================================================================
-    // RFC 6238 原生纯前端 TOTP (HMAC-SHA1) 算法引擎
+    // RFC 6238 原生純前端 TOTP (Web Crypto API)
     // =========================================================================
     const TOTP = {
       base32chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567',
@@ -822,9 +828,6 @@
       }
     };
 
-    // ----------------------------------------------------
-    // TOTP 配置向导与绑定管理
-    // ----------------------------------------------------
     window.openTotpSetupModal = async function() {
       const { data: tenant } = await supabase.from('platform_tenant').select('*').eq('tenant_id', currentAgent).single();
       let secret = tenant?.totp_secret;
@@ -836,8 +839,8 @@
       document.getElementById('totp-secret-display').innerText = secret;
       document.getElementById('totp-test-code').value = '';
 
-      const issuer = encodeURIComponent('供应链商贸中枢');
-      const account = encodeURIComponent(`${currentAgent}(${tenant?.company_name || '商号'})`);
+      const issuer = encodeURIComponent('供應鏈商貿中樞');
+      const account = encodeURIComponent(`${currentAgent}(${tenant?.company_name || '商號'})`);
       const otpauthUrl = `otpauth://totp/${issuer}:${account}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
 
       document.getElementById('totp-setup-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(otpauthUrl)}`;
@@ -846,26 +849,23 @@
 
     window.copyTotpSecret = function() {
       const secret = document.getElementById('totp-secret-display').innerText;
-      navigator.clipboard.writeText(secret).then(() => alert('TOTP 密钥已复制到剪贴板！'));
+      navigator.clipboard.writeText(secret).then(() => alert('TOTP 金鑰已複製到剪貼簿！'));
     };
 
     window.verifyAndSaveTotp = async function() {
       const code = document.getElementById('totp-test-code').value.trim();
       const secret = document.getElementById('totp-secret-display').innerText.trim();
 
-      if (!code || code.length !== 6) return alert('请输入验证器中显示的 6 位动态口令！');
+      if (!code || code.length !== 6) return alert('請輸入驗證器中顯示的 6 位動態口令！');
 
       const isValid = await TOTP.verifyTOTP(secret, code, 1);
-      if (!isValid) return alert('⚠️ 动态口令校验未通过！请核对手机时间是否与网络同步。');
+      if (!isValid) return alert('⚠️ 動態口令驗證未通過！請核對手機時間是否與網路同步。');
 
       await supabase.from('platform_tenant').update({ totp_secret: secret, totp_enabled: true }).eq('tenant_id', currentAgent);
-      alert('🎉 身份验证器绑定成功！后续高危业务将由该口令实时守护。');
+      alert('🎉 身份驗證器綁定成功！');
       window.closeModal('modal-totp-setup');
     };
 
-    // ----------------------------------------------------
-    // 掌柜自立新约 (自主修改密钥密码)
-    // ----------------------------------------------------
     window.openChangePasswordModal = function() {
       document.getElementById('chg-old-key').value = '';
       document.getElementById('chg-new-key').value = '';
@@ -880,23 +880,23 @@
       const confirmKey = document.getElementById('chg-confirm-key').value.trim();
       const totpCode = document.getElementById('chg-totp-code').value.trim();
 
-      if (!oldKey || !newKey) return alert('请填全原密钥与新立密钥！');
-      if (newKey !== confirmKey) return alert('两次输入的新密钥不一致！');
-      if (!totpCode || totpCode.length !== 6) return alert('请输入手机验证器 6 位动态码进行二次核身！');
+      if (!oldKey || !newKey) return alert('請填全原密碼與新立密碼！');
+      if (newKey !== confirmKey) return alert('兩次輸入的新密碼不一致！');
+      if (!totpCode || totpCode.length !== 6) return alert('請輸入手機驗證器 6 位動態碼進行二次核身！');
 
       const { data: tenant } = await supabase.from('platform_tenant').select('*').eq('tenant_id', currentAgent).single();
-      if (!tenant) return alert('商号异常！');
+      if (!tenant) return alert('商號異常！');
 
       const isOldKeyMatch = (oldKey === tenant.access_key);
       const isTokenMatch = (tenant.reset_claim_token && oldKey === tenant.reset_claim_token);
       if (!isOldKeyMatch && !isTokenMatch) {
-        return alert('⚠️ 原密钥或平台签发的重置信码不正确！');
+        return alert('⚠️ 原密碼或平台簽發的重置信碼不正確！');
       }
 
       const secret = tenant.totp_secret || 'JBSWY3DPEHPK3PXP';
       const isTotpValid = await TOTP.verifyTOTP(secret, totpCode, 1);
       if (!isTotpValid) {
-        return alert('⚠️ 手机身份验证器 6 位动态码错误或已过期！');
+        return alert('⚠️ 驗證器 6 位動態碼錯誤或已過期！');
       }
 
       await supabase.from('platform_tenant').update({
@@ -905,13 +905,10 @@
       }).eq('tenant_id', currentAgent);
 
       sessionStorage.setItem('hq_tenant_session_' + currentAgent, newKey);
-      alert('🎉 掌柜自立新约成功！新密钥已生效存盘，请谨记自家密码。');
+      alert('🎉 掌櫃自立新約成功！新密碼已生效存盤。');
       window.closeModal('modal-change-password');
     };
 
-    // ----------------------------------------------------
-    // TOTP 2FA 关键业务拦截调度器
-    // ----------------------------------------------------
     window.trigger2FAAction = function(actionDesc, onVerifiedCallback) {
       document.getElementById('modal-2fa-desc').innerText = actionDesc;
       document.getElementById('input-2fa-code').value = '';
@@ -928,7 +925,7 @@
     window.submit2FAVerification = async function() {
       const code = document.getElementById('input-2fa-code').value.trim();
       if (!code || code.length !== 6) {
-        return alert('⚠️ 请输入身份验证器中当前的 6 位动态码！');
+        return alert('⚠️ 請輸入身份驗證器中當前的 6 位動態碼！');
       }
 
       const { data: tenant } = await supabase.from('platform_tenant').select('*').eq('tenant_id', currentAgent).single();
@@ -936,7 +933,7 @@
 
       const isValid = await TOTP.verifyTOTP(secret, code, 1);
       if (!isValid) {
-        return alert('⚠️ 动态口令校验失败！口令已过期或不匹配，请核对手机验证器时间。');
+        return alert('⚠️ 動態口令驗證失敗！請核對手機驗證器時間。');
       }
 
       window.close2FAModal();
@@ -945,9 +942,6 @@
       }
     };
 
-    // ----------------------------------------------------
-    // 厂商登录与会话保持
-    // ----------------------------------------------------
     window.verifyHQAuthPwd = async function(e) {
       e.preventDefault();
       const tenantId = document.getElementById('hq-login-tenant').value.trim().toUpperCase();
@@ -956,7 +950,7 @@
       const btn = document.getElementById('btn-hq-pwd');
 
       btn.disabled = true;
-      btn.innerText = '正在核对密钥...';
+      btn.innerText = '正在核對金鑰...';
       errBox.classList.add('hidden');
 
       const { data, error } = await supabase
@@ -968,16 +962,16 @@
 
       if (error || !data || data.length === 0) {
         btn.disabled = false;
-        btn.innerText = '核验密钥 · 登入调度台';
-        errBox.innerText = '⚠️ 商号代号不存在或密钥不符！';
+        btn.innerText = '核驗金鑰 · 登入調度台';
+        errBox.innerText = '⚠️ 商號代號不存在或訪問密碼不符！';
         errBox.classList.remove('hidden');
         return;
       }
 
       if (!data[0].is_active) {
         btn.disabled = false;
-        btn.innerText = '核验密钥 · 登入调度台';
-        errBox.innerText = '🚫 该商号已被平台运营者设案暂歇，请与平台以礼商榷！';
+        btn.innerText = '核驗金鑰 · 登入調度台';
+        errBox.innerText = '🚫 該商號已被平台運營者設案暫歇！';
         errBox.classList.remove('hidden');
         return;
       }
@@ -987,7 +981,7 @@
       currentAgent = tenantId;
 
       document.getElementById('hq-auth-gate').classList.add('hidden');
-      alert(`✅ 核验通过！进入【${data[0].company_name}】专属管理后台。`);
+      alert(`✅ 核驗通過！進入【${data[0].company_name}】專屬調度後台。`);
       window.loadHQData();
     };
 
@@ -1033,7 +1027,7 @@
 
     window.switchEntityType = function(type) {
       localStorage.setItem('hq_entity_type', type);
-      document.getElementById('hq-title').innerText = (type === 'factory') ? '厂家营销直供与发运调度中枢' : '厂家直供与总销调度中枢';
+      document.getElementById('hq-title').innerText = (type === 'factory') ? '廠家營銷直供與發運調度中樞' : '廠家直供與總銷調度中樞';
     };
 
     window.switchTab = function(tabName) {
@@ -1046,9 +1040,6 @@
       document.getElementById(`tab-btn-${tabName}`).className = "flex-1 py-2 text-center rounded-xl bg-[#1b4332] text-white transition";
     };
 
-    // ----------------------------------------------------
-    // 数据调度主流程
-    // ----------------------------------------------------
     window.loadHQData = async function() {
       const { data: curTenant, error: tErr } = await supabase
         .from('platform_tenant')
@@ -1057,12 +1048,12 @@
         .single();
 
       if (tErr || !curTenant || !curTenant.is_active) {
-        alert('当前商号凭证已失效或被暂歇，请重新登录！');
+        alert('當前商號憑證已失效或被暫歇，請重新登入！');
         window.logoutHQ();
         return;
       }
 
-      document.getElementById('hq-company-badge').innerText = `${curTenant.company_name} (信码 ${curTenant.invite_code})`;
+      document.getElementById('hq-company-badge').innerText = `${curTenant.company_name} (認領碼 ${curTenant.invite_code || '-'})`;
       document.getElementById('hq-tenant-id').innerText = curTenant.tenant_id;
       document.getElementById('hq-invite-code').innerText = curTenant.invite_code || '888001';
 
@@ -1071,15 +1062,15 @@
       const bannerEl = document.getElementById('hq-grace-banner');
       if (status === 'grace') {
         badgeEl.className = "bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1 font-mono";
-        badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> 春风宽待中 · 2FA GUARD';
+        badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> 春風寬待中 · 2FA GUARD';
         bannerEl.classList.remove('hidden');
       } else if (status === 'restricted') {
         badgeEl.className = "bg-blue-500/20 text-blue-300 text-[10px] px-2 py-0.5 rounded-full border border-blue-400/30 flex items-center gap-1 font-mono";
-        badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> 护盘存续中 · 2FA GUARD';
+        badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> 護盤存續中 · 2FA GUARD';
         bannerEl.classList.add('hidden');
       } else {
         badgeEl.className = "bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono";
-        badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 和合在册 · TOTP 2FA GUARD';
+        badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 和合在冊 · TOTP 2FA GUARD';
         bannerEl.classList.add('hidden');
       }
 
@@ -1094,7 +1085,7 @@
       const { data: stores } = await supabase.from('store').select('*').eq('tenant_id', currentAgent);
       allStores = stores || [];
       document.getElementById('stat-active-stores').innerText = `${allStores.length} 家`;
-      const totalBaskets = allStores.reduce((sum, s) => sum + parseInt(s.basket_count || 0), 0);
+      const totalBaskets = allStores.reduce((sum, s) => sum + parseInt(s.carrier_hold_count || s.basket_count || 0), 0);
       document.getElementById('stat-baskets').innerText = `${totalBaskets} 件`;
       renderStoreTable();
 
@@ -1110,7 +1101,7 @@
       document.getElementById('stat-pending-cash').innerText = `¥${totalPendingCash.toFixed(2)}`;
       
       const badge = document.getElementById('unsettled-badge');
-      if (logs.length > 0) { badge.classList.remove('hidden'); badge.innerText = `${logs.length}笔待点款`; }
+      if (logs.length > 0) { badge.classList.remove('hidden'); badge.innerText = `${logs.length}筆待點款`; }
       else { badge.classList.add('hidden'); }
       renderDriverSettleList(logs);
 
@@ -1163,24 +1154,24 @@
         return `
           <tr class="hover:bg-stone-50 transition">
             <td class="p-2.5">
-              ${p.image_url ? `<img src="${p.image_url}" class="w-9 h-9 rounded-xl object-cover border border-stone-200">` : `<div class="w-9 h-9 rounded-xl bg-stone-100 flex items-center justify-center text-[9px] text-stone-400">无图</div>`}
+              ${p.image_url ? `<img src="${p.image_url}" class="w-9 h-9 rounded-xl object-cover border border-stone-200">` : `<div class="w-9 h-9 rounded-xl bg-stone-100 flex items-center justify-center text-[9px] text-stone-400">無圖</div>`}
             </td>
             <td class="p-2.5 font-bold">
               <span class="px-1.5 py-0.5 rounded text-[10px] ${p.sales_channel_type === 'online' ? 'bg-blue-100 text-blue-900' : 'bg-emerald-100 text-emerald-900'}">
-                ${p.sales_channel_type === 'online' ? '🌐 线上网销' : '🏬 线下实体'}
+                ${p.sales_channel_type === 'online' ? '🌐 線上網銷' : '🏬 線下實體'}
               </span>
             </td>
             <td class="p-2.5 font-mono text-[11px] text-emerald-900 font-bold">
-              ${p.trace_code_prefix || 'SHUNDA-QC'}${p.id}
+              ${p.trace_code_prefix || 'SHUNDA-QC-'}${p.id}
             </td>
             <td class="p-2.5 text-stone-600 font-sans">
-              ${p.category_main} ➔ ${p.category_sub || '常规'}
+              ${p.category_main} ➔ ${p.category_sub || '常規'}
               ${p.category_tertiary ? `<span class="text-amber-800 font-bold ml-1">➔ ${p.category_tertiary}</span>` : ''}
             </td>
             <td class="p-2.5 font-bold text-stone-800 font-sans">${p.name}</td>
             <td class="p-2.5">${tagBadges || '-'}</td>
             <td class="p-2.5 font-mono text-stone-500">${p.barcode || '-'}</td>
-            <td class="p-2.5 font-mono">${p.spec || '整装'} / ${p.measure_unit || '箱'}</td>
+            <td class="p-2.5 font-mono">${p.spec || '整裝'} / ${p.measure_unit || '箱'}</td>
             <td class="p-2.5 font-mono font-bold text-emerald-800">
               <span class="cursor-pointer hover:bg-emerald-50 px-1 py-0.5 rounded border border-transparent hover:border-emerald-200" onclick="window.quickEditPrice(${p.id}, ${p.tier_1_price})">
                 ¥${p.tier_1_price} ✏️
@@ -1194,8 +1185,8 @@
             </td>
             <td class="p-2.5 text-stone-500 max-w-xs truncate font-sans">${p.remark || '-'}</td>
             <td class="p-2.5 text-right space-x-1.5">
-              <button onclick="window.openEditProductModal(${p.id})" class="text-[11px] text-emerald-800 font-bold hover:underline font-sans">编辑</button>
-              <button onclick="window.deleteProduct(${p.id}, '${p.name}')" class="text-[11px] text-rose-600 font-bold hover:underline font-sans">删除</button>
+              <button onclick="window.openEditProductModal(${p.id})" class="text-[11px] text-emerald-800 font-bold hover:underline font-sans">編輯</button>
+              <button onclick="window.deleteProduct(${p.id}, '${p.name}')" class="text-[11px] text-rose-600 font-bold hover:underline font-sans">刪除</button>
             </td>
           </tr>
         `;
@@ -1204,41 +1195,41 @@
 
     function renderDriverSettleList(logs) {
       document.getElementById('driver-settle-list').innerHTML = logs.length === 0 
-        ? '<div class="p-8 text-center text-stone-400 text-xs">随车师傅所收金银已清点入库，无待交钱款。</div>'
+        ? '<div class="p-8 text-center text-stone-400 text-xs">隨車師傅所收金銀已清點入庫，無待交錢款。</div>'
         : logs.map(l => `
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl flex justify-between items-center">
             <div>
               <div class="flex items-center gap-1.5 font-bold text-stone-800">
-                <span>供货师傅: ${l.driver_name}</span>
+                <span>供貨師傅: ${l.driver_name}</span>
                 <span class="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-mono">${l.pay_method}</span>
-                <span class="text-xs text-stone-600">从【${l.store_name}】收回</span>
+                <span class="text-xs text-stone-600">從【${l.store_name}】收回</span>
               </div>
-              <div class="text-[10px] text-stone-400 mt-0.5 font-mono">交账时间: ${new Date(l.created_at).toLocaleString()}</div>
+              <div class="text-[10px] text-stone-400 mt-0.5 font-mono">交賬時間: ${new Date(l.created_at).toLocaleString()}</div>
             </div>
             <div class="text-right">
               <b class="text-base font-mono text-emerald-900 font-bold block">¥${l.amount}</b>
               <button onclick="window.confirmLogSettled(${l.id}, ${l.amount})" class="text-[10px] bg-[#1b4332] text-white font-bold px-2.5 py-1 rounded-lg active:scale-95 shadow font-sans">
-                账房财务点清入库
+                賬房財務點清入庫
               </button>
             </div>
           </div>
         `).join('');
     }
 
-    // TOTP 2FA 场景 1：随车钱箱大额现款清点平账 (超 3000 元核验)
+    // 2FA 場景 1：隨車錢箱大額現款清點平賬 (超 3000 元核驗)
     window.confirmLogSettled = function(logId, amount) {
       const amt = parseFloat(amount || 0);
       if (amt >= 3000) {
         window.trigger2FAAction(
-          `随车交账金额达 ¥${amt.toFixed(2)}，属于大额现金平账，请在手机身份验证器查看 6 位动态口令进行放行：`,
+          `隨車交賬金額達 ¥${amt.toFixed(2)}，屬於大額現金平賬，請在手機身份驗證器查看 6 位動態口令授權：`,
           async () => {
             await supabase.from('driver_collection_log').update({ settled_to_hq: true }).eq('id', logId);
-            alert('随车大额钱款已通过 TOTP 2FA 核身点清平账入库！');
+            alert('隨車大額錢款已通過 TOTP 2FA 核身點清平賬入庫！');
             window.loadHQData();
           }
         );
       } else {
-        if (!confirm('账房财务已点清该笔随车钱款？确认后即刻入账平账。')) return;
+        if (!confirm('賬房財務已點清該筆隨車錢款？確認後即刻入賬平賬。')) return;
         supabase.from('driver_collection_log').update({ settled_to_hq: true }).eq('id', logId).then(() => window.loadHQData());
       }
     };
@@ -1247,10 +1238,10 @@
       const tbody = document.getElementById('subuser-table-body');
       tbody.innerHTML = allSubUsers.map(u => {
         let roleStr = '';
-        if (u.role_code === 'finance') roleStr = '账房财务 (管账审单·不过手现金)';
-        else if (u.role_code === 'warehouse') roleStr = '仓储调度 (线下发货+网销打单·不碰钱账)';
-        else if (u.role_code === 'driver') roleStr = '供货师傅 (随车出纳管钱见货·不管总账)';
-        else roleStr = '厂商独立稽核 (不可篡改流水查阅)';
+        if (u.role_code === 'finance') roleStr = '賬房財務 (管賬審單 · 不過手現金)';
+        else if (u.role_code === 'warehouse') roleStr = '倉儲調度 (線下發貨+網銷打單 · 不碰錢賬)';
+        else if (u.role_code === 'driver') roleStr = '供貨師傅 (隨車出納管錢見貨 · 不管總賬)';
+        else roleStr = '廠商獨立稽核 (不可篡改流水查閱)';
 
         return `
           <tr class="hover:bg-stone-50 transition">
@@ -1260,12 +1251,12 @@
             <td class="p-2.5 font-mono text-stone-500">${u.phone || '-'}</td>
             <td class="p-2.5">
               <span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
-                ${u.is_active ? '在册当值' : '停用'}
+                ${u.is_active ? '在冊當值' : '停用'}
               </span>
             </td>
             <td class="p-2.5 text-right">
               <button onclick="window.toggleSubUserActive(${u.id}, ${u.is_active})" class="text-[11px] font-bold text-stone-600 hover:underline">
-                ${u.is_active ? '停职' : '复职'}
+                ${u.is_active ? '停職' : '復職'}
               </button>
             </td>
           </tr>
@@ -1287,43 +1278,43 @@
       const pwd = document.getElementById('sub-pwd-input').value.trim();
       const phone = document.getElementById('sub-phone-input').value.trim();
 
-      if (!account_name || !real_name || !pwd) return alert('请填全属员账号、姓名与密码！');
+      if (!account_name || !real_name || !pwd) return alert('請填全屬員賬號、姓名與密碼！');
 
       const { error } = await supabase.from('tenant_sub_user').insert([{
         tenant_id: currentAgent, account_name, real_name, role_code, password_hash: pwd, phone, is_active: true
       }]);
 
-      if (error) alert('授任失败: ' + error.message);
+      if (error) alert('授任失敗: ' + error.message);
       else {
-        alert(`🎉 属员【${real_name}】授任成功，岗位权责已互斥分立生效！`);
+        alert(`🎉 屬員【${real_name}】授任成功，崗位權責已互斥分立生效！`);
         window.closeModal('modal-add-subuser');
         window.loadHQData();
       }
     };
 
     window.toggleSubUserActive = async function(id, curState) {
-      if (!confirm(`确认变更该属员的当值状态？`)) return;
+      if (!confirm(`確認變更該屬員的當值狀態？`)) return;
       await supabase.from('tenant_sub_user').update({ is_active: !curState }).eq('id', id);
       window.loadHQData();
     };
 
     window.openAddProductModal = function() {
-      const isRestricted = document.getElementById('tenant-membership-badge').innerText.includes('护盘存续');
+      const isRestricted = document.getElementById('tenant-membership-badge').innerText.includes('護盤存續');
       if (isRestricted) {
-        return alert('商号当前处于【护盘存续】阶段，仅维护已有好物供配，暂缓发售全新货品，敬请谅解！');
+        return alert('商號當前處於【護盤存續】階段，僅維護已有好物供配，暫緩發售全新貨品，敬請諒解！');
       }
 
       document.getElementById('prod-modal-title').innerText = '📦 物勒工名 · 上架良品';
       document.getElementById('editing-prod-id').value = '';
       uploadedImageBase64 = ''; selectedTags = [];
-      document.getElementById('image-preview-box').innerHTML = '无图';
+      document.getElementById('image-preview-box').innerHTML = '無圖';
       document.getElementById('prod-name').value = '';
       document.getElementById('prod-barcode').value = '';
       document.getElementById('prod-price').value = '';
       document.getElementById('prod-price-tier2').value = '';
       document.getElementById('prod-stock').value = '999';
       document.getElementById('prod-cat-tertiary').value = '';
-      document.getElementById('prod-spec').value = '整装';
+      document.getElementById('prod-spec').value = '整裝';
       document.getElementById('prod-measure-unit').value = '箱';
       document.getElementById('prod-remark').value = '';
       renderTagChips();
@@ -1333,7 +1324,7 @@
     window.openEditProductModal = function(id) {
       const p = allProducts.find(x => x.id === id);
       if (!p) return;
-      document.getElementById('prod-modal-title').innerText = '✏️ 润饰商品细节';
+      document.getElementById('prod-modal-title').innerText = '✏️ 潤飾商品細節';
       document.getElementById('editing-prod-id').value = p.id;
 
       const radios = document.getElementsByName('sales_channel_type');
@@ -1349,15 +1340,15 @@
       document.getElementById('prod-price').value = p.tier_1_price;
       document.getElementById('prod-price-tier2').value = p.tier_2_price || p.tier_1_price;
       document.getElementById('prod-stock').value = p.stock ?? 999;
-      document.getElementById('prod-spec').value = p.spec || '整装';
+      document.getElementById('prod-spec').value = p.spec || '整裝';
       document.getElementById('prod-measure-unit').value = p.measure_unit || '箱';
       document.getElementById('prod-trace-prefix').value = p.trace_code_prefix || 'SHUNDA-QC-';
-      document.getElementById('prod-origin-place').value = p.origin_place || '源头工坊原产';
+      document.getElementById('prod-origin-place').value = p.origin_place || '源頭工坊原產';
       document.getElementById('prod-remark').value = p.remark || '';
       uploadedImageBase64 = p.image_url || '';
       document.getElementById('image-preview-box').innerHTML = uploadedImageBase64 
         ? `<img src="${uploadedImageBase64}" class="w-full h-full object-cover">` 
-        : '无图';
+        : '無圖';
       selectedTags = Array.isArray(p.tags) ? [...p.tags] : [];
       renderTagChips();
       window.openModal('product-modal');
@@ -1375,17 +1366,17 @@
       const cat_tertiary = document.getElementById('prod-cat-tertiary').value.trim();
       const name = document.getElementById('prod-name').value.trim();
       const barcode = document.getElementById('prod-barcode').value.trim();
-      const spec = document.getElementById('prod-spec').value.trim() || '整装';
+      const spec = document.getElementById('prod-spec').value.trim() || '整裝';
       const measure_unit = document.getElementById('prod-measure-unit').value.trim() || '箱';
       const stock = parseInt(document.getElementById('prod-stock').value) || 0;
       const price = parseFloat(document.getElementById('prod-price').value);
       const price_tier2 = parseFloat(document.getElementById('prod-price-tier2').value) || price;
       const trace_prefix = document.getElementById('prod-trace-prefix').value.trim() || 'SHUNDA-QC-';
-      const origin_place = document.getElementById('prod-origin-place').value.trim() || '源头工坊原产';
+      const origin_place = document.getElementById('prod-origin-place').value.trim() || '源頭工坊原產';
       const remark = document.getElementById('prod-remark').value.trim();
 
-      if (!name) return alert('请写明货品全称！');
-      if (isNaN(price) || price <= 0) return alert('请输入有效的门市底价！');
+      if (!name) return alert('請寫明貨品全稱！');
+      if (isNaN(price) || price <= 0) return alert('請輸入有效的門市底價！');
 
       const payload = {
         tenant_id: currentAgent,
@@ -1410,25 +1401,25 @@
         error = res.error;
       }
 
-      if (error) alert('保存失败: ' + error.message);
+      if (error) alert('儲存失敗: ' + error.message);
       else {
-        alert(`好物【${name}】已物勒工名成功发布！`);
+        alert(`好物【${name}】已物勒工名成功發布！`);
         window.closeAddProductModal();
         window.loadHQData();
       }
     };
 
-    // TOTP 2FA 场景 2：批发底价大幅下调 (降幅超 15% 触发核身)
+    // 2FA 場景 2：批發底價大幅下調 (降幅超 15% 觸發核身)
     window.quickEditPrice = function(id, oldPrice) {
-      const newPrice = prompt(`【润色门市进价底线】\n原价：¥${oldPrice}\n输入新批发底价：`, oldPrice);
+      const newPrice = prompt(`【潤色門市進價底線】\n原價：¥${oldPrice}\n輸入新批發底價：`, oldPrice);
       if (newPrice !== null && !isNaN(newPrice) && parseFloat(newPrice) > 0) {
         const p = parseFloat(newPrice);
         if (p < oldPrice * 0.85) {
           window.trigger2FAAction(
-            `单品批发底价降幅达 ${(((oldPrice - p) / oldPrice) * 100).toFixed(0)}% (从 ¥${oldPrice} 调至 ¥${p})，触发重大价格变动风控，请输入手机身份验证器 6 位动态码授权：`,
+            `單品批發底價降幅達 ${(((oldPrice - p) / oldPrice) * 100).toFixed(0)}% (從 ¥${oldPrice} 調至 ¥${p})，觸發重大價格變動風控，請輸入手機驗證器 6 位動態碼授權：`,
             async () => {
               await supabase.from('product').update({ tier_1_price: p }).eq('id', id);
-              alert('底价已由身份验证器 2FA 授权成功修改！');
+              alert('底價已由身份驗證器 2FA 授權成功修改！');
               window.loadHQData();
             }
           );
@@ -1439,20 +1430,20 @@
     };
 
     window.quickEditStock = async function(id, oldStock) {
-      const newStock = prompt(`【库内存量核对】\n原存：${oldStock}\n输入最新存量：`, oldStock);
+      const newStock = prompt(`【庫內存量核對】\n原存：${oldStock}\n輸入最新存量：`, oldStock);
       if (newStock !== null && !isNaN(newStock) && parseInt(newStock) >= 0) {
         await supabase.from('product').update({ stock: parseInt(newStock) }).eq('id', id);
         window.loadHQData();
       }
     };
 
-    // TOTP 2FA 场景 3：删除在售良品
+    // 2FA 場景 3：刪除在售良品
     window.deleteProduct = function(id, name) {
       window.trigger2FAAction(
-        `您正在从独立账本中物理删除良品【${name}】，该操作不可逆并将影响历史单据分析，请输入手机身份验证器 6 位动态码确认删除：`,
+        `您正在從獨立賬本中物理刪除良品【${name}】，該操作不可逆並將影響歷史單據分析，請輸入手機驗證器 6 位動態碼確認刪除：`,
         async () => {
           await supabase.from('product').delete().eq('id', id);
-          alert(`良品【${name}】已通过 TOTP 2FA 核验注销！`);
+          alert(`良品【${name}】已通過 TOTP 2FA 核驗註銷！`);
           window.loadHQData();
         }
       );
@@ -1485,7 +1476,7 @@
 
     window.clearProductImage = function() {
       uploadedImageBase64 = '';
-      document.getElementById('image-preview-box').innerHTML = '无图';
+      document.getElementById('image-preview-box').innerHTML = '無圖';
     };
 
     window.toggleTag = function(tagStr) {
@@ -1494,7 +1485,7 @@
     };
 
     window.promptAddTag = function() {
-      const customTag = prompt('输入特色卖点标签（如：#纯粮压榨、#爆款高毛利）：');
+      const customTag = prompt('輸入特色賣點標籤（如：#純糧壓榨、#爆款高毛利）：');
       if (customTag && customTag.trim()) {
         const clean = customTag.trim().startsWith('#') ? customTag.trim() : `# ${customTag.trim()}`;
         if (!selectedTags.includes(clean)) selectedTags.push(clean);
@@ -1504,7 +1495,7 @@
 
     function renderTagChips() {
       const box = document.getElementById('quick-tags-box');
-      const defaultChips = ['🔥 街坊抢手', '⏳ 临期捡漏', '💎 高毛利', '❄️ 需冷藏', '📦 整箱特惠'];
+      const defaultChips = ['🔥 街坊搶手', '⏳ 臨期撿漏', '💎 高毛利', '❄️ 需冷藏', '📦 整箱特惠'];
       const allUnique = Array.from(new Set([...defaultChips, ...selectedTags]));
       box.innerHTML = allUnique.map(t => {
         const isSel = selectedTags.includes(t);
@@ -1516,10 +1507,9 @@
       }).join('');
     }
 
-    // 镜头扫码功能
     window.triggerBarcodeScan = async function() {
       if (!('BarcodeDetector' in window)) {
-        const code = prompt('当前浏览器未启用镜头扫码，请手输或用扫码枪扫入条码：');
+        const code = prompt('當前瀏覽器未啟用鏡頭掃碼，請手輸或用掃碼槍掃入條碼：');
         if (code && code.trim()) document.getElementById('prod-barcode').value = code.trim();
         return;
       }
@@ -1537,12 +1527,12 @@
             if (barcodes.length > 0) {
               document.getElementById('prod-barcode').value = barcodes[0].rawValue;
               window.stopBarcodeScan();
-              alert(`成功识入商品码: ${barcodes[0].rawValue}`);
+              alert(`成功識入商品碼: ${barcodes[0].rawValue}`);
             }
           } catch (e) {}
         }, 500);
       } catch (err) {
-        const code = prompt('镜头未开启，请直接键入商品条码：');
+        const code = prompt('鏡頭未開啟，請直接鍵入商品條碼：');
         if (code && code.trim()) document.getElementById('prod-barcode').value = code.trim();
       }
     };
@@ -1570,28 +1560,28 @@
             <div>
               <div class="flex items-center gap-2">
                 <span class="font-bold text-stone-800 text-xs">${s.name}</span>
-                <span class="text-[10px] bg-stone-100 text-stone-700 px-1.5 py-0.2 rounded font-bold">${s.shop_category || '社区便民'}</span>
+                <span class="text-[10px] bg-stone-100 text-stone-700 px-1.5 py-0.2 rounded font-bold">${s.shop_category || '社區便民'}</span>
                 <span class="text-[10px] px-1.5 py-0.2 rounded font-mono bg-stone-100 text-stone-600 border border-stone-200">📱 ${s.phone}</span>
                 <span class="text-[10px] px-1.5 py-0.2 rounded font-medium ${s.current_debt > s.credit_limit * 0.8 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}">
-                  在账: ¥${s.current_debt || 0} / 授信: ¥${s.credit_limit || 2000}
+                  在賬: ¥${s.current_debt || 0} / 授信: ¥${s.credit_limit || 2000}
                 </span>
                 <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded font-mono font-bold">
-                  载具借欠: ${s.carrier_hold_count || s.basket_count || 0} 件
+                  載具借欠: ${s.carrier_hold_count || s.basket_count || 0} 件
                 </span>
               </div>
               <div class="text-[11px] text-stone-400 mt-1 flex flex-wrap gap-3 font-mono">
-                <span>脾性: ${tagBadges || '<span class="text-stone-300">无标贴</span>'}</span>
-                <span>供货师傅: <b class="text-emerald-900">${s.driver_name || '张师傅'}</b></span>
-                <span>退验配额: <b class="text-rose-700 font-bold">¥${s.monthly_return_quota || 500}</b></span>
-                <span>交割形态: <b class="text-stone-700">${s.settle_workflow === 'receipt_only' ? '仅签收回单' : '随车收款核销'}</b></span>
-                <span class="text-amber-800 font-bold">特权: ${s.visible_product_ids ? `${s.visible_product_ids.length} 种专享` : '全品类开放'}</span>
+                <span>脾性: ${tagBadges || '<span class="text-stone-300">無標貼</span>'}</span>
+                <span>供貨師傅: <b class="text-emerald-900">${s.driver_name || '張師傅'}</b></span>
+                <span>退驗配額: <b class="text-rose-700 font-bold">¥${s.monthly_return_quota || 500}</b></span>
+                <span>交割形態: <b class="text-stone-700">${s.settle_workflow === 'receipt_only' ? '僅簽收回單' : '隨車收款核銷'}</b></span>
+                <span class="text-amber-800 font-bold">特權: ${s.visible_product_ids ? `${s.visible_product_ids.length} 種專享` : '全品類開放'}</span>
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="window.editStoreTagsPrompt(${s.id}, '${JSON.stringify(s.tags || []).replace(/"/g, '&quot;')}')" class="text-[11px] bg-stone-100 text-stone-700 px-2 py-1 rounded-xl font-bold">🏷️ 记脾性</button>
-              <button onclick="window.openStorePolicyModal(${s.id})" class="text-[11px] bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-xl font-bold">⚙️ 商约度量</button>
-              <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '&quot;')}')" class="text-[11px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-1.5 rounded-xl font-bold">🎯 专供品道</button>
-              <button onclick="window.reassignDriverPrompt(${s.id}, '${s.driver_name || '供货师傅'}')" class="text-[11px] bg-stone-50 text-stone-700 border border-stone-200 px-2.5 py-1 rounded-xl font-bold">🚚 指派师傅</button>
+              <button onclick="window.editStoreTagsPrompt(${s.id}, '${JSON.stringify(s.tags || []).replace(/"/g, '&quot;')}')" class="text-[11px] bg-stone-100 text-stone-700 px-2 py-1 rounded-xl font-bold">🏷️ 記脾性</button>
+              <button onclick="window.openStorePolicyModal(${s.id})" class="text-[11px] bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-xl font-bold">⚙️ 商約度量</button>
+              <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '&quot;')}')" class="text-[11px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-1.5 rounded-xl font-bold">🎯 專供品道</button>
+              <button onclick="window.reassignDriverPrompt(${s.id}, '${s.driver_name || '供貨師傅'}')" class="text-[11px] bg-stone-50 text-stone-700 border border-stone-200 px-2.5 py-1 rounded-xl font-bold">🚚 指派師傅</button>
             </div>
           </div>
         `;
@@ -1600,7 +1590,7 @@
 
     window.editStoreTagsPrompt = async function(storeId, currentTagsJson) {
       const tags = JSON.parse(currentTagsJson || '[]');
-      const newTagStr = prompt('记下小店脾性特点（逗号隔开，如：#饭庄大客, #后厨现结）：', tags.join(', '));
+      const newTagStr = prompt('記下小店脾性特點（逗號隔開，如：#飯店大客, #後廚現結）：', tags.join(', '));
       if (newTagStr !== null) {
         const cleanTags = newTagStr.split(',').map(s => s.trim()).filter(Boolean);
         await supabase.from('store').update({ tags: cleanTags }).eq('id', storeId);
@@ -1613,7 +1603,7 @@
       if (!s) return;
 
       document.getElementById('policy-store-id').value = s.id;
-      document.getElementById('policy-store-name').innerText = `${s.name} (掌柜: ${s.contact || '主人家'})`;
+      document.getElementById('policy-store-name').innerText = `${s.name} (掌櫃: ${s.contact || '主人家'})`;
       document.getElementById('policy-credit-limit').value = s.credit_limit || 2000;
       document.getElementById('policy-return-quota').value = s.monthly_return_quota || 500;
       document.getElementById('policy-default-settlement').value = s.default_settlement || 'credit';
@@ -1644,14 +1634,14 @@
         allowed_settlements, settle_workflow, custom_settlement_terms
       }).eq('id', storeId);
 
-      alert('实体商约度量已保存！');
+      alert('實體商約度量已儲存！');
       window.closeModal('store-policy-modal');
       window.loadHQData();
     };
 
     window.openVisibilityModal = function(storeId, storeName, currentJson) {
       currentStoreForVis = storeId;
-      document.getElementById('vis-store-title').innerText = `${storeName} (专享通道)`;
+      document.getElementById('vis-store-title').innerText = `${storeName} (專享通道)`;
       const selected = JSON.parse(currentJson || '[]');
       const activeProds = allProducts.filter(p => p.status !== 'inactive');
 
@@ -1679,13 +1669,13 @@
       const checkedBoxes = Array.from(document.querySelectorAll('.vis-prod-checkbox:checked')).map(el => parseInt(el.value));
       const valToSave = checkedBoxes.length === allProducts.length ? null : checkedBoxes;
       await supabase.from('store').update({ visible_product_ids: valToSave }).eq('id', currentStoreForVis);
-      alert('专供配置保存完毕！');
+      alert('專供配置儲存完畢！');
       window.closeModal('visibility-modal');
       window.loadHQData();
     };
 
     window.reassignDriverPrompt = async function(storeId, currentDriver) {
-      const newDriver = prompt(`当前供货师傅为【${currentDriver}】，输入新师傅姓名：`, '张师傅');
+      const newDriver = prompt(`當前供貨師傅為【${currentDriver}】，輸入新師傅姓名：`, '張師傅');
       if (newDriver && newDriver.trim()) {
         await supabase.from('store').update({ driver_name: newDriver.trim() }).eq('id', storeId);
         window.loadHQData();
@@ -1693,33 +1683,30 @@
     };
 
     window.registerNewStore = async function() {
-      const shopName = prompt('【结识建档】输入实体门店招牌全称：', '厚德便民五金百货');
+      const shopName = prompt('【結識建檔】輸入實體門店招牌全稱：', '厚德便民五金百貨');
       if (!shopName || !shopName.trim()) return;
-      const phone = prompt('输入当家掌柜 11 位手机号：');
-      if (!phone || phone.trim().length < 11) return alert('请输入有效 11 位手机号！');
+      const phone = prompt('輸入當家掌櫃 11 位手機號：');
+      if (!phone || phone.trim().length < 11) return alert('請輸入有效 11 位手機號！');
 
       await supabase.from('store').insert([{
         tenant_id: currentAgent,
         name: shopName.trim(),
-        contact: '掌柜',
+        contact: '掌櫃',
         phone: phone.trim(),
         credit_limit: 2000,
         monthly_return_quota: 500,
         current_debt: 0,
-        driver_name: '张师傅'
+        driver_name: '張師傅'
       }]);
-      alert(`门店【${shopName.trim()}】已建档结缘！`);
+      alert(`門店【${shopName.trim()}】已建檔結緣！`);
       window.loadHQData();
     };
 
-    // ----------------------------------------------------
-    // 主动关照配发制单
-    // ----------------------------------------------------
     window.openPushOrderModal = function() {
       const storeSelect = document.getElementById('push-store-select');
       storeSelect.innerHTML = allStores.map(s => `
         <option value="${s.id}">
-          ${s.name} (授信余 ¥${(s.credit_limit || 2000) - (s.current_debt || 0)})
+          ${s.name} (授信餘 ¥${(s.credit_limit || 2000) - (s.current_debt || 0)})
         </option>
       `).join('');
 
@@ -1742,7 +1729,7 @@
     window.onPushStoreChange = function(storeId) {
       const s = allStores.find(x => x.id === parseInt(storeId));
       if (s) {
-        document.getElementById('push-driver-name').value = s.driver_name || '张师傅';
+        document.getElementById('push-driver-name').value = s.driver_name || '張師傅';
         if (s.default_settlement) {
           document.getElementById('push-settlement-select').value = s.default_settlement;
         }
@@ -1753,7 +1740,7 @@
       const storeId = parseInt(document.getElementById('push-store-select').value);
       const store = allStores.find(s => s.id === storeId);
       const settlement = document.getElementById('push-settlement-select').value;
-      const driver = document.getElementById('push-driver-name').value.trim() || '张师傅';
+      const driver = document.getElementById('push-driver-name').value.trim() || '張師傅';
       const note = document.getElementById('push-note-input').value.trim();
 
       const items = [];
@@ -1767,7 +1754,7 @@
         }
       }
 
-      if (items.length === 0) return alert('请至少为 1 样货品标上件数！');
+      if (items.length === 0) return alert('請至少為 1 樣貨品標上件數！');
 
       const orderNo = `PS-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
       const { error } = await supabase.from('store_order').insert([{
@@ -1787,19 +1774,18 @@
         net_settle_amount: totalAmount,
         order_status: 'confirmed',
         delivery_status: 'ordered',
-        note: `[厂家主动关照配发] ${note}`,
-        driver_action_instruction: `【主动关照】核验交付 ${items.length}项，按${settlement}结算。`
+        note: `[廠家主動關照配發] ${note}`,
+        driver_action_instruction: `【主動關照】核驗交付 ${items.length}項，按${settlement}結算。`
       }]);
 
-      if (error) alert('配货失败: ' + error.message);
+      if (error) alert('配發失敗: ' + error.message);
       else {
-        alert('🎉 关照契单已生成，已传至供货师傅与掌柜手中！');
+        alert('🎉 關照契單已生成，已傳至供貨師傅手中！');
         window.closeModal('push-modal');
         window.loadHQData();
       }
     };
 
-    // 履约单据审阅与超额特信裁决
     function renderOrderFulfillmentList() {
       let filtered = allOrders;
       if (activeOrderFilter === 'pending_confirm') {
@@ -1814,14 +1800,13 @@
 
       const container = document.getElementById('order-fulfillment-list');
       if (filtered.length === 0) {
-        container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">当前暂无单据。</div>';
+        container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">當前暫無單據。</div>';
         return;
       }
 
       container.innerHTML = filtered.map(o => {
         const isDelivered = (o.delivery_status === 'delivered');
         const isPending = (o.order_status === 'pending_confirm');
-        const isProposal = (o.order_status === 'counter_proposal');
         const isOverCredit = (o.order_status === 'over_credit_pending');
 
         const orderItems = Array.isArray(o.items) ? o.items : [];
@@ -1838,7 +1823,7 @@
         const storeQuota = parseFloat(store?.monthly_return_quota || 500);
         const usedQuota = parseFloat(store?.used_return_quota || 0);
         const creditLimit = parseFloat(store?.credit_limit || 2000);
-        const basketCount = parseInt(store?.basket_count || 0);
+        const basketCount = parseInt(store?.carrier_hold_count || store?.basket_count || 0);
 
         const aiResult = analyzeOrderRiskAI({
           orderItems, returnItems, exchangeItems,
@@ -1857,19 +1842,18 @@
                   isOverCredit ? 'bg-rose-600 text-white animate-pulse' :
                   isPending ? 'bg-amber-100 text-amber-900 animate-pulse' : 'bg-blue-100 text-blue-900'
                 }">
-                  ${isDelivered ? '已核销交割' : isOverCredit ? '🚨 授信超额待特批' : isPending ? '待确认接单' : '已排单发运'}
+                  ${isDelivered ? '已核銷交割' : isOverCredit ? '🚨 授信超額待特批' : isPending ? '待確認接單' : '已排單發運'}
                 </span>
               </div>
               <span class="font-bold text-xs bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-lg">${o.settlement_type}</span>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-white p-2.5 rounded-2xl border border-stone-100 text-[11px] font-sans">
-              <div>新配: ${orderItems.map(i => `${i.name}x${i.qty}`).join('、') || '无'}</div>
-              <div class="text-rose-700">退验: ${returnItems.map(i => `${i.name}x${i.qty}`).join('、') || '无'}</div>
-              <div class="text-amber-800">对调: ${exchangeItems.map(i => `${i.name}x${i.qty}`).join('、') || '无'}</div>
+              <div>新配: ${orderItems.map(i => `${i.name}x${i.qty}`).join('、') || '無'}</div>
+              <div class="text-rose-700">退驗: ${returnItems.map(i => `${i.name}x${i.qty}`).join('、') || '無'}</div>
+              <div class="text-amber-800">對調: ${exchangeItems.map(i => `${i.name}x${i.qty}`).join('、') || '無'}</div>
             </div>
 
-            <!-- AI 风险体察建议卡 -->
             ${(isPending || isOverCredit) ? `
               <div class="p-2.5 rounded-2xl border text-[11px] space-y-1 ${
                 aiResult.healthLevel === 'red' || isOverCredit ? 'bg-rose-50 border-rose-200 text-rose-950' :
@@ -1877,8 +1861,8 @@
                 'bg-emerald-50 border-emerald-200 text-emerald-950'
               }">
                 <div class="font-bold flex justify-between">
-                  <span>🤖 AI 商道度量评分：${aiResult.healthScore}/100</span>
-                  <span class="font-mono text-[10px]">${isOverCredit ? '🚨 超额警报' : (aiResult.healthLevel === 'red' ? '多项超度' : '信义安和')}</span>
+                  <span>🤖 AI 商道度量評分：${aiResult.healthScore}/100</span>
+                  <span class="font-mono text-[10px]">${isOverCredit ? '🚨 超額警報' : (aiResult.healthLevel === 'red' ? '多項超度' : '信義安和')}</span>
                 </div>
                 <div class="space-y-0.5">
                   ${aiResult.tips.map(t => `<div class="text-[10px] leading-tight">• ${t}</div>`).join('')}
@@ -1886,7 +1870,6 @@
               </div>
             ` : ''}
 
-            <!-- 凭证与签名 -->
             ${(o.note || proofs.length > 0 || o.sign_image_url) ? `
               <div class="flex items-center justify-between text-[10px] pt-0.5">
                 <span class="text-amber-800">${o.note ? `💬 附言: ${o.note}` : ''}</span>
@@ -1898,66 +1881,66 @@
             ` : ''}
 
             <div class="flex justify-between items-center pt-2 border-t border-stone-200/60 font-sans text-xs">
-              <span class="font-mono text-stone-800 font-bold">净结: ¥${netTotal.toFixed(2)}</span>
+              <span class="font-mono text-stone-800 font-bold">淨結: ¥${netTotal.toFixed(2)}</span>
               ${isOverCredit ? `
                 <div class="flex gap-2">
-                  <button onclick="window.hqRejectOverCredit(${o.id})" class="bg-rose-50 text-rose-700 px-3 py-1.5 rounded-xl border border-rose-200 font-bold">拒绝赊销</button>
+                  <button onclick="window.hqRejectOverCredit(${o.id})" class="bg-rose-50 text-rose-700 px-3 py-1.5 rounded-xl border border-rose-200 font-bold">拒絕賒銷</button>
                   <button onclick="window.hqApproveOverCredit(${o.id}, ${o.store_id}, ${o.over_credit_amount || 0})" class="bg-emerald-800 text-white px-4 py-1.5 rounded-xl font-bold shadow">🛡️ TOTP 2FA特信放行</button>
                 </div>
               ` : (isPending ? `
                 <div class="flex gap-2">
-                  <button onclick="window.hqRejectWithProposal(${o.id})" class="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-xl font-bold">建议微调</button>
-                  <button onclick="window.hqApproveOrder(${o.id})" class="bg-[#1b4332] text-white px-4 py-1.5 rounded-xl font-bold shadow">✅ 应允接单</button>
+                  <button onclick="window.hqRejectWithProposal(${o.id})" class="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-xl font-bold">建議微調</button>
+                  <button onclick="window.hqApproveOrder(${o.id})" class="bg-[#1b4332] text-white px-4 py-1.5 rounded-xl font-bold shadow">✅ 應允接單</button>
                 </div>
-              ` : `<span class="text-stone-400 font-mono">${o.driver_action_instruction || '正常办理'}</span>`)}
+              ` : `<span class="text-stone-400 font-mono">${o.driver_action_instruction || '正常辦理'}</span>`)}
             </div>
           </div>
         `;
       }).join('');
     }
 
-    // TOTP 2FA 场景 4：超额赊销特信放行审批
+    // 2FA 場景 4：超額賒銷特信放行審批
     window.hqApproveOverCredit = function(orderId, storeId, overAmount) {
       window.trigger2FAAction(
-        `您正在特批放行【超额赊销 ¥${overAmount}】订单，该操作将直接承担该笔货款风险，请在手机身份验证器查看 6 位动态口令进行放行：`,
+        `您正在特批放行【超額賒銷 ¥${overAmount}】訂單，該操作將直接承擔該筆貨款風險，請在驗證器查看 6 位動態口令放行：`,
         async () => {
           await supabase.from('store_order').update({
             order_status: 'over_credit_approved',
-            driver_action_instruction: '【主管 TOTP 2FA 已特批】允许本单挂账交割，师傅可放心签字交货！'
+            driver_action_instruction: '【主管 TOTP 2FA 已特批】允許本單掛賬交割，師傅可放心簽字交貨！'
           }).eq('id', orderId);
-          alert('已通过 TOTP 2FA 特信放行！师傅端已即时解锁！');
+          alert('已通過 TOTP 2FA 特信放行！師傅端已解鎖！');
           window.loadHQData();
         }
       );
     };
 
     window.hqRejectOverCredit = async function(orderId) {
-      const reason = prompt('输入拒绝挂账指令（将即时传至供货师傅）：', '超额授信，本单严禁赊销，请当场收现！');
+      const reason = prompt('輸入拒絕掛賬指令（將傳至供貨師傅端）：', '超額授信，本單嚴禁賒銷，請當場收現！');
       if (!reason) return;
       await supabase.from('store_order').update({
         order_status: 'over_credit_rejected',
-        driver_action_instruction: `【总代拒绝挂账】${reason}`
+        driver_action_instruction: `【總代拒絕掛賬】${reason}`
       }).eq('id', orderId);
       window.loadHQData();
     };
 
     window.hqApproveOrder = async function(orderId) {
       const order = allOrders.find(o => o.id === orderId);
-      let driverCmd = `【发运指令】配发好物 ${order?.items?.length || 0}项；`;
-      if (order?.items_return?.length) driverCmd += `验退带回 ${order.items_return.length}箱旧品；`;
-      if (order?.settlement_type === 'cash') driverCmd += `当面点收真金现款；`;
-      else driverCmd += `按${order?.settlement_type}挂账由收货人手签！`;
+      let driverCmd = `【發運指令】配發好物 ${order?.items?.length || 0}項；`;
+      if (order?.items_return?.length) driverCmd += `驗退帶回 ${order.items_return.length}件舊品；`;
+      if (order?.settlement_type === 'cash') driverCmd += `當面點收真金現款；`;
+      else driverCmd += `按${order?.settlement_type}掛賬由收貨人手簽！`;
 
       await supabase.from('store_order').update({
         order_status: 'confirmed',
         driver_action_instruction: driverCmd
       }).eq('id', orderId);
-      alert('已确认接单！');
+      alert('已確認接單！');
       window.loadHQData();
     };
 
     window.hqRejectWithProposal = async function(orderId) {
-      const feedback = prompt('请输入给实体门店掌柜的修润建议（以礼相待、合情合意）：');
+      const feedback = prompt('請輸入給實體門店掌櫃的修潤建議：');
       if (!feedback || !feedback.trim()) return;
 
       await supabase.from('store_order').update({
@@ -1965,7 +1948,7 @@
         vendor_feedback: feedback.trim()
       }).eq('id', orderId);
 
-      alert('修润建议已传达门店掌柜！');
+      alert('修潤建議已傳達門店掌櫃！');
       window.loadHQData();
     };
 
@@ -2010,7 +1993,6 @@
       w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
     };
 
-    // 初始化入口：自执行函数封装杜绝编译抛错
     (async () => {
       const isAuthed = await checkHQAuthStatus();
       if (isAuthed) {
