@@ -13,7 +13,7 @@
 <body class="bg-[#f7f5f0] text-stone-800 font-sans p-4 min-h-screen">
   <div class="max-w-7xl mx-auto space-y-4">
     
-    <!-- 顶栏：东方墨韵与松石绿结合 -->
+    <!-- 顶栏：东方墨韵、松石绿结合，温润礼敬 -->
     <header class="bg-[#1b4332] text-white p-5 rounded-3xl shadow-lg flex flex-wrap justify-between items-center gap-4">
       <div>
         <div class="flex items-center gap-2.5">
@@ -22,8 +22,8 @@
             <option value="dealer" selected>🏢 区域总经销 (统仓调配)</option>
             <option value="factory">🏭 品牌制造工坊 (出厂直供)</option>
           </select>
-          <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 专有独立账本 · TOTP 2FA GUARD
+          <span id="tenant-membership-badge" class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 和合在册 · TOTP 2FA GUARD
           </span>
         </div>
         <div class="text-xs text-emerald-200 mt-1 flex flex-wrap gap-4 font-mono">
@@ -39,11 +39,14 @@
         <button onclick="window.openPushOrderModal()" class="bg-[#2d6a4f] hover:bg-[#1b4332] text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow active:scale-95 transition flex items-center gap-1.5 border border-emerald-500/30">
           <span>📦</span> 主动关照配货
         </button>
-        <button onclick="window.openTotpSetupModal()" class="bg-[#143628] hover:bg-[#0e271d] text-amber-300 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition flex items-center gap-1">
+        <button onclick="window.openChangePasswordModal()" class="bg-[#143628] hover:bg-[#0e271d] text-amber-300 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition flex items-center gap-1">
+          <span>🔑</span> 自立新约 (改密)
+        </button>
+        <button onclick="window.openTotpSetupModal()" class="bg-[#143628] hover:bg-[#0e271d] text-emerald-300 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition flex items-center gap-1">
           <span>🛡️</span> 验证器绑定
         </button>
 
-        <!-- 当前商号专属盾徽：只读锁定当前租户，杜绝横向越权 -->
+        <!-- 当前商号专属盾徽：严格锁定当前租户，杜绝横向越权 -->
         <div class="bg-[#143628] border border-emerald-600/50 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
           <div>
@@ -60,6 +63,18 @@
         </button>
       </div>
     </header>
+
+    <!-- 温情礼帖：商契关照提示条 (春风宽待或通融提示) -->
+    <div id="hq-grace-banner" class="hidden bg-amber-50 border border-amber-300 text-amber-950 p-3.5 rounded-2xl flex items-center justify-between text-xs">
+      <div class="flex items-center gap-2.5">
+        <span class="text-base">🍃</span>
+        <div>
+          <b class="font-bold">春风和合 · 提请关照：</b>
+          <span id="hq-grace-msg">岁序更迭，商道相勉。平台特奉上宽待期，所有业务畅行无碍，请掌柜于闲暇时续办会籍新契。</span>
+        </div>
+      </div>
+      <span class="text-[10px] text-amber-800 font-mono">商道相携 · 宽猛相济</span>
+    </div>
 
     <!-- 导航标签 -->
     <nav class="flex bg-white rounded-2xl shadow-sm border border-stone-200/80 p-1.5 gap-2 text-xs font-bold">
@@ -238,6 +253,44 @@
       <div class="text-center pt-1 border-t border-stone-100 flex justify-between items-center text-[10px]">
         <a href="join.html" class="text-emerald-800 font-bold hover:underline">尚未入驻？提交资质申请</a>
         <span class="text-stone-400">RFC 6238 TOTP 守护</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 掌柜自立新约 (自主修改密钥密码) 模态窗 -->
+  <div id="modal-change-password" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🔑 掌柜自立新约 · 自助改密</h3>
+          <p class="text-[10px] text-stone-400">密码仅属掌柜自家掌握，平台不窥视留存</p>
+        </div>
+        <button onclick="window.closeModal('modal-change-password')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div class="space-y-2.5">
+        <div>
+          <label class="block text-stone-600 mb-1">原访问密钥 或 平台签发的信物重置码 *：</label>
+          <input type="password" id="chg-old-key" placeholder="输入旧密钥 或 CLAIM-XXXX" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
+        </div>
+        <div>
+          <label class="block text-stone-600 mb-1">新立访问密钥 (密码) *：</label>
+          <input type="password" id="chg-new-key" placeholder="设置新密码 (建议含字母与数字)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
+        </div>
+        <div>
+          <label class="block text-stone-600 mb-1">再次确认新密钥 *：</label>
+          <input type="password" id="chg-confirm-key" placeholder="重复新密码" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
+        </div>
+        <div>
+          <label class="block text-stone-600 mb-1 font-bold">手机验证器 6 位动态码 (TOTP 二次核身) *：</label>
+          <input type="text" id="chg-totp-code" maxlength="6" placeholder="000000" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base outline-none text-emerald-950">
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-stone-100 flex gap-2">
+        <button onclick="window.submitChangePassword()" class="flex-1 bg-[#1b4332] text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
+          立约存盘生效
+        </button>
       </div>
     </div>
   </div>
@@ -549,7 +602,7 @@
         </div>
         <div>
           <label class="font-bold text-stone-700 text-[11px] block mb-1">自定三级细分类 (厂家管)</label>
-          <input type="text" id="prod-cat-tertiary" placeholder="如：压榨花生油" class="w-full bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none font-medium text-xs">
+          <input type="text" id="prod-cat-tertiary" placeholder="如：压榨花生油" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 outline-none font-medium text-xs">
         </div>
       </div>
 
@@ -677,13 +730,11 @@
     // =========================================================================
     const TOTP = {
       base32chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567',
-
       base32ToBytes(base32) {
         let clean = base32.toUpperCase().replace(/=+$/, '');
-        let length = clean.length;
         let bits = 0, value = 0, index = 0;
-        let bytes = new Uint8Array((length * 5 / 8) | 0);
-        for (let i = 0; i < length; i++) {
+        let bytes = new Uint8Array((clean.length * 5 / 8) | 0);
+        for (let i = 0; i < clean.length; i++) {
           let val = this.base32chars.indexOf(clean.charAt(i));
           if (val === -1) continue;
           value = (value << 5) | val;
@@ -695,7 +746,6 @@
         }
         return bytes;
       },
-
       bytesToBase32(bytes) {
         let bits = 0, value = 0, output = '';
         for (let i = 0; i < bytes.length; i++) {
@@ -709,47 +759,33 @@
         if (bits > 0) output += this.base32chars[(value << (5 - bits)) & 31];
         return output;
       },
-
       async generateHOTP(secretBytes, counter) {
         const counterBuffer = new ArrayBuffer(8);
         const counterView = new DataView(counterBuffer);
         counterView.setUint32(0, Math.floor(counter / 0x100000000));
         counterView.setUint32(4, counter & 0xffffffff);
-
-        const key = await crypto.subtle.importKey(
-          'raw', secretBytes, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
-        );
+        const key = await crypto.subtle.importKey('raw', secretBytes, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
         const signature = await crypto.subtle.sign('HMAC', key, counterBuffer);
         const hmac = new Uint8Array(signature);
         const offset = hmac[hmac.length - 1] & 0x0f;
-        const binary =
-          ((hmac[offset] & 0x7f) << 24) |
-          ((hmac[offset + 1] & 0xff) << 16) |
-          ((hmac[offset + 2] & 0xff) << 8) |
-          (hmac[offset + 3] & 0xff);
-        const otp = (binary % 1000000).toString();
-        return otp.padStart(6, '0');
+        const binary = ((hmac[offset] & 0x7f) << 24) | ((hmac[offset + 1] & 0xff) << 16) | ((hmac[offset + 2] & 0xff) << 8) | (hmac[offset + 3] & 0xff);
+        return (binary % 1000000).toString().padStart(6, '0');
       },
-
       async verifyTOTP(secretBase32, token, windowSteps = 1) {
         if (!secretBase32 || !token) return false;
         try {
           const secretBytes = this.base32ToBytes(secretBase32);
-          const epoch = Math.floor(Date.now() / 1000);
-          const currentCounter = Math.floor(epoch / 30);
+          const currentCounter = Math.floor(Date.now() / 1000 / 30);
           const cleanToken = token.trim();
-
           for (let step = -windowSteps; step <= windowSteps; step++) {
             const expectedOtp = await this.generateHOTP(secretBytes, currentCounter + step);
             if (expectedOtp === cleanToken) return true;
           }
           return false;
         } catch (err) {
-          console.error('TOTP calculation error:', err);
           return false;
         }
       },
-
       generateRandomSecret(byteLength = 16) {
         const randomBytes = new Uint8Array(byteLength);
         crypto.getRandomValues(randomBytes);
@@ -810,6 +846,55 @@
     };
 
     // ----------------------------------------------------
+    // 掌柜自立新约 (自主修改密钥密码)
+    // ----------------------------------------------------
+    window.openChangePasswordModal = function() {
+      document.getElementById('chg-old-key').value = '';
+      document.getElementById('chg-new-key').value = '';
+      document.getElementById('chg-confirm-key').value = '';
+      document.getElementById('chg-totp-code').value = '';
+      window.openModal('modal-change-password');
+    };
+
+    window.submitChangePassword = async function() {
+      const oldKey = document.getElementById('chg-old-key').value.trim();
+      const newKey = document.getElementById('chg-new-key').value.trim();
+      const confirmKey = document.getElementById('chg-confirm-key').value.trim();
+      const totpCode = document.getElementById('chg-totp-code').value.trim();
+
+      if (!oldKey || !newKey) return alert('请填全原密钥与新立密钥！');
+      if (newKey !== confirmKey) return alert('两次输入的新密钥不一致！');
+      if (!totpCode || totpCode.length !== 6) return alert('请输入手机验证器 6 位动态码进行二次核身！');
+
+      const { data: tenant } = await supabase.from('platform_tenant').select('*').eq('tenant_id', currentAgent).single();
+      if (!tenant) return alert('商号异常！');
+
+      // 验证原密钥或重置兑换码
+      const isOldKeyMatch = (oldKey === tenant.access_key);
+      const isTokenMatch = (tenant.reset_claim_token && oldKey === tenant.reset_claim_token);
+      if (!isOldKeyMatch && !isTokenMatch) {
+        return alert('⚠️ 原密钥或平台签发的重置信码不正确！');
+      }
+
+      // 验证 TOTP 动态码
+      const secret = tenant.totp_secret || 'JBSWY3DPEHPK3PXP';
+      const isTotpValid = await TOTP.verifyTOTP(secret, totpCode, 1);
+      if (!isTotpValid) {
+        return alert('⚠️ 手机身份验证器 6 位动态码错误或已过期！');
+      }
+
+      // 自立新约存盘，核销重置兑换码
+      await supabase.from('platform_tenant').update({
+        access_key: newKey,
+        reset_claim_token: null
+      }).eq('tenant_id', currentAgent);
+
+      sessionStorage.setItem('hq_tenant_session_' + currentAgent, newKey);
+      alert('🎉 掌柜自立新约成功！新密钥已生效存盘，请谨记自家密码。');
+      window.closeModal('modal-change-password');
+    };
+
+    // ----------------------------------------------------
     // TOTP 2FA 关键业务拦截调度器
     // ----------------------------------------------------
     window.trigger2FAAction = function(actionDesc, onVerifiedCallback) {
@@ -846,7 +931,7 @@
     };
 
     // ----------------------------------------------------
-    // 厂商登录与会话保持 (严格绑定当前商号)
+    // 厂商登录与会话保持
     // ----------------------------------------------------
     window.verifyHQAuthPwd = async function(e) {
       e.preventDefault();
@@ -877,7 +962,7 @@
       if (!data[0].is_active) {
         btn.disabled = false;
         btn.innerText = '核验密钥 · 登入调度台';
-        errBox.innerText = '🚫 该商号已被平台运营者冻结停权！';
+        errBox.innerText = '🚫 该商号已被平台运营者设案暂歇，请与平台以礼商榷！';
         errBox.classList.remove('hidden');
         return;
       }
@@ -959,7 +1044,6 @@
     // 数据调度主流程 (严格锁定在当前登录商号空间)
     // ----------------------------------------------------
     window.loadHQData = async function() {
-      // 1. 只精准查询自身当前已登录的租户信息，绝不查询全部租户，杜绝横向越权
       const { data: curTenant, error: tErr } = await supabase
         .from('platform_tenant')
         .select('*')
@@ -967,7 +1051,7 @@
         .single();
 
       if (tErr || !curTenant || !curTenant.is_active) {
-        alert('当前商号凭证已失效或被冻结，请重新登录！');
+        alert('当前商号凭证已失效或被暂歇，请重新登录！');
         window.logoutHQ();
         return;
       }
@@ -976,6 +1060,24 @@
       document.getElementById('hq-company-badge').innerText = `${curTenant.company_name} (信码 ${curTenant.invite_code})`;
       document.getElementById('hq-tenant-id').innerText = curTenant.tenant_id;
       document.getElementById('hq-invite-code').innerText = curTenant.invite_code || '888001';
+
+      // 商契气象状态温情呈现
+      const status = curTenant.membership_status || 'active';
+      const badgeEl = document.getElementById('tenant-membership-badge');
+      const bannerEl = document.getElementById('hq-grace-banner');
+      if (status === 'grace') {
+        badgeEl.className = "bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1 font-mono";
+        badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> 春风宽待中 · 2FA GUARD';
+        bannerEl.classList.remove('hidden');
+      } else if (status === 'restricted') {
+        badgeEl.className = "bg-blue-500/20 text-blue-300 text-[10px] px-2 py-0.5 rounded-full border border-blue-400/30 flex items-center gap-1 font-mono";
+        badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> 护盘存续中 · 2FA GUARD';
+        bannerEl.classList.add('hidden');
+      } else {
+        badgeEl.className = "bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono";
+        badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 和合在册 · TOTP 2FA GUARD';
+        bannerEl.classList.add('hidden');
+      }
 
       // 2. 加载平台一级二级标准字典
       const { data: pCats } = await supabase.from('platform_category').select('*').eq('is_active', true).order('sort_order', { ascending: true });
@@ -1164,6 +1266,12 @@
     };
 
     window.openAddProductModal = function() {
+      // 护盘存续限制发新检查
+      const isRestricted = document.getElementById('tenant-membership-badge').innerText.includes('护盘存续');
+      if (isRestricted) {
+        return alert('商号当前处于【护盘存续】阶段，仅维护已有好物供配，暂缓发售全新货品，敬请谅解！');
+      }
+
       document.getElementById('prod-modal-title').innerText = '📦 上架良品好货';
       document.getElementById('editing-prod-id').value = '';
       uploadedImageBase64 = ''; selectedTags = [];
@@ -1560,7 +1668,7 @@
     };
 
     window.hqRejectWithProposal = async function(orderId) {
-      const feedback = prompt('请输入给小店掌柜的修润建议（如：暂缺换配、退货理由商榷）：');
+      const feedback = prompt('请输入给小店掌柜的修润建议（以礼相待、合情合意）：');
       if (!feedback || !feedback.trim()) return;
 
       await supabase.from('store_order').update({
@@ -1895,7 +2003,7 @@
       w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
     };
 
-    // 页面初始化鉴权检查 (标准自执行异步函数封装，避免 esbuild 构建异常)
+    // 初始化入口：自执行函数封装杜绝编译抛错
     (async () => {
       const isAuthed = await checkHQAuthStatus();
       if (isAuthed) {
