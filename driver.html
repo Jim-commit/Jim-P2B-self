@@ -78,7 +78,7 @@
       </div>
     </main>
 
-    <!-- 空車巡街拓客面板 (拍照/語音多模態預留) -->
+    <!-- 空車巡街拓客面板 -->
     <main id="pane-explore" class="hidden p-3 flex-1 space-y-3">
       <div class="bg-stone-50 border border-stone-200 p-4 rounded-3xl space-y-3 text-xs">
         <div>
@@ -911,7 +911,7 @@
     };
 
     window.finalizeSettlement = async function() {
-      if (!confirm('賬房財務已清點真金現鈔、轉賬與周轉載具？確認後隨車錢箱歸零，平賬收工。')) return;
+      if (!confirm('出納已清點真金現鈔、轉賬與周轉載具？確認後隨車錢箱歸零，平賬收工。')) return;
 
       await supabase
         .from('driver_collection_log')
