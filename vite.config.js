@@ -9,7 +9,7 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         platform: resolve(__dirname, 'platform.html'),
         hq: resolve(__dirname, 'hq.html'),
-        join: resolve(__dirname, 'join.html'),
+        mall: resolve(__dirname, 'mall.html'),
         driver: resolve(__dirname, 'driver.html')
       }
     }
