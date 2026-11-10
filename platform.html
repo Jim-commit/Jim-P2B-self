@@ -1006,22 +1006,39 @@
 
     window.saveTenantStatusAdjustment = function() {
       const id = document.getElementById('adjust-tenant-id').value;
-      const status = document.querySelector('input[name="membership_status_choice"]:checked').value;
+      const statusEl = document.querySelector('input[name="membership_status_choice"]:checked');
+      if (!statusEl) return alert('請選擇一種商契氣象狀態！');
+
+      const status = statusEl.value;
       const note = document.getElementById('adjust-note-input').value.trim();
 
       window.triggerPlatform2FA(
         `您正在調整該商號的商契氣象為【${status}】，依中華商道禮數，請核驗憑證令牌：`,
         async () => {
           const is_active = (status !== 'paused');
-          await supabase.from('platform_tenant').update({
-            membership_status: status,
-            is_active: is_active
-          }).eq('id', parseInt(id));
+          const targetId = isNaN(id) ? id : parseInt(id);
 
-          recordAuditLog('商契氣象調控', 'WARN', { tenant_id_pk: id, target_status: status, note });
-          alert('商契調控已依禮頒布生效！');
+          const { data, error } = await supabase
+            .from('platform_tenant')
+            .update({
+              membership_status: status,
+              is_active: is_active
+            })
+            .eq('id', targetId)
+            .select();
+
+          if (error) {
+            return alert('❌ 狀態調整失敗，資料庫拒絕寫入: ' + error.message);
+          }
+
+          if (!data || data.length === 0) {
+            return alert('⚠️ 找不到對應的商號紀錄，未更新任何資料列。請確認該商號是否存在！');
+          }
+
+          await recordAuditLog('商契氣象調控', 'WARN', { tenant_id_pk: id, target_status: status, note });
+          alert('✅ 商契氣象調控已依禮頒布生效！');
           window.closeModal('modal-status-adjust');
-          window.loadPlatformData();
+          await window.loadPlatformData();
         }
       );
     };
