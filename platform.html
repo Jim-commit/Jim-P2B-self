@@ -343,7 +343,7 @@
       </div>
 
       <div class="pt-2 border-t border-stone-100 flex gap-2">
-        <button onclick="window.saveTenantStatusAdjustment()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
+        <button type="button" onclick="window.saveTenantStatusAdjustment()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
           依禮頒布生效
         </button>
       </div>
@@ -990,6 +990,7 @@
     };
 
     window.openTenantStatusModal = function(id, tenantId, companyName, currentStatus) {
+      // 確保將 tenant_id 作為主要唯一標識寫入
       document.getElementById('adjust-tenant-id').value = tenantId || id;
       document.getElementById('adjust-tenant-title').innerText = `${companyName} (${tenantId})`;
 
@@ -1010,63 +1011,52 @@
       const status = statusEl.value;
       const note = document.getElementById('adjust-note-input').value.trim();
 
-      const executeUpdate = async () => {
-        try {
-          const is_active = (status !== 'paused');
+      // 先行關閉調整彈窗，避免雙重遮罩衝突
+      window.closeModal('modal-status-adjust');
 
-          let res;
-          if (!isNaN(tenantKey) && Number.isInteger(parseFloat(tenantKey))) {
-            res = await supabase
-              .from('platform_tenant')
-              .update({ membership_status: status, is_active: is_active })
-              .or(`id.eq.${tenantKey},tenant_id.eq.${tenantKey}`)
-              .select();
-          } else {
-            res = await supabase
-              .from('platform_tenant')
-              .update({ membership_status: status, is_active: is_active })
-              .eq('tenant_id', tenantKey)
-              .select();
-          }
+      try {
+        const is_active = (status !== 'paused');
 
-          if (res.error) {
-            console.error('更新失敗:', res.error);
-            return alert('❌ 資料庫更新失敗: ' + res.error.message);
-          }
+        let { data, error } = await supabase
+          .from('platform_tenant')
+          .update({
+            membership_status: status,
+            is_active: is_active
+          })
+          .eq('tenant_id', tenantKey)
+          .select();
 
-          if (!res.data || res.data.length === 0) {
-            const retry = await supabase
-              .from('platform_tenant')
-              .update({ membership_status: status, is_active: is_active })
-              .eq('tenant_id', tenantKey)
-              .select();
-
-            if (!retry.data || retry.data.length === 0) {
-              return alert(`⚠️ 未找到標識為【${tenantKey}】的商號紀錄！`);
-            }
-          }
-
-          await recordAuditLog('商契氣象調控', 'WARN', { tenant_key: tenantKey, target_status: status, note });
-
-          alert(`✅ 商契氣象已成功調控為【${status}】！`);
-          window.closeModal('modal-status-adjust');
-          await window.loadPlatformData();
-        } catch (err) {
-          console.error('執行例外:', err);
-          alert('❌ 執行出錯: ' + err.message);
+        // 若使用 tenant_id 查無結果，嘗試使用數字 id 進行降級更新
+        if (!error && (!data || data.length === 0) && !isNaN(tenantKey)) {
+          const retry = await supabase
+            .from('platform_tenant')
+            .update({
+              membership_status: status,
+              is_active: is_active
+            })
+            .eq('id', parseInt(tenantKey))
+            .select();
+          data = retry.data;
+          error = retry.error;
         }
-      };
 
-      const modal2FA = document.getElementById('modal-platform-2fa');
-      if (modal2FA && typeof window.triggerPlatform2FA === 'function') {
-        window.triggerPlatform2FA(
-          `您正在調整商號【${tenantKey}】的商契氣象為【${status}】，請輸入動態碼授權：`,
-          executeUpdate
-        );
-      } else {
-        if (confirm(`【商道調控確認】\n確認將商號【${tenantKey}】的商契氣象變更為【${status}】？`)) {
-          await executeUpdate();
+        if (error) {
+          console.error('更新失敗:', error);
+          return alert('❌ 資料庫更新失敗: ' + error.message);
         }
+
+        if (!data || data.length === 0) {
+          return alert(`⚠️ 未找到商號標識為【${tenantKey}】的資料列！`);
+        }
+
+        // 記錄不可篡改安全審計
+        await recordAuditLog('商契氣象調控', 'WARN', { tenant_key: tenantKey, target_status: status, note });
+
+        alert(`✅ 商契氣象已成功調控為【${status}】！`);
+        await window.loadPlatformData();
+      } catch (err) {
+        console.error('執行例外:', err);
+        alert('❌ 執行出錯: ' + err.message);
       }
     };
 
