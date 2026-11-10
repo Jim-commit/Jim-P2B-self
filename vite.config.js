@@ -3,7 +3,7 @@ import { resolve } from 'path';
 
 export default defineConfig({
   build: {
-    target: 'esnext', // 允许顶层现代语法
+    target: 'esnext',
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
