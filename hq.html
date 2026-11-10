@@ -27,8 +27,8 @@
           </span>
         </div>
         <div class="text-xs text-emerald-200 mt-1 flex flex-wrap gap-4 font-mono">
-          <span>商号代号: <b id="hq-tenant-id" class="text-white">BJ_SHUNDA</b></span>
-          <span>下游认领码: <b id="hq-invite-code" class="text-amber-300 tracking-wider">888001</b></span>
+          <span>商号代号: <b id="hq-tenant-id" class="text-white">--</b></span>
+          <span>下游认领码: <b id="hq-invite-code" class="text-amber-300 tracking-wider">--</b></span>
           <span>相照小店: <b id="stat-active-stores" class="text-white">0 家</b></span>
           <span>在外周转筐: <b id="stat-baskets" class="text-amber-300">0 个</b></span>
           <span>随车待缴现款: <b id="stat-pending-cash" class="text-emerald-300">¥0.00</b></span>
@@ -40,10 +40,18 @@
           <span>📦</span> 主动关照配货
         </button>
         <button onclick="window.openTotpSetupModal()" class="bg-[#143628] hover:bg-[#0e271d] text-amber-300 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition flex items-center gap-1">
-          <span>🛡️</span> 身份验证器绑定
+          <span>🛡️</span> 验证器绑定
         </button>
-        <select id="agent-selector" onchange="window.switchAgent(this.value)" class="bg-[#143628] border border-emerald-600/50 text-white text-xs px-3 py-2 rounded-xl outline-none font-bold">
-        </select>
+
+        <!-- 当前商号专属盾徽：只读锁定当前租户，杜绝横向越权 -->
+        <div class="bg-[#143628] border border-emerald-600/50 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <div>
+            <b id="hq-company-badge" class="text-white text-xs block font-bold">校验中...</b>
+            <span class="text-[9px] text-emerald-300 font-mono">专属租户隔离锁定</span>
+          </div>
+        </div>
+
         <button onclick="window.loadHQData()" class="bg-white text-emerald-950 text-xs px-3.5 py-2 rounded-xl font-bold shadow hover:bg-stone-50 transition active:scale-95">
           刷新调度盘
         </button>
@@ -665,7 +673,7 @@
     window.closeModal = id => document.getElementById(id).classList.add('hidden');
 
     // =========================================================================
-    // RFC 6238 标准纯前端 TOTP (HMAC-SHA1) 算法引擎 (原生 Web Crypto API 实现)
+    // RFC 6238 原生纯前端 TOTP (HMAC-SHA1) 算法引擎
     // =========================================================================
     const TOTP = {
       base32chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567',
@@ -731,7 +739,6 @@
           const currentCounter = Math.floor(epoch / 30);
           const cleanToken = token.trim();
 
-          // 允许当前时间步长以及前后偏移步长，容错网络与本地时钟偏移
           for (let step = -windowSteps; step <= windowSteps; step++) {
             const expectedOtp = await this.generateHOTP(secretBytes, currentCounter + step);
             if (expectedOtp === cleanToken) return true;
@@ -764,12 +771,10 @@
       document.getElementById('totp-secret-display').innerText = secret;
       document.getElementById('totp-test-code').value = '';
 
-      // 生成 Google Authenticator 规范 otpauth 链接
       const issuer = encodeURIComponent('供应链商贸中枢');
       const account = encodeURIComponent(`${currentAgent}(${tenant?.company_name || '商号'})`);
       const otpauthUrl = `otpauth://totp/${issuer}:${account}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
 
-      // 使用 QR 服务生成 App 扫码用二维码
       document.getElementById('totp-setup-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(otpauthUrl)}`;
       window.openModal('modal-totp-setup');
     };
@@ -826,7 +831,6 @@
         return alert('⚠️ 请输入身份验证器中当前的 6 位动态码！');
       }
 
-      // 获取当前商号的 TOTP 密钥
       const { data: tenant } = await supabase.from('platform_tenant').select('*').eq('tenant_id', currentAgent).single();
       const secret = tenant?.totp_secret || 'JBSWY3DPEHPK3PXP';
 
@@ -842,7 +846,7 @@
     };
 
     // ----------------------------------------------------
-    // 厂商登录与会话保持
+    // 厂商登录与会话保持 (严格绑定当前商号)
     // ----------------------------------------------------
     window.verifyHQAuthPwd = async function(e) {
       e.preventDefault();
@@ -879,7 +883,7 @@
       }
 
       sessionStorage.setItem('hq_tenant_session_' + tenantId, accessKey);
-      localStorage.setItem('hq_active_agent', tenantId);
+      sessionStorage.setItem('hq_active_authed_tenant', tenantId);
       currentAgent = tenantId;
 
       document.getElementById('hq-auth-gate').classList.add('hidden');
@@ -888,28 +892,34 @@
     };
 
     async function checkHQAuthStatus() {
-      const activeTenant = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
-      const savedKey = sessionStorage.getItem('hq_tenant_session_' + activeTenant);
+      const authedTenant = sessionStorage.getItem('hq_active_authed_tenant');
+      if (!authedTenant) {
+        document.getElementById('hq-auth-gate').classList.remove('hidden');
+        return false;
+      }
 
+      const savedKey = sessionStorage.getItem('hq_tenant_session_' + authedTenant);
       if (!savedKey) {
         document.getElementById('hq-auth-gate').classList.remove('hidden');
-        document.getElementById('hq-login-tenant').value = activeTenant;
+        document.getElementById('hq-login-tenant').value = authedTenant;
         return false;
       }
 
       const { data } = await supabase
         .from('platform_tenant')
         .select('*')
-        .eq('tenant_id', activeTenant)
+        .eq('tenant_id', authedTenant)
         .eq('access_key', savedKey)
         .eq('is_active', true)
         .limit(1);
 
       if (data && data.length > 0) {
+        currentAgent = authedTenant;
         document.getElementById('hq-auth-gate').classList.add('hidden');
         return true;
       } else {
-        sessionStorage.removeItem('hq_tenant_session_' + activeTenant);
+        sessionStorage.removeItem('hq_tenant_session_' + authedTenant);
+        sessionStorage.removeItem('hq_active_authed_tenant');
         document.getElementById('hq-auth-gate').classList.remove('hidden');
         return false;
       }
@@ -917,6 +927,7 @@
 
     window.logoutHQ = function() {
       sessionStorage.removeItem('hq_tenant_session_' + currentAgent);
+      sessionStorage.removeItem('hq_active_authed_tenant');
       document.getElementById('hq-auth-gate').classList.remove('hidden');
     };
 
@@ -935,12 +946,6 @@
       document.getElementById(`tab-btn-${tabName}`).className = "flex-1 py-2 text-center rounded-xl bg-[#1b4332] text-white transition";
     };
 
-    window.switchAgent = function(val) {
-      currentAgent = val;
-      localStorage.setItem('hq_active_agent', val);
-      window.loadHQData();
-    };
-
     window.onChannelModeChange = function(mode) {
       const specLabel = document.getElementById('prod-spec-label');
       if (mode === 'online') {
@@ -951,32 +956,38 @@
     };
 
     // ----------------------------------------------------
-    // 数据调度主流程
+    // 数据调度主流程 (严格锁定在当前登录商号空间)
     // ----------------------------------------------------
     window.loadHQData = async function() {
-      const { data: tenantList } = await supabase.from('platform_tenant').select('*').eq('is_active', true);
-      const validTenants = tenantList || [{ tenant_id: 'BJ_SHUNDA', company_name: '北京顺达商贸', invite_code: '888001' }];
-      
-      const sel = document.getElementById('agent-selector');
-      sel.innerHTML = validTenants.map(t => `
-        <option value="${t.tenant_id}" ${t.tenant_id === currentAgent ? 'selected' : ''}>
-          ${t.company_name} (信码 ${t.invite_code})
-        </option>
-      `).join('');
+      // 1. 只精准查询自身当前已登录的租户信息，绝不查询全部租户，杜绝横向越权
+      const { data: curTenant, error: tErr } = await supabase
+        .from('platform_tenant')
+        .select('*')
+        .eq('tenant_id', currentAgent)
+        .single();
 
-      const curTenantObj = validTenants.find(t => t.tenant_id === currentAgent) || validTenants[0];
-      currentAgent = curTenantObj.tenant_id;
-      document.getElementById('hq-tenant-id').innerText = currentAgent;
-      document.getElementById('hq-invite-code').innerText = curTenantObj.invite_code || '888001';
+      if (tErr || !curTenant || !curTenant.is_active) {
+        alert('当前商号凭证已失效或被冻结，请重新登录！');
+        window.logoutHQ();
+        return;
+      }
 
+      // 锁定显示当前登录企业全称与标识
+      document.getElementById('hq-company-badge').innerText = `${curTenant.company_name} (信码 ${curTenant.invite_code})`;
+      document.getElementById('hq-tenant-id').innerText = curTenant.tenant_id;
+      document.getElementById('hq-invite-code').innerText = curTenant.invite_code || '888001';
+
+      // 2. 加载平台一级二级标准字典
       const { data: pCats } = await supabase.from('platform_category').select('*').eq('is_active', true).order('sort_order', { ascending: true });
       allPlatformCats = pCats || [];
       populateCategoryDropdowns();
 
+      // 3. 严格绑定当前商号查询名下商品
       const { data: prods } = await supabase.from('product').select('*').eq('tenant_id', currentAgent).order('id', { ascending: false });
       allProducts = prods || [];
       renderProductTable();
 
+      // 4. 严格绑定当前商号查询相照门店
       const { data: stores } = await supabase.from('store').select('*').eq('tenant_id', currentAgent);
       allStores = stores || [];
       document.getElementById('stat-active-stores').innerText = `${allStores.length} 家`;
@@ -984,6 +995,7 @@
       document.getElementById('stat-baskets').innerText = `${totalBaskets} 个`;
       renderStoreTable();
 
+      // 5. 严格绑定当前商号查询随车收银待入库流水
       const { data: pendingLogs } = await supabase
         .from('driver_collection_log')
         .select('*')
@@ -1000,6 +1012,7 @@
       else { badge.classList.add('hidden'); }
       renderDriverSettleList(logs);
 
+      // 6. 严格绑定当前商号查询履约对账凭单
       const { data: fulfillmentOrders } = await supabase
         .from('store_order')
         .select('*')
@@ -1015,6 +1028,7 @@
       document.getElementById('count-over-credit').innerText = overCreditCount;
       renderOrderFulfillmentList();
 
+      // 7. 严格绑定当前商号查询客情池线索
       const { data: leads } = await supabase.from('store_lead').select('*').eq('tenant_id', currentAgent).order('id', { ascending: false });
       const leadList = leads || [];
       document.getElementById('lead-badge').innerText = leadList.length;
@@ -1139,7 +1153,7 @@
           `随车交账金额达 ¥${amt.toFixed(2)}，属于大额现金平账，请在手机身份验证器查看 6 位动态口令进行放行：`,
           async () => {
             await supabase.from('driver_collection_log').update({ settled_to_hq: true }).eq('id', logId);
-            alert('随车大额钱款已通过 TOTP 核身点清平账入库！');
+            alert('随车大额钱款已通过 TOTP 2FA 核身点清平账入库！');
             window.loadHQData();
           }
         );
@@ -1284,7 +1298,7 @@
         `您正在从独立账本中物理删除良品【${name}】，该操作不可逆并将影响历史单据分析，请输入手机身份验证器 6 位动态码确认删除：`,
         async () => {
           await supabase.from('product').delete().eq('id', id);
-          alert(`良品【${name}】已通过 TOTP 核验注销！`);
+          alert(`良品【${name}】已通过 TOTP 2FA 核验注销！`);
           window.loadHQData();
         }
       );
@@ -1881,7 +1895,7 @@
       w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
     };
 
-    // 初始化入口 (标准自执行异步函数封装，避免 esbuild 构建异常)
+    // 页面初始化鉴权检查 (标准自执行异步函数封装，避免 esbuild 构建异常)
     (async () => {
       const isAuthed = await checkHQAuthStatus();
       if (isAuthed) {
