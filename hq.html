@@ -22,8 +22,8 @@
             <option value="dealer" selected>🏢 区域总经销 (统仓调配)</option>
             <option value="factory">🏭 品牌制造工坊 (出厂直供)</option>
           </select>
-          <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 专有独立账本
+          <span id="tenant-totp-badge" class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono">
+            <span class="w-1.5 h-1.5 rounded-full bg-stone-400"></span> 独立账本
           </span>
         </div>
         <div class="text-xs text-emerald-200 mt-1 flex flex-wrap gap-4 font-mono">
@@ -36,6 +36,9 @@
       </div>
 
       <div class="flex items-center gap-2">
+        <button onclick="window.openTenantBindTOTPModal()" class="bg-[#143628] hover:bg-[#0f2a1f] text-amber-300 text-xs px-3 py-2 rounded-xl font-bold shadow active:scale-95 transition flex items-center gap-1 border border-emerald-500/30">
+          <span>📱</span> 绑定身份验证器
+        </button>
         <button onclick="window.openPushOrderModal()" class="bg-[#2d6a4f] hover:bg-[#1b4332] text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow active:scale-95 transition flex items-center gap-1.5 border border-emerald-500/30">
           <span>📦</span> 主动关照配货
         </button>
@@ -68,7 +71,7 @@
       </button>
     </nav>
 
-    <!-- 板块 1：门店名册 -->
+    <!-- 板块 1：门店档案与风控 -->
     <section id="tab-stores" class="space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
@@ -173,7 +176,7 @@
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-stone-800">💵 随车师傅钱箱清点入账</h2>
-            <p class="text-[11px] text-stone-400">实收现钞与电子扫码款，出纳点清后平账入库</p>
+            <p class="text-[11px] text-stone-400">实收现钞与电子扫码款，大额平账由 TOTP 2FA 严密防护</p>
           </div>
           <button onclick="window.loadHQData()" class="text-xs text-emerald-800 font-bold hover:underline">刷新对账</button>
         </div>
@@ -199,22 +202,13 @@
 
   </div>
 
-  <!-- 厂商安全登录门禁 (零短信：商号密钥 / 微信免密扫码) -->
+  <!-- 厂商安全登录门禁 (专属密钥 + TOTP) -->
   <div id="hq-auth-gate" class="fixed inset-0 bg-[#0c1e16]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-stone-800 shadow-2xl">
       <div class="text-center space-y-1">
         <div class="w-12 h-12 bg-[#1b4332] text-amber-300 rounded-2xl flex items-center justify-center font-bold text-xl mx-auto shadow-md">🔐</div>
         <h2 class="text-base font-bold text-stone-900 pt-1">厂商直供与调度中枢登录</h2>
-        <p class="text-[11px] text-stone-400">安全密钥凭证或微信一键扫码核验</p>
-      </div>
-
-      <div class="flex bg-stone-100 p-1 rounded-xl text-xs font-bold gap-1">
-        <button type="button" onclick="window.switchLoginTab('pwd')" id="login-tab-pwd" class="flex-1 py-1.5 rounded-lg bg-white text-stone-900 shadow-sm transition">
-          🔑 密钥密码
-        </button>
-        <button type="button" onclick="window.switchLoginTab('wx')" id="login-tab-wx" class="flex-1 py-1.5 rounded-lg text-stone-500 hover:text-stone-900 transition">
-          💬 微信扫码
-        </button>
+        <p class="text-[11px] text-stone-400">请输入分配的商号代号与安全凭证</p>
       </div>
 
       <form id="pane-login-pwd" onsubmit="window.verifyHQAuthPwd(event)" class="space-y-3 text-xs">
@@ -226,32 +220,54 @@
           <label class="block text-stone-600 font-medium mb-1">专属访问密钥 (Access Key) *：</label>
           <input type="password" id="hq-login-key" required placeholder="输入核发的专属密码" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono text-stone-900 focus:border-emerald-700">
         </div>
+        <div id="hq-login-totp-box" class="hidden space-y-1 bg-stone-50 p-2.5 rounded-xl border border-stone-200">
+          <label class="block text-emerald-900 font-bold text-[11px]">🛡️ 身份验证器 6 位动态口令：</label>
+          <input type="text" id="hq-login-totp-code" maxlength="6" placeholder="000000" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-mono text-center tracking-widest text-base font-bold text-stone-900 outline-none focus:border-emerald-700">
+        </div>
         <button type="submit" id="btn-hq-pwd" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
           核验密钥 · 登入调度台
         </button>
       </form>
 
-      <div id="pane-login-wx" class="hidden text-center space-y-2.5 py-1">
-        <div class="w-44 h-44 bg-stone-50 border border-stone-200 rounded-2xl mx-auto flex items-center justify-center p-2 relative shadow-inner">
-          <img id="hq-wx-qrcode" src="" alt="微信扫码登入" class="w-full h-full object-contain">
-          <div id="hq-wx-qr-expired" class="hidden absolute inset-0 bg-stone-900/80 backdrop-blur-xs rounded-2xl flex flex-col items-center justify-center text-white p-2">
-            <span class="text-xs">二维码已失效</span>
-            <button type="button" onclick="window.refreshWxQRCode()" class="text-[10px] bg-amber-400 text-stone-900 font-bold px-2 py-1 rounded-lg mt-1 active:scale-95">重新刷新</button>
-          </div>
-        </div>
-        <p class="text-[11px] text-stone-500 font-medium">使用负责人微信扫一扫，一秒授权登录</p>
-      </div>
-
       <div id="hq-auth-error" class="hidden text-rose-600 text-[11px] font-bold text-center"></div>
 
       <div class="text-center pt-1 border-t border-stone-100 flex justify-between items-center text-[10px]">
         <a href="join.html" class="text-emerald-800 font-bold hover:underline">尚未入驻？提交资质申请</a>
-        <span class="text-stone-400">独立账本隔离</span>
+        <span class="text-stone-400">TOTP 2FA 守护</span>
       </div>
     </div>
   </div>
 
-  <!-- 2FA 关键业务主管授权核验弹窗 (零短信) -->
+  <!-- 厂商绑定 TOTP 身份验证器弹窗 -->
+  <div id="tenant-bind-totp-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+    <div class="bg-white border border-stone-200 w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <b class="text-emerald-950 text-sm flex items-center gap-1">📱 厂商绑定 TOTP 身份验证器</b>
+        <button type="button" onclick="window.closeModal('tenant-bind-totp-modal')" class="text-stone-400 text-lg hover:text-stone-600">✕</button>
+      </div>
+      <p class="text-[11px] text-stone-500 leading-relaxed">
+        使用微信小程序【腾讯身份验证器】或手机【Google Authenticator】扫描下方二维码录入：
+      </p>
+      <div class="bg-stone-50 p-3 rounded-2xl w-44 h-44 mx-auto flex items-center justify-center border border-stone-200">
+        <img id="tenant-totp-qrcode-img" src="" alt="TOTP 二维码" class="w-full h-full object-contain">
+      </div>
+      <div class="bg-stone-50 p-2.5 rounded-xl border border-stone-200 text-center font-mono">
+        <span class="text-[10px] text-stone-400 block">手动备用密钥：</span>
+        <span id="tenant-totp-secret-text" class="text-emerald-900 font-bold select-all tracking-wider text-xs"></span>
+      </div>
+      <div>
+        <label class="block text-stone-600 mb-1">输入 App 上显示的 6 位实时动态口令：</label>
+        <input type="text" id="tenant-bind-test-code" maxlength="6" placeholder="000000" class="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 font-mono text-center tracking-widest text-base font-bold text-stone-900 outline-none focus:border-emerald-700">
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button type="button" onclick="window.submitTenantBindTOTP()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+          完成绑定并开启保护
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 厂商 2FA 关键业务主管授权核验弹窗 (TOTP 驱动) -->
   <div id="modal-2fa-verify" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-xs rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -259,11 +275,11 @@
         <button type="button" onclick="window.close2FAModal()" class="text-stone-400 text-lg">✕</button>
       </div>
       <p class="text-[11px] text-stone-500 leading-relaxed" id="modal-2fa-desc">
-        涉及重大资金或超额赊销，需核验当家主管专属密钥。
+        涉及重大资金或高危业务变动，需核验当家主管动态口令。
       </p>
       <div>
-        <label class="block text-stone-600 mb-1">输入当家主管密钥 (Pin)：</label>
-        <input type="password" id="input-2fa-code" placeholder="输入专属授权密码" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base outline-none">
+        <label class="block text-stone-600 mb-1">输入身份验证器 6 位动态口令：</label>
+        <input type="text" id="input-2fa-code" maxlength="6" placeholder="000000" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base tracking-widest outline-none focus:border-emerald-700">
       </div>
       <div class="pt-1 flex gap-2">
         <button type="button" onclick="window.submit2FAVerification()" class="flex-1 bg-[#1b4332] text-white font-bold py-2 rounded-xl active:scale-95 transition shadow">
@@ -614,8 +630,11 @@
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
     import { analyzeOrderRiskAI } from './src/constants/settlement.js';
+    import { generateBase32Secret, verifyTOTP, getTOTPKeyURI } from './src/lib/totp.js';
 
     let currentAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
+    let currentTenantRecord = null;
+    let tempTenantSecret = '';
     let currentStoreForVis = null;
     let allProducts = [];
     let allStores = [];
@@ -628,7 +647,6 @@
     let activeOrderFilter = 'pending_confirm';
     let videoStream = null;
     let scanInterval = null;
-    let wxPollInterval = null;
     let pending2FACallback = null;
 
     window.openModal = id => document.getElementById(id).classList.remove('hidden');
@@ -666,65 +684,20 @@
     };
 
     // ----------------------------------------------------
-    // 安全登录与凭证核验（纯密钥 + 微信免密扫码）
+    // 安全登录与凭证核验（商号专属密钥 + TOTP 口令）
     // ----------------------------------------------------
-    window.switchLoginTab = function(mode) {
-      document.getElementById('pane-login-pwd').classList.toggle('hidden', mode !== 'pwd');
-      document.getElementById('pane-login-wx').classList.toggle('hidden', mode !== 'wx');
-      document.getElementById('login-tab-pwd').className = (mode === 'pwd') ? 'flex-1 py-1.5 rounded-lg bg-white text-stone-900 shadow-sm transition' : 'flex-1 py-1.5 rounded-lg text-stone-500 hover:text-stone-900 transition';
-      document.getElementById('login-tab-wx').className = (mode === 'wx') ? 'flex-1 py-1.5 rounded-lg bg-white text-stone-900 shadow-sm transition' : 'flex-1 py-1.5 rounded-lg text-stone-500 hover:text-stone-900 transition';
-      document.getElementById('hq-auth-error').classList.add('hidden');
-
-      if (mode === 'wx') {
-        window.refreshWxQRCode();
-      } else {
-        if (wxPollInterval) clearInterval(wxPollInterval);
-      }
-    };
-
     window.verifyHQAuthPwd = async function(e) {
       e.preventDefault();
       const tenantId = document.getElementById('hq-login-tenant').value.trim().toUpperCase();
       const accessKey = document.getElementById('hq-login-key').value.trim();
-      await handleTenantLoginSuccess(tenantId, accessKey, 'pwd');
-    };
-
-    window.refreshWxQRCode = async function() {
-      document.getElementById('hq-wx-qr-expired')?.classList.add('hidden');
-      const ticket = `wx_tenant_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-      
-      const qrImg = document.getElementById('hq-wx-qrcode');
-      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`https://goods-lucky.vercel.app/wx_auth_mock?ticket=${ticket}`)}`;
-
-      if (wxPollInterval) clearInterval(wxPollInterval);
-      const startTime = Date.now();
-      wxPollInterval = setInterval(async () => {
-        if (Date.now() - startTime > 120000) {
-          clearInterval(wxPollInterval);
-          document.getElementById('hq-wx-qr-expired')?.classList.remove('hidden');
-          return;
-        }
-
-        const { data } = await supabase
-          .from('sys_qr_session')
-          .select('*')
-          .eq('ticket', ticket)
-          .eq('is_verified', true)
-          .limit(1);
-
-        if (data && data.length > 0) {
-          clearInterval(wxPollInterval);
-          const tenantId = data[0].tenant_id;
-          const { data: tenant } = await supabase.from('platform_tenant').select('*').eq('tenant_id', tenantId).single();
-          if (tenant) {
-            await handleTenantLoginSuccess(tenant.tenant_id, tenant.access_key, 'wx');
-          }
-        }
-      }, 2000);
-    };
-
-    async function handleTenantLoginSuccess(tenantId, accessKey, method) {
+      const totpCode = document.getElementById('hq-login-totp-code').value.trim();
       const errBox = document.getElementById('hq-auth-error');
+      const btn = document.getElementById('btn-hq-pwd');
+
+      btn.disabled = true;
+      btn.innerText = '正在验证凭据...';
+      errBox.classList.add('hidden');
+
       const { data, error } = await supabase
         .from('platform_tenant')
         .select('*')
@@ -733,26 +706,100 @@
         .limit(1);
 
       if (error || !data || data.length === 0) {
+        btn.disabled = false;
+        btn.innerText = '核验密钥 · 登入调度台';
         errBox.innerText = '⚠️ 商号代号不存在或密钥不符！';
         errBox.classList.remove('hidden');
         return;
       }
 
-      if (!data[0].is_active) {
+      const tenant = data[0];
+      if (!tenant.is_active) {
+        btn.disabled = false;
+        btn.innerText = '核验密钥 · 登入调度台';
         errBox.innerText = '🚫 该商号已被平台运营者冻结停权！';
         errBox.classList.remove('hidden');
         return;
       }
 
+      // 若商号已开启 TOTP，必须核验 6 位动态口令
+      if (tenant.totp_enabled && tenant.totp_secret) {
+        const totpBox = document.getElementById('hq-login-totp-box');
+        if (totpBox.classList.contains('hidden') || !totpCode) {
+          totpBox.classList.remove('hidden');
+          btn.disabled = false;
+          btn.innerText = '核验 6 位动态口令 · 登录';
+          errBox.innerText = '🔐 本商号已启用身份验证器双重保护，请输入 6 位动态口令！';
+          errBox.classList.remove('hidden');
+          document.getElementById('hq-login-totp-code').focus();
+          return;
+        }
+
+        const isValidTOTP = await verifyTOTP(tenant.totp_secret, totpCode);
+        if (!isValidTOTP) {
+          btn.disabled = false;
+          btn.innerText = '核验 6 位动态口令 · 登录';
+          errBox.innerText = '⚠️ 动态口令错误或已过期，请核对手机 App！';
+          errBox.classList.remove('hidden');
+          return;
+        }
+      }
+
+      currentTenantRecord = tenant;
       sessionStorage.setItem('hq_tenant_session_' + tenantId, accessKey);
-      sessionStorage.setItem('hq_login_method', method);
       localStorage.setItem('hq_active_agent', tenantId);
       currentAgent = tenantId;
 
       document.getElementById('hq-auth-gate').classList.add('hidden');
-      alert(`✅ 核验通过！进入【${data[0].company_name}】专属管理后台。`);
+      updateTenantTOTPBadge();
+      alert(`✅ 核验通过！进入【${tenant.company_name}】专属管理后台。`);
       window.loadHQData();
+    };
+
+    function updateTenantTOTPBadge() {
+      const badge = document.getElementById('tenant-totp-badge');
+      if (currentTenantRecord?.totp_enabled) {
+        badge.className = "bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono";
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 专有独立账本 · TOTP 守护';
+      } else {
+        badge.className = "bg-stone-500/20 text-stone-300 text-[10px] px-2 py-0.5 rounded-full border border-stone-400/30 flex items-center gap-1 font-mono";
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-stone-400"></span> 独立账本 (未绑定TOTP)';
+      }
     }
+
+    // 商号绑定 TOTP
+    window.openTenantBindTOTPModal = function() {
+      tempTenantSecret = generateBase32Secret(16);
+      document.getElementById('tenant-totp-secret-text').innerText = tempTenantSecret;
+      document.getElementById('tenant-bind-test-code').value = '';
+
+      const uri = getTOTPKeyURI(currentAgent, 'ShanLiWanJia', tempTenantSecret);
+      document.getElementById('tenant-totp-qrcode-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(uri)}`;
+
+      window.openModal('tenant-bind-totp-modal');
+    };
+
+    window.submitTenantBindTOTP = async function() {
+      const testCode = document.getElementById('tenant-bind-test-code').value.trim();
+      const isValid = await verifyTOTP(tempTenantSecret, testCode);
+      if (!isValid) {
+        return alert('⚠️ 验证码不匹配！请确认 App 扫码成功并输入正确的 6 位动态口令。');
+      }
+
+      await supabase.from('platform_tenant').update({
+        totp_secret: tempTenantSecret,
+        totp_enabled: true
+      }).eq('tenant_id', currentAgent);
+
+      if (currentTenantRecord) {
+        currentTenantRecord.totp_secret = tempTenantSecret;
+        currentTenantRecord.totp_enabled = true;
+      }
+
+      updateTenantTOTPBadge();
+      alert('🎉 恭喜！商号已成功绑定身份验证器，超额特批、降价与大额平账将受到 2FA 全面保护！');
+      window.closeModal('tenant-bind-totp-modal');
+    };
 
     async function checkHQAuthStatus() {
       const activeTenant = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
@@ -773,7 +820,9 @@
         .limit(1);
 
       if (data && data.length > 0) {
+        currentTenantRecord = data[0];
         document.getElementById('hq-auth-gate').classList.add('hidden');
+        updateTenantTOTPBadge();
         return true;
       } else {
         sessionStorage.removeItem('hq_tenant_session_' + activeTenant);
@@ -788,13 +837,25 @@
     };
 
     // ----------------------------------------------------
-    // 2FA 关键业务主管密码二次核验
+    // 厂商 2FA 关键业务主管密码/TOTP二次核验
     // ----------------------------------------------------
     window.trigger2FAAction = function(actionDesc, onVerifiedCallback) {
+      if (!currentTenantRecord?.totp_enabled) {
+        // 未开启 TOTP 时，降级为主管访问密钥核验
+        const pin = prompt(`【主管 2FA 安全确认】\n${actionDesc}\n请输入当前商号专属密钥：`);
+        if (pin === sessionStorage.getItem('hq_tenant_session_' + currentAgent)) {
+          onVerifiedCallback();
+        } else if (pin !== null) {
+          alert('⚠️ 密钥错误，操作已被中止！');
+        }
+        return;
+      }
+
       document.getElementById('modal-2fa-desc').innerText = actionDesc;
       document.getElementById('input-2fa-code').value = '';
       pending2FACallback = onVerifiedCallback;
       window.openModal('modal-2fa-verify');
+      document.getElementById('input-2fa-code').focus();
     };
 
     window.close2FAModal = function() {
@@ -803,11 +864,11 @@
     };
 
     window.submit2FAVerification = async function() {
-      const pin = document.getElementById('input-2fa-code').value.trim();
-      const curKey = sessionStorage.getItem('hq_tenant_session_' + currentAgent);
+      const code = document.getElementById('input-2fa-code').value.trim();
+      const isValid = await verifyTOTP(currentTenantRecord?.totp_secret, code);
 
-      if (!pin || pin !== curKey) {
-        return alert('⚠️ 主管授权口令错误，操作已被安全中止！');
+      if (!isValid) {
+        return alert('⚠️ 动态口令错误或已失效，请核对身份验证器！');
       }
 
       window.close2FAModal();
@@ -817,7 +878,7 @@
     };
 
     // ----------------------------------------------------
-    // 数据调度主流程
+    // 核心业务调度
     // ----------------------------------------------------
     window.loadHQData = async function() {
       const { data: tenantList } = await supabase.from('platform_tenant').select('*').eq('is_active', true);
@@ -832,8 +893,10 @@
 
       const curTenantObj = validTenants.find(t => t.tenant_id === currentAgent) || validTenants[0];
       currentAgent = curTenantObj.tenant_id;
+      currentTenantRecord = curTenantObj;
       document.getElementById('hq-tenant-id').innerText = currentAgent;
       document.getElementById('hq-invite-code').innerText = curTenantObj.invite_code || '888001';
+      updateTenantTOTPBadge();
 
       const { data: pCats } = await supabase.from('platform_category').select('*').eq('is_active', true).order('sort_order', { ascending: true });
       allPlatformCats = pCats || [];
@@ -989,7 +1052,7 @@
             </div>
             <div class="text-right">
               <b class="text-base font-mono text-emerald-900 font-bold block">¥${l.amount}</b>
-              <button onclick="window.confirmLogSettled(${l.id})" class="text-[10px] bg-[#1b4332] text-white font-bold px-2.5 py-1 rounded-lg active:scale-95 shadow font-sans">
+              <button onclick="window.confirmLogSettled(${l.id}, ${l.amount})" class="text-[10px] bg-[#1b4332] text-white font-bold px-2.5 py-1 rounded-lg active:scale-95 shadow font-sans">
                 点清入库
               </button>
             </div>
@@ -997,10 +1060,22 @@
         `).join('');
     }
 
-    window.confirmLogSettled = async function(logId) {
-      if (!confirm('出纳已点清该笔随车钱款？确认后即刻入账平账。')) return;
-      await supabase.from('driver_collection_log').update({ settled_to_hq: true }).eq('id', logId);
-      window.loadHQData();
+    // 2FA 场景 1：随车大额现款入库 (超 3000 元核验)
+    window.confirmLogSettled = function(logId, amount) {
+      const amt = parseFloat(amount || 0);
+      if (amt >= 3000) {
+        window.trigger2FAAction(
+          `随车交账金额达 ¥${amt.toFixed(2)}，属于大额现金平账，请核验 6 位 TOTP 动态口令以确认平账入库：`,
+          async () => {
+            await supabase.from('driver_collection_log').update({ settled_to_hq: true }).eq('id', logId);
+            alert('随车大额钱款已点清平账入库！');
+            window.loadHQData();
+          }
+        );
+      } else {
+        if (!confirm('出纳已点清该笔随车钱款？确认后即刻入账平账。')) return;
+        supabase.from('driver_collection_log').update({ settled_to_hq: true }).eq('id', logId).then(() => window.loadHQData());
+      }
     };
 
     window.openAddProductModal = function() {
@@ -1104,11 +1179,23 @@
       }
     };
 
-    window.quickEditPrice = async function(id, oldPrice) {
+    // 2FA 场景 2：批发底价大幅下调 (降幅超 15% 触发)
+    window.quickEditPrice = function(id, oldPrice) {
       const newPrice = prompt(`【润色门市底价】\n原价：¥${oldPrice}\n输入新批发底价：`, oldPrice);
       if (newPrice !== null && !isNaN(newPrice) && parseFloat(newPrice) > 0) {
-        await supabase.from('product').update({ tier_1_price: parseFloat(newPrice) }).eq('id', id);
-        window.loadHQData();
+        const p = parseFloat(newPrice);
+        if (p < oldPrice * 0.85) {
+          window.trigger2FAAction(
+            `单品底价降幅达 ${(((oldPrice - p) / oldPrice) * 100).toFixed(0)}% (从 ¥${oldPrice} 调至 ¥${p})，触发重大调价风控，请核验 6 位 TOTP 动态口令：`,
+            async () => {
+              await supabase.from('product').update({ tier_1_price: p }).eq('id', id);
+              alert('底价已通过 2FA 授权成功修改！');
+              window.loadHQData();
+            }
+          );
+        } else {
+          supabase.from('product').update({ tier_1_price: p }).eq('id', id).then(() => window.loadHQData());
+        }
       }
     };
 
@@ -1120,10 +1207,16 @@
       }
     };
 
-    window.deleteProduct = async function(id, name) {
-      if (!confirm(`确认删除【${name}】档案？`)) return;
-      await supabase.from('product').delete().eq('id', id);
-      window.loadHQData();
+    // 2FA 场景 3：删除核心在售良品
+    window.deleteProduct = function(id, name) {
+      window.trigger2FAAction(
+        `您正在从独立账本中物理注销良品【${name}】，请核验 6 位 TOTP 动态口令以确认执行：`,
+        async () => {
+          await supabase.from('product').delete().eq('id', id);
+          alert(`良品【${name}】已彻底注销！`);
+          window.loadHQData();
+        }
+      );
     };
 
     window.handleImageUpload = function(event) {
@@ -1341,9 +1434,10 @@
       }).join('');
     }
 
+    // 2FA 场景 4：超额赊销特信放行审批
     window.hqApproveOverCredit = function(orderId, storeId, overAmount) {
       window.trigger2FAAction(
-        `您正在特批放行【超额赊销 ¥${overAmount}】订单，该操作将直接承担该笔货款风险，请核验当家主管密钥以确认放行：`,
+        `您正在特批放行【超额赊销 ¥${overAmount}】订单，请核验 6 位 TOTP 动态口令以确认放行：`,
         async () => {
           await supabase.from('store_order').update({
             order_status: 'over_credit_approved',
@@ -1670,59 +1764,4 @@
         driver_name: '老张师傅'
       }]);
       await supabase.from('store_lead').delete().eq('id', leadId);
-      alert(`和合结缘！【${shopName}】已正式建档！`);
-      window.switchTab('stores');
-      window.loadHQData();
-    };
-
-    window.filterProductByTag = function(tag) {
-      activeProdFilter = tag;
-      document.querySelectorAll('.prod-filter-btn').forEach(b => {
-        b.className = (b.innerText === tag) 
-          ? 'prod-filter-btn bg-[#1b4332] text-white px-2 py-0.5 rounded-lg text-[10px] font-bold'
-          : 'prod-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]';
-      });
-      renderProductTable();
-    };
-
-    window.filterStoreByTag = function(tag) {
-      activeStoreFilter = tag;
-      document.querySelectorAll('.store-filter-btn').forEach(b => {
-        b.className = (b.innerText === tag) 
-          ? 'store-filter-btn bg-[#1b4332] text-white px-2 py-0.5 rounded-lg text-[10px] font-bold'
-          : 'store-filter-btn bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg text-[10px]';
-      });
-      renderStoreTable();
-    };
-
-    window.filterOrderStatus = function(status) {
-      activeOrderFilter = status;
-      ['pending', 'over-credit', 'confirmed', 'delivered', 'all'].forEach(k => {
-        const btn = document.getElementById(`order-filter-${k}`);
-        if (btn) {
-          const isMatch = (k === status) || 
-                          (status === 'pending_confirm' && k === 'pending') || 
-                          (status === 'over_credit_pending' && k === 'over-credit');
-          btn.className = isMatch
-            ? 'px-3 py-1 rounded-xl bg-[#1b4332] text-white transition'
-            : 'px-3 py-1 rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 transition';
-        }
-      });
-      renderOrderFulfillmentList();
-    };
-
-    window.previewFullImage = function(url) {
-      const w = window.open('');
-      w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
-    };
-
-    // 初始化入口 (使用标准自执行函数包装，彻底解决 Vite / esbuild Top-level await 编译报错)
-    (async () => {
-      const isAuthed = await checkHQAuthStatus();
-      if (isAuthed) {
-        window.loadHQData();
-      }
-    })();
-  </script>
-</body>
-</html>
+      alert(`和
