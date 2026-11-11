@@ -82,7 +82,7 @@
         🏪 實體門店名冊 (脾性便簽 · 授信與周轉資材)
       </button>
       <button id="tab-btn-products" onclick="window.switchTab('products')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition">
-        📦 現貨庫存倉儲 (物勒工名溯源 · 雙軌投送 · 賣點貼)
+        📦 現貨庫存倉儲 (物勒工名溯源 · 渠道分流 · 賣點貼)
       </button>
       <button id="tab-btn-settle" onclick="window.switchTab('settle')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition flex items-center justify-center gap-1">
         💵 履約交割與回庫對賬
@@ -124,7 +124,7 @@
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
             <h2 class="text-sm font-bold text-stone-800">📦 現貨庫存管理與物勒工名溯源</h2>
-            <span class="text-[11px] text-stone-400">支援純線下實體與純線上網銷雙軌投送，品類規制嚴整，百業度量衡自適應</span>
+            <span class="text-[11px] text-stone-400">支援【實體門店 Brick-and-mortar】與【電子商務 E-commerce】獨立渠道分流，品類規制嚴整，百業度量衡自適應</span>
           </div>
           <button onclick="window.openAddProductModal()" class="text-xs bg-[#1b4332] text-white font-bold px-3.5 py-1.5 rounded-xl shadow active:scale-95 transition">
             + 上架良品
@@ -145,7 +145,7 @@
             <thead class="bg-stone-50 border-b border-stone-100 text-stone-500 font-medium">
               <tr>
                 <th class="p-2.5">實拍照</th>
-                <th class="p-2.5">投送模式</th>
+                <th class="p-2.5">投放渠道 (雙軌獨立)</th>
                 <th class="p-2.5">正品工名溯源</th>
                 <th class="p-2.5">品類 (大項/細項/三級細分)</th>
                 <th class="p-2.5">商品全稱</th>
@@ -568,7 +568,7 @@
     </div>
   </div>
 
-  <!-- 商品錄入與全功能編輯彈窗 (物勒工名正品溯源) -->
+  <!-- 商品錄入與全功能編輯彈窗 (物勒工名正品溯源 · 升級為實體門店/電子商務獨立複選) -->
   <div id="product-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -581,17 +581,33 @@
 
       <input type="hidden" id="editing-prod-id" value="">
 
-      <!-- 供貨場景模式 -->
-      <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200 flex items-center justify-between">
-        <span class="font-bold text-stone-700 text-[11px]">商品供貨場景通道：</span>
-        <div class="flex gap-4">
-          <label class="flex items-center gap-1 font-bold cursor-pointer">
-            <input type="radio" name="sales_channel_type" value="offline" checked class="text-emerald-800">
-            🏬 純線下實體 (門店配貨)
+      <!-- 貨品流通管道（實體門店 / 電子商務 獨立雙布爾複選，依資質動態置灰） -->
+      <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200 space-y-2">
+        <label class="block text-stone-700 font-bold text-xs">貨品投放渠道（按需勾選）：</label>
+        
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <!-- 渠道 1：實體門店 (Brick-and-mortar) -->
+          <label id="box-channel-bm" class="p-3 rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer transition bg-white select-none hover:border-emerald-500">
+            <div class="flex items-center gap-2.5">
+              <input type="checkbox" id="chk-channel-bm" class="w-4 h-4 rounded text-emerald-800 focus:ring-emerald-700">
+              <div>
+                <b class="text-stone-900 block text-xs">🏬 實體門店</b>
+                <span class="text-[10px] text-stone-400 block font-mono">Brick-and-mortar</span>
+              </div>
+            </div>
+            <span id="lock-channel-bm" class="hidden text-[10px] bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded font-mono font-bold">🔒 未開通</span>
           </label>
-          <label class="flex items-center gap-1 font-bold cursor-pointer">
-            <input type="radio" name="sales_channel_type" value="online" class="text-emerald-800">
-            🌐 純線上網銷 (一件代發物流)
+
+          <!-- 渠道 2：電子商務 (E-commerce) -->
+          <label id="box-channel-ec" class="p-3 rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer transition bg-white select-none hover:border-emerald-500">
+            <div class="flex items-center gap-2.5">
+              <input type="checkbox" id="chk-channel-ec" class="w-4 h-4 rounded text-emerald-800 focus:ring-emerald-700">
+              <div>
+                <b class="text-stone-900 block text-xs">🌐 電子商務</b>
+                <span class="text-[10px] text-stone-400 block font-mono">E-commerce</span>
+              </div>
+            </div>
+            <span id="lock-channel-ec" class="hidden text-[10px] bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded font-mono font-bold">🔒 未開通</span>
           </label>
         </div>
       </div>
@@ -742,6 +758,7 @@
 
     let currentAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
     let currentStoreForVis = null;
+    let currentTenantData = null;
     let allProducts = [];
     let allStores = [];
     let allOrders = [];
@@ -1053,6 +1070,7 @@
         return;
       }
 
+      currentTenantData = curTenant;
       document.getElementById('hq-company-badge').innerText = `${curTenant.company_name} (認領碼 ${curTenant.invite_code || '-'})`;
       document.getElementById('hq-tenant-id').innerText = curTenant.tenant_id;
       document.getElementById('hq-invite-code').innerText = curTenant.invite_code || '888001';
@@ -1151,15 +1169,26 @@
         const tags = Array.isArray(p.tags) ? p.tags : [];
         const tagBadges = tags.map(t => `<span class="bg-emerald-50 text-emerald-900 border border-emerald-200 px-1.5 py-0.2 rounded text-[10px] mr-1">${t}</span>`).join('');
 
+        // 獨立雙渠道徽章呈現 (相容新舊欄位)
+        const isBM = (p.channel_brick_and_mortar !== undefined) ? p.channel_brick_and_mortar : (p.sales_channel_type !== 'online');
+        const isEC = (p.channel_ecommerce !== undefined) ? p.channel_ecommerce : (p.sales_channel_type !== 'offline');
+
+        let channelBadges = '';
+        if (isBM) {
+          channelBadges += '<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">🏬 實體門店</span>';
+        }
+        if (isEC) {
+          channelBadges += '<span class="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] px-1.5 py-0.5 rounded font-bold">🌐 電子商務</span>';
+        }
+        if (!channelBadges) channelBadges = '<span class="text-stone-300 text-[10px]">未投放</span>';
+
         return `
           <tr class="hover:bg-stone-50 transition">
             <td class="p-2.5">
               ${p.image_url ? `<img src="${p.image_url}" class="w-9 h-9 rounded-xl object-cover border border-stone-200">` : `<div class="w-9 h-9 rounded-xl bg-stone-100 flex items-center justify-center text-[9px] text-stone-400">無圖</div>`}
             </td>
             <td class="p-2.5 font-bold">
-              <span class="px-1.5 py-0.5 rounded text-[10px] ${p.sales_channel_type === 'online' ? 'bg-blue-100 text-blue-900' : 'bg-emerald-100 text-emerald-900'}">
-                ${p.sales_channel_type === 'online' ? '🌐 線上網銷' : '🏬 線下實體'}
-              </span>
+              ${channelBadges}
             </td>
             <td class="p-2.5 font-mono text-[11px] text-emerald-900 font-bold">
               ${p.trace_code_prefix || 'SHUNDA-QC-'}${p.id}
@@ -1298,6 +1327,55 @@
       window.loadHQData();
     };
 
+    // =========================================================================
+    // 渠道權限置灰判定與複選框聯動 (實體門店 / 電子商務)
+    // =========================================================================
+    function applyChannelPermissions(tenant, prod = null) {
+      const bmChk = document.getElementById('chk-channel-bm');
+      const ecChk = document.getElementById('chk-channel-ec');
+      const bmBox = document.getElementById('box-channel-bm');
+      const ecBox = document.getElementById('box-channel-ec');
+      const bmLock = document.getElementById('lock-channel-bm');
+      const ecLock = document.getElementById('lock-channel-ec');
+
+      const permitBM = (tenant?.permit_brick_and_mortar !== false) && (tenant?.service_mode !== 'online');
+      const permitEC = (tenant?.permit_ecommerce !== false) && (tenant?.service_mode !== 'offline');
+
+      // 實體門店 (Brick-and-mortar)
+      if (!permitBM) {
+        bmChk.disabled = true;
+        bmChk.checked = false;
+        bmLock.classList.remove('hidden');
+        bmBox.className = "p-3 rounded-xl border border-stone-200 bg-stone-100 opacity-60 flex items-center justify-between cursor-not-allowed";
+      } else {
+        bmChk.disabled = false;
+        if (prod) {
+          bmChk.checked = (prod.channel_brick_and_mortar !== undefined) ? !!prod.channel_brick_and_mortar : (prod.sales_channel_type !== 'online');
+        } else {
+          bmChk.checked = true;
+        }
+        bmLock.classList.add('hidden');
+        bmBox.className = "p-3 rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer transition bg-white select-none hover:border-emerald-500";
+      }
+
+      // 電子商務 (E-commerce)
+      if (!permitEC) {
+        ecChk.disabled = true;
+        ecChk.checked = false;
+        ecLock.classList.remove('hidden');
+        ecBox.className = "p-3 rounded-xl border border-stone-200 bg-stone-100 opacity-60 flex items-center justify-between cursor-not-allowed";
+      } else {
+        ecChk.disabled = false;
+        if (prod) {
+          ecChk.checked = (prod.channel_ecommerce !== undefined) ? !!prod.channel_ecommerce : (prod.sales_channel_type !== 'offline');
+        } else {
+          ecChk.checked = true;
+        }
+        ecLock.classList.add('hidden');
+        ecBox.className = "p-3 rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer transition bg-white select-none hover:border-emerald-500";
+      }
+    }
+
     window.openAddProductModal = function() {
       const isRestricted = document.getElementById('tenant-membership-badge').innerText.includes('護盤存續');
       if (isRestricted) {
@@ -1316,8 +1394,11 @@
       document.getElementById('prod-cat-tertiary').value = '';
       document.getElementById('prod-spec').value = '整裝';
       document.getElementById('prod-measure-unit').value = '箱';
+      document.getElementById('prod-trace-prefix').value = `${currentAgent}-QC-`;
+      document.getElementById('prod-origin-place').value = '原生態物理壓榨原產';
       document.getElementById('prod-remark').value = '';
       renderTagChips();
+      applyChannelPermissions(currentTenantData, null);
       window.openModal('product-modal');
     };
 
@@ -1327,8 +1408,7 @@
       document.getElementById('prod-modal-title').innerText = '✏️ 潤飾商品細節';
       document.getElementById('editing-prod-id').value = p.id;
 
-      const radios = document.getElementsByName('sales_channel_type');
-      radios.forEach(r => r.checked = (r.value === (p.sales_channel_type || 'offline')));
+      applyChannelPermissions(currentTenantData, p);
 
       document.getElementById('prod-cat-main').value = p.category_main || '';
       window.onMainCategoryChange(p.category_main || '');
@@ -1360,7 +1440,13 @@
 
     window.submitProductForm = async function() {
       const editId = document.getElementById('editing-prod-id').value;
-      const mode = document.querySelector('input[name="sales_channel_type"]:checked').value;
+      const isBM = document.getElementById('chk-channel-bm').checked;
+      const isEC = document.getElementById('chk-channel-ec').checked;
+
+      if (!isBM && !isEC) {
+        return alert('⚠️ 請至少勾選一個貨品投放渠道（實體門店 或 電子商務）！');
+      }
+
       const cat_main = document.getElementById('prod-cat-main').value;
       const cat_sub = document.getElementById('prod-cat-sub').value;
       const cat_tertiary = document.getElementById('prod-cat-tertiary').value.trim();
@@ -1378,9 +1464,16 @@
       if (!name) return alert('請寫明貨品全稱！');
       if (isNaN(price) || price <= 0) return alert('請輸入有效的門市底價！');
 
+      // 兼顧舊欄位相容性，若僅線下則 offline，若僅網銷則 online，雙選則 both
+      let legacyChannelType = 'both';
+      if (isBM && !isEC) legacyChannelType = 'offline';
+      else if (!isBM && isEC) legacyChannelType = 'online';
+
       const payload = {
         tenant_id: currentAgent,
-        sales_channel_type: mode,
+        channel_brick_and_mortar: isBM,
+        channel_ecommerce: isEC,
+        sales_channel_type: legacyChannelType,
         category_main: cat_main,
         category_sub: cat_sub,
         category_tertiary: cat_tertiary,
@@ -1578,9 +1671,9 @@
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="window.editStoreTagsPrompt(${s.id}, '${JSON.stringify(s.tags || []).replace(/"/g, '&quot;')}')" class="text-[11px] bg-stone-100 text-stone-700 px-2 py-1 rounded-xl font-bold">🏷️ 記脾性</button>
+              <button onclick="window.editStoreTagsPrompt(${s.id}, '${JSON.stringify(s.tags || []).replace(/"/g, '"')}')" class="text-[11px] bg-stone-100 text-stone-700 px-2 py-1 rounded-xl font-bold">🏷️ 記脾性</button>
               <button onclick="window.openStorePolicyModal(${s.id})" class="text-[11px] bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-xl font-bold">⚙️ 商約度量</button>
-              <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '&quot;')}')" class="text-[11px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-1.5 rounded-xl font-bold">🎯 專供品道</button>
+              <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '"')}')" class="text-[11px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-1.5 rounded-xl font-bold">🎯 專供品道</button>
               <button onclick="window.reassignDriverPrompt(${s.id}, '${s.driver_name || '供貨師傅'}')" class="text-[11px] bg-stone-50 text-stone-700 border border-stone-200 px-2.5 py-1 rounded-xl font-bold">🚚 指派師傅</button>
             </div>
           </div>
