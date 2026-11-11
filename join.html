@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>廠商結緣入駐 · 數字商貿精靈</title>
+  <title>廠家結緣入駐 · 數字商貿精靈</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -109,7 +109,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
           <label class="block text-stone-600 font-bold mb-1">主體執照全稱 *：</label>
-          <input type="text" id="manual-company-name" required placeholder="如：南陽伏牛仙草生物有限公司" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold text-stone-900 focus:border-emerald-600">
+          <input type="text" id="manual-company-name" required placeholder="如：南陽伏牛仙草生物科技有限公司" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold text-stone-900 focus:border-emerald-600">
         </div>
         <div>
           <label class="block text-stone-600 font-bold mb-1">期望商號代號 (英文/拼音) *：</label>
@@ -141,7 +141,7 @@
               <span>📷 拍照 / 選取圖片</span>
               <input type="file" id="manual-file-input" accept="image/*" onchange="window.handleManualImageUpload(event)" class="hidden">
             </label>
-            <p class="text-[10px] text-stone-400">支援手機實拍或相冊選取，AI 將現場核對與上述填寫是否一致</p>
+            <p class="text-[10px] text-stone-400">支援手機實拍或相冊選取，AI 將現場嚴核名稱、有效期與印章</p>
           </div>
         </div>
       </div>
@@ -167,7 +167,7 @@
   <div id="modal-ai-loading" class="hidden fixed inset-0 bg-stone-950/85 backdrop-blur-md z-[120] flex flex-col items-center justify-center p-4 text-center">
     <div class="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
     <b class="text-white text-sm tracking-wide block" id="ai-loading-title">🤖 AI 謀士閱卷中...</b>
-    <p class="text-stone-400 text-xs mt-1" id="ai-loading-desc">正在識讀公章邊緣、統一社會信用代碼與主體吻合度</p>
+    <p class="text-stone-400 text-xs mt-1" id="ai-loading-desc">正在嚴核公章真偽、有效期截止日及主體全稱完全一致性</p>
   </div>
 
   <!-- ========================================== -->
@@ -176,18 +176,18 @@
   <div id="modal-ai-correction" class="hidden fixed inset-0 bg-stone-950/85 backdrop-blur-md z-[110] flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-sm rounded-[2rem] p-5 space-y-4 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <b class="text-amber-800 text-xs flex items-center gap-1 font-bold">
-          <span>⚠️</span> AI 審核提出當面補正建言
+        <b class="text-rose-800 text-xs flex items-center gap-1 font-bold">
+          <span>⚠️</span> 執照審核未達標 · 當面改善
         </b>
         <button type="button" onclick="window.closeModal('modal-ai-correction')" class="text-stone-400 text-lg">✕</button>
       </div>
 
-      <div class="bg-amber-50 p-3 rounded-2xl border border-amber-200/80 space-y-1.5" id="correction-flaws-box">
+      <div class="bg-rose-50 p-3 rounded-2xl border border-rose-200/80 space-y-1.5" id="correction-flaws-box">
         <!-- 動態渲染瑕疵點 -->
       </div>
 
       <p class="text-[11px] text-stone-500 leading-relaxed">
-        無須轉人工漫長等待！請根據上述診斷避開反光、補齊字跡或點擊下方一鍵同步，即刻重新秒驗。
+        系統嚴格杜絕過期與名稱不符執照入駐。請依上述診斷補正，或點擊下方一鍵同步執照原名後立即重審。
       </p>
 
       <div class="space-y-2 pt-1">
@@ -195,7 +195,7 @@
           <!-- 一鍵同步字樣 -->
         </button>
         <button type="button" onclick="window.retryUploadImage()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition text-xs">
-          📷 重新拍照 / 選清晰圖片秒驗
+          📷 重新拍照 / 選取有效執照秒驗
         </button>
       </div>
     </div>
@@ -258,6 +258,13 @@
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
 
+    // ==========================================
+    // 視覺大模型密鑰與接口端點配置
+    // (請在此填寫有效的 API KEY，系統杜絕無 Key 盲放)
+    // ==========================================
+    window.AI_VISION_API_KEY = window.AI_VISION_API_KEY || ''; 
+    window.AI_VISION_ENDPOINT = window.AI_VISION_ENDPOINT || 'https://api.openai.com/v1/chat/completions';
+
     let currentMode = 'scan'; // 'scan' | 'manual'
     let currentUploadedBase64 = '';
     let lastScanAiResult = null;
@@ -265,7 +272,7 @@
     window.openModal = id => document.getElementById(id).classList.remove('hidden');
     window.closeModal = id => document.getElementById(id).classList.add('hidden');
 
-    // 模式切換 (相機掃描直通 vs 手動自立)
+    // 模式切換
     window.switchOnboardMode = function(mode) {
       currentMode = mode;
       if (mode === 'scan') {
@@ -281,8 +288,8 @@
       }
     };
 
-    // 本地圖像自適應壓縮 (防止手機高清大圖阻塞傳輸)
-    function compressImageFile(file, maxDim = 800, quality = 0.75) {
+    // 本地圖像自適應壓縮
+    function compressImageFile(file, maxDim = 1000, quality = 0.8) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = e => {
@@ -311,44 +318,39 @@
       });
     }
 
-    // 純前端多模態視覺模型調用 (相容標準 OpenAI/Gemini 端點)
+    // 核心審核函數：硬核一票否決制 (嚴拒過期、嚴查名稱不一致)
     async function executeVisionInspection(base64Data, expectedName = null) {
       const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-      
-      const prompt = `你是一位資深工商營業執照核驗專員。請仔細檢查圖片中的營業執照實拍：
-${expectedName ? `重點比對：執照上的企業全稱是否與【${expectedName}】一致。` : '提取執照上的法定全稱。'}
-核查要點：
-1. 是否有清晰的紅色公章印記？字跡是否反光模糊？
-2. 統一社會信用代碼是否可讀？
-3. 是否在有效期限內？
+      const todayStr = new Date().toISOString().slice(0, 10);
 
-請嚴格僅以 JSON 格式返回，結構如下：
+      const prompt = `你是一位極其嚴格的工商營業執照合規審核官。當前系統日期是：${todayStr}。
+請仔細核驗附件圖片中的營業執照原件：
+
+【審核鐵律 - 任一違規直接判定 pass = false，總分不得高於 50 分】：
+1. 【名稱完全一致性】：${expectedName ? `執照上的企業全稱必須與用戶填寫的【${expectedName}】逐字完全吻合！少字（如漏掉『科技』）、多字、同音錯別字、簡寫一律判定不通過，name_matched 置為 false！` : '提取執照上的法定全稱。'}
+2. 【有效期限合法性】：核查執照上的「營業期限」或「有效期限」。若營業期限截止日期早於 ${todayStr}，或已明確註記註銷/過期，必須判定 is_expired = true 且 pass = false！若是「長期」則視為有效。
+3. 【公章/防偽特徵】：必須具備真實清晰的紅色市場監督管理局公章或合法印記。若為黑白複印件未加蓋公章、公章殘缺、被手指遮擋，判定不通過！
+4. 【代碼可讀性】：必須提取出 18 位統一社會信用代碼。
+
+請嚴格僅輸出純 JSON 格式，不要包含任何 markdown 語法包裝：
 {
   "pass": true 或 false,
-  "score": 0至100整數,
-  "company_name": "提取的企業主體全稱",
+  "score": 0至100的整數,
+  "company_name": "執照上實際印刷的法定全稱",
   "credit_code": "提取的統一社會信用代碼",
   "legal_person": "法定代表人或負責人",
+  "valid_period": "執照上的有效期限截止日或長期",
+  "is_expired": true 或 false,
+  "name_matched": true 或 false,
   "summary": "審核結論一句話簡評",
-  "flaws": ["瑕疵點1", "瑕疵點2"]
+  "flaws": ["具體瑕疵點，無則留空"]
 }`;
 
-      const API_KEY = window.AI_VISION_API_KEY || 'sk-proj-demo-placeholder';
-      const API_URL = window.AI_VISION_ENDPOINT || 'https://api.openai.com/v1/chat/completions';
+      const API_KEY = window.AI_VISION_API_KEY;
+      const API_URL = window.AI_VISION_ENDPOINT;
 
-      // 降級防護：若未配置第三方 Key，使用本地智能模擬器保障流程暢通
-      if (API_KEY.includes('placeholder')) {
-        await new Promise(r => setTimeout(r, 1200));
-        const mockName = expectedName || '南陽伏牛仙草生物有限公司';
-        return {
-          pass: true,
-          score: 96,
-          company_name: mockName,
-          credit_code: '91411300MA4' + Math.floor(10000000 + Math.random() * 90000000) + 'X',
-          legal_person: '王總',
-          summary: '公章鮮映，工商統一代碼清晰，主體在冊無異議',
-          flaws: []
-        };
+      if (!API_KEY || API_KEY.trim() === '') {
+        throw new Error('系統未接入多模態視覺密鑰 (AI_VISION_API_KEY)。為防止資質造假與過期執照混過，已強制阻止自動放行！請先在腳本中設定有效密鑰。');
       }
 
       const res = await fetch(API_URL, {
@@ -369,13 +371,35 @@ ${expectedName ? `重點比對：執照上的企業全稱是否與【${expectedN
             }
           ],
           response_format: { type: 'json_object' },
-          temperature: 0.1
+          temperature: 0.0 // 絕對確定性，避免幻覺波動
         })
       });
 
       if (!res.ok) throw new Error(`視覺端點響應異常: ${res.statusText}`);
       const data = await res.json();
-      return JSON.parse(data.choices[0].message.content);
+      const parsed = JSON.parse(data.choices[0].message.content);
+
+      // 前端二次防禦兜底（即使大模型給高分，硬條件不合直接熔斷）
+      parsed.flaws = parsed.flaws || [];
+      if (parsed.is_expired) {
+        parsed.pass = false;
+        parsed.score = Math.min(parsed.score, 35);
+        if (!parsed.flaws.some(f => f.includes('過期'))) {
+          parsed.flaws.push(`營業期限（${parsed.valid_period || '未知'}）已過期，無法入駐`);
+        }
+      }
+      if (expectedName) {
+        const cleanExp = expectedName.replace(/\s+/g, '');
+        const cleanActual = (parsed.company_name || '').replace(/\s+/g, '');
+        if (cleanExp !== cleanActual) {
+          parsed.pass = false;
+          parsed.name_matched = false;
+          parsed.score = Math.min(parsed.score, 45);
+          parsed.flaws.push(`主體全稱不匹配：填寫為【${expectedName}】，執照實為【${parsed.company_name}】`);
+        }
+      }
+
+      return parsed;
     }
 
     // =========================================================================
@@ -386,12 +410,11 @@ ${expectedName ? `重點比對：執照上的企業全稱是否與【${expectedN
       if (!file) return;
 
       try {
-        const base64 = await compressImageFile(file, 800, 0.75);
+        const base64 = await compressImageFile(file, 1000, 0.8);
         currentUploadedBase64 = base64;
         document.getElementById('scan-preview-box').innerHTML = `<img src="${base64}" class="w-full h-full object-cover">`;
 
         window.openModal('modal-ai-loading');
-
         const result = await executeVisionInspection(base64, null);
         window.closeModal('modal-ai-loading');
         lastScanAiResult = result;
@@ -410,7 +433,7 @@ ${expectedName ? `重點比對：執照上的企業全稱是否與【${expectedN
 
       } catch (err) {
         window.closeModal('modal-ai-loading');
-        alert('識讀受阻：' + err.message + '\n請重新擺正平鋪執照再試。');
+        alert('審核受阻：' + err.message);
       }
     };
 
@@ -441,7 +464,7 @@ ${expectedName ? `重點比對：執照上的企業全稱是否與【${expectedN
     window.handleManualImageUpload = async function(e) {
       const file = e.target.files[0];
       if (!file) return;
-      const base64 = await compressImageFile(file, 800, 0.75);
+      const base64 = await compressImageFile(file, 1000, 0.8);
       currentUploadedBase64 = base64;
       document.getElementById('manual-preview-box').innerHTML = `<img src="${base64}" class="w-full h-full object-cover">`;
     };
@@ -494,7 +517,7 @@ ${expectedName ? `重點比對：執照上的企業全稱是否與【${expectedN
       const flawsBox = document.getElementById('correction-flaws-box');
       flawsBox.innerHTML = `
         <div class="text-rose-800 font-bold">⚠️ 當前核驗得分：${aiResult.score}分（需達到 85 分）</div>
-        <div class="text-stone-700 font-medium">AI 謀士評析：${aiResult.summary}</div>
+        <div class="text-stone-700 font-medium">審核研判：${aiResult.summary}</div>
         ${aiResult.flaws && aiResult.flaws.length ? `
           <ul class="list-disc pl-4 text-rose-700 space-y-0.5 mt-1 font-sans">
             ${aiResult.flaws.map(f => `<li>${f}</li>`).join('')}
@@ -502,8 +525,9 @@ ${expectedName ? `重點比對：執照上的企業全稱是否與【${expectedN
         ` : ''}
       `;
 
+      // 若只是名稱手填筆誤，提供一鍵糾正
       const fixBtn = document.getElementById('btn-auto-fix-name');
-      if (extractedName && document.getElementById('manual-company-name').value !== extractedName) {
+      if (extractedName && document.getElementById('manual-company-name').value !== extractedName && !aiResult.is_expired) {
         fixBtn.classList.remove('hidden');
         fixBtn.innerText = `一鍵同步為執照原名：【${extractedName}】`;
         fixBtn.onclick = () => {
@@ -521,7 +545,7 @@ ${expectedName ? `重點比對：執照上的企業全稱是否與【${expectedN
     }
 
     // =========================================================================
-    // 最終入庫與長圖開席憑證發放 (雙寫 platform_tenant 與備案表)
+    // 最終入庫與長圖開席憑證發放
     // =========================================================================
     async function executeFinalRegistration(payload) {
       const initialKey = '888888';
@@ -568,7 +592,7 @@ ${expectedName ? `重點比對：執照上的企業全稱是否與【${expectedN
         invite_code: inviteCode
       }]);
 
-      // 3. 渲染並呈現開席憑據長卡
+      // 3. 渲染憑據卡
       document.getElementById('cred-card-company').innerText = payload.companyName;
       document.getElementById('cred-card-tenant').innerText = payload.tenantId;
       document.getElementById('cred-card-invite').innerText = inviteCode;
