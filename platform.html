@@ -98,7 +98,7 @@
       </div>
     </section>
 
-    <!-- 板塊 2：已入駐正式廠商名冊 (支援 6 態治理與作廢銷號) -->
+    <!-- 板塊 2：已入駐正式廠商名冊 -->
     <section id="p-tab-tenants" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
@@ -290,7 +290,7 @@
     </div>
   </div>
 
-  <!-- 商契氣象調控彈窗 (升級為 6 種狀態完整調度 + 銷號捷徑) -->
+  <!-- 商契氣象調控彈窗 (6 態調度與銷號) -->
   <div id="modal-status-adjust" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -1084,7 +1084,7 @@
     };
 
     // =========================================================================
-    // 【新增核心】：商號徹底註銷銷號 (作廢除名 · 釋放重新掃描入駐)
+    // 【核心修復】：商號徹底註銷銷號 (作廢除名 · 雙重匹配防靜默失敗)
     // =========================================================================
     window.triggerPurgeFromModal = function() {
       const tenantKey = document.getElementById('adjust-tenant-id').value;
@@ -1094,12 +1094,14 @@
     };
 
     window.confirmPurgeTenantAction = function(tenantId, companyName) {
+      const cleanName = (companyName || '').split('(')[0].trim();
+
       window.triggerPlatform2FA(
-        `⚠️ 最高警戒：即將徹底銷號商號【${companyName}】(${tenantId})，清空入駐審核與主體賬本。請出示 2FA 口令確認：`,
+        `⚠️ 最高警戒：即將徹底銷號商號【${cleanName || tenantId}】(${tenantId})，清空入駐審核與主體賬本。請出示 2FA 口令確認：`,
         async () => {
           const confirmCode = prompt(
-            `⚠️ 危險確認：商號【${companyName}】即將作廢除名！\n\n` +
-            `該操作將物理清除 platform_tenant、tenant_application 記錄。\n` +
+            `⚠️ 危險確認：商號【${cleanName || tenantId}】即將作廢除名！\n\n` +
+            `該操作將物理清除 platform_tenant 與 tenant_application 記錄。\n` +
             `完成後廠商可持執照原件前往 join.html 重新掃描核驗。\n\n` +
             `若確認銷號重置，請在下方輸入大寫：DELETE`
           );
@@ -1109,22 +1111,40 @@
           }
 
           try {
-            // 1. 級聯清理入駐審核申請
-            await supabase.from('tenant_application').delete().eq('tenant_id', tenantId);
+            // 1. 雙重匹配刪除入駐留痕表
+            await supabase.from('tenant_application')
+              .delete()
+              .or(`tenant_id.eq.${tenantId},company_name.eq.${cleanName}`);
 
-            // 2. 兜底清理商品或客戶（若存在）
+            // 2. 容錯清理可能存在的關聯商品與客戶表
             try { await supabase.from('goods').delete().eq('tenant_id', tenantId); } catch(e){}
             try { await supabase.from('customers').delete().eq('tenant_id', tenantId); } catch(e){}
 
-            // 3. 刪除主體租戶記錄
-            const { error } = await supabase.from('platform_tenant').delete().eq('tenant_id', tenantId);
-            if (error) throw error;
+            // 3. 雙重匹配刪除主商號記錄，並用 .select() 校驗刪除筆數
+            const { data: deletedRows, error: delError } = await supabase
+              .from('platform_tenant')
+              .delete()
+              .or(`tenant_id.eq.${tenantId},company_name.eq.${cleanName}`)
+              .select();
 
-            await recordAuditLog('商號作廢除名銷號', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: companyName });
+            if (delError) {
+              throw new Error('資料庫拒絕刪除: ' + delError.message);
+            }
 
-            alert(`✅ 商號【${companyName}】已徹底銷號清理！\n認領碼已釋放，掌櫃現在可以前往 join.html 重新拍照重審。`);
+            if (!deletedRows || deletedRows.length === 0) {
+              throw new Error(`未找到商號【${tenantId}】，或資料庫 RLS 策略阻止了 DELETE 操作！請確認 Supabase 已放行 DELETE 權限。`);
+            }
+
+            // 4. 記錄防篡改審計存證日誌
+            await recordAuditLog('商號作廢除名銷號', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: cleanName });
+
+            alert(`✅ 商號【${cleanName}】已徹底清除（已銷毀 ${deletedRows.length} 筆在冊檔案）！\n認領碼已完全釋放，廠商可返回 join.html 重新拍照驗證。`);
+            
+            // 5. 即刻刷新大盤
             await window.loadPlatformData();
+
           } catch (err) {
+            console.error('銷號執行異常:', err);
             alert('❌ 銷號執行失敗: ' + err.message);
           }
         }
