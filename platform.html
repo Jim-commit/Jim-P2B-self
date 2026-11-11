@@ -98,13 +98,21 @@
       </div>
     </section>
 
-    <!-- 板塊 2：已入駐正式廠商名冊 -->
+    <!-- 板塊 2：已入駐正式廠商名冊 (支援 6 態治理與作廢銷號) -->
     <section id="p-tab-tenants" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-stone-900">正式入駐商號管轄名冊</h2>
-            <p class="text-[11px] text-stone-400">密碼脫敏知雄守雌，支援簽發自立新約信碼；依商道情理行使春風寬待、護盤存續或暫歇調養</p>
+            <p class="text-[11px] text-stone-400">密碼脫敏知雄守雌，支援簽發自立新約信碼；依商道情理行使春風寬待、護盤存續、暫歇調養或作廢除名</p>
+          </div>
+          <div class="text-[11px] text-stone-400 flex flex-wrap gap-2 font-mono">
+            <span>🍃 嘗鮮體驗</span>
+            <span>🟢 和合在冊</span>
+            <span>🍃 春風寬待</span>
+            <span>🛡️ 護盤存續</span>
+            <span>🛑 商道暫歇</span>
+            <span>❌ 作廢除名</span>
           </div>
         </div>
         <div class="overflow-x-auto">
@@ -119,7 +127,7 @@
                 <th class="p-3">當家負責人</th>
                 <th class="p-3">後台安全憑證</th>
                 <th class="p-3">商契會籍氣象</th>
-                <th class="p-3 text-right">商契調控</th>
+                <th class="p-3 text-right">商契調控與銷號</th>
               </tr>
             </thead>
             <tbody id="tenants-table-body" class="divide-y divide-stone-100 font-mono"></tbody>
@@ -128,7 +136,7 @@
       </div>
     </section>
 
-    <!-- 板塊 3：商道建言堂 (傾聽萬家言，不干涉客店家務) -->
+    <!-- 板塊 3：商道建言堂 -->
     <section id="p-tab-suggestions" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
@@ -260,7 +268,7 @@
     </div>
   </div>
 
-  <!-- 總控 2FA 高危二次核驗模態窗 (z-index 提高至 z-[120]，確保高於調控窗口) -->
+  <!-- 總控 2FA 高危二次核驗模態窗 -->
   <div id="modal-platform-2fa" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
     <div class="bg-stone-900 border border-stone-800 w-full max-w-xs rounded-3xl p-5 space-y-3 text-white shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-800 pb-2">
@@ -282,7 +290,7 @@
     </div>
   </div>
 
-  <!-- 商契氣象調控彈窗 (溫和替代生硬凍結) -->
+  <!-- 商契氣象調控彈窗 (升級為 6 種狀態完整調度 + 銷號捷徑) -->
   <div id="modal-status-adjust" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -304,34 +312,41 @@
       </div>
 
       <div class="space-y-2">
-        <label class="block text-stone-700 font-bold">設定當前商契氣象：</label>
-        <div class="grid grid-cols-1 gap-2">
-          <label class="p-2.5 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+        <label class="block text-stone-700 font-bold">設定當前商契氣象 (六態律令)：</label>
+        <div class="grid grid-cols-1 gap-1.5 max-h-64 overflow-y-auto pr-1 no-scrollbar">
+          <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+            <input type="radio" name="membership_status_choice" value="trial" class="mt-0.5 text-cyan-800">
+            <div>
+              <b class="text-cyan-950 block">🍃 嘗鮮開席 · 體驗全開</b>
+              <span class="text-[10px] text-stone-500">7 天無門檻試用，雙軌權能全放行，滿意後再行商約點餐。</span>
+            </div>
+          </label>
+          <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
             <input type="radio" name="membership_status_choice" value="active" class="mt-0.5 text-emerald-800">
             <div>
               <b class="text-emerald-900 block">🟢 和合在冊 · 暢行全盤</b>
-              <span class="text-[10px] text-stone-500">正常供配、發新商品、隨車平賬無任何約束。</span>
+              <span class="text-[10px] text-stone-500">正式簽約在席，正常發品、隨車配發與網銷，無任何約束。</span>
             </div>
           </label>
-          <label class="p-2.5 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+          <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
             <input type="radio" name="membership_status_choice" value="grace" class="mt-0.5 text-amber-700">
             <div>
               <b class="text-amber-800 block">🍃 春風寬待 · 提請關照 (寬猛相濟)</b>
               <span class="text-[10px] text-stone-500">業務完全不中斷，僅在廠商端溫情提醒，提請閒暇時通融續會。</span>
             </div>
           </label>
-          <label class="p-2.5 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+          <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
             <input type="radio" name="membership_status_choice" value="restricted" class="mt-0.5 text-blue-800">
             <div>
               <b class="text-blue-900 block">🛡️ 停新保舊 · 護盤存續 (事緩則圓)</b>
               <span class="text-[10px] text-stone-500">允許已有訂單交割、實體門店正常還款，僅暫緩發售全新良品。</span>
             </div>
           </label>
-          <label class="p-2.5 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+          <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
             <input type="radio" name="membership_status_choice" value="paused" class="mt-0.5 text-rose-700">
             <div>
               <b class="text-rose-900 block">🛑 商道暫歇 · 設案調停 (慎之又慎)</b>
-              <span class="text-[10px] text-stone-500">確有重大偽劣或失信時暫掛訪問權，待雙方商榷調和後恢復。</span>
+              <span class="text-[10px] text-stone-500">保留全套賬本，暫掛登入權限，待商榷或資質補正後一鍵復通。</span>
             </div>
           </label>
         </div>
@@ -342,9 +357,12 @@
         <input type="text" id="adjust-note-input" placeholder="例：年節旺季周轉不易，特寬待半月，共勉同行" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
       </div>
 
-      <div class="pt-2 border-t border-stone-100 flex gap-2">
+      <div class="pt-2 border-t border-stone-100 flex items-center gap-2">
         <button type="button" onclick="window.saveTenantStatusAdjustment()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
           依禮頒布生效
+        </button>
+        <button type="button" onclick="window.triggerPurgeFromModal()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2.5 rounded-xl active:scale-95 transition">
+          🗑️ 銷號清除
         </button>
       </div>
     </div>
@@ -775,16 +793,16 @@
 
     function updateAISummaryInsight() {
       const activeCount = allTenants.filter(t => (t.membership_status || 'active') === 'active').length;
+      const trialCount = allTenants.filter(t => t.membership_status === 'trial').length;
       const graceCount = allTenants.filter(t => t.membership_status === 'grace').length;
       const restCount = allTenants.filter(t => t.membership_status === 'restricted').length;
+      const pausedCount = allTenants.filter(t => !t.is_active || t.membership_status === 'paused').length;
       
       let insight = `當前在冊商號 ${allTenants.length} 家，和合暢運 ${activeCount} 家。`;
-      if (graceCount > 0) {
-        insight += ` 有 ${graceCount} 家商號處於【春風寬待期】，建議總控運營致電溫和慰問；`;
-      }
-      if (restCount > 0) {
-        insight += ` ${restCount} 家處於【護盤存續】，平穩過渡舊契約中；`;
-      }
+      if (trialCount > 0) insight += ` 嘗鮮開席 ${trialCount} 家；`;
+      if (graceCount > 0) insight += ` 有 ${graceCount} 家商號處於【春風寬待期】，建議總控運營致電溫和慰問；`;
+      if (restCount > 0) insight += ` ${restCount} 家處於【護盤存續】，平穩過渡舊契約中；`;
+      if (pausedCount > 0) insight += ` ${pausedCount} 家【商道暫歇】；`;
       if (allCategories.length < 5) {
         insight += ` 標準品類尚少，建議豐富民生糧油與五金機電標準細項。`;
       } else {
@@ -802,7 +820,7 @@
 
       container.innerHTML = allApplications.map(a => {
         const isPending = a.application_status === 'pending_review';
-        const isApproved = a.application_status === 'approved';
+        const isApproved = a.application_status === 'approved' || a.application_status === 'approved_by_ai' || a.application_status === 'approved_manually';
         return `
           <div class="p-4 bg-stone-50 border ${isPending ? 'border-amber-300 shadow-sm' : 'border-stone-200'} rounded-2xl space-y-2.5">
             <div class="flex flex-wrap justify-between items-start gap-2">
@@ -821,7 +839,7 @@
                   </span>
                 </div>
                 <div class="text-[11px] text-stone-500 font-mono mt-1">
-                  負責人: <b>${a.contact_person}</b> · 手機: <a href="tel:${a.contact_phone}" class="underline font-bold text-stone-800">${a.contact_phone}</a> · 模式: ${a.service_mode}
+                  負責人: <b>${a.contact_person}</b> · 手機: <a href="tel:${a.contact_phone}" class="underline font-bold text-stone-800">${a.contact_phone}</a> · 模式: ${a.service_mode || '雙軌通用'}
                 </div>
               </div>
               <div class="text-right">
@@ -863,14 +881,16 @@
       tbody.innerHTML = allTenants.map(t => {
         const status = t.membership_status || (t.is_active ? 'active' : 'paused');
         let statusTag = '';
-        if (status === 'active') {
-          statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">🟢 和合在冊</span>';
+        if (!t.is_active || status === 'paused') {
+          statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">🛑 商道暫歇</span>';
+        } else if (status === 'trial') {
+          statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-100 text-cyan-800">🍃 嘗鮮體驗</span>';
         } else if (status === 'grace') {
-          statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">🍃 春風寬待中</span>';
+          statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">🍃 春風寬待</span>';
         } else if (status === 'restricted') {
           statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">🛡️ 護盤存續</span>';
         } else {
-          statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">🛑 商道暫歇</span>';
+          statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">🟢 和合在冊</span>';
         }
 
         const modeStr = (t.service_mode === 'offline') ? '純線下實體' : (t.service_mode === 'online' ? '純線上網銷' : '雙軌通用');
@@ -881,8 +901,8 @@
             <td class="p-3 font-sans font-medium">${t.company_name}</td>
             <td class="p-3">${t.business_type === 'factory' ? '🏭 品牌生產工廠' : '🏢 區域總經銷 (總代)'}</td>
             <td class="p-3">${modeStr}</td>
-            <td class="p-3 font-bold text-amber-700 tracking-wider">${t.invite_code}</td>
-            <td class="p-3 font-sans">${t.contact_person || '-'}</td>
+            <td class="p-3 font-bold text-amber-700 tracking-wider">${t.invite_code || '-'}</td>
+            <td class="p-3 font-sans">${t.contact_person || t.contact_name || '-'}</td>
             <td class="p-3 font-mono text-stone-400">
               <span class="tracking-widest font-bold">••••••••</span>
               <button onclick="window.issueResetTokenPrompt(${t.id}, '${t.tenant_id}', '${t.company_name}')" class="text-emerald-800 text-[11px] font-bold hover:underline ml-1.5 font-sans">
@@ -890,9 +910,12 @@
               </button>
             </td>
             <td class="p-3">${statusTag}</td>
-            <td class="p-3 text-right">
+            <td class="p-3 text-right space-x-1.5">
               <button onclick="window.openTenantStatusModal(${t.id}, '${t.tenant_id}', '${t.company_name}', '${status}')" class="text-[11px] font-bold text-stone-700 hover:text-stone-900 bg-white border border-stone-200 px-2.5 py-1 rounded-xl shadow-xs hover:border-stone-400 transition font-sans">
                 ⚖️ 商契調控
+              </button>
+              <button onclick="window.confirmPurgeTenantAction('${t.tenant_id}', '${t.company_name}')" class="text-[11px] font-bold text-rose-700 hover:text-rose-900 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-xl shadow-xs hover:bg-rose-100 transition font-sans">
+                🗑️ 銷號
               </button>
             </td>
           </tr>
@@ -977,7 +1000,11 @@
         `您正在為商號【${companyName}】簽發專屬【自立新約重置信碼】。由廠商當家掌櫃在後台自行重置密碼，平台不留存也不窺探密碼：`,
         async () => {
           const resetToken = 'CLAIM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-          await supabase.from('platform_tenant').update({ reset_claim_token: resetToken }).eq('id', id);
+          await supabase.from('platform_tenant').update({ 
+            access_key: resetToken,
+            reset_claim_token: resetToken 
+          }).eq('tenant_id', tenantId);
+
           recordAuditLog('簽發自立新約信碼', 'CRITICAL_2FA', { tenant_id: tenantId, claim_token: resetToken });
           alert(
             `📜 已為【${companyName}】簽發自立新約信碼！\n\n` +
@@ -990,14 +1017,13 @@
     };
 
     window.openTenantStatusModal = function(id, tenantId, companyName, currentStatus) {
-      // 確保將 tenant_id 作為主要唯一標識寫入
       document.getElementById('adjust-tenant-id').value = tenantId || id;
       document.getElementById('adjust-tenant-title').innerText = `${companyName} (${tenantId})`;
 
       const radios = document.getElementsByName('membership_status_choice');
       radios.forEach(r => r.checked = (r.value === currentStatus));
 
-      let aiInsight = `該商號在冊合作良好。建議：若遇年節或款項周轉期，優先採用【春風寬待】或【護盤存續】，保障末端實體門店正常進貨謀生；除非出現不可調和之重大失信，方行使【商道暫歇】。`;
+      let aiInsight = `該商號在冊合作良好。建議：若遇年節或款項周轉期，優先採用【春風寬待】或【護盤存續】，保障末端實體門店正常進貨謀生；若資質需推翻重審，可點擊【銷號清除】釋放認領代碼。`;
       document.getElementById('adjust-ai-insight').innerText = aiInsight;
 
       window.openModal('modal-status-adjust');
@@ -1011,7 +1037,6 @@
       const status = statusEl.value;
       const note = document.getElementById('adjust-note-input').value.trim();
 
-      // 先行關閉調整彈窗，避免雙重遮罩衝突
       window.closeModal('modal-status-adjust');
 
       try {
@@ -1026,7 +1051,6 @@
           .eq('tenant_id', tenantKey)
           .select();
 
-        // 若使用 tenant_id 查無結果，嘗試使用數字 id 進行降級更新
         if (!error && (!data || data.length === 0) && !isNaN(tenantKey)) {
           const retry = await supabase
             .from('platform_tenant')
@@ -1049,7 +1073,6 @@
           return alert(`⚠️ 未找到商號標識為【${tenantKey}】的資料列！`);
         }
 
-        // 記錄不可篡改安全審計
         await recordAuditLog('商契氣象調控', 'WARN', { tenant_key: tenantKey, target_status: status, note });
 
         alert(`✅ 商契氣象已成功調控為【${status}】！`);
@@ -1058,6 +1081,54 @@
         console.error('執行例外:', err);
         alert('❌ 執行出錯: ' + err.message);
       }
+    };
+
+    // =========================================================================
+    // 【新增核心】：商號徹底註銷銷號 (作廢除名 · 釋放重新掃描入駐)
+    // =========================================================================
+    window.triggerPurgeFromModal = function() {
+      const tenantKey = document.getElementById('adjust-tenant-id').value;
+      const title = document.getElementById('adjust-tenant-title').innerText;
+      window.closeModal('modal-status-adjust');
+      window.confirmPurgeTenantAction(tenantKey, title);
+    };
+
+    window.confirmPurgeTenantAction = function(tenantId, companyName) {
+      window.triggerPlatform2FA(
+        `⚠️ 最高警戒：即將徹底銷號商號【${companyName}】(${tenantId})，清空入駐審核與主體賬本。請出示 2FA 口令確認：`,
+        async () => {
+          const confirmCode = prompt(
+            `⚠️ 危險確認：商號【${companyName}】即將作廢除名！\n\n` +
+            `該操作將物理清除 platform_tenant、tenant_application 記錄。\n` +
+            `完成後廠商可持執照原件前往 join.html 重新掃描核驗。\n\n` +
+            `若確認銷號重置，請在下方輸入大寫：DELETE`
+          );
+
+          if (confirmCode !== 'DELETE') {
+            return alert('操作已取消，未做任何變更。');
+          }
+
+          try {
+            // 1. 級聯清理入駐審核申請
+            await supabase.from('tenant_application').delete().eq('tenant_id', tenantId);
+
+            // 2. 兜底清理商品或客戶（若存在）
+            try { await supabase.from('goods').delete().eq('tenant_id', tenantId); } catch(e){}
+            try { await supabase.from('customers').delete().eq('tenant_id', tenantId); } catch(e){}
+
+            // 3. 刪除主體租戶記錄
+            const { error } = await supabase.from('platform_tenant').delete().eq('tenant_id', tenantId);
+            if (error) throw error;
+
+            await recordAuditLog('商號作廢除名銷號', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: companyName });
+
+            alert(`✅ 商號【${companyName}】已徹底銷號清理！\n認領碼已釋放，掌櫃現在可以前往 join.html 重新拍照重審。`);
+            await window.loadPlatformData();
+          } catch (err) {
+            alert('❌ 銷號執行失敗: ' + err.message);
+          }
+        }
+      );
     };
 
     function renderCategoryTree() {
