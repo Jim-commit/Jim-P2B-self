@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>百工商道 · 廠商實名資質入駐與進度查詢</title>
+  <title>百工商道 · 厂商实名资质入驻与进度查询</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- 1. 引入免費純前端真實 OCR 引擎 (Tesseract.js) -->
+  <!-- 1. 引入免费纯前端真实 OCR 引擎 (Tesseract.js) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <!-- 2. 引入免費純前端二維碼解碼庫 (掃描執照右上角官方公示系統碼) -->
+  <!-- 2. 引入免费纯前端二维码解码库 (扫描执照右上角官方公示系统码) -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -18,50 +18,50 @@
 
   <div class="w-full max-w-2xl bg-[#27272a] border border-stone-700/80 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6">
     
-    <!-- 頂部抬頭 -->
+    <!-- 顶部抬头 -->
     <header class="text-center space-y-2 border-b border-stone-700 pb-5">
       <div class="w-14 h-14 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-inner">
         🏛️
       </div>
-      <h1 class="text-xl font-bold text-white tracking-wide">百工商道 · 廠商實名資質入駐中心</h1>
+      <h1 class="text-xl font-bold text-white tracking-wide">百工商道 · 厂商实名资质入驻中心</h1>
       <p class="text-xs text-stone-400">
-        執照後六位即預設安家密鑰 · 商號代號即下游認領碼 · 光學驗真秒開席
+        商号代号唯一标识 · 执照后六位即预设安家密钥 · 光学验真秒开席
       </p>
     </header>
 
-    <!-- 雙模式導航切換標籤 -->
+    <!-- 双模式导航切换标签 -->
     <nav class="flex bg-stone-900 p-1.5 rounded-2xl border border-stone-800 text-xs font-bold gap-2">
       <button type="button" id="tab-btn-apply" onclick="window.switchJoinTab('apply')" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-stone-950 transition shadow">
-        📝 廠商入駐立約 / 補件重提
+        📝 厂商入驻立约 / 补件重提
       </button>
       <button type="button" id="tab-btn-query" onclick="window.switchJoinTab('query')" class="flex-1 py-2.5 rounded-xl text-stone-400 hover:text-white transition">
-        🔍 查詢審核結果與開席信物
+        🔍 查询审核结果与商号信物
       </button>
     </nav>
 
     <!-- ===================================================================== -->
-    <!-- 視圖 1：廠商入駐表單（支援首次立約 + 退回補件修正） -->
+    <!-- 视图 1：厂商入驻表单（支援首次立约 + 退回补件修正） -->
     <!-- ===================================================================== -->
     <form id="join-vendor-form" onsubmit="window.handleVendorRegister(event)" class="space-y-4 text-xs">
       
-      <!-- 補件模式提示橫幅 -->
+      <!-- 补件模式提示横幅 -->
       <div id="resubmit-banner" class="hidden bg-amber-950/60 border border-amber-500/50 p-3.5 rounded-2xl flex items-center justify-between gap-2 text-amber-200">
         <div>
-          <b class="text-amber-400 block">🔄 當前處於【退回補件修正模式】</b>
-          <span class="text-[11px]">請根據平台批示意見重新拍攝清晰營業執照原件，修改無誤後再次遞交覆核。</span>
+          <b class="text-amber-400 block">🔄 当前处于【退回补件修正模式】</b>
+          <span class="text-[11px]">请根据平台批示意见重新拍摄清晰营业执照原件，修改无误后再次递交复核。</span>
         </div>
         <button type="button" onclick="window.cancelResubmitMode()" class="text-[11px] bg-stone-800 px-2.5 py-1 rounded-lg text-stone-300 hover:text-white shrink-0">
-          退出補件
+          退出补件
         </button>
       </div>
       <input type="hidden" id="resubmit-app-id" value="">
 
-      <!-- 執照上傳與交互式質檢區 -->
+      <!-- 执照上传与交互式质检区 -->
       <div class="bg-[#202023] p-4 rounded-2xl border border-stone-700/80 space-y-3">
         <div class="flex justify-between items-center">
-          <label class="text-stone-300 font-bold">1. 營業執照正本 / 副本實拍照 (拍照後自動即時核驗) *：</label>
+          <label class="text-stone-300 font-bold">1. 营业执照正本 / 副本实拍照 (拍照后自动即时核验) *：</label>
           <span id="btn-reupload" onclick="document.getElementById('license-file-input').click()" class="hidden text-amber-400 hover:text-amber-300 underline cursor-pointer font-bold">
-            🔄 重新拍攝/更換照片
+            🔄 重新拍摄/更换照片
           </span>
         </div>
         
@@ -72,17 +72,17 @@
           
           <div id="upload-placeholder" class="text-center space-y-1.5 py-5">
             <span class="text-3xl block">📷</span>
-            <span class="text-stone-200 font-bold block text-sm">點擊拍攝或上傳營業執照原件</span>
-            <span class="text-[11px] text-stone-400 block">系統將自動識別信用代碼，並以【代碼後六位】作為預設安家密鑰</span>
+            <span class="text-stone-200 font-bold block text-sm">点击拍摄或上传营业执照原件</span>
+            <span class="text-[11px] text-stone-400 block">系统将自动识别信用代码，并以【代码后六位】作为预设安家密钥</span>
           </div>
         </div>
 
-        <!-- 掃描動態進度條 -->
+        <!-- 扫描动态进度条 -->
         <div id="ocr-progress-box" class="hidden bg-stone-900 p-3 rounded-xl border border-stone-800 space-y-2">
           <div class="flex justify-between items-center text-[11px]">
             <span class="text-amber-400 font-mono flex items-center gap-1.5" id="ocr-status-text">
               <span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-              正在進行三維度光學防偽掃描...
+              正在进行三维度光学防伪扫描...
             </span>
             <span class="text-stone-400 font-mono" id="ocr-progress-pct">0%</span>
           </div>
@@ -91,93 +91,93 @@
           </div>
         </div>
 
-        <!-- 交互式診斷與人工兜底提示框 -->
+        <!-- 交互式诊断与人工兜底提示框 -->
         <div id="audit-feedback-box" class="hidden p-3.5 rounded-2xl border space-y-2 transition-all">
           <div class="flex items-center justify-between">
             <b id="audit-feedback-title" class="text-xs flex items-center gap-1.5"></b>
             <button type="button" id="audit-retry-btn" onclick="document.getElementById('license-file-input').click()" class="hidden bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold px-3 py-1 rounded-lg shadow active:scale-95 transition">
-              📷 立即重新拍攝
+              📷 立即重新拍摄
             </button>
           </div>
           <ul id="audit-feedback-list" class="text-[11px] space-y-1 list-disc list-inside leading-relaxed"></ul>
         </div>
       </div>
 
-      <!-- 基本信息錄入 -->
+      <!-- 基本信息录入 -->
       <div class="bg-[#202023] p-4 rounded-2xl border border-stone-700/80 space-y-3">
-        <label class="block text-stone-300 font-bold">2. 商號主體登記信息：</label>
+        <label class="block text-stone-300 font-bold">2. 商号主体登记信息：</label>
         
         <div>
-          <label class="block text-stone-400 mb-1">主體執照全稱 (與執照一致) *：</label>
-          <input type="text" id="v-company-name" required placeholder="上傳清晰執照自動提取或手動核對填寫" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 font-bold outline-none focus:border-amber-500">
+          <label class="block text-stone-400 mb-1">主体执照全称 (与执照一致) *：</label>
+          <input type="text" id="v-company-name" required placeholder="上传清晰执照自动提取或手动核对填写" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 font-bold outline-none focus:border-amber-500">
         </div>
 
         <div>
-          <label class="block text-stone-400 mb-1">統一社會信用代碼 (18位國標校驗 · 後6位即為預設密鑰) *：</label>
-          <input type="text" id="v-credit-code" required maxlength="18" oninput="window.syncAccessKeyFromCreditCode(this.value)" placeholder="系統自動提取或手動核對填寫 18 位代碼" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase text-amber-400 font-bold outline-none focus:border-amber-500">
+          <label class="block text-stone-400 mb-1">统一社会信用代码 (18位国标校验 · 后6位即为预设密钥) *：</label>
+          <input type="text" id="v-credit-code" required maxlength="18" oninput="window.syncAccessKeyFromCreditCode(this.value)" placeholder="系统自动提取或手动核对填写 18 位代码" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase text-amber-400 font-bold outline-none focus:border-amber-500">
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-stone-400 mb-1">商號代號 (即下游認領碼) *：</label>
+            <label class="block text-stone-400 mb-1">商号代号 (全盘唯一商业标识) *：</label>
             <input type="text" id="v-tenant-id" required placeholder="如：NY-FUNIU" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase font-bold text-amber-400 outline-none focus:border-amber-500">
           </div>
           <div>
-            <label class="block text-stone-400 mb-1">行當類型 *：</label>
+            <label class="block text-stone-400 mb-1">行当类型 *：</label>
             <select id="v-business-type" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 font-bold outline-none focus:border-amber-500">
-              <option value="factory">🏭 品牌工坊 (源頭生產)</option>
-              <option value="dealer">🏢 區域總經銷 (渠道大代)</option>
+              <option value="factory">🏭 品牌工坊 (源头生产)</option>
+              <option value="dealer">🏢 区域总经销 (渠道大代)</option>
             </select>
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-stone-400 mb-1">大當家負責人稱呼 *：</label>
-            <input type="text" id="v-contact-person" required placeholder="如：王掌櫃" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 outline-none focus:border-amber-500">
+            <label class="block text-stone-400 mb-1">大当家负责人称呼 *：</label>
+            <input type="text" id="v-contact-person" required placeholder="如：王掌柜" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 outline-none focus:border-amber-500">
           </div>
           <div>
-            <label class="block text-stone-400 mb-1">聯絡電話 (查詢進度憑證) *：</label>
-            <input type="tel" id="v-contact-phone" required placeholder="11位手機號碼" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono text-stone-200 outline-none focus:border-amber-500">
+            <label class="block text-stone-400 mb-1">联络电话 (查询进度凭证) *：</label>
+            <input type="tel" id="v-contact-phone" required placeholder="11位手机号码" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono text-stone-200 outline-none focus:border-amber-500">
           </div>
         </div>
 
         <div>
-          <label class="block text-stone-400 mb-1">預設安家密鑰 (自動同步執照代碼後 6 位，登入後可自改) *：</label>
-          <input type="text" id="v-access-key" required placeholder="識別信用代碼後自動填入後六位" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase font-bold text-emerald-400 outline-none focus:border-amber-500">
+          <label class="block text-stone-400 mb-1">预设安家密钥 (自动同步执照代码后 6 位，登录后可自改) *：</label>
+          <input type="text" id="v-access-key" required placeholder="识别信用代码后自动填入后六位" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase font-bold text-emerald-400 outline-none focus:border-amber-500">
         </div>
       </div>
 
-      <!-- 提交按鈕 -->
+      <!-- 提交按钮 -->
       <button type="submit" id="btn-submit-join" disabled class="w-full py-3.5 bg-stone-700 text-stone-400 cursor-not-allowed font-bold rounded-2xl transition shadow-lg text-sm flex items-center justify-center gap-2">
-        <span>🔒</span> 請先上傳營業執照進行光學驗真
+        <span>🔒</span> 请先上传营业执照进行光学验真
       </button>
     </form>
 
     <!-- ===================================================================== -->
-    <!-- 視圖 2：審核進度查詢（憑手機號 + 營業執照後 6 位雙重核身查詢） -->
+    <!-- 视图 2：审核进度查询（凭手机号 + 营业执照后 6 位双重核身查询） -->
     <!-- ===================================================================== -->
     <section id="query-status-section" class="hidden space-y-4 text-xs">
       <div class="bg-[#202023] p-5 rounded-2xl border border-stone-700/80 space-y-3">
-        <label class="block text-stone-300 font-bold text-sm">🔍 查詢入駐審核批示與開席信物</label>
-        <p class="text-[11px] text-stone-400">請輸入登記時的「聯絡手機號碼」及「營業執照信用代碼後 6 位」進行核身查詢：</p>
+        <label class="block text-stone-300 font-bold text-sm">🔍 查询入驻审核批示与商号信物</label>
+        <p class="text-[11px] text-stone-400">请输入登记时的「联络手机号码」及「营业执照信用代码后 6 位」进行核身查询：</p>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          <input type="tel" id="q-search-phone" placeholder="1. 輸入 11 位聯絡手機號碼" class="bg-stone-900 border border-stone-700 rounded-xl px-3.5 py-2.5 font-mono text-white outline-none focus:border-amber-500">
-          <input type="text" id="q-search-last6" maxlength="6" placeholder="2. 輸入營業執照代碼後 6 位" class="bg-stone-900 border border-stone-700 rounded-xl px-3.5 py-2.5 font-mono uppercase text-amber-400 font-bold outline-none focus:border-amber-500">
+          <input type="tel" id="q-search-phone" placeholder="1. 输入 11 位联络手机号码" class="bg-stone-900 border border-stone-700 rounded-xl px-3.5 py-2.5 font-mono text-white outline-none focus:border-amber-500">
+          <input type="text" id="q-search-last6" maxlength="6" placeholder="2. 输入营业执照代码后 6 位" class="bg-stone-900 border border-stone-700 rounded-xl px-3.5 py-2.5 font-mono uppercase text-amber-400 font-bold outline-none focus:border-amber-500">
         </div>
 
         <button type="button" onclick="window.queryApplicationStatus()" class="w-full bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
-          核驗查詢進度
+          核验查询进度
         </button>
       </div>
 
-      <!-- 查詢結果渲染容器 -->
+      <!-- 查询结果渲染容器 -->
       <div id="query-result-container" class="space-y-3"></div>
     </section>
 
     <div class="text-center pt-2 border-t border-stone-800">
-      <a href="platform.html" class="text-stone-500 hover:text-stone-300 text-[11px] underline">返回平台運營總控中樞</a>
+      <a href="platform.html" class="text-stone-500 hover:text-stone-300 text-[11px] underline">返回平台运营总控中枢</a>
     </div>
 
   </div>
@@ -192,7 +192,6 @@
     let verifiedAuditSummary = '';
     let lastQueriedApps = [];
 
-    // 實時連動：當統一社會信用代碼變化時，自動提取後 6 位作為預設安家密鑰
     window.syncAccessKeyFromCreditCode = function(codeVal) {
       const clean = (codeVal || '').trim().toUpperCase();
       if (clean.length >= 6) {
@@ -219,7 +218,6 @@
       }
     };
 
-    // 1. 國標 GB 32100-2015 統一社會信用代碼嚴格數學驗真
     function verifyCreditCodeGB32100(code) {
       if (!code || code.length !== 18) return false;
       const regex = /^[0-9A-HJ-NPQRTUWXY]{2}[0-9]{6}[0-9A-HJ-NPQRTUWXY]{10}$/;
@@ -240,7 +238,6 @@
       return code[17] === charMap[checkIndex];
     }
 
-    // 2. 掃描執照右上角官方二維碼
     function scanOfficialLicenseQR(imgElement) {
       try {
         const canvas = document.createElement('canvas');
@@ -268,7 +265,6 @@
       return { found: false, isOfficial: false, extractedCode: '', rawUrl: '' };
     }
 
-    // 3. 壓縮圖片供資料庫留檔
     function compressImageForStorage(imgElement) {
       const canvas = document.createElement('canvas');
       const maxDim = 1000;
@@ -314,13 +310,12 @@
 
       feedbackBox.classList.add('hidden');
       progressBox.classList.remove('hidden');
-      statusText.innerText = '正在檢測執照右上角官方二維碼...';
+      statusText.innerText = '正在检测执照右上角官方二维码...';
       pctText.innerText = '15%';
       progressBar.style.width = '15%';
 
       const qrScan = scanOfficialLicenseQR(imgElement);
 
-      // 第二關：啟動本地光學文字識別 (OCR)，並加上 12 秒超時熔斷保護
       let recognizedText = '';
       let isOcrTimeout = false;
 
@@ -330,7 +325,7 @@
             logger: m => {
               if (m.status === 'recognizing text') {
                 const p = Math.min(95, 20 + Math.floor(m.progress * 75));
-                statusText.innerText = `正在逐行校對執照文字與代碼 (${p}%)...`;
+                statusText.innerText = `正在逐行校对执照文字与代码 (${p}%)...`;
                 pctText.innerText = `${p}%`;
                 progressBar.style.width = `${p}%`;
               }
@@ -354,7 +349,7 @@
 
       if (isOcrTimeout) {
         failedAttemptsCount = 2;
-        renderInteractiveFeedback(false, [], ['⚠️ 當前網路較慢或設備光學識別超時，已自動為您轉入人工快速核驗通道。'], '');
+        renderInteractiveFeedback(false, [], ['⚠️ 当前网络较慢或设备光学识别超时，已自动为您转入人工快速核验通道。'], '');
         return;
       }
 
@@ -365,9 +360,9 @@
       const hitKeywords = keywords.filter(kw => recognizedText.includes(kw));
       
       if (hitKeywords.length >= 2) {
-        successes.push(`✅ <b>版面特徵合法</b>：識別到「${hitKeywords.slice(0, 3).join('、')}」等法定字段。`);
+        successes.push(`✅ <b>版面特征合法</b>：识别到「${hitKeywords.slice(0, 3).join('、')}」等法定字段。`);
       } else {
-        issues.push('❌ <b>未識別到營業執照版面文字</b>：請確保上傳的是營業執照原件，光線充足無嚴重模糊。');
+        issues.push('❌ <b>未识别到营业执照版面文字</b>：请确保上传的是营业执照原件，光线充足无严重模糊。');
       }
 
       let finalCreditCode = qrScan.extractedCode;
@@ -379,17 +374,17 @@
       const isCodeChecksumPass = verifyCreditCodeGB32100(finalCreditCode);
 
       if (qrScan.isOfficial) {
-        successes.push(`✅ <b>官方二維碼驗真通過</b>：成功解碼國家公示系統防偽碼。`);
+        successes.push(`✅ <b>官方二维码验真通过</b>：成功解码国家公示系统防伪码。`);
       } else {
-        issues.push('⚠️ <b>右上角官方二維碼未掃出</b>：可能存在反光或摺痕，建議對準右上角重拍。');
+        issues.push('⚠️ <b>右上角官方二维码未扫出</b>：可能存在反光或折痕，建议对准右上角重拍。');
       }
 
       if (finalCreditCode && isCodeChecksumPass) {
-        successes.push(`✅ <b>國標 18 位代碼校驗合格</b>：<code>${finalCreditCode}</code>（已同步後 6 位為預設安家密鑰）。`);
+        successes.push(`✅ <b>国标 18 位代码校验合格</b>：<code>${finalCreditCode}</code>（已同步后 6 位为预设安家密钥）。`);
       } else if (finalCreditCode) {
-        issues.push(`❌ <b>信用代碼讀取有誤（${finalCreditCode}）</b>：校驗位不符，請拉近對焦重拍。`);
+        issues.push(`❌ <b>信用代码读取有误（${finalCreditCode}）</b>：校验位不符，请拉近对焦重拍。`);
       } else {
-        issues.push('❌ <b>未提取到 18 位統一社會信用代碼</b>：請確保代碼區域完整入鏡。');
+        issues.push('❌ <b>未提取到 18 位统一社会信用代码</b>：请确保代码区域完整入镜。');
       }
 
       const nameMatch = recognizedText.match(/名称[:：]?([\u4e00-\u9fa5()（）]{4,30}(?:公司|厂|店|社|中心))/);
@@ -413,7 +408,7 @@
         isLicenseVerified = true;
         isManualFallbackMode = false;
         box.className = 'p-4 rounded-2xl border border-emerald-500/40 bg-emerald-950/30 text-emerald-200 space-y-2';
-        title.innerHTML = '🎉 營業執照三維度光學驗真通過！已解鎖簽約開席';
+        title.innerHTML = '🎉 营业执照三维度光学验真通过！已解锁签约开席';
         retryBtn.classList.add('hidden');
         
         list.innerHTML = successes.map(s => `<li>${s}</li>`).join('');
@@ -436,25 +431,25 @@
         if (failedAttemptsCount >= 2) {
           isManualFallbackMode = true;
           box.className = 'p-4 rounded-2xl border border-amber-500/50 bg-amber-950/30 text-amber-200 space-y-2';
-          title.innerHTML = '🛡️ 已為您開啟【人工綠色覆核通道】';
+          title.innerHTML = '🛡️ 已为您开启【人工绿色复核通道】';
           retryBtn.classList.remove('hidden');
-          retryBtn.innerText = '📷 再試一次清晰拍攝';
+          retryBtn.innerText = '📷 再试一次清晰拍摄';
 
           list.innerHTML = [
-            '<li>系統檢測到當前照片可能存在<b>鏡面反光、舊版執照或設備兼容限制</b>。</li>',
-            '<li>請在下方核對填寫您的<b>18位統一社會信用代碼</b>（系統將自動取後6位為預設密鑰），提交後直接轉交平台大當家人工覆核。</li>'
+            '<li>系统检测到当前照片可能存在<b>镜面反光、旧版执照或设备兼容限制</b>。</li>',
+            '<li>请在下方核对填写您的<b>18位统一社会信用代码</b>（系统将自动取后6位为预设密钥），提交后直接转交平台大当家人工复核。</li>'
           ].join('');
 
           if (!document.getElementById('v-tenant-id').value) {
             document.getElementById('v-tenant-id').value = 'T-' + Math.random().toString(36).substring(2, 7).toUpperCase();
           }
 
-          verifiedAuditSummary = '【觸發人工兜底通道】前端光學多次未達標，已附原件轉入後台人工覆核。';
+          verifiedAuditSummary = '【触发人工兜底通道】前端光学多次未达标，已附原件转入后台人工复核。';
           updateSubmitButtonState(true, true);
         } else {
           isManualFallbackMode = false;
           box.className = 'p-4 rounded-2xl border border-rose-500/50 bg-rose-950/30 text-rose-200 space-y-2';
-          title.innerHTML = '⚠️ 照片清晰度或防偽特徵未達標，請按提示重拍（第 1 次提醒）：';
+          title.innerHTML = '⚠️ 照片清晰度或防伪特征未达标，请按提示重拍（第 1 次提醒）：';
           retryBtn.classList.remove('hidden');
 
           const allItems = [...issues, ...successes];
@@ -471,23 +466,22 @@
       if (enabled && !isManual) {
         btn.disabled = false;
         btn.className = 'w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-2xl active:scale-95 transition shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer';
-        btn.innerHTML = isResubmit ? '<span>🔄</span> 資質已驗真 · 立即重新遞交覆核' : '<span>📜</span> 資質已驗真 · 立即簽約開席（免費體驗7天）';
+        btn.innerHTML = isResubmit ? '<span>🔄</span> 资质已验真 · 立即重新递交复核' : '<span>📜</span> 资质已验真 · 立即签约开席（免费体验7天）';
       } else if (enabled && isManual) {
         btn.disabled = false;
         btn.className = 'w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl active:scale-95 transition shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer';
-        btn.innerHTML = isResubmit ? '<span>📨</span> 重新提交補件資料 · 轉人工覆核' : '<span>📨</span> 提交資料 · 轉入平台人工綠色審核';
+        btn.innerHTML = isResubmit ? '<span>📨</span> 重新提交补件资料 · 转人工复核' : '<span>📨</span> 提交资料 · 转入平台人工绿色审核';
       } else {
         btn.disabled = true;
         btn.className = 'w-full py-3.5 bg-stone-700 text-stone-400 cursor-not-allowed font-bold rounded-2xl transition shadow-lg text-sm flex items-center justify-center gap-2';
-        btn.innerHTML = '<span>🔒</span> 請先完成營業執照光學驗真以解鎖提交';
+        btn.innerHTML = '<span>🔒</span> 请先完成营业执照光学验真以解锁提交';
       }
     }
 
-    // 提交開席或補件更新
     window.handleVendorRegister = async function(e) {
       e.preventDefault();
       if (!isLicenseVerified && !isManualFallbackMode) {
-        return alert('請先上傳營業執照並完成系統驗真！');
+        return alert('请先上传营业执照并完成系统验真！');
       }
 
       const resubmitId = document.getElementById('resubmit-app-id').value;
@@ -499,20 +493,17 @@
       const contactPhone = document.getElementById('v-contact-phone').value.trim();
 
       if (creditCode.length < 6) {
-        return alert('請完整填寫統一社會信用代碼（至少需包含後 6 位用於核身與預設密鑰）！');
+        return alert('请完整填写统一社会信用代码（至少需包含后 6 位用于核身与预设密钥）！');
       }
 
-      // 規則落地：預設安家密鑰 = 執照後 6 位；下游認領碼 = 商號代號 (tenantId)
       const defaultLast6Key = creditCode.slice(-6);
       const accessKey = document.getElementById('v-access-key').value.trim().toUpperCase() || defaultLast6Key;
-      const inviteCode = tenantId;
 
       const btn = document.getElementById('btn-submit-join');
       btn.disabled = true;
-      btn.innerHTML = '正在核對唯一性並簽發商契...';
+      btn.innerHTML = '正在核对商号唯一性并签发商契...';
 
       try {
-        // 防重複與商號撞名檢查
         if (!resubmitId) {
           const { data: existingApps } = await supabase
             .from('tenant_application')
@@ -522,7 +513,7 @@
           if (existingApps && existingApps.length > 0) {
             const isSamePhone = existingApps.some(x => x.contact_phone === contactPhone);
             if (isSamePhone) {
-              alert('ℹ️ 檢測到該手機號已有入駐申請記錄！\n已為您自動跳轉至進度查詢頁查看最新批示。');
+              alert('ℹ️ 检测到该手机号已有入驻申请记录！\n已为您自动跳转至进度查询页查看最新批示。');
               document.getElementById('q-search-phone').value = contactPhone;
               document.getElementById('q-search-last6').value = defaultLast6Key;
               window.switchJoinTab('query');
@@ -531,7 +522,7 @@
               updateSubmitButtonState(true, isManualFallbackMode);
               return;
             } else {
-              alert(`⚠️ 商號代號【${tenantId}】已被其他廠家佔用，請在後方加上數字（如 ${tenantId}01）後重新提交！`);
+              alert(`⚠️ 商号代号【${tenantId}】已被其他厂家占用，请在后方加上数字（如 ${tenantId}01）后重新提交！`);
               btn.disabled = false;
               updateSubmitButtonState(true, isManualFallbackMode);
               return;
@@ -551,12 +542,11 @@
             business_type: businessType,
             application_status: appStatus,
             ai_audit_score: auditScore,
-            review_note: `【補件重提】${verifiedAuditSummary}`,
-            invite_code: inviteCode,
+            review_note: `【补件重提】${verifiedAuditSummary}`,
             license_image_url: currentCompressedBase64
           }).eq('id', parseInt(resubmitId));
 
-          if (updErr) throw new Error('補件更新失敗: ' + updErr.message);
+          if (updErr) throw new Error('补件更新失败: ' + updErr.message);
         } else {
           const { error: appErr } = await supabase.from('tenant_application').insert([{
             tenant_id: tenantId,
@@ -569,11 +559,10 @@
             application_status: appStatus,
             ai_audit_score: auditScore,
             review_note: verifiedAuditSummary,
-            invite_code: inviteCode,
             license_image_url: currentCompressedBase64
           }]);
 
-          if (appErr) throw new Error('申請登記失敗: ' + appErr.message);
+          if (appErr) throw new Error('申请登记失败: ' + appErr.message);
         }
 
         if (!isManualFallbackMode) {
@@ -590,7 +579,6 @@
             contact_name: contactPerson,
             phone: contactPhone,
             access_key: accessKey,
-            invite_code: inviteCode,
             membership_status: 'trial',
             is_active: true,
             permit_brick_and_mortar: true,
@@ -598,22 +586,22 @@
             valid_until: trialEndDate.toISOString().slice(0, 10)
           }]);
 
-          if (tenantErr) throw new Error('開席激活失敗: ' + tenantErr.message);
+          if (tenantErr) throw new Error('开席激活失败: ' + tenantErr.message);
 
           alert(
-            `🎉 資質驗真通過！已為您開通「🍃 嘗鮮體驗」7天全功能席位！\n\n` +
-            `• 主體名稱：${companyName}\n` +
-            `• 商號代號（即下游認領碼）：${inviteCode}\n` +
-            `• 預設安家密鑰（執照後6位）：${accessKey}\n\n` +
-            `後續憑「手機號 + 執照後6位」可隨時查詢進度！`
+            `🎉 资质验真通过！已为您开通「🍃 尝鲜体验」7天全功能席位！\n\n` +
+            `• 主体名称：${companyName}\n` +
+            `• 商号代号（唯一标识）：${tenantId}\n` +
+            `• 预设安家密钥（执照后6位）：${accessKey}\n\n` +
+            `后续凭「手机号 + 执照后6位」可随时查询进度！`
           );
         } else {
           alert(
-            `📨 您的入駐資料與執照原件已成功遞交！\n\n` +
-            `• 登記手機：${contactPhone}\n` +
-            `• 執照代碼後 6 位（查詢與預設密碼）：${defaultLast6Key}\n` +
-            `• 商號代號（下游認領碼）：${inviteCode}\n\n` +
-            `平台大當家核對原件後將第一時間批示，您隨時可憑「手機號 + 執照後6位」查詢結果！`
+            `📨 您的入驻资料与执照原件已成功递交！\n\n` +
+            `• 登记手机：${contactPhone}\n` +
+            `• 执照代码后 6 位（查询与预设密码）：${defaultLast6Key}\n` +
+            `• 商号代号：${tenantId}\n\n` +
+            `平台大当家核对原件后将第一时间批示，您随时可凭「手机号 + 执照后6位」查询结果！`
           );
         }
 
@@ -624,25 +612,22 @@
         window.queryApplicationStatus();
 
       } catch (err) {
-        alert('❌ 提交處理失敗: ' + err.message);
+        alert('❌ 提交处理失败: ' + err.message);
         btn.disabled = false;
         updateSubmitButtonState(true, isManualFallbackMode);
       }
     };
 
-    // =========================================================================
-    // 視圖 2：憑「手機號 + 營業執照後 6 位」雙重核身查詢審核進度
-    // =========================================================================
     window.queryApplicationStatus = async function() {
       const phone = document.getElementById('q-search-phone').value.trim();
       const last6 = document.getElementById('q-search-last6').value.trim().toUpperCase();
       const container = document.getElementById('query-result-container');
 
       if (!phone || last6.length !== 6) {
-        return alert('請完整輸入登記時的「手機號碼」與「營業執照統一信用代碼後 6 位」！');
+        return alert('请完整输入登记时的「手机号码」与「营业执照统一信用代码后 6 位」！');
       }
 
-      container.innerHTML = '<div class="text-center py-6 text-stone-400">正在核驗手機號與執照後六位...</div>';
+      container.innerHTML = '<div class="text-center py-6 text-stone-400">正在核验手机号与执照后六位...</div>';
 
       const { data, error } = await supabase
         .from('tenant_application')
@@ -659,8 +644,8 @@
         container.innerHTML = `
           <div class="bg-[#202023] border border-stone-700/80 rounded-2xl p-6 text-center space-y-2">
             <span class="text-2xl block">🔐</span>
-            <b class="text-stone-200 block">未查詢到匹配檔案（手機號或執照後 6 位不符）</b>
-            <p class="text-[11px] text-stone-400">請核對手機號碼及營業執照統一社會信用代碼最後 6 位字元（注意區分數字 0 與字母 O）。</p>
+            <b class="text-stone-200 block">未查询到匹配档案（手机号或执照后 6 位不符）</b>
+            <p class="text-[11px] text-stone-400">请核对手机号码及营业执照统一社会信用代码最后 6 位字符（注意区分数字 0 与字母 O）。</p>
           </div>
         `;
         return;
@@ -672,7 +657,6 @@
         const isApproved = status === 'approved' || status === 'approved_by_ai' || status === 'approved_manually';
         const isRejected = status === 'rejected';
         const codeLast6 = (app.credit_code || '').slice(-6);
-        const claimCode = app.invite_code || app.tenant_id;
 
         if (isApproved) {
           return `
@@ -683,23 +667,23 @@
                   <span class="text-[10px] font-mono text-emerald-400 ml-2">${app.credit_code || ''}</span>
                 </div>
                 <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
-                  ✅ 審核通過 · 已開席
+                  ✅ 审核通过 · 已开席
                 </span>
               </div>
 
               <div class="grid grid-cols-2 gap-2 bg-stone-900/80 p-3 rounded-xl border border-stone-800 font-mono">
                 <div>
-                  <span class="text-[10px] text-stone-400 block">商號標識 / 下游認領碼 (二合一)</span>
-                  <b class="text-amber-400 text-base font-bold">${claimCode}</b>
+                  <span class="text-[10px] text-stone-400 block">商号代号 (唯一业务标识)</span>
+                  <b class="text-amber-400 text-base font-bold">${app.tenant_id}</b>
                 </div>
                 <div>
-                  <span class="text-[10px] text-stone-400 block">預設安家密鑰 (執照後 6 位)</span>
+                  <span class="text-[10px] text-stone-400 block">预设安家密钥 (执照后 6 位)</span>
                   <b class="text-emerald-400 text-base font-bold">${codeLast6}</b>
                 </div>
               </div>
 
               <p class="text-[11px] text-emerald-200/80">
-                🎉 核驗成功！您可憑商號標識【<b>${app.tenant_id}</b>】與安家密鑰【<b>${codeLast6}</b>】登入廠家調度台；下游門店直接輸入認領碼【<b>${claimCode}</b>】即可綁定供貨關係。
+                🎉 核验成功！您可凭商号代号【<b>${app.tenant_id}</b>】与安家密钥【<b>${codeLast6}</b>】登录厂家调度台；下游门店直接输入您的商号代号【<b>${app.tenant_id}</b>】即可绑定供货。
               </p>
             </div>
           `;
@@ -709,19 +693,19 @@
               <div class="flex justify-between items-center border-b border-rose-500/20 pb-2">
                 <div>
                   <b class="text-sm text-white">${app.company_name}</b>
-                  <span class="text-[10px] font-mono text-rose-300 ml-2">商號：${app.tenant_id}</span>
+                  <span class="text-[10px] font-mono text-rose-300 ml-2">商号：${app.tenant_id}</span>
                 </div>
                 <span class="bg-rose-500/20 text-rose-300 border border-rose-400/30 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
-                  🚫 退回商榷 · 需補件修正
+                  🚫 退回商榷 · 需补件修正
                 </span>
               </div>
               <div class="bg-stone-900/90 p-3.5 rounded-xl border border-rose-500/30 space-y-1">
-                <b class="text-rose-400 text-[11px] block">📋 平台審核批示意見（不通過原因）：</b>
-                <p class="text-stone-200 text-xs leading-relaxed">${app.review_note || '營業執照圖片不夠清晰或信息不符，請重新上傳清晰原件照片。'}</p>
+                <b class="text-rose-400 text-[11px] block">📋 平台审核批示意见（不通过原因）：</b>
+                <p class="text-stone-200 text-xs leading-relaxed">${app.review_note || '营业执照图片不够清晰或信息不符，请重新上传清晰原件照片。'}</p>
               </div>
               <div class="pt-1 flex justify-end">
                 <button type="button" onclick="window.startResubmitCorrection(${app.id})" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-4 py-2 rounded-xl shadow active:scale-95 transition flex items-center gap-1.5">
-                  <span>🔄</span> 立即改善並重新上傳執照
+                  <span>🔄</span> 立即改善并重新上传执照
                 </button>
               </div>
             </div>
@@ -732,17 +716,17 @@
               <div class="flex justify-between items-center border-b border-amber-500/20 pb-2">
                 <div>
                   <b class="text-sm text-white">${app.company_name}</b>
-                  <span class="text-[10px] font-mono text-amber-300 ml-2">商號：${app.tenant_id}</span>
+                  <span class="text-[10px] font-mono text-amber-300 ml-2">商号：${app.tenant_id}</span>
                 </div>
                 <span class="bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 rounded-full font-bold text-[11px] animate-pulse">
-                  ⏳ 人工綠色通道加急審核中
+                  ⏳ 人工绿色通道加急审核中
                 </span>
               </div>
               <p class="text-[11px] text-stone-300 leading-relaxed">
-                您的營業執照與申請資料已進入平台人工覆核隊列。大當家核對無誤後，您的商號【<b>${app.tenant_id}</b>】即為下游認領碼，執照後 6 位【<b>${codeLast6}</b>】即為預設安家密鑰。
+                您的营业执照与申请资料已进入平台人工复核队列。大当家核对无误后，您即可凭商号代号【<b>${app.tenant_id}</b>】及执照后 6 位【<b>${codeLast6}</b>】登录运营。
               </p>
               <div class="text-[10px] text-stone-500 font-mono">
-                提交時間：${new Date(app.created_at).toLocaleString()}
+                提交时间：${new Date(app.created_at).toLocaleString()}
               </div>
             </div>
           `;
