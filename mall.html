@@ -31,8 +31,11 @@
         </div>
       </div>
 
-      <!-- 右側動作：天街與專櫃平滑切換 -->
+      <!-- 右側動作：直達專櫃、返回天街與分享分潤 -->
       <div class="flex items-center gap-1.5 text-xs">
+        <button id="btn-find-brand" onclick="window.promptEnterBrandStore()" class="bg-white/10 hover:bg-white/20 text-emerald-200 px-2.5 py-1.5 rounded-xl border border-emerald-400/30 text-[11px] font-bold transition active:scale-95">
+          🔍 進專櫃
+        </button>
         <button id="btn-back-street" onclick="window.exitToTianJie()" class="hidden bg-white/10 hover:bg-white/20 text-amber-300 px-2.5 py-1.5 rounded-xl border border-amber-400/30 text-[11px] font-bold transition active:scale-95">
           🏛️ 返回天街
         </button>
@@ -249,7 +252,8 @@
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
 
-    let currentTenantParam = new URLSearchParams(window.location.search).get('t');
+    let rawTenantParam = new URLSearchParams(window.location.search).get('t');
+    let currentTenantParam = rawTenantParam ? rawTenantParam.trim().toUpperCase() : null;
     let refStoreParam = new URLSearchParams(window.location.search).get('ref');
 
     let allProducts = [];
@@ -263,6 +267,21 @@
 
     window.exitToTianJie = function() {
       window.location.href = 'mall.html';
+    };
+
+    // 新增：憑商號代號或認領碼一鍵直達該廠品牌專櫃
+    window.promptEnterBrandStore = function() {
+      const code = prompt('請輸入廠商的商號代號或認領信碼（如 NY-FUNIU）：');
+      if (!code || !code.trim()) return;
+      const clean = code.trim().toUpperCase();
+      const found = allTenants.find(t => 
+        (t.tenant_id || '').toUpperCase() === clean || 
+        (t.invite_code || '').toUpperCase() === clean
+      );
+      if (!found) {
+        return alert(`未找到商號認領碼為【${clean}】的在冊專櫃！`);
+      }
+      window.location.href = `mall.html?t=${found.tenant_id}`;
     };
 
     window.openCartModal = function() {
@@ -291,7 +310,15 @@
       renderCategoryChips();
 
       // 3. 研判當前是一態（廠商獨立專賣店）還是二態（百工天街大集市）
+      // 同時兼容 URL 傳入 tenant_id 或 invite_code
       if (currentTenantParam) {
+        const matchedTenant = allTenants.find(t => 
+          (t.tenant_id || '').toUpperCase() === currentTenantParam || 
+          (t.invite_code || '').toUpperCase() === currentTenantParam
+        );
+        if (matchedTenant) {
+          currentTenantParam = matchedTenant.tenant_id;
+        }
         setupBrandStoreMode(currentTenantParam);
       } else {
         setupTianJieMode();
@@ -311,6 +338,7 @@
       document.getElementById('mall-mode-badge').innerText = '生態公域';
       document.getElementById('mall-header-sub').innerText = '物勒工名 · 源頭直發 · 誠信共生';
       document.getElementById('btn-back-street').classList.add('hidden');
+      document.getElementById('btn-find-brand').classList.remove('hidden');
       document.getElementById('brand-hero-section').classList.add('hidden');
     }
 
@@ -321,12 +349,13 @@
       document.getElementById('mall-mode-badge').innerText = '私域專賣';
       document.getElementById('mall-header-sub').innerText = '匠心直供 · 一件代發包郵';
       document.getElementById('btn-back-street').classList.remove('hidden');
+      document.getElementById('btn-find-brand').classList.add('hidden');
 
       // 填充專櫃門面卡
       document.getElementById('hero-brand-name').innerText = name;
       document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '源頭工坊 · 匠心正品';
       document.getElementById('hero-tenant-id').innerText = tenantId;
-      document.getElementById('hero-invite-code').innerText = tenant?.invite_code || '--';
+      document.getElementById('hero-invite-code').innerText = tenant?.invite_code || tenantId;
       document.getElementById('brand-hero-section').classList.remove('hidden');
     }
 
@@ -361,11 +390,9 @@
     async function loadMallProducts() {
       let query = supabase.from('product').select('*').eq('status', 'active');
       
-      // 若在專賣店模式，鎖定當前商號良品
       if (currentTenantParam) {
         query = query.eq('tenant_id', currentTenantParam);
       } else {
-        // 天街大集市：只展示允許線上網銷或雙軌通用的良品
         query = query.in('sales_channel_type', ['online', 'both']);
       }
 
@@ -533,7 +560,6 @@
         measure_unit: item.prod.measure_unit || '件'
       }));
 
-      // 商號歸屬（單店模式下歸該商號，天街多品項預設取第一件品項商號）
       const targetTenant = currentTenantParam || cart[0].prod.tenant_id;
       const orderNo = `ON-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
