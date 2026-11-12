@@ -1,31 +1,31 @@
-<!-- 1. 三合一總代綁定彈窗 -->
+<!-- 1. 三合一供货商绑定弹窗（已统一为商号代号 tenant_id，彻底废除邀请码/认领码概念） -->
 <div id="bind-agent-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
   <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 text-stone-800 shadow-2xl">
     <div class="flex justify-between items-center pb-2 border-b border-stone-100">
       <div>
-        <h3 class="font-bold text-sm text-stone-800">🏪 綁定供貨總代與送貨人</h3>
-        <p class="text-[10px] text-stone-400">認准您的專屬總代，獲取進貨價格與賬期</p>
+        <h3 class="font-bold text-sm text-stone-800">🏪 綁定供貨廠商與送貨人</h3>
+        <p class="text-[10px] text-stone-400">認准您的專屬供貨莊，獲取進貨價格與賬期</p>
       </div>
       <button onclick="window.closeModal('bind-agent-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
     </div>
     <div class="space-y-3 text-xs">
       <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
-        <label class="block font-bold text-stone-700 text-xs">方式 1：輸入總代 6 位邀請碼</label>
+        <label class="block font-bold text-stone-700 text-xs">方式 1：輸入供貨莊商號代號</label>
         <div class="flex gap-2">
-          <input type="text" id="bind-input-code" placeholder="如 888001" maxlength="6" class="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-center font-bold tracking-widest text-emerald-800 outline-none">
+          <input type="text" id="bind-input-code" placeholder="如 NY-FUNIU 或 BJ_SHUNDA" maxlength="24" class="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-1.5 font-mono uppercase text-center font-bold tracking-wider text-emerald-800 outline-none">
           <button onclick="window.bindByCode()" class="bg-[#064e3b] text-white text-xs font-bold px-3 py-1.5 rounded-xl active:scale-95">驗證</button>
         </div>
       </div>
       <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
         <label class="block font-bold text-stone-700 text-xs">方式 2：輸入本店登記手機號</label>
         <div class="flex gap-2">
-          <input type="tel" id="bind-input-phone" placeholder="輸入掌櫃手機號自動認領" maxlength="11" class="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-xs outline-none">
-          <button onclick="window.bindByPhone()" class="bg-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl active:scale-95">認領</button>
+          <input type="tel" id="bind-input-phone" placeholder="輸入掌櫃手機號自動綁定" maxlength="11" class="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-xs outline-none">
+          <button onclick="window.bindByPhone()" class="bg-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl active:scale-95">綁定</button>
         </div>
       </div>
-<div class="text-[12px] text-stone-600 font-medium text-center leading-relaxed pt-1 border-t border-stone-100">
-  或讓跟車師傅出示 <b class="text-emerald-800">專屬總代二維碼</b>，微信掃一掃自動永久綁定。
-</div>
+      <div class="text-[12px] text-stone-600 font-medium text-center leading-relaxed pt-1 border-t border-stone-100">
+        或讓跟車師傅出示 <b class="text-emerald-800">專屬商號二維碼</b>，微信掃一掃自動永久綁定。
+      </div>
     </div>
   </div>
 </div>
@@ -78,7 +78,7 @@
     </div>
     <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-2xl space-y-2 text-xs">
       <div>
-        <span class="text-stone-400 text-[10px] block">總代企業全稱</span>
+        <span class="text-stone-400 text-[10px] block">供貨企業全稱</span>
         <b id="license-corp-name" class="text-stone-800 text-xs font-serif-sc">北京順達商貿供應鏈有限公司</b>
       </div>
       <div class="grid grid-cols-2 gap-2 pt-1 border-t border-stone-200/60 text-[11px]">
@@ -103,7 +103,7 @@
   <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
     <div class="flex justify-between items-center pb-2 border-b border-stone-100">
       <div>
-        <h3 class="font-bold text-sm text-stone-800">📇 總代服務窗口</h3>
+        <h3 class="font-bold text-sm text-stone-800">📇 供貨服務窗口</h3>
         <p class="text-[10px] text-stone-400">遇事直接打電話，不用到處翻通訊錄</p>
       </div>
       <button onclick="window.closeModal('service-window-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
@@ -140,7 +140,7 @@
     <div class="flex justify-between items-center pb-2 border-b border-stone-100">
       <div>
         <h3 class="font-bold text-sm text-stone-800">📝 缺貨登記 · 捎話找貨</h3>
-        <p class="text-[10px] text-stone-400">街坊想買但貨單沒有？交代總代採購備貨</p>
+        <p class="text-[10px] text-stone-400">街坊想買但貨單沒有？交代供貨莊採購備貨</p>
       </div>
       <button onclick="window.closeModal('demand-request-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
     </div>
@@ -156,7 +156,7 @@
     </div>
     <div class="flex gap-2 pt-1">
       <button onclick="window.submitDemandRequest()" class="flex-1 bg-[#064e3b] text-white text-xs font-bold py-2.5 rounded-2xl shadow active:scale-95 transition">
-        交代給總代採購
+        交代給採購備貨
       </button>
       <button onclick="window.closeModal('demand-request-modal')" class="bg-stone-100 text-stone-600 text-xs font-bold px-4 py-2.5 rounded-2xl">
         取消
