@@ -77,8 +77,7 @@
         </span>
       </div>
       <div class="flex items-center gap-4 text-[10px] text-stone-400 pt-1 border-t border-stone-700/50 font-mono">
-        <span>商號代碼: <b id="hero-tenant-id" class="text-white">--</b></span>
-        <span>認領信碼: <b id="hero-invite-code" class="text-amber-300">--</b></span>
+        <span>商號代號: <b id="hero-tenant-id" class="text-white">--</b></span>
         <span>正品驗真: <b class="text-emerald-400">100% PASS</b></span>
       </div>
     </div>
@@ -197,7 +196,10 @@
     <div class="bg-white w-full max-w-md rounded-t-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[80vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
         <b class="text-sm font-bold text-stone-900">🧺 結緣清單購物籃</b>
-        <button onclick="window.clearCart()" class="text-rose-600 text-[11px] hover:underline">清空</button>
+        <div class="flex items-center gap-3">
+          <button onclick="window.clearCart()" class="text-rose-600 text-[11px] hover:underline">清空</button>
+          <button onclick="window.closeModal('modal-cart')" class="text-stone-400 text-base">✕</button>
+        </div>
       </div>
       <div id="cart-items-list" class="space-y-2 divide-y divide-stone-100"></div>
       <div class="pt-2 flex justify-between items-center border-t border-stone-100">
@@ -269,17 +271,13 @@
       window.location.href = 'mall.html';
     };
 
-    // 新增：憑商號代號或認領碼一鍵直達該廠品牌專櫃
     window.promptEnterBrandStore = function() {
-      const code = prompt('請輸入廠商的商號代號或認領信碼（如 NY-FUNIU）：');
+      const code = prompt('請輸入廠商的商號代號（如 NY-FUNIU）：');
       if (!code || !code.trim()) return;
       const clean = code.trim().toUpperCase();
-      const found = allTenants.find(t => 
-        (t.tenant_id || '').toUpperCase() === clean || 
-        (t.invite_code || '').toUpperCase() === clean
-      );
+      const found = allTenants.find(t => (t.tenant_id || '').toUpperCase() === clean);
       if (!found) {
-        return alert(`未找到商號認領碼為【${clean}】的在冊專櫃！`);
+        return alert(`未找到商號代號為【${clean}】的在冊專櫃！`);
       }
       window.location.href = `mall.html?t=${found.tenant_id}`;
     };
@@ -310,12 +308,8 @@
       renderCategoryChips();
 
       // 3. 研判當前是一態（廠商獨立專賣店）還是二態（百工天街大集市）
-      // 同時兼容 URL 傳入 tenant_id 或 invite_code
       if (currentTenantParam) {
-        const matchedTenant = allTenants.find(t => 
-          (t.tenant_id || '').toUpperCase() === currentTenantParam || 
-          (t.invite_code || '').toUpperCase() === currentTenantParam
-        );
+        const matchedTenant = allTenants.find(t => (t.tenant_id || '').toUpperCase() === currentTenantParam);
         if (matchedTenant) {
           currentTenantParam = matchedTenant.tenant_id;
         }
@@ -343,7 +337,7 @@
     }
 
     function setupBrandStoreMode(tenantId) {
-      const tenant = allTenants.find(t => t.tenant_id === tenantId);
+      const tenant = allTenants.find(t => (t.tenant_id || '').toUpperCase() === (tenantId || '').toUpperCase());
       const name = tenant ? tenant.company_name : tenantId;
       document.getElementById('mall-header-title').innerText = `${name} · 品牌數字專櫃`;
       document.getElementById('mall-mode-badge').innerText = '私域專賣';
@@ -351,11 +345,10 @@
       document.getElementById('btn-back-street').classList.remove('hidden');
       document.getElementById('btn-find-brand').classList.add('hidden');
 
-      // 填充專櫃門面卡
+      // 填充專櫃門面卡（已移除認領碼欄位）
       document.getElementById('hero-brand-name').innerText = name;
       document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '源頭工坊 · 匠心正品';
-      document.getElementById('hero-tenant-id').innerText = tenantId;
-      document.getElementById('hero-invite-code').innerText = tenant?.invite_code || tenantId;
+      document.getElementById('hero-tenant-id').innerText = tenant ? tenant.tenant_id : tenantId;
       document.getElementById('brand-hero-section').classList.remove('hidden');
     }
 
@@ -390,9 +383,11 @@
     async function loadMallProducts() {
       let query = supabase.from('product').select('*').eq('status', 'active');
       
+      // 若在專賣店模式，鎖定當前商號良品
       if (currentTenantParam) {
         query = query.eq('tenant_id', currentTenantParam);
       } else {
+        // 天街大集市：只展示允許線上網銷或雙軌通用的良品
         query = query.in('sales_channel_type', ['online', 'both']);
       }
 
@@ -432,10 +427,11 @@
                 </button>
               </div>
 
-              <!-- 標題與標籤 -->
+              <!-- 標題、出品工坊與標籤 -->
               <div>
                 <b class="text-xs text-stone-900 font-bold block line-clamp-1">${p.name}</b>
                 <span class="text-[10px] text-stone-400 font-mono block">${p.spec || '標配'} · ${p.category_main}</span>
+                ${!isSingleShop ? `<span class="text-[9px] text-emerald-800/80 block truncate mt-0.5">🏭 ${tenantName}</span>` : ''}
                 ${tags.length ? `
                   <div class="flex flex-wrap gap-1 mt-1">
                     ${tags.slice(0, 2).map(t => `<span class="bg-amber-50 text-amber-900 border border-amber-200 text-[9px] px-1.5 rounded">${t}</span>`).join('')}
@@ -512,7 +508,7 @@
         <div class="py-2 flex justify-between items-center text-xs">
           <div>
             <b class="text-stone-900 block">${item.prod.name}</b>
-            <span class="font-mono text-[10px] text-stone-400">單價: ¥${item.prod.tier_1_price}</span>
+            <span class="font-mono text-[10px] text-stone-400">單價: ¥${item.prod.tier_1_price} · 小計: ¥${(item.prod.tier_1_price * item.qty).toFixed(2)}</span>
           </div>
           <div class="flex items-center gap-2">
             <button onclick="window.changeCartQty(${item.prod.id}, -1)" class="w-6 h-6 bg-stone-100 rounded-lg font-bold font-mono">-</button>
@@ -560,6 +556,7 @@
         measure_unit: item.prod.measure_unit || '件'
       }));
 
+      // 商號歸屬（單店模式下歸該商號，天街多品項預設取第一件品項商號）
       const targetTenant = currentTenantParam || cart[0].prod.tenant_id;
       const orderNo = `ON-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
