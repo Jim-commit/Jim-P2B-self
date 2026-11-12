@@ -27,8 +27,7 @@
           </span>
         </div>
         <div class="text-xs text-emerald-200 mt-1 flex flex-wrap gap-4 font-mono">
-          <span>商號標識: <b id="hq-tenant-id" class="text-white">--</b></span>
-          <span>下游認領碼: <b id="hq-invite-code" class="text-amber-300 tracking-wider">--</b></span>
+          <span>唯一商號代號: <b id="hq-tenant-id" class="text-amber-300 tracking-wider">--</b></span>
           <span>實體門店: <b id="stat-active-stores" class="text-white">0 家</b></span>
           <span>在庫周轉資材: <b id="stat-baskets" class="text-amber-300">0 件</b></span>
           <span>隨車待繳現款: <b id="stat-pending-cash" class="text-emerald-300">¥0.00</b></span>
@@ -63,6 +62,17 @@
         </button>
       </div>
     </header>
+
+    <!-- 預設密鑰安全提醒條（當仍使用執照後 6 位作為初始密碼時溫馨提示） -->
+    <div id="hq-default-pwd-banner" class="hidden bg-emerald-50 border border-emerald-300 text-emerald-950 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div class="flex items-center gap-2">
+        <span class="text-base">🔐</span>
+        <span>您當前正在使用<b>營業執照後 6 位預設安家密鑰</b>登入，建議先綁定手機驗證器並點擊「自立新約」設置個人專屬密碼，保障賬本安全。</span>
+      </div>
+      <button onclick="window.openChangePasswordModal()" class="bg-[#1b4332] text-white font-bold px-3 py-1 rounded-xl text-[11px] shadow active:scale-95">
+        立即修改密鑰
+      </button>
+    </div>
 
     <!-- 溫情禮帖：商契關照提示條 (春風寬待或通融提示) -->
     <div id="hq-grace-banner" class="hidden bg-amber-50 border border-amber-300 text-amber-950 p-3.5 rounded-2xl flex items-center justify-between text-xs">
@@ -240,33 +250,33 @@
 
   </div>
 
-  <!-- 廠商安全登入門禁 (專屬商號 + 金鑰口令) -->
+  <!-- 廠商安全登入門禁 (專屬商號代號 + 安家密鑰) -->
   <div id="hq-auth-gate" class="fixed inset-0 bg-[#0c1e16]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-stone-800 shadow-2xl">
       <div class="text-center space-y-1">
         <div class="w-12 h-12 bg-[#1b4332] text-amber-300 rounded-2xl flex items-center justify-center font-bold text-xl mx-auto shadow-md">🔐</div>
         <h2 class="text-base font-bold text-stone-900 pt-1">廠商直供與調度中樞登入</h2>
-        <p class="text-[11px] text-stone-400">請輸入分配的商號標識與專屬金鑰</p>
+        <p class="text-[11px] text-stone-400">請輸入商號代號與安家密鑰（初始預設為執照信用代碼後 6 位）</p>
       </div>
 
       <form id="pane-login-pwd" onsubmit="window.verifyHQAuthPwd(event)" class="space-y-3 text-xs">
         <div>
           <label class="block text-stone-600 font-medium mb-1">商號代號 (Tenant ID) *：</label>
-          <input type="text" id="hq-login-tenant" required placeholder="如：BJ_SHUNDA" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono uppercase font-bold text-stone-900 focus:border-emerald-700">
+          <input type="text" id="hq-login-tenant" required placeholder="如：NY-FUNIU 或 BJ_SHUNDA" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono uppercase font-bold text-stone-900 focus:border-emerald-700">
         </div>
         <div>
-          <label class="block text-stone-600 font-medium mb-1">專屬訪問密碼 (Access Key) *：</label>
-          <input type="password" id="hq-login-key" required placeholder="輸入核發的專屬密碼" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono text-stone-900 focus:border-emerald-700">
+          <label class="block text-stone-600 font-medium mb-1">安家訪問密鑰 (預設為執照代碼後 6 位) *：</label>
+          <input type="password" id="hq-login-key" required placeholder="輸入營業執照後 6 位或自設密碼" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono text-stone-900 focus:border-emerald-700">
         </div>
         <button type="submit" id="btn-hq-pwd" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
-          核驗金鑰 · 登入調度台
+          核驗密鑰 · 登入調度台
         </button>
       </form>
 
       <div id="hq-auth-error" class="hidden text-rose-600 text-[11px] font-bold text-center"></div>
 
       <div class="text-center pt-1 border-t border-stone-100 flex justify-between items-center text-[10px]">
-        <a href="join.html" class="text-emerald-800 font-bold hover:underline">尚未入駐？提交資質申請</a>
+        <a href="join.html" class="text-emerald-800 font-bold hover:underline">尚未入駐 / 查審核進度 ➔</a>
         <span class="text-stone-400">RFC 6238 TOTP 守護</span>
       </div>
     </div>
@@ -285,15 +295,15 @@
 
       <div class="space-y-2.5">
         <div>
-          <label class="block text-stone-600 mb-1">原訪問密碼 或 平台簽發的重置信碼 *：</label>
+          <label class="block text-stone-600 mb-1">原訪問密鑰 (初始為執照後 6 位) 或 平台重置碼 *：</label>
           <input type="password" id="chg-old-key" placeholder="輸入舊密碼 或 CLAIM-XXXX" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
         </div>
         <div>
-          <label class="block text-stone-600 mb-1">新立訪問密碼 *：</label>
+          <label class="block text-stone-600 mb-1">新立訪問密鑰 *：</label>
           <input type="password" id="chg-new-key" placeholder="設置新密碼 (建議含字母與數字)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
         </div>
         <div>
-          <label class="block text-stone-600 mb-1">再次確認新密碼 *：</label>
+          <label class="block text-stone-600 mb-1">再次確認新密鑰 *：</label>
           <input type="password" id="chg-confirm-key" placeholder="重複新密碼" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
         </div>
         <div>
@@ -568,7 +578,7 @@
     </div>
   </div>
 
-  <!-- 商品錄入與全功能編輯彈窗 (物勒工名正品溯源 · 升級為實體門店/電子商務獨立複選) -->
+  <!-- 商品錄入與全功能編輯彈窗 -->
   <div id="product-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -581,12 +591,10 @@
 
       <input type="hidden" id="editing-prod-id" value="">
 
-      <!-- 貨品流通管道（實體門店 / 電子商務 獨立雙布爾複選，依資質動態置灰） -->
       <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200 space-y-2">
         <label class="block text-stone-700 font-bold text-xs">貨品投放渠道（按需勾選）：</label>
         
         <div class="grid grid-cols-2 gap-3 text-xs">
-          <!-- 渠道 1：實體門店 (Brick-and-mortar) -->
           <label id="box-channel-bm" class="p-3 rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer transition bg-white select-none hover:border-emerald-500">
             <div class="flex items-center gap-2.5">
               <input type="checkbox" id="chk-channel-bm" class="w-4 h-4 rounded text-emerald-800 focus:ring-emerald-700">
@@ -598,7 +606,6 @@
             <span id="lock-channel-bm" class="hidden text-[10px] bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded font-mono font-bold">🔒 未開通</span>
           </label>
 
-          <!-- 渠道 2：電子商務 (E-commerce) -->
           <label id="box-channel-ec" class="p-3 rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer transition bg-white select-none hover:border-emerald-500">
             <div class="flex items-center gap-2.5">
               <input type="checkbox" id="chk-channel-ec" class="w-4 h-4 rounded text-emerald-800 focus:ring-emerald-700">
@@ -612,7 +619,6 @@
         </div>
       </div>
 
-      <!-- 物勒工名正品溯源前綴與原產地 -->
       <div class="grid grid-cols-2 gap-2 bg-emerald-50/60 p-2.5 rounded-2xl border border-emerald-200">
         <div>
           <label class="font-bold text-emerald-950 text-[11px] block mb-1">工名溯源碼前綴 (品牌刻印)：</label>
@@ -624,7 +630,6 @@
         </div>
       </div>
 
-      <!-- 一級大項(平台)、二級細項(平台)、自定三級(廠商管) -->
       <div class="grid grid-cols-3 gap-2 bg-stone-50 p-2.5 rounded-2xl border border-stone-200">
         <div>
           <label class="font-bold text-stone-700 text-[11px] block mb-1">一級大項 (平台管)</label>
@@ -645,7 +650,6 @@
         <input type="text" id="prod-name" placeholder="例：魯花 5S物理壓榨一級花生油 5L裝" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-700 font-medium">
       </div>
 
-      <!-- 賣點貼標籤庫 -->
       <div class="bg-emerald-50/60 p-2.5 rounded-2xl border border-emerald-100 space-y-1.5">
         <div class="flex justify-between items-center">
           <label class="font-bold text-emerald-950 text-[11px]">🏷️ 本批次賣點標籤：</label>
@@ -654,7 +658,6 @@
         <div id="quick-tags-box" class="flex flex-wrap gap-1.5"></div>
       </div>
 
-      <!-- 國際商品 69 碼與鏡頭識碼 -->
       <div>
         <label class="block text-[11px] font-bold text-stone-700 mb-1">國際商品條碼 (69碼) *：</label>
         <div class="flex gap-2">
@@ -665,7 +668,6 @@
         </div>
       </div>
 
-      <!-- 度量衡與包裝規格 -->
       <div class="grid grid-cols-3 gap-2">
         <div>
           <label class="block text-[11px] text-stone-500 mb-1">主計量單位 (度量衡)：</label>
@@ -681,7 +683,6 @@
         </div>
       </div>
 
-      <!-- 批發底價與大客惠價 -->
       <div class="grid grid-cols-2 gap-2 bg-emerald-50/80 border border-emerald-200 p-3 rounded-2xl">
         <div>
           <label class="block text-[11px] font-bold text-emerald-950 mb-1">門市批發進價 (底價) *：</label>
@@ -735,7 +736,6 @@
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
 
-    // 內嵌 AI 商道風控體察打分降級算法
     function analyzeOrderRiskAI(data) {
       let score = 100;
       const tips = [];
@@ -904,10 +904,10 @@
       const { data: tenant } = await supabase.from('platform_tenant').select('*').eq('tenant_id', currentAgent).single();
       if (!tenant) return alert('商號異常！');
 
-      const isOldKeyMatch = (oldKey === tenant.access_key);
-      const isTokenMatch = (tenant.reset_claim_token && oldKey === tenant.reset_claim_token);
+      const isOldKeyMatch = (oldKey === tenant.access_key || oldKey.toUpperCase() === (tenant.access_key || '').toUpperCase());
+      const isTokenMatch = (tenant.reset_claim_token && oldKey.toUpperCase() === tenant.reset_claim_token.toUpperCase());
       if (!isOldKeyMatch && !isTokenMatch) {
-        return alert('⚠️ 原密碼或平台簽發的重置信碼不正確！');
+        return alert('⚠️ 原訪問密鑰（預設為執照後 6 位）或平台簽發的重置碼不正確！');
       }
 
       const secret = tenant.totp_secret || 'JBSWY3DPEHPK3PXP';
@@ -922,7 +922,8 @@
       }).eq('tenant_id', currentAgent);
 
       sessionStorage.setItem('hq_tenant_session_' + currentAgent, newKey);
-      alert('🎉 掌櫃自立新約成功！新密碼已生效存盤。');
+      document.getElementById('hq-default-pwd-banner')?.classList.add('hidden');
+      alert('🎉 掌櫃自立新約成功！新密鑰已生效存盤。');
       window.closeModal('modal-change-password');
     };
 
@@ -970,35 +971,37 @@
       btn.innerText = '正在核對金鑰...';
       errBox.classList.add('hidden');
 
+      // 同時兼容精確大小寫與大寫執照後 6 位比對
       const { data, error } = await supabase
         .from('platform_tenant')
         .select('*')
         .eq('tenant_id', tenantId)
-        .eq('access_key', accessKey)
+        .or(`access_key.eq.${accessKey},access_key.eq.${accessKey.toUpperCase()}`)
         .limit(1);
 
       if (error || !data || data.length === 0) {
         btn.disabled = false;
-        btn.innerText = '核驗金鑰 · 登入調度台';
-        errBox.innerText = '⚠️ 商號代號不存在或訪問密碼不符！';
+        btn.innerText = '核驗密鑰 · 登入調度台';
+        errBox.innerText = '⚠️ 商號代號不存在或安家訪問密鑰不符！';
         errBox.classList.remove('hidden');
         return;
       }
 
       if (!data[0].is_active) {
         btn.disabled = false;
-        btn.innerText = '核驗金鑰 · 登入調度台';
+        btn.innerText = '核驗密鑰 · 登入調度台';
         errBox.innerText = '🚫 該商號已被平台運營者設案暫歇！';
         errBox.classList.remove('hidden');
         return;
       }
 
-      sessionStorage.setItem('hq_tenant_session_' + tenantId, accessKey);
+      const actualStoredKey = data[0].access_key;
+      sessionStorage.setItem('hq_tenant_session_' + tenantId, actualStoredKey);
       sessionStorage.setItem('hq_active_authed_tenant', tenantId);
       currentAgent = tenantId;
 
       document.getElementById('hq-auth-gate').classList.add('hidden');
-      alert(`✅ 核驗通過！進入【${data[0].company_name}】專屬調度後台。`);
+      alert(`✅ 核驗通過！進入【${data[0].company_name}】(${tenantId}) 專屬調度後台。`);
       window.loadHQData();
     };
 
@@ -1071,14 +1074,28 @@
       }
 
       currentTenantData = curTenant;
-      document.getElementById('hq-company-badge').innerText = `${curTenant.company_name} (認領碼 ${curTenant.invite_code || '-'})`;
+      document.getElementById('hq-company-badge').innerText = `${curTenant.company_name} (${curTenant.tenant_id})`;
       document.getElementById('hq-tenant-id').innerText = curTenant.tenant_id;
-      document.getElementById('hq-invite-code').innerText = curTenant.invite_code || '888001';
+
+      // 檢測是否仍使用執照後 6 位預設密碼，若是則顯示溫馨安全提示條
+      const defaultBanner = document.getElementById('hq-default-pwd-banner');
+      if (curTenant.credit_code && curTenant.credit_code.length >= 6) {
+        const last6 = curTenant.credit_code.slice(-6).toUpperCase();
+        if ((curTenant.access_key || '').toUpperCase() === last6) {
+          defaultBanner?.classList.remove('hidden');
+        } else {
+          defaultBanner?.classList.add('hidden');
+        }
+      }
 
       const status = curTenant.membership_status || 'active';
       const badgeEl = document.getElementById('tenant-membership-badge');
       const bannerEl = document.getElementById('hq-grace-banner');
-      if (status === 'grace') {
+      if (status === 'trial') {
+        badgeEl.className = "bg-cyan-500/20 text-cyan-200 text-[10px] px-2 py-0.5 rounded-full border border-cyan-400/30 flex items-center gap-1 font-mono";
+        badgeEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse"></span> 🍃 嘗鮮體驗中 · 有效期至 ${curTenant.valid_until || '7天'}`;
+        bannerEl.classList.add('hidden');
+      } else if (status === 'grace') {
         badgeEl.className = "bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1 font-mono";
         badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> 春風寬待中 · 2FA GUARD';
         bannerEl.classList.remove('hidden');
@@ -1169,7 +1186,6 @@
         const tags = Array.isArray(p.tags) ? p.tags : [];
         const tagBadges = tags.map(t => `<span class="bg-emerald-50 text-emerald-900 border border-emerald-200 px-1.5 py-0.2 rounded text-[10px] mr-1">${t}</span>`).join('');
 
-        // 獨立雙渠道徽章呈現 (相容新舊欄位)
         const isBM = (p.channel_brick_and_mortar !== undefined) ? p.channel_brick_and_mortar : (p.sales_channel_type !== 'online');
         const isEC = (p.channel_ecommerce !== undefined) ? p.channel_ecommerce : (p.sales_channel_type !== 'offline');
 
@@ -1245,7 +1261,6 @@
         `).join('');
     }
 
-    // 2FA 場景 1：隨車錢箱大額現款清點平賬 (超 3000 元核驗)
     window.confirmLogSettled = function(logId, amount) {
       const amt = parseFloat(amount || 0);
       if (amt >= 3000) {
@@ -1327,9 +1342,6 @@
       window.loadHQData();
     };
 
-    // =========================================================================
-    // 渠道權限置灰判定與複選框聯動 (實體門店 / 電子商務)
-    // =========================================================================
     function applyChannelPermissions(tenant, prod = null) {
       const bmChk = document.getElementById('chk-channel-bm');
       const ecChk = document.getElementById('chk-channel-ec');
@@ -1341,7 +1353,6 @@
       const permitBM = (tenant?.permit_brick_and_mortar !== false) && (tenant?.service_mode !== 'online');
       const permitEC = (tenant?.permit_ecommerce !== false) && (tenant?.service_mode !== 'offline');
 
-      // 實體門店 (Brick-and-mortar)
       if (!permitBM) {
         bmChk.disabled = true;
         bmChk.checked = false;
@@ -1358,7 +1369,6 @@
         bmBox.className = "p-3 rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer transition bg-white select-none hover:border-emerald-500";
       }
 
-      // 電子商務 (E-commerce)
       if (!permitEC) {
         ecChk.disabled = true;
         ecChk.checked = false;
@@ -1464,7 +1474,6 @@
       if (!name) return alert('請寫明貨品全稱！');
       if (isNaN(price) || price <= 0) return alert('請輸入有效的門市底價！');
 
-      // 兼顧舊欄位相容性，若僅線下則 offline，若僅網銷則 online，雙選則 both
       let legacyChannelType = 'both';
       if (isBM && !isEC) legacyChannelType = 'offline';
       else if (!isBM && isEC) legacyChannelType = 'online';
@@ -1502,7 +1511,6 @@
       }
     };
 
-    // 2FA 場景 2：批發底價大幅下調 (降幅超 15% 觸發核身)
     window.quickEditPrice = function(id, oldPrice) {
       const newPrice = prompt(`【潤色門市進價底線】\n原價：¥${oldPrice}\n輸入新批發底價：`, oldPrice);
       if (newPrice !== null && !isNaN(newPrice) && parseFloat(newPrice) > 0) {
@@ -1530,7 +1538,6 @@
       }
     };
 
-    // 2FA 場景 3：刪除在售良品
     window.deleteProduct = function(id, name) {
       window.trigger2FAAction(
         `您正在從獨立賬本中物理刪除良品【${name}】，該操作不可逆並將影響歷史單據分析，請輸入手機驗證器 6 位動態碼確認刪除：`,
@@ -1992,7 +1999,6 @@
       }).join('');
     }
 
-    // 2FA 場景 4：超額賒銷特信放行審批
     window.hqApproveOverCredit = function(orderId, storeId, overAmount) {
       window.trigger2FAAction(
         `您正在特批放行【超額賒銷 ¥${overAmount}】訂單，該操作將直接承擔該筆貨款風險，請在驗證器查看 6 位動態口令放行：`,
