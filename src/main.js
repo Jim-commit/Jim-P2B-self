@@ -202,24 +202,45 @@ window.filterAgentByCategory = function(cat) {
 };
 
 // ==========================================
-// 4. 结识与解绑供货商 (信义拦截机制)
+// 4. 结识与解绑供货商 (统一使用商号代号接入 + 信义拦截机制)
 // ==========================================
 window.bindByCode = async function () {
-  const code = document.getElementById('bind-input-code')?.value.trim();
+  const inputEl = document.getElementById('bind-input-code');
+  const rawCode = (inputEl ? inputEl.value : '').trim().toUpperCase();
+
+  if (!rawCode) {
+    return alert('请输入供货庄提供的商号代号！');
+  }
+
   let targetAgentId = '';
   let targetAgentName = '';
 
-  if (code === '888001') {
-    targetAgentId = 'BJ_SHUNDA'; targetAgentName = '北京顺达 (粮油副食)';
-  } else if (code === '888002') {
-    targetAgentId = 'SH_LEGOU'; targetAgentName = '上海乐购 (酒水副食)';
+  if (rawCode === 'BJ_SHUNDA') {
+    targetAgentId = 'BJ_SHUNDA';
+    targetAgentName = '北京顺达 (粮油副食)';
+  } else if (rawCode === 'SH_LEGOU') {
+    targetAgentId = 'SH_LEGOU';
+    targetAgentName = '上海乐购 (酒水副食)';
   } else {
-    const { data } = await supabase.from('platform_tenant').select('*').eq('invite_code', code).limit(1);
+    const { data, error } = await supabase
+      .from('platform_tenant')
+      .select('*')
+      .eq('tenant_id', rawCode)
+      .limit(1);
+
+    if (error) {
+      return alert('查询供货庄失败：' + error.message);
+    }
+
     if (data && data.length > 0) {
-      targetAgentId = data[0].tenant_id;
-      targetAgentName = data[0].company_name;
+      const supplier = data[0];
+      if (!supplier.is_active || supplier.membership_status === 'paused') {
+        return alert(`供货庄【${supplier.company_name}】当前处于「商道暂歇」状态，暂不可接入。`);
+      }
+      targetAgentId = supplier.tenant_id;
+      targetAgentName = supplier.company_name;
     } else {
-      return alert('未查到该认领码对应的供货厂商！');
+      return alert(`未查到商号代号为【${rawCode}】的在册供货厂商！\n请向供货厂家确认商号代号是否拼写正确。`);
     }
   }
 
@@ -228,7 +249,8 @@ window.bindByCode = async function () {
     localStorage.setItem(MY_AGENTS_KEY, JSON.stringify(myAgents));
   }
 
-  alert(`🎉 成功结识新供货商【${targetAgentName}】！`);
+  if (inputEl) inputEl.value = '';
+  alert(`🎉 成功结识新供货商【${targetAgentName}】(${targetAgentId})！`);
   window.closeModal('bind-agent-modal');
   await window.switchActiveAgent(targetAgentId);
 };
@@ -243,7 +265,7 @@ window.bindByPhone = async () => {
       myAgents.push({ id: targetAgentId, name: `${store.name}供货商` });
       localStorage.setItem(MY_AGENTS_KEY, JSON.stringify(myAgents));
     }
-    alert(`🎉 认领成功！欢迎【${store.name}】掌柜！`);
+    alert(`🎉 绑定成功！欢迎【${store.name}】掌柜！`);
     window.closeModal('bind-agent-modal');
     await window.switchActiveAgent(targetAgentId);
   } else {
@@ -1195,7 +1217,7 @@ async function initTerminal() {
   const urlParams = new URLSearchParams(window.location.search);
   const urlAgent = urlParams.get('agent') || urlParams.get('tenant');
   if (urlAgent) {
-    currentAgent = urlAgent;
+    currentAgent = urlAgent.trim().toUpperCase();
     localStorage.setItem('active_agent', currentAgent);
   }
 
