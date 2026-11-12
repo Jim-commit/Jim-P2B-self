@@ -4,9 +4,10 @@ export const StoreService = {
   // 1. 获取特定总代下的门店账本与额度档案
   async getStoreByTenant(tenantId, phone = null) {
     try {
-      let query = supabase.from('store').select('*').eq('tenant_id', tenantId);
+      const cleanTenant = (tenantId || '').trim().toUpperCase();
+      let query = supabase.from('store').select('*').eq('tenant_id', cleanTenant);
       if (phone) {
-        query = query.eq('phone', phone);
+        query = query.eq('phone', phone.trim());
       }
       const { data, error } = await query.limit(1);
       if (error) throw error;
@@ -17,13 +18,13 @@ export const StoreService = {
     }
   },
 
-  // 2. 手机号认领门店
+  // 2. 手机号绑定查询门店
   async bindByPhone(phone) {
     try {
       const { data, error } = await supabase
         .from('store')
         .select('*')
-        .eq('phone', phone)
+        .eq('phone', (phone || '').trim())
         .limit(1);
       if (error) throw error;
       return data && data.length > 0 ? data[0] : null;
@@ -36,10 +37,11 @@ export const StoreService = {
   // 3. 拉取当前总代的在售货品
   async getProducts(tenantId, visibleIds = null) {
     try {
+      const cleanTenant = (tenantId || '').trim().toUpperCase();
       const { data, error } = await supabase
         .from('product')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', cleanTenant)
         .neq('status', 'inactive')
         .order('id', { ascending: false });
 
@@ -58,11 +60,12 @@ export const StoreService = {
   // 4. 追溯某商品的最近一次历史送货/进货价格（退货锁定原价）
   async getHistoricalPrice(storeId, tenantId, productId) {
     try {
+      const cleanTenant = (tenantId || '').trim().toUpperCase();
       const { data, error } = await supabase
         .from('store_order')
         .select('items, created_at, id')
         .eq('store_id', storeId)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', cleanTenant)
         .order('id', { ascending: false })
         .limit(10);
 
@@ -84,11 +87,12 @@ export const StoreService = {
   // 5. 追溯某商品的历史累计订购量与当前最大可退换余量 (防止无单退货与超量退货)
   async getProductReturnableQuota(storeId, tenantId, productId) {
     try {
+      const cleanTenant = (tenantId || '').trim().toUpperCase();
       const { data: orders, error } = await supabase
         .from('store_order')
         .select('id, order_no, items, items_return, items_exchange, created_at')
         .eq('store_id', storeId)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', cleanTenant)
         .neq('order_status', 'cancelled');
 
       if (error || !orders) return { maxReturnable: 0, totalOrdered: 0, totalReturned: 0, lastPrice: 0, lastOrderNo: '' };
@@ -151,11 +155,12 @@ export const StoreService = {
     currentDebt
   }) {
     try {
+      const cleanTenant = (tenantId || '').trim().toUpperCase();
       const orderNo = `DH-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
       const { data: newOrder, error: orderErr } = await supabase.from('store_order').insert([{
         order_no: orderNo,
-        tenant_id: tenantId,
+        tenant_id: cleanTenant,
         store_id: storeId,
         store_name: storeName,
         driver_name: driverName || '老张师傅',
@@ -210,7 +215,7 @@ export const StoreService = {
     try {
       let query = supabase.from('store_order').select('*').eq('store_id', storeId);
       if (tenantId) {
-        query = query.eq('tenant_id', tenantId);
+        query = query.eq('tenant_id', tenantId.trim().toUpperCase());
       }
       const { data, error } = await query.order('id', { ascending: false }).limit(15);
       if (error) throw error;
@@ -226,7 +231,7 @@ export const StoreService = {
     try {
       let query = supabase.from('driver_collection_log').select('*').eq('store_id', storeId);
       if (tenantId) {
-        query = query.eq('tenant_id', tenantId);
+        query = query.eq('tenant_id', tenantId.trim().toUpperCase());
       }
       const { data, error } = await query.order('id', { ascending: false }).limit(15);
       if (error) throw error;
