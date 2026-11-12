@@ -26,15 +26,18 @@
             </span>
           </div>
           <div class="text-[11px] text-emerald-200 mt-1">
-            供貨師傅: <b id="driver-name-display" class="text-white">老張師傅</b> · 廠商代號: <span id="tenant-display" class="font-mono text-amber-300">BJ_SHUNDA</span>
+            供貨師傅: <b id="driver-name-display" class="text-white">老張師傅</b> · 商號代號: <span id="tenant-display" class="font-mono text-amber-300 font-bold">BJ_SHUNDA</span>
           </div>
         </div>
         <div class="flex items-center gap-1.5">
           <button onclick="window.openSuggestionModal()" class="text-[10px] bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 px-2 py-1 rounded-xl font-bold transition">
             建言堂
           </button>
+          <button onclick="window.switchTenantPrompt()" class="text-[10px] bg-white/10 hover:bg-white/20 text-amber-200 border border-amber-400/30 px-2 py-1 rounded-xl transition">
+            換商號
+          </button>
           <button onclick="window.switchDriverPrompt()" class="text-[10px] bg-white/10 hover:bg-white/20 text-emerald-100 border border-emerald-400/30 px-2 py-1 rounded-xl transition">
-            切換師傅
+            換師傅
           </button>
         </div>
       </div>
@@ -322,7 +325,12 @@
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
 
-    let currentAgent = localStorage.getItem('active_agent') || 'BJ_SHUNDA';
+    const urlTenant = new URLSearchParams(window.location.search).get('t') || new URLSearchParams(window.location.search).get('tenant');
+    if (urlTenant && urlTenant.trim()) {
+      localStorage.setItem('active_agent', urlTenant.trim().toUpperCase());
+    }
+
+    let currentAgent = (localStorage.getItem('active_agent') || 'BJ_SHUNDA').trim().toUpperCase();
     let currentDriver = localStorage.getItem('active_driver') || '老張師傅';
     let routeStores = [];
     let isSigned = false;
@@ -340,6 +348,31 @@
       document.getElementById('tab-btn-explore').className = (mode === 'explore')
         ? "flex-1 py-2 rounded-xl bg-[#1b4332] text-white shadow transition flex items-center justify-center gap-1"
         : "flex-1 py-2 rounded-xl text-stone-600 hover:text-stone-900 transition flex items-center justify-center gap-1";
+    };
+
+    // 新增：切換所屬商號代號 (tenant_id)
+    window.switchTenantPrompt = async function() {
+      const input = prompt('輸入所屬供貨廠商的商號代號（如 NY-FUNIU 或 BJ_SHUNDA）：', currentAgent);
+      if (!input || !input.trim()) return;
+      const cleanTenant = input.trim().toUpperCase();
+
+      const { data } = await supabase
+        .from('platform_tenant')
+        .select('tenant_id, company_name, is_active')
+        .eq('tenant_id', cleanTenant)
+        .limit(1);
+
+      if (!data || data.length === 0) {
+        return alert(`未查到商號代號為【${cleanTenant}】的在冊廠商！`);
+      }
+      if (!data[0].is_active) {
+        return alert(`商號【${data[0].company_name}】當前處於暫歇狀態，無法切換。`);
+      }
+
+      currentAgent = cleanTenant;
+      localStorage.setItem('active_agent', currentAgent);
+      alert(`✅ 已切換至商號【${data[0].company_name}】(${currentAgent})`);
+      initDriver();
     };
 
     window.switchDriverPrompt = function() {
