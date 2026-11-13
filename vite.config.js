@@ -11,7 +11,7 @@ export default defineConfig({
         hq: resolve(__dirname, 'hq.html'),
         mall: resolve(__dirname, 'mall.html'),
         join: resolve(__dirname, 'join.html'),
-        driver: resolve(__dirname, 'driver.html')
+        driver: resolve(__dirname, 'driver.html'),
         driver: resolve(__dirname, 'suppliers.html')
       }
     }
