@@ -14,7 +14,7 @@
 </head>
 <body class="text-slate-800 pb-20">
 
-  <!-- 顶部导航栏（精简后仅保留厂商入驻核心动作） -->
+  <!-- 顶部导航栏 -->
   <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
@@ -300,18 +300,13 @@
                 </p>
               </div>
 
-              <div class="flex sm:flex-col items-center sm:items-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+              <div class="flex sm:flex-col items-center sm:items-end justify-center shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                 <button
                   onclick="openInquiryModal('${s.id}', '${escapeHtml(s.name)}', '${escapeHtml(s.tenant_code)}')"
-                  class="flex-1 sm:flex-initial w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                  class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition cursor-pointer"
                 >
                   预约送样 / 申请供货
                 </button>
-                ${s.tenant_code ? `
-                  <a href="index.html?t=${encodeURIComponent(s.tenant_code)}" class="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold transition">
-                    已签约直接订货 →
-                  </a>
-                ` : ''}
               </div>
             </div>
             ${samplesHtml}
