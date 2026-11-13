@@ -97,6 +97,7 @@
       <button id="tab-btn-settle" onclick="window.switchTab('settle')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition flex items-center justify-center gap-1">
         💵 履約交割與回庫對賬
         <span id="unsettled-badge" class="bg-rose-600 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">待點款</span>
+        <span id="tab-leads-badge" class="bg-amber-500 text-stone-900 text-[9px] px-1.5 py-0.2 rounded-full hidden">新線索</span>
       </button>
       <button id="tab-btn-rbac" onclick="window.switchTab('rbac')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition">
         👥 屬員四權分立 (錢賬貨單互斥 · 子賬號)
@@ -181,11 +182,14 @@
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
             <h2 class="text-sm font-bold text-stone-800">📋 供採對賬憑單審閱與履約調度</h2>
-            <p class="text-[11px] text-stone-400">訂/退/換三合一淨額審核、商道度量 AI 風控打分、超額特信放行裁決</p>
+            <p class="text-[11px] text-stone-400">訂/退/換三合一淨額審核、商道度量 AI 風控打分、超額特信放行裁決、供貨商名錄新店線索承接</p>
           </div>
           <div class="flex flex-wrap gap-1.5 text-xs font-bold">
             <button onclick="window.filterOrderStatus('pending_confirm')" id="order-filter-pending" class="px-3 py-1 rounded-xl bg-[#1b4332] text-white transition">
               待確認訂貨 <span id="count-pending-confirm" class="bg-amber-400 text-stone-900 px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
+            </button>
+            <button onclick="window.filterOrderStatus('directory_leads')" id="order-filter-leads" class="px-3 py-1 rounded-xl bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 transition">
+              🤝 新店招商線索 <span id="count-directory-leads" class="bg-amber-500 text-white px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
             </button>
             <button onclick="window.filterOrderStatus('over_credit_pending')" id="order-filter-over-credit" class="px-3 py-1 rounded-xl bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100 transition">
               🚨 特信請示待裁 <span id="count-over-credit" class="bg-rose-600 text-white px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
@@ -971,7 +975,6 @@
       btn.innerText = '正在核對金鑰...';
       errBox.classList.add('hidden');
 
-      // 同時兼容精確大小寫與大寫執照後 6 位比對
       const { data, error } = await supabase
         .from('platform_tenant')
         .select('*')
@@ -1077,7 +1080,6 @@
       document.getElementById('hq-company-badge').innerText = `${curTenant.company_name} (${curTenant.tenant_id})`;
       document.getElementById('hq-tenant-id').innerText = curTenant.tenant_id;
 
-      // 檢測是否仍使用執照後 6 位預設密碼，若是則顯示溫馨安全提示條
       const defaultBanner = document.getElementById('hq-default-pwd-banner');
       if (curTenant.credit_code && curTenant.credit_code.length >= 6) {
         const last6 = curTenant.credit_code.slice(-6).toUpperCase();
@@ -1145,11 +1147,26 @@
         .select('*')
         .eq('tenant_id', currentAgent)
         .order('id', { ascending: false })
-        .limit(30);
+        .limit(50);
 
       allOrders = fulfillmentOrders || [];
-      document.getElementById('count-pending-confirm').innerText = allOrders.filter(o => o.order_status === 'pending_confirm').length;
+
+      // 統計正常待確認訂貨與來自 suppliers.html 的新店招商線索
+      const leadsList = allOrders.filter(o => o.order_source === 'b2b_directory_lead' && o.order_status === 'pending_confirm');
+      const normalPendingList = allOrders.filter(o => o.order_status === 'pending_confirm' && o.order_source !== 'b2b_directory_lead');
+
+      document.getElementById('count-pending-confirm').innerText = normalPendingList.length;
+      document.getElementById('count-directory-leads').innerText = leadsList.length;
       document.getElementById('count-over-credit').innerText = allOrders.filter(o => o.order_status === 'over_credit_pending').length;
+
+      const tabLeadBadge = document.getElementById('tab-leads-badge');
+      if (leadsList.length > 0) {
+        tabLeadBadge.classList.remove('hidden');
+        tabLeadBadge.innerText = `${leadsList.length}條新線索`;
+      } else {
+        tabLeadBadge.classList.add('hidden');
+      }
+
       renderOrderFulfillmentList();
 
       const { data: subUsers } = await supabase.from('tenant_sub_user').select('*').eq('tenant_id', currentAgent).order('id', { ascending: true });
@@ -1802,6 +1819,46 @@
       window.loadHQData();
     };
 
+    // 新增：從 suppliers.html 招商線索一鍵建檔轉為正式合作門店
+    window.convertLeadToStore = async function(orderId) {
+      const leadOrder = allOrders.find(o => o.id === orderId);
+      if (!leadOrder) return;
+
+      const parts = (leadOrder.settlement_note || '').split('|');
+      const contactName = parts[0] || '掌櫃';
+      const phone = parts[1] || '';
+      const address = parts[2] || '';
+      const storeName = leadOrder.store_name || '新簽約門店';
+
+      if (!confirm(`確認將意向客戶【${storeName}】（${contactName} ${phone}）建檔開戶為正式合作門店？`)) return;
+
+      const { error: storeErr } = await supabase.from('store').insert([{
+        tenant_id: currentAgent,
+        name: storeName,
+        contact: contactName,
+        phone: phone,
+        address: address,
+        credit_limit: 2000,
+        monthly_return_quota: 500,
+        current_debt: 0,
+        driver_name: '張師傅'
+      }]);
+
+      if (storeErr) {
+        return alert('建檔開戶失敗：' + storeErr.message);
+      }
+
+      await supabase.from('store_order').update({
+        order_status: 'lead_converted',
+        delivery_status: 'delivered',
+        driver_action_instruction: '【已轉為正式合作門店】已開通進貨賬戶'
+      }).eq('id', orderId);
+
+      alert(`🎉 門店【${storeName}】已正式建檔開戶！掌櫃現在可用手機號 ${phone} 與商號代號 ${currentAgent} 登入 index.html 訂貨了。`);
+      window.loadHQData();
+      window.switchTab('stores');
+    };
+
     window.openPushOrderModal = function() {
       const storeSelect = document.getElementById('push-store-select');
       storeSelect.innerHTML = allStores.map(s => `
@@ -1889,7 +1946,9 @@
     function renderOrderFulfillmentList() {
       let filtered = allOrders;
       if (activeOrderFilter === 'pending_confirm') {
-        filtered = allOrders.filter(o => o.order_status === 'pending_confirm' || o.order_status === 'counter_proposal');
+        filtered = allOrders.filter(o => (o.order_status === 'pending_confirm' || o.order_status === 'counter_proposal') && o.order_source !== 'b2b_directory_lead');
+      } else if (activeOrderFilter === 'directory_leads') {
+        filtered = allOrders.filter(o => o.order_source === 'b2b_directory_lead');
       } else if (activeOrderFilter === 'over_credit_pending') {
         filtered = allOrders.filter(o => o.order_status === 'over_credit_pending');
       } else if (activeOrderFilter === 'confirmed') {
@@ -1905,6 +1964,37 @@
       }
 
       container.innerHTML = filtered.map(o => {
+        // 專屬渲染：來自 suppliers.html 供貨商名錄的新店招商線索
+        if (o.order_source === 'b2b_directory_lead') {
+          const isConverted = (o.order_status === 'lead_converted');
+          return `
+            <div class="p-4 bg-amber-50/60 border border-amber-300 rounded-3xl space-y-2.5">
+              <div class="flex justify-between items-start font-sans">
+                <div>
+                  <span class="bg-amber-500 text-stone-950 text-[10px] font-bold px-2 py-0.5 rounded-lg mr-1.5">🤝 供貨商名錄招商線索</span>
+                  <b class="text-sm text-stone-900">${o.store_name}</b>
+                  <span class="text-[10px] font-mono bg-stone-200 text-stone-700 px-1.5 rounded ml-1">#${o.order_no || o.id}</span>
+                </div>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${isConverted ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-200 text-amber-950 animate-pulse'}">
+                  ${isConverted ? '✓ 已建檔開戶' : '待聯繫送樣'}
+                </span>
+              </div>
+              <div class="bg-white p-3 rounded-2xl border border-amber-200/80 text-xs text-stone-700 leading-relaxed">
+                ${o.note || '潛在實體門店申請上門送樣洽談'}
+              </div>
+              <div class="flex justify-between items-center pt-1 text-xs">
+                <span class="text-[10px] text-stone-400 font-mono">提交時間: ${o.created_at ? new Date(o.created_at).toLocaleString() : '剛剛'}</span>
+                ${isConverted
+                  ? '<span class="text-emerald-800 font-bold text-xs">已錄入合作門店名冊</span>'
+                  : `<button onclick="window.convertLeadToStore(${o.id})" class="bg-[#1b4332] hover:bg-[#143628] text-white px-4 py-1.5 rounded-xl font-bold shadow active:scale-95 transition">
+                      🏪 一鍵建檔轉為合作門店
+                    </button>`
+                }
+              </div>
+            </div>
+          `;
+        }
+
         const isDelivered = (o.delivery_status === 'delivered');
         const isPending = (o.order_status === 'pending_confirm');
         const isOverCredit = (o.order_status === 'over_credit_pending');
@@ -2073,11 +2163,12 @@
 
     window.filterOrderStatus = function(status) {
       activeOrderFilter = status;
-      ['pending', 'over-credit', 'confirmed', 'delivered', 'all'].forEach(k => {
+      ['pending', 'leads', 'over-credit', 'confirmed', 'delivered', 'all'].forEach(k => {
         const btn = document.getElementById(`order-filter-${k}`);
         if (btn) {
           const isMatch = (k === status) || 
                           (status === 'pending_confirm' && k === 'pending') || 
+                          (status === 'directory_leads' && k === 'leads') || 
                           (status === 'over_credit_pending' && k === 'over-credit');
           btn.className = isMatch
             ? 'px-3 py-1 rounded-xl bg-[#1b4332] text-white transition'
