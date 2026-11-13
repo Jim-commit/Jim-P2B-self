@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>严选供货商名录 · B2B 实体货源招商黄页</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1b4332">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
@@ -68,6 +70,12 @@
 
   <!-- 主体列表区 -->
   <main class="max-w-5xl mx-auto px-4 -mt-4">
+    <!-- 扫码直达专属厂商提示条 -->
+    <div id="direct-tenant-banner" class="hidden mb-3 bg-amber-50 border border-amber-300 text-amber-950 px-4 py-2.5 rounded-2xl flex items-center justify-between text-xs shadow-xs">
+      <span>🎯 当前已为您置顶展示专属推荐厂商（商号：<b id="direct-tenant-code" class="font-mono"></b>）</span>
+      <button onclick="window.clearDirectFilter()" class="text-emerald-900 font-bold underline">查看全部供货商</button>
+    </div>
+
     <!-- 加载状态 -->
     <div id="loading-state" class="bg-white rounded-3xl p-10 text-center shadow-sm border border-stone-200/80">
       <div class="inline-block w-8 h-8 border-4 border-[#1b4332] border-t-transparent rounded-full animate-spin mb-3"></div>
@@ -156,9 +164,9 @@
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
 
+    const urlTargetTenant = (new URLSearchParams(window.location.search).get('t') || '').trim().toUpperCase();
     let allSuppliers = [];
 
-    // 演示兜底数据（当数据库暂无已激活厂商或网络异常时平滑兜底展示）
     const DEMO_SUPPLIERS = [
       {
         tenant_id: 'DEMO-HX888',
@@ -185,7 +193,6 @@
           return;
         }
 
-        // 1. 读取真实厂商表 platform_tenant（在册且未停用）
         const { data: tenants, error: tErr } = await supabase
           .from('platform_tenant')
           .select('*')
@@ -194,7 +201,6 @@
 
         if (tErr) throw tErr;
 
-        // 过滤出开通了实体门店供货（Brick-and-mortar）的厂商
         const validTenants = (tenants || []).filter(t =>
           (t.permit_brick_and_mortar !== false) && (t.service_mode !== 'online')
         );
@@ -205,7 +211,6 @@
           return;
         }
 
-        // 2. 读取在售实体供货商品作为招牌样品预览（不泄露 tier_1_price 内部底价）
         const { data: products, error: pErr } = await supabase
           .from('product')
           .select('id, tenant_id, name, category_main, category_sub, spec, measure_unit, origin_place, image_url, status, channel_brick_and_mortar, sales_channel_type')
@@ -236,6 +241,17 @@
           };
         });
 
+        // 若扫码带了 ?t=商号代号，则置顶并高亮展示该厂商
+        if (urlTargetTenant) {
+          const targetIdx = allSuppliers.findIndex(s => s.tenant_id.toUpperCase() === urlTargetTenant);
+          if (targetIdx > -1) {
+            const [targetObj] = allSuppliers.splice(targetIdx, 1);
+            allSuppliers.unshift(targetObj);
+            document.getElementById('direct-tenant-code').textContent = urlTargetTenant;
+            document.getElementById('direct-tenant-banner').classList.remove('hidden');
+          }
+        }
+
         renderSuppliers(allSuppliers);
       } catch (err) {
         console.error('加载供货商名录失败，已切换至兜底演示数据:', err);
@@ -245,6 +261,20 @@
         loadingEl.classList.add('hidden');
       }
     }
+
+    window.clearDirectFilter = () => {
+      document.getElementById('direct-tenant-banner').classList.add('hidden');
+      window.history.replaceState({}, '', 'suppliers.html');
+      renderSuppliers(allSuppliers);
+    };
+
+    window.shareSupplierCard = (tenantId, tenantName) => {
+      const shareUrl = `${window.location.origin}/suppliers.html?t=${encodeURIComponent(tenantId)}`;
+      const msg = `推荐源头供货商【${tenantName}】（商号：${tenantId}），营业执照已核验，支持免费预约送样到店：${shareUrl}`;
+      navigator.clipboard.writeText(msg).then(() => {
+        alert(`✅ 已复制【${tenantName}】专属招商名片链接，可直接转发微信好友或门店群！`);
+      });
+    };
 
     function renderSuppliers(list) {
       const listEl = document.getElementById('supplier-list');
@@ -261,6 +291,7 @@
 
       emptyEl.classList.add('hidden');
       listEl.innerHTML = list.map(s => {
+        const isHighlighted = urlTargetTenant && s.tenant_id.toUpperCase() === urlTargetTenant;
         const samplesHtml = s.products.length > 0
           ? `<div class="mt-3.5 pt-3 border-t border-stone-100">
               <div class="text-[11px] font-bold text-stone-400 mb-2">主营招牌货品预览（签约后享专属批发底价）：</div>
@@ -285,7 +316,7 @@
           : '';
 
         return `
-          <article class="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-stone-200/80 hover:border-emerald-400 transition">
+          <article class="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border ${isHighlighted ? 'border-amber-400 ring-2 ring-amber-200' : 'border-stone-200/80'} hover:border-emerald-400 transition">
             <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div class="flex-1">
                 <div class="flex flex-wrap items-center gap-2">
@@ -306,12 +337,18 @@
                 </p>
               </div>
 
-              <div class="flex sm:flex-col items-center sm:items-end justify-center shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
+              <div class="flex sm:flex-col items-center sm:items-end justify-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
                 <button
                   onclick="window.openInquiryModal('${escapeHtml(s.tenant_id)}', '${escapeHtml(s.name)}')"
-                  class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143628] text-white text-xs font-bold shadow transition cursor-pointer active:scale-95"
+                  class="flex-1 sm:flex-initial w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143628] text-white text-xs font-bold shadow transition cursor-pointer active:scale-95"
                 >
                   预约送样 / 申请供货
+                </button>
+                <button
+                  onclick="window.shareSupplierCard('${escapeHtml(s.tenant_id)}', '${escapeHtml(s.name)}')"
+                  class="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-bold transition cursor-pointer"
+                >
+                  🔗 分享名片
                 </button>
               </div>
             </div>
@@ -321,7 +358,6 @@
       }).join('');
     }
 
-    // 搜索过滤
     document.getElementById('search-input').addEventListener('input', (e) => {
       const kw = e.target.value.trim().toLowerCase();
       if (!kw) {
@@ -338,7 +374,6 @@
       renderSuppliers(filtered);
     });
 
-    // 弹窗控制
     window.openInquiryModal = (tenantId, tenantName) => {
       document.getElementById('modal-tenant-id').value = tenantId;
       document.getElementById('modal-supplier-name').textContent = `目标厂商：${tenantName} (${tenantId})`;
@@ -350,7 +385,6 @@
       document.getElementById('inquiry-form').reset();
     };
 
-    // 提交预约送样线索 -> 自动满足 store_id 非空与外键约束，并自动兼容字段结构，直达 hq.html
     document.getElementById('inquiry-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('submit-inquiry-btn');
@@ -368,7 +402,6 @@
 
       try {
         if (supabase && !tenantId.startsWith('DEMO-')) {
-          // 1. 获取该厂商名下已有的一条 store_id 以满足 store_order.store_id 非空与外键约束
           let validStoreId = null;
           const { data: existingStores } = await supabase
             .from('store')
@@ -379,7 +412,6 @@
           if (existingStores && existingStores.length > 0) {
             validStoreId = existingStores[0].id;
           } else {
-            // 若该厂商名下尚无任何门店，先在 store 表创建一个招商档案获取真实 store_id
             const { data: createdStore, error: sErr } = await supabase
               .from('store')
               .insert([{
@@ -399,7 +431,6 @@
             validStoreId = createdStore.id;
           }
 
-          // 2. 写入 store_order 招商线索队列（自动兼容数据库是否有 order_source 列）
           const baseOrderPayload = {
             order_no: orderNo,
             tenant_id: tenantId,
@@ -425,7 +456,6 @@
             order_source: 'b2b_directory_lead'
           }]);
 
-          // 若数据库表无 order_source 字段，自动去掉该字段重新插入
           if (error && (error.message || '').includes('order_source')) {
             const retryRes = await supabase.from('store_order').insert([baseOrderPayload]);
             error = retryRes.error;
