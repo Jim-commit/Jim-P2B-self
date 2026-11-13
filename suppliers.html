@@ -350,7 +350,7 @@
       document.getElementById('inquiry-form').reset();
     };
 
-    // 提交预约送样线索 -> 直达目标厂商 hq.html 的“新店招商线索”队列
+    // 提交预约送样线索 -> 自动满足 store_id 非空与外键约束，直达 hq.html
     document.getElementById('inquiry-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('submit-inquiry-btn');
@@ -368,9 +368,42 @@
 
       try {
         if (supabase && !tenantId.startsWith('DEMO-')) {
+          // 1. 获取该厂商名下已有的一条 store_id 以满足 store_order.store_id 非空与外键约束
+          let validStoreId = null;
+          const { data: existingStores } = await supabase
+            .from('store')
+            .select('id')
+            .eq('tenant_id', tenantId)
+            .limit(1);
+
+          if (existingStores && existingStores.length > 0) {
+            validStoreId = existingStores[0].id;
+          } else {
+            // 若该厂商名下尚无任何门店，先在 store 表创建一个招商档案获取真实 store_id
+            const { data: createdStore, error: sErr } = await supabase
+              .from('store')
+              .insert([{
+                tenant_id: tenantId,
+                name: storeName,
+                contact: contactName,
+                phone: phone,
+                credit_limit: 0,
+                monthly_return_quota: 500,
+                current_debt: 0,
+                driver_name: '待指派'
+              }])
+              .select('id')
+              .single();
+
+            if (sErr) throw sErr;
+            validStoreId = createdStore.id;
+          }
+
+          // 2. 写入 store_order 招商线索队列
           const { error } = await supabase.from('store_order').insert([{
             order_no: orderNo,
             tenant_id: tenantId,
+            store_id: validStoreId,
             store_name: storeName,
             driver_name: '待指派业务员',
             order_source: 'b2b_directory_lead',
@@ -403,7 +436,7 @@
     });
 
     function escapeHtml(str) {
-      return String(str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      return String(str || '').replace(/'/g, "\\'").replace(/"/g, '"');
     }
 
     loadSuppliers();
