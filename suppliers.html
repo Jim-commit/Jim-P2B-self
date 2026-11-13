@@ -14,7 +14,7 @@
 </head>
 <body class="text-slate-800 pb-20">
 
-  <!-- 顶部导航栏 -->
+  <!-- 顶部导航栏（精简后仅保留厂商入驻核心动作） -->
   <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
@@ -25,11 +25,8 @@
         </div>
       </div>
       <div class="flex items-center gap-2 text-xs">
-        <a href="index.html" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-          签约门店订货
-        </a>
-        <a href="join.html" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold transition">
-          厂商入驻
+        <a href="join.html" class="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold transition">
+          + 厂商入驻
         </a>
       </div>
     </div>
@@ -141,7 +138,7 @@
     </div>
   </div>
 
-  <!-- 底部快捷导航 -->
+  <!-- 底部四个标准工作台导航 -->
   <footer class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 py-2 px-4 z-20">
     <div class="max-w-5xl mx-auto flex items-center justify-around text-xs text-slate-600">
       <a href="suppliers.html" class="flex flex-col items-center text-amber-600 font-bold">
@@ -160,7 +157,6 @@
   </footer>
 
   <script type="module">
-    // 兼容 Vite 环境变量或全局配置（请确保与你项目中的 Supabase 配置一致）
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
     const SUPABASE_URL = import.meta?.env?.VITE_SUPABASE_URL || window.SUPABASE_URL || '';
@@ -195,7 +191,6 @@
     async function loadSuppliers() {
       const loadingEl = document.getElementById('loading-state');
       const emptyEl = document.getElementById('empty-state');
-      const listEl = document.getElementById('supplier-list');
 
       try {
         if (!supabase) {
@@ -206,7 +201,7 @@
           return;
         }
 
-        // 1. 查询已审核通过的厂商（兼容常见字段命名）
+        // 1. 查询已审核通过的厂商
         const { data: tenants, error: tErr } = await supabase
           .from('tenants')
           .select('*')
@@ -314,7 +309,7 @@
                 </button>
                 ${s.tenant_code ? `
                   <a href="index.html?t=${encodeURIComponent(s.tenant_code)}" class="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold transition">
-                    老客户进货通道 →
+                    已签约直接订货 →
                   </a>
                 ` : ''}
               </div>
@@ -354,7 +349,7 @@
       document.getElementById('inquiry-form').reset();
     };
 
-    // 提交预约送样线索（写入 store_leads 或作为意向单写入 store_order，兼容现有表结构）
+    // 提交预约送样线索
     document.getElementById('inquiry-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('submit-inquiry-btn');
@@ -374,7 +369,6 @@
 
       try {
         if (supabase && !payload.tenant_id.startsWith('demo-')) {
-          // 优先尝试写入线索表 supplier_leads；若尚未建表则自动回退写入 store_order 备注通知厂商
           const { error: leadErr } = await supabase.from('supplier_leads').insert([payload]);
           if (leadErr) {
             await supabase.from('store_order').insert([{
