@@ -760,6 +760,13 @@
       };
     }
 
+    function isDirectoryLead(o) {
+      return o?.order_source === 'b2b_directory_lead' ||
+             String(o?.order_no || '').startsWith('LEAD-') ||
+             String(o?.note || '').includes('[新店招商线索]') ||
+             String(o?.note || '').includes('[新店招商線索]');
+    }
+
     let currentAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
     let currentStoreForVis = null;
     let currentTenantData = null;
@@ -1151,9 +1158,9 @@
 
       allOrders = fulfillmentOrders || [];
 
-      // 統計正常待確認訂貨與來自 suppliers.html 的新店招商線索
-      const leadsList = allOrders.filter(o => o.order_source === 'b2b_directory_lead' && o.order_status === 'pending_confirm');
-      const normalPendingList = allOrders.filter(o => o.order_status === 'pending_confirm' && o.order_source !== 'b2b_directory_lead');
+      // 三重特徵聯合識別來自 suppliers.html 的新店招商線索
+      const leadsList = allOrders.filter(o => isDirectoryLead(o) && o.order_status === 'pending_confirm');
+      const normalPendingList = allOrders.filter(o => o.order_status === 'pending_confirm' && !isDirectoryLead(o));
 
       document.getElementById('count-pending-confirm').innerText = normalPendingList.length;
       document.getElementById('count-directory-leads').innerText = leadsList.length;
@@ -1946,9 +1953,9 @@
     function renderOrderFulfillmentList() {
       let filtered = allOrders;
       if (activeOrderFilter === 'pending_confirm') {
-        filtered = allOrders.filter(o => (o.order_status === 'pending_confirm' || o.order_status === 'counter_proposal') && o.order_source !== 'b2b_directory_lead');
+        filtered = allOrders.filter(o => (o.order_status === 'pending_confirm' || o.order_status === 'counter_proposal') && !isDirectoryLead(o));
       } else if (activeOrderFilter === 'directory_leads') {
-        filtered = allOrders.filter(o => o.order_source === 'b2b_directory_lead');
+        filtered = allOrders.filter(o => isDirectoryLead(o));
       } else if (activeOrderFilter === 'over_credit_pending') {
         filtered = allOrders.filter(o => o.order_status === 'over_credit_pending');
       } else if (activeOrderFilter === 'confirmed') {
@@ -1965,7 +1972,7 @@
 
       container.innerHTML = filtered.map(o => {
         // 專屬渲染：來自 suppliers.html 供貨商名錄的新店招商線索
-        if (o.order_source === 'b2b_directory_lead') {
+        if (isDirectoryLead(o)) {
           const isConverted = (o.order_status === 'lead_converted');
           return `
             <div class="p-4 bg-amber-50/60 border border-amber-300 rounded-3xl space-y-2.5">
