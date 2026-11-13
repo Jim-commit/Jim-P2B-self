@@ -55,6 +55,17 @@
       </div>
     </header>
 
+    <!-- 弱網/地下室離線簽收單同步提醒條 -->
+    <div id="offline-sync-banner" class="hidden mx-3 mt-3 bg-amber-50 border border-amber-300 text-amber-950 p-2.5 rounded-2xl flex items-center justify-between text-xs shadow-xs">
+      <div>
+        <b class="font-bold">📡 離線暫存隊列 (<span id="offline-queue-count">0</span> 筆)</b>
+        <span class="block text-[10px] text-amber-800">地下室弱網時已本地鎖存，恢復信號請點同步</span>
+      </div>
+      <button onclick="window.syncOfflineQueue()" id="btn-sync-offline" class="bg-amber-600 text-white font-bold px-3 py-1.5 rounded-xl text-[11px] shadow active:scale-95">
+        立即同步回庫
+      </button>
+    </div>
+
     <!-- 工作模式切換：送貨核銷 / 巡街拓客 -->
     <div class="p-3 pb-0">
       <div class="bg-stone-100 p-1 rounded-2xl flex gap-1 text-xs font-bold shadow-inner">
@@ -70,7 +81,12 @@
     <!-- 配送任務路線 -->
     <main id="pane-deliver" class="p-3 flex-1 space-y-3">
       <div class="flex justify-between items-center px-1">
-        <h2 class="text-xs font-bold text-stone-700">📋 今日路線待送實體門店</h2>
+        <div class="flex items-center gap-1.5">
+          <h2 class="text-xs font-bold text-stone-700">📋 配送門店列表</h2>
+          <button id="btn-toggle-only-orders" onclick="window.toggleOnlyOrdersFilter()" class="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-lg font-bold transition">
+            全部門店
+          </button>
+        </div>
         <button onclick="window.loadDriverTasks()" class="text-[11px] text-emerald-800 font-bold hover:underline">
           刷新路線
         </button>
@@ -236,6 +252,18 @@
           </div>
         </div>
 
+        <!-- 新增：轉賬截圖 / 現場憑證留痕（直傳財務 hq.html 對賬核驗） -->
+        <div class="bg-stone-50 border border-stone-200 p-2.5 rounded-xl space-y-1.5">
+          <div class="flex justify-between items-center">
+            <span class="text-[11px] font-bold text-stone-700">📸 轉賬截圖 / 破損憑證拍照 (選填)：</span>
+            <label class="cursor-pointer bg-white hover:bg-stone-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-lg active:scale-95 transition">
+              + 拍照/選圖
+              <input type="file" accept="image/*" onchange="window.handleProofImageUpload(event)" class="hidden">
+            </label>
+          </div>
+          <div id="proof-preview-strip" class="flex gap-2 overflow-x-auto no-scrollbar"></div>
+        </div>
+
         <!-- 手寫簽名板 -->
         <div>
           <div class="flex justify-between items-center mb-1">
@@ -333,11 +361,116 @@
     let currentAgent = (localStorage.getItem('active_agent') || 'BJ_SHUNDA').trim().toUpperCase();
     let currentDriver = localStorage.getItem('active_driver') || '老張師傅';
     let routeStores = [];
+    let allPendingOrders = [];
+    let onlyShowWithOrders = false;
+    let proofImagesList = [];
     let isSigned = false;
     let canvas, ctx, drawing = false;
 
+    const OFFLINE_QUEUE_KEY = 'driver_offline_settlements_v1';
+
     window.openModal = id => document.getElementById(id).classList.remove('hidden');
     window.closeModal = id => document.getElementById(id).classList.add('hidden');
+
+    // 離線緩存隊列狀態刷新
+    function refreshOfflineBanner() {
+      const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+      const banner = document.getElementById('offline-sync-banner');
+      const countEl = document.getElementById('offline-queue-count');
+      if (queue.length > 0) {
+        banner?.classList.remove('hidden');
+        if (countEl) countEl.innerText = queue.length;
+      } else {
+        banner?.classList.add('hidden');
+      }
+    }
+
+    window.syncOfflineQueue = async function() {
+      const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+      if (queue.length === 0) return;
+
+      const btn = document.getElementById('btn-sync-offline');
+      if (btn) { btn.disabled = true; btn.innerText = '同步中...'; }
+
+      const failed = [];
+      for (const item of queue) {
+        try {
+          await executeSettlementToSupabase(item);
+        } catch (err) {
+          console.error('離線單據同步失敗:', err);
+          failed.push(item);
+        }
+      }
+
+      localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(failed));
+      refreshOfflineBanner();
+      if (btn) { btn.disabled = false; btn.innerText = '立即同步回庫'; }
+
+      if (failed.length === 0) {
+        alert('🎉 所有離線暫存簽收單已全部同步回雲端賬本！');
+        await window.loadDriverTasks();
+        await calculateTodayStats();
+      } else {
+        alert(`已同步部分單據，仍有 ${failed.length} 筆因信號不穩留在隊列，請稍後再試。`);
+      }
+    };
+
+    window.toggleOnlyOrdersFilter = function() {
+      onlyShowWithOrders = !onlyShowWithOrders;
+      const btn = document.getElementById('btn-toggle-only-orders');
+      if (btn) {
+        btn.innerText = onlyShowWithOrders ? '只看今日有單' : '全部門店';
+        btn.className = onlyShowWithOrders
+          ? 'text-[10px] bg-[#1b4332] text-white px-2 py-0.5 rounded-lg font-bold transition'
+          : 'text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-lg font-bold transition';
+      }
+      renderRouteStores();
+    };
+
+    window.handleProofImageUpload = function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvasEl = document.createElement('canvas');
+          const maxDim = 640;
+          let w = img.width, h = img.height;
+          if (w > h && w > maxDim) { h *= maxDim / w; w = maxDim; }
+          else if (h > maxDim) { w *= maxDim / h; h = maxDim; }
+          canvasEl.width = w; canvasEl.height = h;
+          canvasEl.getContext('2d').drawImage(img, 0, 0, w, h);
+          const base64 = canvasEl.toDataURL('image/jpeg', 0.72);
+          proofImagesList.push(base64);
+          renderProofPreview();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    };
+
+    window.removeProofImage = function(idx) {
+      proofImagesList.splice(idx, 1);
+      renderProofPreview();
+    };
+
+    function renderProofPreview() {
+      const strip = document.getElementById('proof-preview-strip');
+      if (!strip) return;
+      if (proofImagesList.length === 0) {
+        strip.innerHTML = '<span class="text-[10px] text-stone-400">未附憑證圖（如收微信轉賬建議拍照留底）</span>';
+        return;
+      }
+      strip.innerHTML = proofImagesList.map((src, idx) => `
+        <div class="relative shrink-0">
+          <img src="${src}" class="w-12 h-12 rounded-lg object-cover border border-stone-300">
+          <button type="button" onclick="window.removeProofImage(${idx})" class="absolute -top-1.5 -right-1.5 bg-rose-600 text-white w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold">✕</button>
+        </div>
+      `).join('');
+    }
 
     window.switchWorkTab = function(mode) {
       document.getElementById('pane-deliver').classList.toggle('hidden', mode !== 'deliver');
@@ -350,7 +483,6 @@
         : "flex-1 py-2 rounded-xl text-stone-600 hover:text-stone-900 transition flex items-center justify-center gap-1";
     };
 
-    // 新增：切換所屬商號代號 (tenant_id)
     window.switchTenantPrompt = async function() {
       const input = prompt('輸入所屬供貨廠商的商號代號（如 NY-FUNIU 或 BJ_SHUNDA）：', currentAgent);
       if (!input || !input.trim()) return;
@@ -437,6 +569,7 @@
     async function initDriver() {
       document.getElementById('driver-name-display').innerText = currentDriver;
       document.getElementById('tenant-display').innerText = currentAgent;
+      refreshOfflineBanner();
       initSignPad();
       await window.loadDriverTasks();
       await calculateTodayStats();
@@ -462,16 +595,37 @@
         .in('order_status', ['confirmed', 'over_credit_approved', 'over_credit_pending'])
         .order('id', { ascending: false });
 
-      const orders = pendingOrders || [];
+      allPendingOrders = pendingOrders || [];
+      renderRouteStores();
+    };
 
+    function renderRouteStores() {
+      const container = document.getElementById('route-container');
       if (routeStores.length === 0) {
         container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">暫無待送實體門店。</div>';
         return;
       }
 
-      container.innerHTML = routeStores.map((s, idx) => {
+      // 智能排序：今日有待送訂單的門店優先排在最前面
+      const sortedStores = [...routeStores].sort((a, b) => {
+        const aHas = allPendingOrders.some(o => o.store_id === a.id) ? 1 : 0;
+        const bHas = allPendingOrders.some(o => o.store_id === b.id) ? 1 : 0;
+        return bHas - aHas;
+      });
+
+      const displayList = onlyShowWithOrders
+        ? sortedStores.filter(s => allPendingOrders.some(o => o.store_id === s.id))
+        : sortedStores;
+
+      if (displayList.length === 0) {
+        container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">今日暫無已排單待送貨門店（點擊上方「只看今日有單」可查看全部門店）。</div>';
+        return;
+      }
+
+      container.innerHTML = displayList.map((s, idx) => {
         const debt = parseFloat(s.current_debt || 0);
-        const storeOrders = orders.filter(o => o.store_id === s.id);
+        const storeOrders = allPendingOrders.filter(o => o.store_id === s.id);
+        const hasOrders = storeOrders.length > 0;
         
         const orderSummary = storeOrders.map(o => {
           const itemsOrder = Array.isArray(o.items) ? o.items : [];
@@ -518,14 +672,14 @@
         const totalNetOrderAmount = storeOrders.reduce((sum, o) => sum + parseFloat(o.net_settle_amount || o.total_amount || 0), 0);
 
         return `
-          <div class="p-3.5 bg-stone-50/60 border border-stone-200/80 rounded-2xl space-y-2 hover:bg-white transition">
+          <div class="p-3.5 ${hasOrders ? 'bg-amber-50/30 border-amber-300 shadow-xs' : 'bg-stone-50/60 border-stone-200/80'} border rounded-2xl space-y-2 hover:bg-white transition">
             <div class="flex justify-between items-start">
               <div>
                 <div class="flex items-center gap-1.5">
                   <span class="font-mono text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.2 rounded font-bold">#${idx + 1}</span>
                   <b class="text-xs text-stone-800">${s.name}</b>
                   <span class="text-[9px] bg-stone-200/80 text-stone-600 px-1.5 py-0.2 rounded">${s.shop_category || '實體百工'}</span>
-                  ${storeOrders.length > 0 ? `<span class="bg-amber-600 text-white text-[9px] px-1.5 py-0.2 rounded-full font-bold">待交割</span>` : ''}
+                  ${hasOrders ? `<span class="bg-amber-600 text-white text-[9px] px-1.5 py-0.2 rounded-full font-bold">待交割 (${storeOrders.length})</span>` : ''}
                 </div>
                 <div class="text-[11px] text-stone-400 mt-0.5">
                   掌櫃: ${s.contact || '掌櫃'} · 電話: <a href="tel:${s.phone}" class="text-emerald-800 font-bold underline font-mono">${s.phone}</a>
@@ -547,14 +701,14 @@
               <a href="tel:${s.phone}" class="text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 active:scale-95">
                 📞 致電
               </a>
-              <button onclick="window.openCollectModal(${s.id}, '${s.name}', ${debt}, '${firstOrder ? firstOrder.id : ''}', ${totalNetOrderAmount}, ${s.carrier_hold_count || s.basket_count || 0}, ${s.credit_limit || 2000})" class="flex-1 text-[11px] bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-1.5 rounded-xl shadow active:scale-95 transition">
+              <button onclick="window.openCollectModal(${s.id}, '${s.name.replace(/'/g, "\\'")}', ${debt}, '${firstOrder ? firstOrder.id : ''}', ${totalNetOrderAmount}, ${s.carrier_hold_count || s.basket_count || 0}, ${s.credit_limit || 2000})" class="flex-1 text-[11px] bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-1.5 rounded-xl shadow active:scale-95 transition">
                 🤝 現場點驗核銷 (收退/歸具/平賬)
               </button>
             </div>
           </div>
         `;
       }).join('');
-    };
+    }
 
     window.openCollectModal = async function(storeId, storeName, debt, orderId, orderAmount, basketCount, creditLimit) {
       document.getElementById('modal-shop-title').innerText = storeName;
@@ -563,6 +717,9 @@
       document.getElementById('modal-current-debt').value = debt;
       document.getElementById('modal-credit-limit').value = creditLimit || 2000;
       document.getElementById('modal-basket-count').value = basketCount;
+
+      proofImagesList = [];
+      renderProofPreview();
 
       let itemsOrder = [];
       let itemsReturn = [];
@@ -758,6 +915,40 @@
       btn.innerText = '✅ 點驗交割 · 簽名存信';
     };
 
+    async function executeSettlementToSupabase(record) {
+      const logPayload = { ...record.logPayload };
+      let { error: logErr } = await supabase.from('driver_collection_log').insert([logPayload]);
+
+      if (logErr && logErr.message && logErr.message.includes('basket_deduct_amount')) {
+        delete logPayload.basket_deduct_amount;
+        delete logPayload.discount_amount;
+        delete logPayload.basket_return;
+        const retry = await supabase.from('driver_collection_log').insert([logPayload]);
+        logErr = retry.error;
+      }
+
+      if (logErr) throw logErr;
+
+      await supabase.from('store').update({
+        current_debt: record.expectedNewDebt,
+        basket_count: record.newBaskets,
+        carrier_hold_count: record.newBaskets
+      }).eq('id', record.storeId);
+
+      if (record.orderId) {
+        const orderUpdate = {
+          delivery_status: 'delivered',
+          order_status: 'delivered',
+          pay_status: record.amount > 0 ? 'paid' : (record.method === '現金' ? 'cash_zero_cleared' : 'credit_logged'),
+          sign_image_url: record.signBase64
+        };
+        if (Array.isArray(record.proofImages) && record.proofImages.length > 0) {
+          orderUpdate.proof_images = record.proofImages;
+        }
+        await supabase.from('store_order').update(orderUpdate).eq('id', parseInt(record.orderId));
+      }
+    }
+
     window.submitCollection = async function() {
       const storeId = parseInt(document.getElementById('modal-store-id').value);
       const orderId = document.getElementById('modal-order-id').value;
@@ -804,49 +995,43 @@
         collectType = 'credit_sign';
       }
 
-      const payload = {
-        tenant_id: currentAgent,
-        store_id: storeId,
-        store_name: store ? store.name : '合作實體門店',
-        driver_name: currentDriver,
-        collect_type: collectType,
-        amount: amount,
-        discount_amount: discount,
-        basket_return: basketReturn,
-        basket_deduct_amount: basketDeduct,
-        pay_method: method,
-        sign_image_url: signBase64
+      const newBaskets = Math.max(0, curBaskets - basketReturn);
+      const recordToSave = {
+        storeId,
+        orderId,
+        amount,
+        method,
+        expectedNewDebt,
+        newBaskets,
+        signBase64,
+        proofImages: [...proofImagesList],
+        logPayload: {
+          tenant_id: currentAgent,
+          store_id: storeId,
+          store_name: store ? store.name : '合作實體門店',
+          driver_name: currentDriver,
+          collect_type: collectType,
+          amount: amount,
+          discount_amount: discount,
+          basket_return: basketReturn,
+          basket_deduct_amount: basketDeduct,
+          pay_method: method,
+          sign_image_url: signBase64
+        }
       };
 
-      let { error: logErr } = await supabase.from('driver_collection_log').insert([payload]);
-      
-      if (logErr && logErr.message && logErr.message.includes('basket_deduct_amount')) {
-        delete payload.basket_deduct_amount;
-        delete payload.discount_amount;
-        delete payload.basket_return;
-        const retry = await supabase.from('driver_collection_log').insert([payload]);
-        logErr = retry.error;
+      try {
+        await executeSettlementToSupabase(recordToSave);
+        alert(`✅ 交割完好！\n實收金銀: ¥${amount.toFixed(2)} (${method})\n迎回周轉載具: ${basketReturn} 件 (抵¥${basketDeduct})\n門店剩餘在賬: ¥${expectedNewDebt.toFixed(2)}。仁信共生！`);
+      } catch (err) {
+        console.warn('網絡信號較弱，已自動存入離線防丟單隊列:', err);
+        const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+        queue.push(recordToSave);
+        localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+        refreshOfflineBanner();
+        alert(`📡 當前地下室/街巷信號較弱，本筆簽收單已安全鎖存至本地離線隊列！\n行車至信號良好處點擊頂部「立即同步回庫」即可。`);
       }
 
-      if (logErr) return alert('記錄失敗: ' + logErr.message);
-
-      const newBaskets = Math.max(0, curBaskets - basketReturn);
-      await supabase.from('store').update({ 
-        current_debt: expectedNewDebt, 
-        basket_count: newBaskets,
-        carrier_hold_count: newBaskets
-      }).eq('id', storeId);
-
-      if (orderId) {
-        await supabase.from('store_order').update({
-          delivery_status: 'delivered',
-          order_status: 'delivered',
-          pay_status: amount > 0 ? 'paid' : (method === '現金' ? 'cash_zero_cleared' : 'credit_logged'),
-          sign_image_url: signBase64
-        }).eq('id', parseInt(orderId));
-      }
-
-      alert(`✅ 交割完好！\n實收金銀: ¥${amount.toFixed(2)} (${method})\n迎回周轉載具: ${basketReturn} 件 (抵¥${basketDeduct})\n門店剩餘在賬: ¥${expectedNewDebt.toFixed(2)}。仁信共生！`);
       window.closeModal('collect-modal');
       await window.loadDriverTasks();
       await calculateTodayStats();
