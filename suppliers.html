@@ -350,7 +350,7 @@
       document.getElementById('inquiry-form').reset();
     };
 
-    // 提交预约送样线索 -> 自动满足 store_id 非空与外键约束，直达 hq.html
+    // 提交预约送样线索 -> 自动满足 store_id 非空与外键约束，并自动兼容字段结构，直达 hq.html
     document.getElementById('inquiry-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('submit-inquiry-btn');
@@ -399,14 +399,13 @@
             validStoreId = createdStore.id;
           }
 
-          // 2. 写入 store_order 招商线索队列
-          const { error } = await supabase.from('store_order').insert([{
+          // 2. 写入 store_order 招商线索队列（自动兼容数据库是否有 order_source 列）
+          const baseOrderPayload = {
             order_no: orderNo,
             tenant_id: tenantId,
             store_id: validStoreId,
             store_name: storeName,
             driver_name: '待指派业务员',
-            order_source: 'b2b_directory_lead',
             settlement_type: 'credit',
             settlement_note: `${contactName}|${phone}|${address}`,
             items: [],
@@ -419,7 +418,18 @@
             delivery_status: 'lead_pending',
             note: `[新店招商线索] 联系人:${contactName} | 电话:${phone} | 地址:${address}${note ? ' | 意向:' + note : ''}`,
             driver_action_instruction: `【新店送样线索】联系 ${contactName}(${phone}) 上门洽谈`
+          };
+
+          let { error } = await supabase.from('store_order').insert([{
+            ...baseOrderPayload,
+            order_source: 'b2b_directory_lead'
           }]);
+
+          // 若数据库表无 order_source 字段，自动去掉该字段重新插入
+          if (error && (error.message || '').includes('order_source')) {
+            const retryRes = await supabase.from('store_order').insert([baseOrderPayload]);
+            error = retryRes.error;
+          }
 
           if (error) throw error;
         }
