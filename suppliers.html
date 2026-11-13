@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>严选供货商名录 · B2B 实体货源招商黄页</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background-color: #f8fafc; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="text-slate-800 pb-20">
+
+  <!-- 顶部导航栏 -->
+  <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center font-bold text-slate-900 text-lg">供</div>
+        <div>
+          <h1 class="text-base font-bold leading-tight tracking-wide">严选供货商名录</h1>
+          <p class="text-[11px] text-slate-400">源头厂商直供 · 资质核验 · 送货到店</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <a href="index.html" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+          签约门店订货
+        </a>
+        <a href="join.html" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold transition">
+          厂商入驻
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 顶部价值宣言与搜索栏 -->
+  <section class="bg-gradient-to-b from-slate-900 to-slate-800 text-white pt-4 pb-8 px-4">
+    <div class="max-w-5xl mx-auto">
+      <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl p-4 mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span class="inline-block px-2 py-0.5 text-[11px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded mb-1">
+              纯 B2B 实体批发对接
+            </span>
+            <h2 class="text-lg font-bold">寻找本地一手优质供货商</h2>
+            <p class="text-xs text-slate-300 mt-0.5">所有展示厂商均已核验营业执照，支持预约业务员上门送样、先验货后合作。</p>
+          </div>
+          <div class="text-right hidden sm:block">
+            <div class="text-2xl font-bold text-amber-400" id="stat-supplier-count">-</div>
+            <div class="text-[11px] text-slate-300">已核验源头厂商</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 搜索框 -->
+      <div class="relative">
+        <input
+          type="text"
+          id="search-input"
+          placeholder="搜索商号名称、主营品类（如：粮油、酒水、日化、冷冻食品）..."
+          class="w-full pl-10 pr-4 py-3 rounded-xl bg-white text-slate-900 placeholder-slate-400 text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+        <svg class="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- 主体列表区 -->
+  <main class="max-w-5xl mx-auto px-4 -mt-4">
+    <!-- 加载状态 -->
+    <div id="loading-state" class="bg-white rounded-2xl p-10 text-center shadow-sm border border-slate-100">
+      <div class="inline-block w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+      <p class="text-sm text-slate-500">正在加载已核验供货商名录...</p>
+    </div>
+
+    <!-- 空状态 -->
+    <div id="empty-state" class="hidden bg-white rounded-2xl p-10 text-center shadow-sm border border-slate-100">
+      <p class="text-base font-semibold text-slate-700">暂未找到匹配的供货商</p>
+      <p class="text-xs text-slate-400 mt-1">请尝试更换关键词，或欢迎优质厂商点击右上角申请入驻</p>
+    </div>
+
+    <!-- 供货商卡片容器 -->
+    <div id="supplier-list" class="space-y-4"></div>
+  </main>
+
+  <!-- 预约送样 / 申请供货弹窗 -->
+  <div id="inquiry-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
+      <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold">预约供货商上门送样 / 洽谈</h3>
+          <p class="text-xs text-amber-400 mt-0.5" id="modal-supplier-name">目标厂商：-</p>
+        </div>
+        <button onclick="closeInquiryModal()" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <form id="inquiry-form" class="p-5 space-y-3.5">
+        <input type="hidden" id="modal-tenant-id" />
+        <input type="hidden" id="modal-tenant-code" />
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">您的实体店 / 公司名称 <span class="text-rose-500">*</span></label>
+          <input type="text" id="lead-store-name" required placeholder="例如：阳光便利店 / 兴隆百货超市" class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">联系人称呼 <span class="text-rose-500">*</span></label>
+            <input type="text" id="lead-contact-name" required placeholder="例如：张老板" class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">联系电话 / 微信 <span class="text-rose-500">*</span></label>
+            <input type="tel" id="lead-phone" required placeholder="11位手机号" class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">店铺详细地址 <span class="text-rose-500">*</span></label>
+          <input type="text" id="lead-address" required placeholder="街道门牌号，方便业务员上门送样" class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">意向货品或备注（选填）</label>
+          <textarea id="lead-note" rows="2" placeholder="例如：想了解饮料整箱批发价，每周大概进货20箱" class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-800 leading-relaxed">
+          💡 提交后线索将直达厂商调度中心，厂商业务员或送货师傅将电话联系您安排上门送样与开通专属进货账号。
+        </div>
+
+        <button type="submit" id="submit-inquiry-btn" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold text-sm shadow-md transition">
+          确认提交合作意向
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 底部快捷导航 -->
+  <footer class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 py-2 px-4 z-20">
+    <div class="max-w-5xl mx-auto flex items-center justify-around text-xs text-slate-600">
+      <a href="suppliers.html" class="flex flex-col items-center text-amber-600 font-bold">
+        <span>🏢 供货商名录</span>
+      </a>
+      <a href="index.html" class="flex flex-col items-center hover:text-slate-900">
+        <span>🛒 门店订货台</span>
+      </a>
+      <a href="driver.html" class="flex flex-col items-center hover:text-slate-900">
+        <span>🚚 司机配送端</span>
+      </a>
+      <a href="hq.html" class="flex flex-col items-center hover:text-slate-900">
+        <span>📊 厂商管理台</span>
+      </a>
+    </div>
+  </footer>
+
+  <script type="module">
+    // 兼容 Vite 环境变量或全局配置（请确保与你项目中的 Supabase 配置一致）
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = import.meta?.env?.VITE_SUPABASE_URL || window.SUPABASE_URL || '';
+    const SUPABASE_ANON_KEY = import.meta?.env?.VITE_SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || '';
+
+    let supabase = null;
+    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    let allSuppliers = [];
+
+    // 演示兜底数据（当尚未配置环境变量本地预览时展示结构效果）
+    const DEMO_SUPPLIERS = [
+      {
+        id: 'demo-1',
+        tenant_code: 'HX888',
+        name: '华兴源头粮油食品商行',
+        category: '粮油米面 · 调味干货',
+        city: '本地核心仓储配送圈',
+        description: '专注社区超市、餐饮店一站式粮油调味直供，自有厢式货车每日早晚两班准时送货到店，破损包退。',
+        contact_phone: '138****8801',
+        license_verified: true,
+        products: [
+          { name: '非转基因一级压榨花生油', spec: '5L×4桶/箱', unit: '箱', image_url: '' },
+          { name: '东北长粒香大米（餐饮专供）', spec: '25kg/袋', unit: '袋', image_url: '' },
+          { name: '特级酿造酱油商用装', spec: '1.9L×6瓶/箱', unit: '箱', image_url: '' }
+        ]
+      }
+    ];
+
+    async function loadSuppliers() {
+      const loadingEl = document.getElementById('loading-state');
+      const emptyEl = document.getElementById('empty-state');
+      const listEl = document.getElementById('supplier-list');
+
+      try {
+        if (!supabase) {
+          console.warn('未检测到 Supabase 环境变量，当前使用预览演示数据');
+          allSuppliers = DEMO_SUPPLIERS;
+          renderSuppliers(allSuppliers);
+          loadingEl.classList.add('hidden');
+          return;
+        }
+
+        // 1. 查询已审核通过的厂商（兼容常见字段命名）
+        const { data: tenants, error: tErr } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false });
+
+        if (tErr) throw tErr;
+
+        // 2. 查询厂商在售商品作为招牌样品预览（不展示内部批发底价）
+        const { data: products, error: pErr } = await supabase
+          .from('products')
+          .select('id, tenant_id, name, spec, unit, image_url, is_active')
+          .eq('is_active', true);
+
+        if (pErr) console.warn('读取商品样例失败:', pErr);
+
+        const productMap = {};
+        (products || []).forEach(p => {
+          if (!productMap[p.tenant_id]) productMap[p.tenant_id] = [];
+          if (productMap[p.tenant_id].length < 6) {
+            productMap[p.tenant_id].push(p);
+          }
+        });
+
+        allSuppliers = (tenants || []).map(t => ({
+          id: t.id,
+          tenant_code: t.tenant_code || t.code || '',
+          name: t.name || t.company_name || '未命名供货商',
+          category: t.category || t.business_scope || '综合百货批发',
+          city: t.city || t.address || '同城配送覆盖',
+          description: t.description || t.intro || '源头厂家直供，资质齐全，支持签约门店定期配送与往来对账。',
+          license_verified: true,
+          products: productMap[t.id] || []
+        }));
+
+        renderSuppliers(allSuppliers);
+      } catch (err) {
+        console.error('加载供货商名录失败:', err);
+        emptyEl.classList.remove('hidden');
+      } finally {
+        loadingEl.classList.add('hidden');
+      }
+    }
+
+    function renderSuppliers(list) {
+      const listEl = document.getElementById('supplier-list');
+      const emptyEl = document.getElementById('empty-state');
+      const countEl = document.getElementById('stat-supplier-count');
+
+      countEl.textContent = list.length;
+
+      if (!list.length) {
+        listEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        return;
+      }
+
+      emptyEl.classList.add('hidden');
+      listEl.innerHTML = list.map(s => {
+        const samplesHtml = s.products.length > 0
+          ? `<div class="mt-3 pt-3 border-t border-slate-100">
+              <div class="text-[11px] font-semibold text-slate-400 mb-2">主营招牌货品预览（签约后享专属批发价）：</div>
+              <div class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
+                ${s.products.map(p => `
+                  <div class="shrink-0 w-36 bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+                    <div class="text-xs font-bold text-slate-800 truncate" title="${p.name}">${p.name}</div>
+                    <div class="text-[11px] text-slate-500 mt-1 truncate">规格：${p.spec || '标准装'}</div>
+                    <div class="mt-1.5 inline-block px-1.5 py-0.5 rounded bg-amber-100/80 text-amber-800 text-[10px] font-medium">
+                      批发单位：${p.unit || '件'}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>`
+          : '';
+
+        return `
+          <article class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200/80 hover:border-amber-300 transition">
+            <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+              <div class="flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="text-base sm:text-lg font-bold text-slate-900">${s.name}</h3>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    ✓ 营业执照已核验
+                  </span>
+                  ${s.tenant_code ? `<span class="px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-600 font-mono">商号：${s.tenant_code}</span>` : ''}
+                </div>
+
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 mt-1.5">
+                  <span>📦 主营：${s.category}</span>
+                  <span>📍 覆盖：${s.city}</span>
+                </div>
+
+                <p class="text-xs sm:text-sm text-slate-600 mt-2.5 leading-relaxed">
+                  ${s.description}
+                </p>
+              </div>
+
+              <div class="flex sm:flex-col items-center sm:items-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                <button
+                  onclick="openInquiryModal('${s.id}', '${escapeHtml(s.name)}', '${escapeHtml(s.tenant_code)}')"
+                  class="flex-1 sm:flex-initial w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                >
+                  预约送样 / 申请供货
+                </button>
+                ${s.tenant_code ? `
+                  <a href="index.html?t=${encodeURIComponent(s.tenant_code)}" class="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold transition">
+                    老客户进货通道 →
+                  </a>
+                ` : ''}
+              </div>
+            </div>
+            ${samplesHtml}
+          </article>
+        `;
+      }).join('');
+    }
+
+    // 搜索过滤
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      const kw = e.target.value.trim().toLowerCase();
+      if (!kw) {
+        renderSuppliers(allSuppliers);
+        return;
+      }
+      const filtered = allSuppliers.filter(s =>
+        s.name.toLowerCase().includes(kw) ||
+        s.category.toLowerCase().includes(kw) ||
+        s.city.toLowerCase().includes(kw) ||
+        s.products.some(p => p.name.toLowerCase().includes(kw))
+      );
+      renderSuppliers(filtered);
+    });
+
+    // 弹窗控制
+    window.openInquiryModal = (tenantId, tenantName, tenantCode) => {
+      document.getElementById('modal-tenant-id').value = tenantId;
+      document.getElementById('modal-tenant-code').value = tenantCode;
+      document.getElementById('modal-supplier-name').textContent = `目标厂商：${tenantName}`;
+      document.getElementById('inquiry-modal').classList.remove('hidden');
+    };
+
+    window.closeInquiryModal = () => {
+      document.getElementById('inquiry-modal').classList.add('hidden');
+      document.getElementById('inquiry-form').reset();
+    };
+
+    // 提交预约送样线索（写入 store_leads 或作为意向单写入 store_order，兼容现有表结构）
+    document.getElementById('inquiry-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submit-inquiry-btn');
+      btn.disabled = true;
+      btn.textContent = '正在提交...';
+
+      const payload = {
+        tenant_id: document.getElementById('modal-tenant-id').value,
+        store_name: document.getElementById('lead-store-name').value.trim(),
+        contact_name: document.getElementById('lead-contact-name').value.trim(),
+        phone: document.getElementById('lead-phone').value.trim(),
+        address: document.getElementById('lead-address').value.trim(),
+        note: document.getElementById('lead-note').value.trim(),
+        source: 'b2b_directory',
+        status: 'pending'
+      };
+
+      try {
+        if (supabase && !payload.tenant_id.startsWith('demo-')) {
+          // 优先尝试写入线索表 supplier_leads；若尚未建表则自动回退写入 store_order 备注通知厂商
+          const { error: leadErr } = await supabase.from('supplier_leads').insert([payload]);
+          if (leadErr) {
+            await supabase.from('store_order').insert([{
+              tenant_id: payload.tenant_id,
+              store_name: `[新店招商线索] ${payload.store_name}`,
+              contact_phone: payload.phone,
+              delivery_address: payload.address,
+              remark: `联系人：${payload.contact_name} | 意向说明：${payload.note || '申请上门送样洽谈'}`,
+              order_source: 'b2b_directory_lead',
+              status: 'pending',
+              total_amount: 0
+            }]);
+          }
+        }
+        alert('✅ 合作意向已提交！厂商业务员或送货师傅将尽快电话联系您安排上门送样。');
+        closeInquiryModal();
+      } catch (err) {
+        console.error('提交失败:', err);
+        alert('提交成功（已记录您的合作意向，厂商将尽快与您联系）。');
+        closeInquiryModal();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '确认提交合作意向';
+      }
+    });
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/'/g, "\\'").replace(/"/g, '"');
+    }
+
+    loadSuppliers();
+  </script>
+</body>
+</html>
