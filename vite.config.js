@@ -12,7 +12,7 @@ export default defineConfig({
         mall: resolve(__dirname, 'mall.html'),
         join: resolve(__dirname, 'join.html'),
         driver: resolve(__dirname, 'driver.html'),
-        driver: resolve(__dirname, 'suppliers.html')
+        suppliers: resolve(__dirname, 'suppliers.html')
       }
     }
   }
