@@ -36,6 +36,7 @@
         </div>
         <div class="text-xs text-emerald-200 mt-1 flex flex-wrap gap-3 font-mono">
           <span>商號代號: <b id="hq-tenant-id" class="text-amber-300 tracking-wider">--</b></span>
+          <span>當值身份: <b id="hq-operator-role-display" class="text-white">大當家主賬號</b></span>
           <span>載具名稱: <button onclick="window.customizeCarrierName()" id="carrier-label-btn" class="underline text-amber-200 hover:text-white font-bold" title="點擊可自定義周轉載具名稱（如：周轉筐/托盤/氣瓶/料箱）">周轉載具 ✎</button></span>
         </div>
       </div>
@@ -45,12 +46,12 @@
           <span>📲</span> 招商二維碼
         </button>
         <button onclick="window.openPushOrderModal()" class="bg-[#2d6a4f] hover:bg-[#1b4332] text-white text-xs px-3 py-2 rounded-xl font-bold shadow active:scale-95 transition flex items-center gap-1 border border-emerald-500/30">
-          <span>📦</span> 主動配發
+          <span>📦</span> 主動配貨
         </button>
-        <button onclick="window.openChangePasswordModal()" class="bg-[#143628] hover:bg-[#0e271d] text-amber-300 text-xs px-2.5 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition">
+        <button id="btn-top-chg-pwd" onclick="window.openChangePasswordModal()" class="bg-[#143628] hover:bg-[#0e271d] text-amber-300 text-xs px-2.5 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition">
           🔑 改密
         </button>
-        <button onclick="window.openTotpSetupModal()" class="bg-[#143628] hover:bg-[#0e271d] text-emerald-300 text-xs px-2.5 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition">
+        <button id="btn-top-totp" onclick="window.openTotpSetupModal()" class="bg-[#143628] hover:bg-[#0e271d] text-emerald-300 text-xs px-2.5 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition">
           🛡️ 驗證器
         </button>
 
@@ -163,7 +164,7 @@
       </div>
     </section>
 
-    <!-- 第二層：四大固定工作台導航（全公司業務收進 4 個大按鈕，無深層菜單） -->
+    <!-- 第二層：四大固定工作台導航 -->
     <nav class="grid grid-cols-2 sm:grid-cols-4 bg-white rounded-2xl shadow-sm border border-stone-200/80 p-1.5 gap-1.5 text-xs font-bold">
       <button id="tab-btn-advisor" onclick="window.switchTab('advisor')" class="py-2.5 px-2 text-center rounded-xl bg-[#1b4332] text-white transition flex items-center justify-center gap-1">
         <span>📊 經營參謀 & AI建議</span>
@@ -181,7 +182,7 @@
     </nav>
 
     <!-- ========================================================================= -->
-    <!-- 工作台 1：經營參謀 & AI 建議（掌櫃每日晴雨表、三流明細、AI 智能決策） -->
+    <!-- 工作台 1：經營參謀 & AI 建議 -->
     <!-- ========================================================================= -->
     <section id="tab-advisor" class="space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-4">
@@ -204,8 +205,8 @@
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex justify-between items-center">
           <div>
-            <h3 class="text-sm font-bold text-stone-800">📜 倉庫出入庫與盤點天道流水（不可篡改留痕）</h3>
-            <p class="text-[11px] text-stone-400">採購入庫、生產下線、報損領用、實地盤點校準全記錄</p>
+            <h3 class="text-sm font-bold text-stone-800">📜 倉庫出入庫與盤點天道流水（含接單自動扣庫留痕）</h3>
+            <p class="text-[11px] text-stone-400">採購入庫、生產下線、銷售配發出庫、報損領用、實地盤點校準全記錄</p>
           </div>
           <button onclick="window.switchTab('products')" class="text-xs text-emerald-800 font-bold hover:underline">去操作出入庫/盤點 ➔</button>
         </div>
@@ -214,7 +215,7 @@
     </section>
 
     <!-- ========================================================================= -->
-    <!-- 工作台 2：貨品發布 & 倉庫出入庫/盤點（一物多渠道 + 自定義屬性 + 點庫存操作） -->
+    <!-- 工作台 2：貨品發布 & 倉庫出入庫/盤點 -->
     <!-- ========================================================================= -->
     <section id="tab-products" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
@@ -233,7 +234,6 @@
           </div>
         </div>
 
-        <!-- 動態賣點標籤快篩欄（自動提取所有商品上的自定義標籤） -->
         <div id="product-tags-filter" class="flex flex-wrap gap-1.5 pt-1 text-xs"></div>
 
         <div class="overflow-x-auto">
@@ -259,7 +259,7 @@
     </section>
 
     <!-- ========================================================================= -->
-    <!-- 工作台 3：客戶分類 & 專屬價格策略（自由標籤分類 + 一客一價/標籤折扣 + 招商建檔） -->
+    <!-- 工作台 3：客戶分類 & 專屬價格策略 -->
     <!-- ========================================================================= -->
     <section id="tab-stores" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
@@ -278,7 +278,6 @@
           </div>
         </div>
 
-        <!-- 動態客戶分類標籤快篩欄 -->
         <div id="store-tags-filter" class="flex flex-wrap gap-1.5 pt-1 text-xs"></div>
 
         <div id="store-list" class="divide-y divide-stone-100 text-xs"></div>
@@ -286,45 +285,62 @@
     </section>
 
     <!-- ========================================================================= -->
-    <!-- 工作台 4：配送調度、財務對賬 & 屬員四權分立 -->
+    <!-- 工作台 4：配貨制單、統一裝車發運、財務對賬 & 屬員四權分立 -->
     <!-- ========================================================================= -->
     <section id="tab-settle" class="hidden space-y-4">
-      <!-- 配送與訂單審核 -->
-      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
-        <div class="flex flex-wrap justify-between items-center gap-2">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3.5">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">🚚 訂單審核、裝車配發與新客線索承接</h2>
-            <p class="text-[11px] text-stone-400">接單排車、超額授信特批、一鍵生成本車裝車總揀貨單、月底一鍵導出 CSV 對賬單</p>
+            <h2 class="text-sm font-bold text-stone-800">🚚 配貨制單與統一裝車配發（受單 + 主動配貨合流）</h2>
+            <p class="text-[11px] text-stone-400">第一步：審核「受單配貨」或發起「主動配貨」 ➔ 第二步：一鍵生成「本車裝車總揀貨單」統一發運</p>
           </div>
-          <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
-            <button onclick="window.openBatchPickListModal()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 px-3 py-1.5 rounded-xl transition active:scale-95 flex items-center gap-1">
-              <span>📋</span> 本車裝車總揀貨單
+          <button onclick="window.exportOrdersToCSV()" class="bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 flex items-center gap-1">
+            <span>📥</span> 導出往來對賬單 (CSV)
+          </button>
+        </div>
+
+        <!-- 清晰兩步流水線操作條 -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center bg-stone-50/90 p-3 rounded-2xl border border-stone-200/80 text-xs">
+          <!-- 第一步：配貨制單（受單 / 主動並重） -->
+          <div class="md:col-span-7 flex flex-wrap items-center gap-1.5">
+            <span class="text-[10px] font-bold text-stone-400 mr-1">① 配貨制單:</span>
+            <button onclick="window.filterOrderStatus('pending_confirm')" id="order-filter-pending" class="px-3 py-1.5 rounded-xl bg-[#1b4332] text-white font-bold transition">
+              📥 受單配貨 <span id="count-pending-confirm" class="bg-amber-400 text-stone-900 px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
             </button>
-            <button onclick="window.exportOrdersToCSV()" class="bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 px-3 py-1.5 rounded-xl transition active:scale-95 flex items-center gap-1">
-              <span>📥</span> 導出對賬單 (CSV)
+            <button onclick="window.openPushOrderModal()" class="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold transition active:scale-95 flex items-center gap-1">
+              <span>📦</span> + 主動配貨 (代客/鋪底)
+            </button>
+            <button onclick="window.filterOrderStatus('over_credit_pending')" id="order-filter-over-credit" class="px-2.5 py-1.5 rounded-xl bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100 font-bold transition">
+              🚨 超信待裁 <span id="count-over-credit" class="bg-rose-600 text-white px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-0.5">0</span>
+            </button>
+          </div>
+
+          <!-- 第二步：統一裝車配發 -->
+          <div class="md:col-span-5 flex flex-wrap md:justify-end items-center gap-1.5 pt-2 md:pt-0 border-t md:border-t-0 border-stone-200">
+            <span class="text-[10px] font-bold text-stone-400 mr-1">② 裝車發運:</span>
+            <button onclick="window.filterOrderStatus('confirmed')" id="order-filter-confirmed" class="px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 font-bold transition">
+              待裝車明細
+            </button>
+            <button onclick="window.openBatchPickListModal()" class="px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold shadow-xs transition active:scale-95 flex items-center gap-1">
+              <span>🚛</span> 本車裝車總揀貨單
             </button>
           </div>
         </div>
 
-        <div class="flex flex-wrap gap-1.5 text-xs font-bold pt-1">
-          <button onclick="window.filterOrderStatus('pending_confirm')" id="order-filter-pending" class="px-3 py-1 rounded-xl bg-[#1b4332] text-white transition">
-            待確認訂貨 <span id="count-pending-confirm" class="bg-amber-400 text-stone-900 px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
-          </button>
-          <button onclick="window.filterOrderStatus('directory_leads')" id="order-filter-leads" class="px-3 py-1 rounded-xl bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 transition">
-            🤝 新店招商線索 <span id="count-directory-leads" class="bg-amber-500 text-white px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
-          </button>
-          <button onclick="window.filterOrderStatus('over_credit_pending')" id="order-filter-over-credit" class="px-3 py-1 rounded-xl bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100 transition">
-            🚨 特信請示待裁 <span id="count-over-credit" class="bg-rose-600 text-white px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
-          </button>
-          <button onclick="window.filterOrderStatus('confirmed')" id="order-filter-confirmed" class="px-3 py-1 rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 transition">
-            已排單發運
-          </button>
-          <button onclick="window.filterOrderStatus('delivered')" id="order-filter-delivered" class="px-3 py-1 rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 transition">
-            已核銷交割
-          </button>
-          <button onclick="window.filterOrderStatus('all')" id="order-filter-all" class="px-3 py-1 rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 transition">
-            全部單據
-          </button>
+        <!-- 輔助視圖切換 -->
+        <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] px-1">
+          <div class="flex flex-wrap gap-1.5 font-bold">
+            <button onclick="window.filterOrderStatus('delivered')" id="order-filter-delivered" class="px-2.5 py-1 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200 transition">
+              ✓ 已核銷交割
+            </button>
+            <button onclick="window.filterOrderStatus('directory_leads')" id="order-filter-leads" class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 transition">
+              🤝 新店招商線索 (<span id="count-directory-leads">0</span>)
+            </button>
+            <button onclick="window.filterOrderStatus('all')" id="order-filter-all" class="px-2.5 py-1 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200 transition">
+              全部往來單據
+            </button>
+          </div>
+          <span class="text-[10px] text-stone-400">受單與主動配貨審定後自動扣庫並匯入「本車裝車總揀貨單」</span>
         </div>
 
         <div id="order-fulfillment-list" class="space-y-3 text-xs max-h-[520px] overflow-y-auto no-scrollbar"></div>
@@ -343,11 +359,11 @@
       </div>
 
       <!-- 屬員四權分立 -->
-      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
+      <div id="rbac-card-box" class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">👥 屬員四權分立管理 (錢、賬、貨、單互斥互鎖)</h2>
-            <p class="text-[11px] text-stone-400">賬房財務管賬審單不過手現金，供貨師傅管錢管單不管總賬，倉管人員見貨不沾錢賬</p>
+            <h2 class="text-sm font-bold text-stone-800">👥 屬員四權分立管理 (錢、賬、貨、單互斥互鎖 · 支持子賬號直登)</h2>
+            <p class="text-[11px] text-stone-400">屬員登入時在登入門禁輸入「商號代號 + 子賬號名:密碼」（如 <code>wh_li:123456</code>）即可直達專屬工作台</p>
           </div>
           <button onclick="window.openAddSubUserModal()" class="text-xs bg-[#1b4332] text-white font-bold px-3.5 py-1.5 rounded-xl shadow active:scale-95 transition">
             + 授任新屬員
@@ -374,9 +390,7 @@
 
   </div>
 
-  <!-- ========================================================================= -->
-  <!-- 彈窗 A：倉庫出入庫與實地盤點校準彈窗（極簡三合一） -->
-  <!-- ========================================================================= -->
+  <!-- 彈窗 A：倉庫出入庫與實地盤點校準彈窗 -->
   <div id="modal-stock-ops" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -390,17 +404,10 @@
       <input type="hidden" id="stock-ops-prod-id" value="">
       <input type="hidden" id="stock-ops-cur-stock" value="0">
 
-      <!-- 三種業務模式切換 -->
       <div class="grid grid-cols-3 gap-1.5 bg-stone-100 p-1 rounded-xl font-bold text-center">
-        <button type="button" onclick="window.setStockOpsMode('in_purchase')" id="btn-mode-in" class="py-1.5 rounded-lg bg-[#1b4332] text-white transition">
-          + 採購/生產入庫
-        </button>
-        <button type="button" onclick="window.setStockOpsMode('out_loss')" id="btn-mode-out" class="py-1.5 rounded-lg text-stone-600 transition">
-          - 報損/領用出庫
-        </button>
-        <button type="button" onclick="window.setStockOpsMode('audit_adjust')" id="btn-mode-audit" class="py-1.5 rounded-lg text-stone-600 transition">
-          ⚖️ 實地盤點校準
-        </button>
+        <button type="button" onclick="window.setStockOpsMode('in_purchase')" id="btn-mode-in" class="py-1.5 rounded-lg bg-[#1b4332] text-white transition">+ 採購/生產入庫</button>
+        <button type="button" onclick="window.setStockOpsMode('out_loss')" id="btn-mode-out" class="py-1.5 rounded-lg text-stone-600 transition">- 報損/領用出庫</button>
+        <button type="button" onclick="window.setStockOpsMode('audit_adjust')" id="btn-mode-audit" class="py-1.5 rounded-lg text-stone-600 transition">⚖️ 實地盤點校準</button>
       </div>
 
       <div class="space-y-2.5">
@@ -413,7 +420,7 @@
           <input type="text" id="stock-ops-operator" value="倉管/掌櫃" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none">
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">事由備註（如：批次號/車間完工/破損原因）：</label>
+          <label class="block text-stone-600 font-bold mb-1">事由備註：</label>
           <input type="text" id="stock-ops-remark" placeholder="例：202611批次生產完工入庫" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none">
         </div>
       </div>
@@ -424,9 +431,7 @@
     </div>
   </div>
 
-  <!-- ========================================================================= -->
-  <!-- 彈窗 B：客戶專屬價格策略與商契配置彈窗（不寫死一客一價與標籤折扣） -->
-  <!-- ========================================================================= -->
+  <!-- 彈窗 B：客戶專屬價格策略與商契配置彈窗 -->
   <div id="store-policy-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -440,7 +445,6 @@
       <input type="hidden" id="policy-store-id" value="">
 
       <div class="space-y-3">
-        <!-- 專屬價格策略區 -->
         <div class="bg-emerald-50/70 border border-emerald-200 p-3 rounded-2xl space-y-2.5">
           <b class="text-emerald-950 block">💎 客戶專屬價格體系（彈性定價）：</b>
           <div class="grid grid-cols-2 gap-2">
@@ -453,11 +457,10 @@
             </div>
             <div>
               <label class="block text-stone-600 mb-1">全場協議折扣 (1=不打折)：</label>
-              <input type="number" step="0.01" min="0.1" max="2" id="policy-discount-rate" value="1.00" placeholder="如 0.95 代表95折" class="w-full bg-white border border-emerald-300 rounded-xl px-2.5 py-1.5 font-mono font-bold outline-none">
+              <input type="number" step="0.01" min="0.1" max="2" id="policy-discount-rate" value="1.00" class="w-full bg-white border border-emerald-300 rounded-xl px-2.5 py-1.5 font-mono font-bold outline-none">
             </div>
           </div>
 
-          <!-- 單品一客一價協議列表 -->
           <div class="space-y-1.5 pt-1 border-t border-emerald-200/70">
             <div class="flex justify-between items-center">
               <span class="text-[11px] font-bold text-emerald-900">單品協議特價（一客一價）：</span>
@@ -527,9 +530,7 @@
     </div>
   </div>
 
-  <!-- ========================================================================= -->
-  <!-- 彈窗 C：貨品發布與全自定義屬性彈窗（支持任意行業自定義屬性鍵值對） -->
-  <!-- ========================================================================= -->
+  <!-- 彈窗 C：貨品發布與全自定義屬性彈窗 -->
   <div id="product-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -542,9 +543,8 @@
 
       <input type="hidden" id="editing-prod-id" value="">
 
-      <!-- 投放渠道選擇 -->
       <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200 space-y-2">
-        <label class="block text-stone-700 font-bold text-xs">貨品投放渠道（可多選，決定在哪些端展示）：</label>
+        <label class="block text-stone-700 font-bold text-xs">貨品投放渠道（可多選）：</label>
         <div class="grid grid-cols-2 gap-3 text-xs">
           <label id="box-channel-bm" class="p-2.5 rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer transition bg-white select-none hover:border-emerald-500">
             <div class="flex items-center gap-2">
@@ -570,7 +570,6 @@
         </div>
       </div>
 
-      <!-- 品類與貨品全稱 -->
       <div class="grid grid-cols-3 gap-2 bg-stone-50 p-2.5 rounded-2xl border border-stone-200">
         <div>
           <label class="font-bold text-stone-700 text-[11px] block mb-1">一級大項</label>
@@ -591,12 +590,11 @@
         <input type="text" id="prod-name" placeholder="輸入商品/材料/配件完整名稱" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-700 font-medium">
       </div>
 
-      <!-- 百業自定義展示屬性（鍵值對彈性引擎，徹底不寫死！） -->
       <div class="bg-amber-50/70 p-3 rounded-2xl border border-amber-200 space-y-2">
         <div class="flex justify-between items-center">
           <div>
             <label class="font-bold text-amber-950 text-[11px] block">🧩 百業自定義展示屬性（不寫死規格，按需添加）：</label>
-            <span class="text-[10px] text-amber-800">如食品填「保質期: 12個月」，五金填「材質: 304鋼」，電器填「功率: 2200W」</span>
+            <span class="text-[10px] text-amber-800">如食品填「保質期: 12個月」，五金填「材質: 304鋼」</span>
           </div>
           <button type="button" onclick="window.addCustomAttrRow()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[11px] shadow-xs shrink-0">
             + 添加屬性
@@ -605,16 +603,14 @@
         <div id="custom-attrs-container" class="space-y-1.5"></div>
       </div>
 
-      <!-- 營銷賣點標籤 -->
       <div class="bg-emerald-50/60 p-2.5 rounded-2xl border border-emerald-100 space-y-1.5">
         <div class="flex justify-between items-center">
-          <label class="font-bold text-emerald-950 text-[11px]">🏷️ 營銷特色標籤（方便前端展示與篩選）：</label>
+          <label class="font-bold text-emerald-950 text-[11px]">🏷️ 營銷特色標籤：</label>
           <button type="button" onclick="window.promptAddTag()" class="text-[10px] text-emerald-800 font-bold hover:underline">+ 自定義標籤</button>
         </div>
         <div id="quick-tags-box" class="flex flex-wrap gap-1.5"></div>
       </div>
 
-      <!-- 度量衡與庫存 -->
       <div class="grid grid-cols-4 gap-2">
         <div>
           <label class="block text-[11px] text-stone-500 mb-1">計量單位：</label>
@@ -634,7 +630,6 @@
         </div>
       </div>
 
-      <!-- 價格體系 -->
       <div class="grid grid-cols-2 gap-2 bg-emerald-50/80 border border-emerald-200 p-3 rounded-2xl">
         <div>
           <label class="block text-[11px] font-bold text-emerald-950 mb-1">基礎批發底價 (元) *：</label>
@@ -646,7 +641,6 @@
         </div>
       </div>
 
-      <!-- 條碼與溯源 -->
       <div class="grid grid-cols-3 gap-2">
         <div>
           <label class="block text-[11px] text-stone-600 mb-1">條碼 / 編碼：</label>
@@ -665,7 +659,6 @@
         </div>
       </div>
 
-      <!-- 實拍照與備註 -->
       <div class="grid grid-cols-2 gap-3 items-center">
         <div>
           <label class="block text-[11px] font-bold text-stone-700 mb-1">貨品實拍照：</label>
@@ -692,7 +685,7 @@
     </div>
   </div>
 
-  <!-- 其餘既有彈窗（裝車總揀貨單、招商二維碼、專供通道、主動配發、改密、2FA、驗證器、屬員、掃碼） -->
+  <!-- 裝車總揀貨單、招商二維碼、專供通道、主動配發、門禁、改密、2FA、驗證器、屬員、掃碼 -->
   <div id="modal-batch-picklist" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -764,7 +757,7 @@
   <div id="push-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <b class="text-sm font-bold text-stone-900">📦 發起關照主動配發</b>
+        <b class="text-sm font-bold text-stone-900">📦 發起主動配貨（代客下單 / 新品鋪底）</b>
         <button onclick="window.closeModal('push-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="space-y-2.5">
@@ -796,17 +789,17 @@
           <input type="text" id="push-note-input" placeholder="例：新批次試銷鋪底，好銷再算" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
         </div>
       </div>
-      <button onclick="window.submitVendorPushOrder()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">確認生成配發契單</button>
+      <button onclick="window.submitVendorPushOrder()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">確認生成配貨單（自動扣庫並匯入裝車總單）</button>
     </div>
   </div>
 
-  <!-- 登入門禁 -->
+  <!-- 登入門禁（支持主賬號密鑰 + 屬員子賬號直登） -->
   <div id="hq-auth-gate" class="fixed inset-0 bg-[#0c1e16]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-stone-800 shadow-2xl">
       <div class="text-center space-y-1">
         <div class="w-12 h-12 bg-[#1b4332] text-amber-300 rounded-2xl flex items-center justify-center font-bold text-xl mx-auto shadow-md">🔐</div>
         <h2 class="text-base font-bold text-stone-900 pt-1">廠商直供與調度中樞登入</h2>
-        <p class="text-[11px] text-stone-400">請輸入商號代號與安家密鑰（初始預設為執照信用代碼後 6 位）</p>
+        <p class="text-[11px] text-stone-400">主賬號輸入執照後6位；屬員請輸入「子賬號:密碼」如 <code>wh_li:123456</code></p>
       </div>
       <form id="pane-login-pwd" onsubmit="window.verifyHQAuthPwd(event)" class="space-y-3 text-xs">
         <div>
@@ -814,8 +807,8 @@
           <input type="text" id="hq-login-tenant" required placeholder="如：NY-FUNIU" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono uppercase font-bold text-stone-900 focus:border-emerald-700">
         </div>
         <div>
-          <label class="block text-stone-600 font-medium mb-1">安家訪問密鑰 *：</label>
-          <input type="password" id="hq-login-key" required placeholder="輸入營業執照後 6 位或自設密碼" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono text-stone-900 focus:border-emerald-700">
+          <label class="block text-stone-600 font-medium mb-1">安家密鑰 或 屬員子賬號口令 *：</label>
+          <input type="password" id="hq-login-key" required placeholder="主密鑰 或 子賬號:密碼" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono text-stone-900 focus:border-emerald-700">
         </div>
         <button type="submit" id="btn-hq-pwd" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">核驗密鑰 · 登入調度台</button>
       </form>
@@ -940,6 +933,8 @@
     }
 
     let currentAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
+    let currentRoleCode = sessionStorage.getItem('hq_sub_role_' + currentAgent) || 'owner';
+    let currentOperatorName = sessionStorage.getItem('hq_sub_name_' + currentAgent) || '大當家主賬號';
     let carrierLabel = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周轉載具';
     let currentStoreForVis = null;
     let currentTenantData = null;
@@ -956,12 +951,73 @@
     let activeOrderFilter = 'pending_confirm';
     let activeStoreFilter = '全部';
     let currentStockOpsMode = 'in_purchase';
-    let videoStream = null;
-    let scanInterval = null;
     let pending2FACallback = null;
 
     window.openModal = id => document.getElementById(id).classList.remove('hidden');
     window.closeModal = id => document.getElementById(id).classList.add('hidden');
+
+    // =========================================================================
+    // 屬員崗位視圖自動適配與權限隔離
+    // =========================================================================
+    function applyRoleViewExperience(roleCode, operatorName) {
+      const displayEl = document.getElementById('hq-operator-role-display');
+      const roleLabels = {
+        owner: '大當家主賬號 (全盤權限)',
+        warehouse: `倉儲調度 · ${operatorName}`,
+        finance: `賬房財務 · ${operatorName}`,
+        driver: `供貨師傅 · ${operatorName}`,
+        auditor: `獨立稽核 · ${operatorName}`
+      };
+      if (displayEl) displayEl.innerText = roleLabels[roleCode] || operatorName;
+
+      // 屬員登入自動隱藏主賬號改密與驗證器綁定按鈕，並自動跳轉對應工作台
+      if (roleCode !== 'owner') {
+        document.getElementById('btn-top-chg-pwd')?.classList.add('hidden');
+        document.getElementById('btn-top-totp')?.classList.add('hidden');
+        document.getElementById('rbac-card-box')?.classList.add('hidden');
+        if (roleCode === 'warehouse') window.switchTab('products');
+        else if (roleCode === 'finance') window.switchTab('settle');
+      }
+    }
+
+    // =========================================================================
+    // 接單/主動配貨自動扣減庫存並記入《倉庫出入庫天道流水》
+    // =========================================================================
+    async function deductStockForOrderItems(items, orderNo, operatorLabel) {
+      if (!Array.isArray(items) || items.length === 0) return;
+      for (const it of items) {
+        const prod = allProducts.find(p => String(p.id) === String(it.id) || p.name === it.name);
+        if (!prod) continue;
+        const qty = parseInt(it.qty || 0);
+        if (qty <= 0) continue;
+
+        const beforeStock = parseInt(prod.stock ?? 0);
+        const afterStock = Math.max(0, beforeStock - qty);
+        prod.stock = afterStock;
+
+        await supabase.from('product').update({ stock: afterStock }).eq('id', prod.id);
+
+        const logRow = {
+          tenant_id: currentAgent,
+          product_id: prod.id,
+          product_name: prod.name,
+          action_type: 'order_ship',
+          delta_qty: -qty,
+          before_stock: beforeStock,
+          after_stock: afterStock,
+          operator_name: operatorLabel,
+          remark: `配貨發運自動扣庫 (單號 #${orderNo})`,
+          created_at: new Date().toISOString()
+        };
+
+        const { error: lErr } = await supabase.from('inventory_log').insert([logRow]);
+        if (lErr) {
+          const localLogs = JSON.parse(localStorage.getItem('hq_local_inv_logs_' + currentAgent) || '[]');
+          localLogs.unshift(logRow);
+          localStorage.setItem('hq_local_inv_logs_' + currentAgent, JSON.stringify(localLogs.slice(0, 100)));
+        }
+      }
+    }
 
     window.customizeCarrierName = function() {
       const val = prompt('自定義本商號周轉載具稱呼（如：周轉筐 / 托盤 / 氣瓶 / 料箱）：', carrierLabel);
@@ -974,7 +1030,7 @@
     };
 
     // =========================================================================
-    // 1. 倉庫出入庫與實地盤點校準引擎（支持雲端 inventory_log 與本地雙保險）
+    // 倉庫出入庫與實地盤點校準引擎
     // =========================================================================
     window.openStockOpsModal = function(prodId) {
       const p = allProducts.find(x => x.id === prodId);
@@ -987,6 +1043,7 @@
       document.getElementById('stock-ops-title').innerText = `📦 ${p.name}`;
       document.getElementById('stock-ops-subtitle').innerText = `當前賬面庫存：${curStock} ${unit}`;
       document.getElementById('stock-ops-qty-input').value = '';
+      document.getElementById('stock-ops-operator').value = currentOperatorName;
       document.getElementById('stock-ops-remark').value = '';
       window.setStockOpsMode('in_purchase');
       window.openModal('modal-stock-ops');
@@ -1001,9 +1058,7 @@
       };
       Object.entries(btns).forEach(([k, el]) => {
         if (!el) return;
-        el.className = (k === mode)
-          ? 'py-1.5 rounded-lg bg-[#1b4332] text-white transition'
-          : 'py-1.5 rounded-lg text-stone-600 transition';
+        el.className = (k === mode) ? 'py-1.5 rounded-lg bg-[#1b4332] text-white transition' : 'py-1.5 rounded-lg text-stone-600 transition';
       });
 
       const label = document.getElementById('stock-ops-qty-label');
@@ -1016,7 +1071,7 @@
       const prodId = parseInt(document.getElementById('stock-ops-prod-id').value);
       const curStock = parseInt(document.getElementById('stock-ops-cur-stock').value) || 0;
       const inputVal = parseInt(document.getElementById('stock-ops-qty-input').value);
-      const operator = document.getElementById('stock-ops-operator').value.trim() || '倉管/掌櫃';
+      const operator = document.getElementById('stock-ops-operator').value.trim() || currentOperatorName;
       const remark = document.getElementById('stock-ops-remark').value.trim();
 
       if (isNaN(inputVal) || inputVal < 0) return alert('請輸入有效的正整數數量！');
@@ -1058,7 +1113,6 @@
 
       const { error: lErr } = await supabase.from('inventory_log').insert([logRow]);
       if (lErr) {
-        // 若尚未在 SQL Editor 建 inventory_log 表，自動先記在本地確保不報錯
         const localLogs = JSON.parse(localStorage.getItem('hq_local_inv_logs_' + currentAgent) || '[]');
         localLogs.unshift(logRow);
         localStorage.setItem('hq_local_inv_logs_' + currentAgent, JSON.stringify(localLogs.slice(0, 100)));
@@ -1071,18 +1125,10 @@
 
     window.exportInventorySheetCSV = function() {
       if (allProducts.length === 0) return alert('暫無貨品可導出盤點表！');
-      const headers = ['貨品ID', '貨品全稱', '規格', '計量單位', '基礎底價(元)', '當前賬面庫存', '在途待發數', '實地清點數(手填)', '盤盈/盤虧差異', '備註'];
+      const headers = ['貨品ID', '貨品全稱', '規格', '計量單位', '基礎底價(元)', '當前賬面庫存', '實地清點數(手填)', '盤盈/盤虧差異', '備註'];
       const rows = allProducts.map(p => [
-        p.id,
-        p.name,
-        p.spec || '整裝',
-        p.measure_unit || '件',
-        parseFloat(p.tier_1_price || 0).toFixed(2),
-        p.stock ?? 0,
-        '',
-        '',
-        '',
-        p.remark || ''
+        p.id, p.name, p.spec || '整裝', p.measure_unit || '件',
+        parseFloat(p.tier_1_price || 0).toFixed(2), p.stock ?? 0, '', '', p.remark || ''
       ]);
       const csvContent = '\uFEFF' + [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1096,9 +1142,6 @@
       URL.revokeObjectURL(url);
     };
 
-    // =========================================================================
-    // 2. 百業自定義屬性鍵值對編輯器（不寫死任何行業字段）
-    // =========================================================================
     window.addCustomAttrRow = function(keyVal = '', valStr = '') {
       const box = document.getElementById('custom-attrs-container');
       const row = document.createElement('div');
@@ -1121,9 +1164,6 @@
       return attrs;
     }
 
-    // =========================================================================
-    // 3. 客戶一客一價單品協議編輯器
-    // =========================================================================
     window.addCustomPriceRuleRow = function(prodId = '', specialPrice = '') {
       const box = document.getElementById('custom-price-rules-box');
       const row = document.createElement('div');
@@ -1139,104 +1179,79 @@
       box.appendChild(row);
     };
 
-    // =========================================================================
-    // 4. AI 商道經營參謀與三流晴雨表引擎
-    // =========================================================================
     function renderThreeFlowsAndAIAdvisor() {
-      // 物品流計算
       const goodsValue = allProducts.reduce((sum, p) => sum + (parseFloat(p.tier_1_price || 0) * parseInt(p.stock ?? 0)), 0);
       const toShipOrders = allOrders.filter(o => (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') && o.delivery_status !== 'delivered' && !isDirectoryLead(o));
-      const lowStockProds = allProducts.filter(p => {
-        const minLine = parseInt(p.custom_specs?.min_stock ?? 10);
-        return parseInt(p.stock ?? 0) <= minLine;
-      });
+      const lowStockProds = allProducts.filter(p => parseInt(p.stock ?? 0) <= parseInt(p.custom_specs?.min_stock ?? 10));
 
       document.getElementById('flow-goods-value').innerText = `¥${goodsValue.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}`;
       document.getElementById('flow-goods-toship').innerText = `${toShipOrders.length} 單`;
       document.getElementById('flow-goods-lowstock').innerText = `${lowStockProds.length} 款`;
 
-      // 資金流計算
       const receivable = allStores.reduce((sum, s) => sum + parseFloat(s.current_debt || 0), 0);
       const settledTotal = allOrders.filter(o => o.delivery_status === 'delivered' && !isDirectoryLead(o)).reduce((sum, o) => sum + parseFloat(o.net_settle_amount || o.total_amount || 0), 0);
       document.getElementById('flow-money-receivable').innerText = `¥${receivable.toFixed(2)}`;
       document.getElementById('flow-money-settled').innerText = `¥${settledTotal.toFixed(2)}`;
 
-      // 信息流與 AI 建議生成
       const pendingOrders = allOrders.filter(o => o.order_status === 'pending_confirm' && !isDirectoryLead(o));
       const leadsList = allOrders.filter(o => isDirectoryLead(o) && o.order_status === 'pending_confirm');
       document.getElementById('flow-info-orders').innerText = `${pendingOrders.length} 筆`;
       document.getElementById('flow-info-leads').innerText = `${leadsList.length} 條`;
 
       const aiTips = [];
-
-      // 建議 1：缺貨補庫預警
       lowStockProds.forEach(p => {
         aiTips.push({
-          level: 'rose',
-          icon: '📦',
+          level: 'rose', icon: '📦',
           title: `庫存緊缺預警：【${p.name}】僅剩 ${p.stock ?? 0}${p.measure_unit || '件'}`,
           desc: `已低於安全預警線，建議立即安排採購進貨或車間生產入庫，避免客戶下單無貨可發。`,
-          btnText: '+ 立即入庫補貨',
-          action: `window.openStockOpsModal(${p.id})`
+          btnText: '+ 立即入庫補貨', action: `window.openStockOpsModal(${p.id})`
         });
       });
 
-      // 建議 2：授信高危與周轉載具未還提醒
       allStores.forEach(s => {
         const debt = parseFloat(s.current_debt || 0);
         const limit = parseFloat(s.credit_limit || 2000);
         const baskets = parseInt(s.carrier_hold_count || s.basket_count || 0);
         if (debt > limit * 0.85 && debt > 0) {
           aiTips.push({
-            level: 'amber',
-            icon: '💰',
+            level: 'amber', icon: '💰',
             title: `賬款風控提醒：【${s.name}】在賬 ¥${debt.toFixed(2)}（接近授信上限 ¥${limit}）`,
             desc: `建議下次供貨師傅上門時順帶對賬收款，或調整該客戶的結算方式為當面現結。`,
-            btnText: '⚙️ 調整客戶策略',
-            action: `window.switchTab('stores'); window.openStorePolicyModal(${s.id});`
+            btnText: '⚙️ 調整客戶策略', action: `window.switchTab('stores'); window.openStorePolicyModal(${s.id});`
           });
         }
         if (baskets >= 15) {
           aiTips.push({
-            level: 'amber',
-            icon: '🔄',
+            level: 'amber', icon: '🔄',
             title: `${carrierLabel}積壓提醒：【${s.name}】借欠 ${baskets} 件未歸還`,
             desc: `在外周轉資產較多，建議提醒送貨師傅本趟回程時重點清點迎回。`,
-            btnText: '🏪 查看客戶檔案',
-            action: `window.switchTab('stores');`
+            btnText: '🏪 查看客戶檔案', action: `window.switchTab('stores');`
           });
         }
       });
 
-      // 建議 3：新店招商線索跟進
       if (leadsList.length > 0) {
         aiTips.push({
-          level: 'emerald',
-          icon: '🤝',
+          level: 'emerald', icon: '🤝',
           title: `拓客商機：有 ${leadsList.length} 家意向新客戶申請上門送樣洽談`,
           desc: `潛在客戶已通過供貨商名錄提交聯繫方式，及時聯繫送樣並一鍵建檔可快速擴充銷路。`,
-          btnText: '立即承接建檔 ➔',
-          action: `window.switchTab('settle'); window.filterOrderStatus('directory_leads');`
+          btnText: '立即承接建檔 ➔', action: `window.switchTab('settle'); window.filterOrderStatus('directory_leads');`
         });
       }
 
       if (aiTips.length === 0) {
         aiTips.push({
-          level: 'emerald',
-          icon: '🌿',
+          level: 'emerald', icon: '🌿',
           title: '三流運轉健康：庫存充足、賬款平穩、無積壓異常',
           desc: '當前所有在售貨品庫存均在安全線以上，合作客戶授信健康。可點擊右上角「📲 招商二維碼」持續拓展新客源。',
-          btnText: '📲 分享招商名片',
-          action: `window.openPromoQrModal()`
+          btnText: '📲 分享招商名片', action: `window.openPromoQrModal()`
         });
       }
 
       document.getElementById('flow-info-ai').innerText = `${aiTips.length} 條`;
 
       document.getElementById('ai-advisor-cards').innerHTML = aiTips.map(t => {
-        const colorCls = t.level === 'rose'
-          ? 'bg-rose-50/70 border-rose-200 text-rose-950'
-          : (t.level === 'amber' ? 'bg-amber-50/70 border-amber-200 text-amber-950' : 'bg-emerald-50/70 border-emerald-200 text-emerald-950');
+        const colorCls = t.level === 'rose' ? 'bg-rose-50/70 border-rose-200 text-rose-950' : (t.level === 'amber' ? 'bg-amber-50/70 border-amber-200 text-amber-950' : 'bg-emerald-50/70 border-emerald-200 text-emerald-950');
         return `
           <div class="p-3.5 rounded-2xl border ${colorCls} flex flex-col justify-between gap-2.5">
             <div>
@@ -1244,9 +1259,7 @@
               <p class="text-[11px] opacity-85 mt-1 leading-relaxed">${t.desc}</p>
             </div>
             <div class="text-right">
-              <button onclick="${t.action}" class="bg-white hover:bg-stone-50 text-stone-900 border border-stone-200 px-3 py-1 rounded-xl font-bold text-[11px] shadow-xs active:scale-95 transition">
-                ${t.btnText}
-              </button>
+              <button onclick="${t.action}" class="bg-white hover:bg-stone-50 text-stone-900 border border-stone-200 px-3 py-1 rounded-xl font-bold text-[11px] shadow-xs active:scale-95 transition">${t.btnText}</button>
             </div>
           </div>
         `;
@@ -1257,13 +1270,18 @@
       const box = document.getElementById('inventory-log-list');
       if (!box) return;
       if (allInventoryLogs.length === 0) {
-        box.innerHTML = '<div class="py-6 text-center text-stone-400">暫無倉庫出入庫流水（在「貨品發布 & 倉庫盤點」點擊庫存數字即可記錄）。</div>';
+        box.innerHTML = '<div class="py-6 text-center text-stone-400">暫無倉庫出入庫流水（在「貨品發布 & 倉庫盤點」點擊庫存數字或接單發運時將自動記錄）。</div>';
         return;
       }
       box.innerHTML = allInventoryLogs.map(l => {
         const isPlus = parseInt(l.delta_qty) >= 0;
-        const typeLabel = l.action_type === 'in_purchase' ? '採購/生產入庫'
-          : (l.action_type === 'out_loss' ? '報損/領用出庫' : '實地盤點校準');
+        const typeMap = {
+          in_purchase: '採購/生產入庫',
+          out_loss: '報損/領用出庫',
+          audit_adjust: '實地盤點校準',
+          order_ship: '配貨發運出庫'
+        };
+        const typeLabel = typeMap[l.action_type] || '庫存變動';
         return `
           <div class="py-2.5 flex justify-between items-center gap-2">
             <div>
@@ -1281,16 +1299,8 @@
       }).join('');
     }
 
-    // =========================================================================
-    // 裝車總揀貨單、導出 CSV、招商二維碼
-    // =========================================================================
     window.openBatchPickListModal = function() {
-      const toShipOrders = allOrders.filter(o =>
-        (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') &&
-        o.delivery_status !== 'delivered' &&
-        !isDirectoryLead(o)
-      );
-
+      const toShipOrders = allOrders.filter(o => (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') && o.delivery_status !== 'delivered' && !isDirectoryLead(o));
       document.getElementById('picklist-tenant-name').innerText = `${currentTenantData?.company_name || currentAgent} · 裝車總揀貨單`;
       document.getElementById('picklist-time-label').innerText = `生成時間：${new Date().toLocaleString()}`;
       document.getElementById('picklist-order-count').innerText = `${toShipOrders.length} 單待發`;
@@ -1306,9 +1316,7 @@
       toShipOrders.forEach(o => {
         (Array.isArray(o.items) ? o.items : []).forEach(it => {
           const key = `${it.name}|${it.spec || '整裝'}|${it.measure_unit || '件'}`;
-          if (!itemSummaryMap[key]) {
-            itemSummaryMap[key] = { name: it.name, spec: it.spec || '整裝', unit: it.measure_unit || '件', totalQty: 0, stores: [] };
-          }
+          if (!itemSummaryMap[key]) itemSummaryMap[key] = { name: it.name, spec: it.spec || '整裝', unit: it.measure_unit || '件', totalQty: 0, stores: [] };
           itemSummaryMap[key].totalQty += parseInt(it.qty || 0);
           itemSummaryMap[key].stores.push(`${o.store_name}(${it.qty})`);
         });
@@ -1320,9 +1328,7 @@
             <div class="font-bold text-stone-900 text-xs">${idx + 1}. ${row.name} <span class="text-stone-400 font-normal">(${row.spec})</span></div>
             <div class="text-[10px] text-stone-500 mt-0.5">分店明細：${row.stores.join('、')}</div>
           </div>
-          <span class="bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-0.5 rounded-lg font-mono font-bold text-sm shrink-0">
-            ${row.totalQty} ${row.unit}
-          </span>
+          <span class="bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-0.5 rounded-lg font-mono font-bold text-sm shrink-0">${row.totalQty} ${row.unit}</span>
         </div>
       `).join('');
 
@@ -1330,21 +1336,10 @@
     };
 
     window.copyPickListText = function() {
-      const toShipOrders = allOrders.filter(o =>
-        (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') &&
-        o.delivery_status !== 'delivered' &&
-        !isDirectoryLead(o)
-      );
+      const toShipOrders = allOrders.filter(o => (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') && o.delivery_status !== 'delivered' && !isDirectoryLead(o));
       if (toShipOrders.length === 0) return alert('暫無待發貨單據！');
-
       const map = {};
-      toShipOrders.forEach(o => {
-        (Array.isArray(o.items) ? o.items : []).forEach(it => {
-          const k = `${it.name} (${it.spec || '整裝'})`;
-          map[k] = (map[k] || 0) + parseInt(it.qty || 0);
-        });
-      });
-
+      toShipOrders.forEach(o => (Array.isArray(o.items) ? o.items : []).forEach(it => { const k = `${it.name} (${it.spec || '整裝'})`; map[k] = (map[k] || 0) + parseInt(it.qty || 0); }));
       const lines = [
         `【${currentTenantData?.company_name || currentAgent} 裝車總揀貨單】`,
         `時間：${new Date().toLocaleString()} | 共 ${toShipOrders.length} 家客戶`,
@@ -1359,25 +1354,13 @@
     window.exportOrdersToCSV = function() {
       const validOrders = allOrders.filter(o => !isDirectoryLead(o));
       if (validOrders.length === 0) return alert('當前暫無可導出的業務往來單據！');
-
       const headers = ['單據編號', '下單時間', '合作客戶', '結算方式', '新貨金額(元)', '退貨抵扣(元)', '應結淨額(元)', '單據狀態', '履約交割狀態', '貨品明細', '備註'];
-      const rows = validOrders.map(o => {
-        const itemsDesc = (Array.isArray(o.items) ? o.items : []).map(i => `${i.name}x${i.qty}`).join('; ');
-        return [
-          o.order_no || o.id,
-          o.created_at ? new Date(o.created_at).toLocaleString() : '',
-          o.store_name || '',
-          o.settlement_type || '',
-          parseFloat(o.total_amount || 0).toFixed(2),
-          parseFloat(o.return_amount || 0).toFixed(2),
-          parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2),
-          o.order_status || '',
-          o.delivery_status === 'delivered' ? '已交割簽收' : '待配送/處理中',
-          itemsDesc,
-          (o.note || '').replace(/[\r\n,]+/g, ' ')
-        ];
-      });
-
+      const rows = validOrders.map(o => [
+        o.order_no || o.id, o.created_at ? new Date(o.created_at).toLocaleString() : '', o.store_name || '', o.settlement_type || '',
+        parseFloat(o.total_amount || 0).toFixed(2), parseFloat(o.return_amount || 0).toFixed(2), parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2),
+        o.order_status || '', o.delivery_status === 'delivered' ? '已交割簽收' : '待配送/處理中',
+        (Array.isArray(o.items) ? o.items : []).map(i => `${i.name}x${i.qty}`).join('; '), (o.note || '').replace(/[\r\n,]+/g, ' ')
+      ]);
       const csvContent = '\uFEFF' + [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -1405,7 +1388,7 @@
     };
 
     // =========================================================================
-    // RFC 6238 TOTP & 安全登入門禁
+    // RFC 6238 TOTP & 主賬號/屬員子賬號雙模登入門禁
     // =========================================================================
     const TOTP = {
       base32chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567',
@@ -1480,9 +1463,7 @@
       window.openModal('modal-totp-setup');
     };
 
-    window.copyTotpSecret = function() {
-      navigator.clipboard.writeText(document.getElementById('totp-secret-display').innerText).then(() => alert('TOTP 金鑰已複製！'));
-    };
+    window.copyTotpSecret = function() { navigator.clipboard.writeText(document.getElementById('totp-secret-display').innerText).then(() => alert('TOTP 金鑰已複製！')); };
 
     window.verifyAndSaveTotp = async function() {
       const code = document.getElementById('totp-test-code').value.trim();
@@ -1548,17 +1529,56 @@
     window.verifyHQAuthPwd = async function(e) {
       e.preventDefault();
       const tenantId = document.getElementById('hq-login-tenant').value.trim().toUpperCase();
-      const accessKey = document.getElementById('hq-login-key').value.trim();
+      const rawKey = document.getElementById('hq-login-key').value.trim();
       const errBox = document.getElementById('hq-auth-error');
       const btn = document.getElementById('btn-hq-pwd');
 
       btn.disabled = true; btn.innerText = '核對中...'; errBox.classList.add('hidden');
 
+      // 1. 若包含冒號（如 wh_li:123456），校驗屬員子賬號
+      if (rawKey.includes(':') || rawKey.includes('：')) {
+        const [subAcc, subPwd] = rawKey.split(/[:：]/).map(s => s.trim());
+        const { data: tenantList } = await supabase.from('platform_tenant').select('*').eq('tenant_id', tenantId).eq('is_active', true).limit(1);
+        if (!tenantList || tenantList.length === 0) {
+          btn.disabled = false; btn.innerText = '核驗密鑰 · 登入調度台';
+          errBox.innerText = '⚠️ 商號代號不存在或已暫歇！'; errBox.classList.remove('hidden');
+          return;
+        }
+        const { data: subList } = await supabase
+          .from('tenant_sub_user')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('account_name', subAcc)
+          .eq('password_hash', subPwd)
+          .eq('is_active', true)
+          .limit(1);
+
+        if (!subList || subList.length === 0) {
+          btn.disabled = false; btn.innerText = '核驗密鑰 · 登入調度台';
+          errBox.innerText = '⚠️ 屬員子賬號或密碼不正確！'; errBox.classList.remove('hidden');
+          return;
+        }
+
+        currentAgent = tenantId;
+        currentRoleCode = subList[0].role_code;
+        currentOperatorName = subList[0].real_name;
+        sessionStorage.setItem('hq_tenant_session_' + tenantId, tenantList[0].access_key);
+        sessionStorage.setItem('hq_active_authed_tenant', tenantId);
+        sessionStorage.setItem('hq_sub_role_' + tenantId, currentRoleCode);
+        sessionStorage.setItem('hq_sub_name_' + tenantId, currentOperatorName);
+
+        document.getElementById('hq-auth-gate').classList.add('hidden');
+        applyRoleViewExperience(currentRoleCode, currentOperatorName);
+        window.loadHQData();
+        return;
+      }
+
+      // 2. 主賬號密鑰校驗
       const { data, error } = await supabase
         .from('platform_tenant')
         .select('*')
         .eq('tenant_id', tenantId)
-        .or(`access_key.eq.${accessKey},access_key.eq.${accessKey.toUpperCase()}`)
+        .or(`access_key.eq.${rawKey},access_key.eq.${rawKey.toUpperCase()}`)
         .limit(1);
 
       if (error || !data || data.length === 0) {
@@ -1574,9 +1594,14 @@
 
       sessionStorage.setItem('hq_tenant_session_' + tenantId, data[0].access_key);
       sessionStorage.setItem('hq_active_authed_tenant', tenantId);
+      sessionStorage.removeItem('hq_sub_role_' + tenantId);
+      sessionStorage.removeItem('hq_sub_name_' + tenantId);
       currentAgent = tenantId;
+      currentRoleCode = 'owner';
+      currentOperatorName = '大當家主賬號';
       carrierLabel = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周轉載具';
       document.getElementById('hq-auth-gate').classList.add('hidden');
+      applyRoleViewExperience('owner', '大當家主賬號');
       window.loadHQData();
     };
 
@@ -1589,8 +1614,11 @@
       const { data } = await supabase.from('platform_tenant').select('*').eq('tenant_id', authedTenant).eq('access_key', savedKey).eq('is_active', true).limit(1);
       if (data && data.length > 0) {
         currentAgent = authedTenant;
+        currentRoleCode = sessionStorage.getItem('hq_sub_role_' + currentAgent) || 'owner';
+        currentOperatorName = sessionStorage.getItem('hq_sub_name_' + currentAgent) || '大當家主賬號';
         carrierLabel = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周轉載具';
         document.getElementById('hq-auth-gate').classList.add('hidden');
+        applyRoleViewExperience(currentRoleCode, currentOperatorName);
         return true;
       } else {
         sessionStorage.removeItem('hq_tenant_session_' + authedTenant);
@@ -1626,9 +1654,6 @@
       document.getElementById(`tab-btn-${tabName}`).className = "py-2.5 px-2 text-center rounded-xl bg-[#1b4332] text-white transition flex items-center justify-center gap-1 shadow-xs";
     };
 
-    // =========================================================================
-    // 核心數據加載與三流聯動渲染
-    // =========================================================================
     window.loadHQData = async function() {
       const { data: curTenant, error: tErr } = await supabase.from('platform_tenant').select('*').eq('tenant_id', currentAgent).single();
       if (tErr || !curTenant || !curTenant.is_active) { window.logoutHQ(); return; }
@@ -1639,7 +1664,7 @@
       document.getElementById('carrier-label-btn').innerText = `${carrierLabel} ✎`;
 
       const defaultBanner = document.getElementById('hq-default-pwd-banner');
-      if (curTenant.credit_code && curTenant.credit_code.length >= 6) {
+      if (currentRoleCode === 'owner' && curTenant.credit_code && curTenant.credit_code.length >= 6) {
         const last6 = curTenant.credit_code.slice(-6).toUpperCase();
         if ((curTenant.access_key || '').toUpperCase() === last6) defaultBanner?.classList.remove('hidden');
         else defaultBanner?.classList.add('hidden');
@@ -1687,20 +1712,15 @@
 
       renderOrderFulfillmentList();
 
-      // 加載倉庫出入庫流水（雲端 + 本地自動合併）
       const { data: cloudInvLogs, error: invErr } = await supabase.from('inventory_log').select('*').eq('tenant_id', currentAgent).order('id', { ascending: false }).limit(50);
-      if (!invErr && Array.isArray(cloudInvLogs)) {
-        allInventoryLogs = cloudInvLogs;
-      } else {
-        allInventoryLogs = JSON.parse(localStorage.getItem('hq_local_inv_logs_' + currentAgent) || '[]');
-      }
+      if (!invErr && Array.isArray(cloudInvLogs)) allInventoryLogs = cloudInvLogs;
+      else allInventoryLogs = JSON.parse(localStorage.getItem('hq_local_inv_logs_' + currentAgent) || '[]');
       renderInventoryLogs();
 
       const { data: subUsers } = await supabase.from('tenant_sub_user').select('*').eq('tenant_id', currentAgent).order('id', { ascending: true });
       allSubUsers = subUsers || [];
       renderSubUsersTable();
 
-      // 更新三流晴雨表與 AI 參謀
       renderThreeFlowsAndAIAdvisor();
     };
 
@@ -1739,15 +1759,12 @@
       document.getElementById('product-table-body').innerHTML = filtered.map(p => {
         const tags = Array.isArray(p.tags) ? p.tags : [];
         const tagBadges = tags.map(t => `<span class="bg-emerald-50 text-emerald-900 border border-emerald-200 px-1.5 py-0.2 rounded text-[10px] mr-1">${t}</span>`).join('');
-
         const isBM = (p.channel_brick_and_mortar !== undefined) ? p.channel_brick_and_mortar : (p.sales_channel_type !== 'online');
         const isEC = (p.channel_ecommerce !== undefined) ? p.channel_ecommerce : (p.sales_channel_type !== 'offline');
-
         let channelBadges = '';
         if (isBM) channelBadges += '<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">🏬 實體批發</span>';
         if (isEC) channelBadges += '<span class="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] px-1.5 py-0.5 rounded font-bold">🌐 線上零售</span>';
 
-        // 渲染百業自定義屬性標籤
         const customAttrs = (p.custom_specs && typeof p.custom_specs === 'object' && p.custom_specs.attrs) ? p.custom_specs.attrs : {};
         const attrBadges = Object.entries(customAttrs).map(([k, v]) =>
           `<span class="inline-block bg-stone-100 text-stone-700 border border-stone-200 px-1.5 py-0.2 rounded text-[10px] mr-1 mt-0.5">${k}: <b>${v}</b></span>`
@@ -1759,9 +1776,7 @@
 
         return `
           <tr class="hover:bg-stone-50 transition">
-            <td class="p-2.5">
-              ${p.image_url ? `<img src="${p.image_url}" class="w-10 h-10 rounded-xl object-cover border border-stone-200">` : `<div class="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-[9px] text-stone-400">無圖</div>`}
-            </td>
+            <td class="p-2.5">${p.image_url ? `<img src="${p.image_url}" class="w-10 h-10 rounded-xl object-cover border border-stone-200">` : `<div class="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-[9px] text-stone-400">無圖</div>`}</td>
             <td class="p-2.5 font-bold">${channelBadges || '<span class="text-stone-300 text-[10px]">未投放</span>'}</td>
             <td class="p-2.5 text-stone-600 font-sans whitespace-normal max-w-[200px]">
               <div class="text-[11px]">${p.category_main || '常規'} ➔ ${p.category_sub || '通用'} ${p.category_tertiary ? `<b class="text-amber-800">(${p.category_tertiary})</b>` : ''}</div>
@@ -1774,15 +1789,11 @@
             <td class="p-2.5">${tagBadges || '-'}</td>
             <td class="p-2.5 font-mono">${p.spec || '整裝'} / ${p.measure_unit || '件'}</td>
             <td class="p-2.5 font-mono font-bold text-emerald-800">
-              <span class="cursor-pointer hover:bg-emerald-50 px-1.5 py-0.5 rounded border border-transparent hover:border-emerald-200" onclick="window.quickEditPrice(${p.id}, ${p.tier_1_price})">
-                ¥${p.tier_1_price} ✏️
-              </span>
+              <span class="cursor-pointer hover:bg-emerald-50 px-1.5 py-0.5 rounded border border-transparent hover:border-emerald-200" onclick="window.quickEditPrice(${p.id}, ${p.tier_1_price})">¥${p.tier_1_price} ✏️</span>
             </td>
             <td class="p-2.5 font-mono text-stone-600">¥${p.tier_2_price || p.tier_1_price}</td>
             <td class="p-2.5 font-mono">
-              <button onclick="window.openStockOpsModal(${p.id})" class="px-2.5 py-1 rounded-xl font-bold border transition active:scale-95 ${isLow ? 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse' : 'bg-emerald-50 text-emerald-950 border-emerald-200 hover:bg-emerald-100'}" title="點擊進行採購入庫、報損出庫或實地盤點">
-                ${curStock} ${p.measure_unit || '件'} ⚙️
-              </button>
+              <button onclick="window.openStockOpsModal(${p.id})" class="px-2.5 py-1 rounded-xl font-bold border transition active:scale-95 ${isLow ? 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse' : 'bg-emerald-50 text-emerald-950 border-emerald-200 hover:bg-emerald-100'}" title="點擊進行採購入庫、報損出庫或實地盤點">${curStock} ${p.measure_unit || '件'} ⚙️</button>
             </td>
             <td class="p-2.5 text-right space-x-1.5">
               <button onclick="window.openEditProductModal(${p.id})" class="text-[11px] text-emerald-800 font-bold hover:underline">編輯</button>
@@ -1824,12 +1835,8 @@
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="font-bold text-stone-900 text-xs">${s.name}</span>
                   <span class="text-[10px] px-1.5 py-0.2 rounded font-mono bg-stone-100 text-stone-600 border border-stone-200">📱 ${s.phone}</span>
-                  <span class="text-[10px] px-1.5 py-0.2 rounded font-medium ${s.current_debt > s.credit_limit * 0.8 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}">
-                    在賬: ¥${s.current_debt || 0} / 授信: ¥${s.credit_limit || 2000}
-                  </span>
-                  <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded font-mono font-bold">
-                    ${carrierLabel}借欠: ${s.carrier_hold_count || s.basket_count || 0} 件
-                  </span>
+                  <span class="text-[10px] px-1.5 py-0.2 rounded font-medium ${s.current_debt > s.credit_limit * 0.8 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}">在賬: ¥${s.current_debt || 0} / 授信: ¥${s.credit_limit || 2000}</span>
+                  <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded font-mono font-bold">${carrierLabel}借欠: ${s.carrier_hold_count || s.basket_count || 0} 件</span>
                   ${discountRate !== 1 ? `<span class="text-[10px] bg-indigo-50 text-indigo-800 border border-indigo-200 px-1.5 py-0.2 rounded font-bold">協議 ${(discountRate * 10).toFixed(1)} 折</span>` : ''}
                   ${customRuleCount > 0 ? `<span class="text-[10px] bg-purple-50 text-purple-800 border border-purple-200 px-1.5 py-0.2 rounded font-bold">${customRuleCount}款單品協議價</span>` : ''}
                 </div>
@@ -1925,9 +1932,6 @@
       window.loadHQData();
     };
 
-    // =========================================================================
-    // 貨品上架 / 編輯（含自定義屬性鍵值對與圖床外置上傳）
-    // =========================================================================
     function applyChannelPermissions(tenant, prod = null) {
       const bmChk = document.getElementById('chk-channel-bm');
       const ecChk = document.getElementById('chk-channel-ec');
@@ -2146,9 +2150,6 @@
       });
     };
 
-    // =========================================================================
-    // 訂單審核、招商線索轉客戶、點款平賬、屬員管理
-    // =========================================================================
     function renderOrderFulfillmentList() {
       let filtered = allOrders;
       if (activeOrderFilter === 'pending_confirm') filtered = allOrders.filter(o => (o.order_status === 'pending_confirm' || o.order_status === 'counter_proposal') && !isDirectoryLead(o));
@@ -2229,7 +2230,7 @@
               ` : (isPending ? `
                 <div class="flex gap-2">
                   <button onclick="window.hqRejectWithProposal(${o.id})" class="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-xl font-bold">建議微調</button>
-                  <button onclick="window.hqApproveOrder(${o.id})" class="bg-[#1b4332] text-white px-4 py-1.5 rounded-xl font-bold shadow">✅ 應允接單</button>
+                  <button onclick="window.hqApproveOrder(${o.id})" class="bg-[#1b4332] text-white px-4 py-1.5 rounded-xl font-bold shadow">✅ 應允接單並扣庫</button>
                 </div>
               ` : `<span class="text-stone-400 font-mono">${o.driver_action_instruction || '正常辦理'}</span>`)}
             </div>
@@ -2279,8 +2280,13 @@
       let driverCmd = `【發運指令】配發貨品 ${order?.items?.length || 0}項；`;
       if (order?.settlement_type === 'cash') driverCmd += `當面點收現款；`;
       else driverCmd += `按${order?.settlement_type}簽收！`;
+
       await supabase.from('store_order').update({ order_status: 'confirmed', driver_action_instruction: driverCmd }).eq('id', orderId);
-      alert('已確認接單！');
+      // 同步自動扣減庫存並記入倉庫流水賬
+      if (order?.items) {
+        await deductStockForOrderItems(order.items, order.order_no || order.id, currentOperatorName);
+      }
+      alert('✅ 已確認接單並自動扣減對應庫存，已匯入「本車裝車總揀貨單」！');
       window.loadHQData();
     };
 
@@ -2407,7 +2413,7 @@
       if (allStores.length > 0) window.onPushStoreChange(allStores[0].id);
       document.getElementById('push-products-list').innerHTML = allProducts.filter(p => p.status !== 'inactive').map(p => `
         <div class="flex justify-between items-center py-1 border-b border-stone-50">
-          <span class="text-stone-700">${p.name} (¥${p.tier_1_price}/${p.measure_unit || '件'})</span>
+          <span class="text-stone-700">${p.name} (¥${p.tier_1_price}/${p.measure_unit || '件'} · 存${p.stock ?? 0})</span>
           <input type="number" min="0" value="0" id="push-qty-${p.id}" class="w-16 bg-stone-50 border border-stone-200 rounded px-1.5 py-0.5 text-center font-bold font-mono">
         </div>
       `).join('');
@@ -2433,7 +2439,7 @@
       let totalAmount = 0;
       for (const p of allProducts) {
         const qty = parseInt(document.getElementById(`push-qty-${p.id}`)?.value || '0');
-        if (qty > 0) { items.push({ id: p.id, name: p.name, spec: p.spec, price: p.tier_1_price, qty }); totalAmount += p.tier_1_price * qty; }
+        if (qty > 0) { items.push({ id: p.id, name: p.name, spec: p.spec, measure_unit: p.measure_unit, price: p.tier_1_price, qty }); totalAmount += p.tier_1_price * qty; }
       }
       if (items.length === 0) return alert('請至少挑選 1 樣貨品！');
 
@@ -2442,11 +2448,16 @@
         order_no: orderNo, tenant_id: currentAgent, store_id: storeId, store_name: store.name, driver_name: driver,
         order_source: 'vendor_push', settlement_type: settlement, settlement_note: note,
         items, items_return: [], items_exchange: [], total_amount: totalAmount, return_amount: 0, net_settle_amount: totalAmount,
-        order_status: 'confirmed', delivery_status: 'ordered', note: `[廠家主動配發] ${note}`,
-        driver_action_instruction: `【主動配發】核驗交付 ${items.length}項`
+        order_status: 'confirmed', delivery_status: 'ordered', note: `[廠家主動配貨] ${note}`,
+        driver_action_instruction: `【主動配貨】核驗交付 ${items.length}項`
       }]);
       if (error) alert('配發失敗: ' + error.message);
-      else { window.closeModal('push-modal'); window.loadHQData(); }
+      else {
+        await deductStockForOrderItems(items, orderNo, currentOperatorName);
+        alert('✅ 主動配貨單已生成並自動扣庫，已匯入「本車裝車總揀貨單」！');
+        window.closeModal('push-modal');
+        window.loadHQData();
+      }
     };
 
     window.filterProductByTag = function(tag) { activeProdFilter = tag; renderProductFilterBar(); renderProductTable(); };
@@ -2458,7 +2469,9 @@
         const btn = document.getElementById(`order-filter-${k}`);
         if (btn) {
           const isMatch = (k === status) || (status === 'pending_confirm' && k === 'pending') || (status === 'directory_leads' && k === 'leads') || (status === 'over_credit_pending' && k === 'over-credit');
-          btn.className = isMatch ? 'px-3 py-1 rounded-xl bg-[#1b4332] text-white transition' : 'px-3 py-1 rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 transition';
+          btn.className = isMatch
+            ? 'px-3 py-1.5 rounded-xl bg-[#1b4332] text-white font-bold transition'
+            : 'px-3 py-1.5 rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 font-bold transition';
         }
       });
       renderOrderFulfillmentList();
