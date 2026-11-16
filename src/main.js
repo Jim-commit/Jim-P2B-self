@@ -56,6 +56,57 @@ function safeSetText(id, text) {
 }
 
 // ==========================================
+// 核心：统一一客一价 & 专属折扣算价引擎
+// ==========================================
+function getStorePriceInfo(prod) {
+  const basePrice = ShopTypeManager.getEffectivePrice(prod, shopType);
+  const pricing = (currentStore && currentStore.custom_pricing && typeof currentStore.custom_pricing === 'object')
+    ? currentStore.custom_pricing
+    : {};
+
+  // 1. 单品协议特价（一客一价最高优先级）
+  if (pricing.item_prices && pricing.item_prices[String(prod.id)] !== undefined) {
+    const special = parseFloat(pricing.item_prices[String(prod.id)]);
+    if (!isNaN(special) && special > 0) {
+      return { price: special, badge: '专属协议价' };
+    }
+  }
+
+  // 2. 价盘等级（大客惠价）
+  let tierPrice = basePrice;
+  let badge = (basePrice < parseFloat(prod.tier_1_price || basePrice)) ? '大客价' : '';
+  if (pricing.price_tier === 'tier_2' && prod.tier_2_price) {
+    tierPrice = parseFloat(prod.tier_2_price);
+    badge = '大客惠价';
+  }
+
+  // 3. 全场协议折扣率（如 0.95 代表 95 折）
+  const rate = parseFloat(pricing.discount_rate || 1);
+  if (!isNaN(rate) && rate > 0 && rate !== 1) {
+    const discounted = Number((tierPrice * rate).toFixed(2));
+    return { price: discounted, badge: `协议${(rate * 10).toFixed(1)}折` };
+  }
+
+  return { price: tierPrice, badge };
+}
+
+// 退换货凭证图片自动上传 Storage（失败自动回退 Base64）
+async function uploadProofBlobToStorage(base64Data) {
+  if (!base64Data || !base64Data.startsWith('data:image')) return base64Data;
+  try {
+    const res = await fetch(base64Data);
+    const blob = await res.blob();
+    const fileName = `store_proofs/${currentAgent}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+    const { error } = await supabase.storage.from('supply-images').upload(fileName, blob, { contentType: 'image/jpeg' });
+    if (error) return base64Data;
+    const { data } = supabase.storage.from('supply-images').getPublicUrl(fileName);
+    return data?.publicUrl || base64Data;
+  } catch (e) {
+    return base64Data;
+  }
+}
+
+// ==========================================
 // 2. 顶栏菜单与下拉控制器
 // ==========================================
 window.toggleLeftNavMenu = function (e) {
@@ -114,14 +165,12 @@ function renderAgentSelector() {
 
   if (countEl) countEl.innerText = myAgents.length;
 
-  // 厂商超过 4 家时自动开启大超矩阵入口
   if (myAgents.length > 4) {
     btnAll?.classList.remove('hidden');
   } else {
     btnAll?.classList.add('hidden');
   }
 
-  // 顶栏胶囊最多展示当前厂商及前 3 家，防止横向失控
   const displayAgents = myAgents.slice(0, 4);
   if (!displayAgents.some(a => a.id === currentAgent)) {
     const curObj = myAgents.find(a => a.id === currentAgent);
@@ -202,7 +251,7 @@ window.filterAgentByCategory = function(cat) {
 };
 
 // ==========================================
-// 4. 结识与解绑供货商 (统一使用商号代号接入 + 信义拦截机制)
+// 4. 结识与解绑供货商
 // ==========================================
 window.bindByCode = async function () {
   const inputEl = document.getElementById('bind-input-code');
@@ -281,7 +330,6 @@ window.confirmUnbindAgent = async function(targetAgentId) {
   const targetAgent = myAgents.find(a => a.id === targetAgentId);
   const targetName = targetAgent ? (targetAgent.name || targetAgent.id) : targetAgentId;
 
-  // 刚性商道风控：账清筐还方可解绑
   const storeRecord = await StoreService.getStoreByTenant(targetAgentId);
   const debt = parseFloat(storeRecord?.current_debt || 0);
   const baskets = parseInt(storeRecord?.basket_count || 0);
@@ -367,11 +415,12 @@ window.changeOrderQty = (id, delta) => {
   window.initProdItemState(id);
   const prod = allProducts.find(x => x.id === id);
   const stock = prod?.stock ?? 999;
+  const unit = prod?.measure_unit || prod?.pack_unit || '箱';
   let newQty = cart[id].order + delta;
 
   if (newQty < 0) newQty = 0;
   if (newQty > stock) {
-    alert(`在库现货仅剩 ${stock} 箱！`);
+    alert(`在库现货仅剩 ${stock} ${unit}！`);
     newQty = stock;
   }
 
@@ -393,16 +442,17 @@ window.openReturnDrawer = async (id) => {
     return alert(`⚠️ 商道信义提示：\n本店在【${currentAgent}】处暂无【${prod.name}】的历史有效余量！\n系统严格追溯订购存根，不进不退。`);
   }
 
-  const origPrice = quota.lastPrice || ShopTypeManager.getEffectivePrice(prod, shopType);
+  const unit = prod.measure_unit || prod.pack_unit || '箱';
+  const origPrice = quota.lastPrice || getStorePriceInfo(prod).price;
   cart[id].returnPrice = origPrice;
 
   const currentReturnQty = cart[id].return || 1;
   const input = prompt(
     `🔄 登记退货验还：【${prod.name}】\n` +
     `• 追溯原单: ${quota.lastOrderNo || '线上记录'}\n` +
-    `• 历史原进价: ¥${origPrice.toFixed(2)} /箱\n` +
-    `• 累计进: ${quota.totalOrdered}箱 | 已退换: ${quota.totalReturned}箱\n` +
-    `• 【当前最大可退上限】: ${quota.maxReturnable} 箱\n\n` +
+    `• 历史原进价: ¥${origPrice.toFixed(2)} /${unit}\n` +
+    `• 累计进: ${quota.totalOrdered}${unit} | 已退换: ${quota.totalReturned}${unit}\n` +
+    `• 【当前最大可退上限】: ${quota.maxReturnable} ${unit}\n\n` +
     `请输入本次退货件数 (设为0取消):`,
     Math.min(currentReturnQty, quota.maxReturnable)
   );
@@ -412,7 +462,7 @@ window.openReturnDrawer = async (id) => {
   if (isNaN(parsedQty) || parsedQty < 0) return alert('请输入有效的件数！');
 
   if (parsedQty > quota.maxReturnable) {
-    return alert(`⚠️ 超额拦截：本次退货 ${parsedQty} 箱，超出历史进货余量 (${quota.maxReturnable} 箱)！依规严禁超额抵扣。`);
+    return alert(`⚠️ 超额拦截：本次退货 ${parsedQty} ${unit}，超出历史进货余量 (${quota.maxReturnable} ${unit})！依规严禁超额抵扣。`);
   }
 
   cart[id].return = parsedQty;
@@ -442,11 +492,12 @@ window.openExchangeDrawer = async (id) => {
     return alert(`⚠️ 本店无【${prod.name}】历史订购余量，无法发起对调平换！`);
   }
 
+  const unit = prod.measure_unit || prod.pack_unit || '箱';
   const currentExchangeQty = cart[id].exchange || 1;
   const input = prompt(
     `🔀 登记等价平换：【${prod.name}】\n` +
     `• 规则: 一新换一旧 (差额 ¥0.00)\n` +
-    `• 关联历史订购余量上限: ${quota.maxReturnable} 箱\n\n` +
+    `• 关联历史订购余量上限: ${quota.maxReturnable} ${unit}\n\n` +
     `请输入调换件数 (设为0取消):`,
     Math.min(currentExchangeQty, quota.maxReturnable)
   );
@@ -456,7 +507,7 @@ window.openExchangeDrawer = async (id) => {
   if (isNaN(parsedQty) || parsedQty < 0) return alert('请输入有效的件数！');
 
   if (parsedQty > quota.maxReturnable) {
-    return alert(`⚠️ 调换件数不能超过历史订购余量 (${quota.maxReturnable} 箱)！`);
+    return alert(`⚠️ 调换件数不能超过历史订购余量 (${quota.maxReturnable} ${unit})！`);
   }
 
   cart[id].exchange = parsedQty;
@@ -480,7 +531,7 @@ function updateCartSummary() {
   for (const [id, data] of Object.entries(cart)) {
     const prod = allProducts.find(x => x.id === parseInt(id));
     if (!prod) continue;
-    const price = ShopTypeManager.getEffectivePrice(prod, shopType);
+    const { price } = getStorePriceInfo(prod);
 
     if (data.order > 0) {
       orderTotal += price * data.order;
@@ -515,7 +566,7 @@ function updateCartSummary() {
   if (detailEl) {
     detailEl.innerText = hasSpecial 
       ? `进 ${orderCount} | 退 ${returnCount} (-¥${returnTotal.toFixed(1)}) | 换 ${exchangeCount}`
-      : `进 ${orderCount} 箱`;
+      : `进 ${orderCount} 件`;
   }
 }
 
@@ -530,16 +581,18 @@ window.openSettlementModal = () => {
   for (const [id, data] of Object.entries(cart)) {
     const p = allProducts.find(x => x.id === parseInt(id));
     if (!p) continue;
-    const price = ShopTypeManager.getEffectivePrice(p, shopType);
+    const { price } = getStorePriceInfo(p);
+    const unit = p.measure_unit || p.pack_unit || '箱';
 
     if (data.order > 0) {
-      orderItems.push({ id: p.id, name: p.name, spec: p.spec, price, qty: data.order });
+      orderItems.push({ id: p.id, name: p.name, spec: p.spec, measure_unit: unit, price, qty: data.order });
     }
     if (data.return > 0) {
       returnItems.push({
         id: p.id,
         name: p.name,
         spec: p.spec,
+        measure_unit: unit,
         price: data.returnPrice || price,
         qty: data.return,
         reason: data.returnReason
@@ -550,6 +603,7 @@ window.openSettlementModal = () => {
         id: p.id,
         name: p.name,
         spec: p.spec,
+        measure_unit: unit,
         qty: data.exchange,
         reason: data.exchangeReason
       });
@@ -560,7 +614,6 @@ window.openSettlementModal = () => {
     return alert('当前购物车空空如也，请先挑选品物！');
   }
 
-  // 严格过滤：未授权项直接不生成 option
   const allowed = (currentStore && Array.isArray(currentStore.allowed_settlements))
     ? currentStore.allowed_settlements
     : ['cash', 'credit'];
@@ -575,7 +628,6 @@ window.openSettlementModal = () => {
     }).join('');
   }
 
-  // 常规单 vs 特殊单 动静分流展示
   const isSpecialOrder = (returnItems.length > 0 || exchangeItems.length > 0);
   
   const headerTitle = document.getElementById('slip-modal-header-title');
@@ -629,12 +681,13 @@ function renderSlipItemList(containerId, items, type) {
   }
 
   container.innerHTML = items.map(it => {
+    const unit = it.measure_unit || '箱';
     if (type === 'order') {
       return `
         <div class="flex justify-between items-center py-1.5 border-b border-stone-50">
           <div>
             <b class="text-stone-800 text-xs">${it.name}</b>
-            <span class="text-[10px] text-stone-400 block">${it.spec || '整装'} · ¥${it.price.toFixed(2)} x ${it.qty}箱</span>
+            <span class="text-[10px] text-stone-400 block">${it.spec || '整装'} · ¥${it.price.toFixed(2)} x ${it.qty}${unit}</span>
           </div>
           <b class="text-stone-900 font-mono text-xs">¥${(it.price * it.qty).toFixed(2)}</b>
         </div>
@@ -644,7 +697,7 @@ function renderSlipItemList(containerId, items, type) {
         <div class="flex justify-between items-center py-1.5 border-b border-rose-100/40 text-rose-700">
           <div>
             <b class="text-xs">${it.name}</b>
-            <span class="text-[10px] text-rose-500 block">原价 ¥${it.price.toFixed(2)} x ${it.qty}箱 · [${it.reason}]</span>
+            <span class="text-[10px] text-rose-500 block">原价 ¥${it.price.toFixed(2)} x ${it.qty}${unit} · [${it.reason}]</span>
           </div>
           <b class="font-mono text-xs">-¥${(it.price * it.qty).toFixed(2)}</b>
         </div>
@@ -654,7 +707,7 @@ function renderSlipItemList(containerId, items, type) {
         <div class="flex justify-between items-center py-1.5 border-b border-amber-100/40 text-amber-900">
           <div>
             <b class="text-xs">${it.name}</b>
-            <span class="text-[10px] text-amber-700 block">平价对换 x ${it.qty}箱 · [${it.reason}]</span>
+            <span class="text-[10px] text-amber-700 block">平价对换 x ${it.qty}${unit} · [${it.reason}]</span>
           </div>
           <span class="font-mono text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-bold">差额 ¥0.00</span>
         </div>
@@ -666,17 +719,47 @@ function renderSlipItemList(containerId, items, type) {
 window.handleProofUpload = (e) => {
   const files = e.target.files;
   if (!files || files.length === 0) return;
+
   for (let i = 0; i < files.length; i++) {
-    uploadedProofImages.push(URL.createObjectURL(files[i]));
+    const file = files[i];
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const img = new Image();
+      img.onload = async function() {
+        const canvasEl = document.createElement('canvas');
+        const maxDim = 640;
+        let w = img.width, h = img.height;
+        if (w > h && w > maxDim) { h *= maxDim / w; w = maxDim; }
+        else if (h > maxDim) { w *= maxDim / h; h = maxDim; }
+        canvasEl.width = w; canvasEl.height = h;
+        canvasEl.getContext('2d').drawImage(img, 0, 0, w, h);
+
+        const base64 = canvasEl.toDataURL('image/jpeg', 0.72);
+        const idx = uploadedProofImages.length;
+        uploadedProofImages.push(base64);
+        renderProofImagesStrip();
+
+        const cdnUrl = await uploadProofBlobToStorage(base64);
+        if (uploadedProofImages[idx]) {
+          uploadedProofImages[idx] = cdnUrl;
+          renderProofImagesStrip();
+        }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
   }
+  alert('📷 异常凭据拍照已附存！');
+};
+
+function renderProofImagesStrip() {
   const preview = document.getElementById('proof-preview-container');
   if (preview) {
     preview.innerHTML = uploadedProofImages.map(src => `
       <img src="${src}" class="w-12 h-12 rounded-lg object-cover border border-stone-300">
     `).join('');
   }
-  alert('📷 异常凭据拍照已附存！');
-};
+}
 
 window.confirmAndSubmitOrder = async () => {
   const settlementSelect = document.getElementById('slip-settlement-select');
@@ -690,11 +773,12 @@ window.confirmAndSubmitOrder = async () => {
   for (const [id, data] of Object.entries(cart)) {
     const p = allProducts.find(x => x.id === parseInt(id));
     if (!p) continue;
-    const price = ShopTypeManager.getEffectivePrice(p, shopType);
+    const { price } = getStorePriceInfo(p);
+    const unit = p.measure_unit || p.pack_unit || '箱';
 
-    if (data.order > 0) orderItems.push({ id: p.id, name: p.name, spec: p.spec, price, qty: data.order });
-    if (data.return > 0) returnItems.push({ id: p.id, name: p.name, spec: p.spec, price: data.returnPrice || price, qty: data.return, reason: data.returnReason });
-    if (data.exchange > 0) exchangeItems.push({ id: p.id, name: p.name, spec: p.spec, qty: data.exchange, reason: data.exchangeReason });
+    if (data.order > 0) orderItems.push({ id: p.id, name: p.name, spec: p.spec, measure_unit: unit, price, qty: data.order });
+    if (data.return > 0) returnItems.push({ id: p.id, name: p.name, spec: p.spec, measure_unit: unit, price: data.returnPrice || price, qty: data.return, reason: data.returnReason });
+    if (data.exchange > 0) exchangeItems.push({ id: p.id, name: p.name, spec: p.spec, measure_unit: unit, qty: data.exchange, reason: data.exchangeReason });
   }
 
   const orderTotal = orderItems.reduce((a, b) => a + (b.price * b.qty), 0);
@@ -859,7 +943,10 @@ window.focusProductSearch = function () {
   if (!keyword || !keyword.trim()) return;
 
   const target = keyword.trim().toLowerCase();
-  const matched = allProducts.filter(p => p.name.toLowerCase().includes(target));
+  const matched = allProducts.filter(p =>
+    p.name.toLowerCase().includes(target) ||
+    JSON.stringify(p.custom_specs || {}).toLowerCase().includes(target)
+  );
 
   if (matched.length === 0) {
     return alert(`未在货单中找到含「${keyword}」的好物。`);
@@ -890,7 +977,7 @@ window.configureFlyer = (prodId) => {
     currentFlyerStyle = (shopType === '餐饮饭庄') ? 'honest' : 'neighborhood';
   }
 
-  const defaultPrice = (ShopTypeManager.getEffectivePrice(prod, shopType) * 1.15).toFixed(1);
+  const defaultPrice = (getStorePriceInfo(prod).price * 1.15).toFixed(1);
   const shopName = currentStore ? currentStore.name : '厚德老店';
 
   const titleEl = document.getElementById('flyer-title-input');
@@ -987,7 +1074,7 @@ window.callDriver = () => {
 };
 
 // ==========================================
-// 11. 货品列表渲染
+// 11. 货品列表渲染（支持一客一价专属徽章 + 百业自定义属性）
 // ==========================================
 function renderCategoryTabs() {
   const categories = ['全部', ...new Set(allProducts.map(p => p.category_main).filter(Boolean))];
@@ -1032,14 +1119,20 @@ function renderProductList() {
 
   container.innerHTML = filtered.map(p => {
     const imgHtml = p.image_url
-      ? `<img src="${p.image_url}" class="w-16 h-16 rounded-2xl object-cover border border-stone-200 shadow-sm" onerror="this.src='';this.parentElement.innerHTML='<div class=\\'w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400\\'>实物包</div>';">`
-      : `<div class="w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400">实物包</div>`;
+      ? `<img src="${p.image_url}" class="w-16 h-16 rounded-2xl object-cover border border-stone-200 shadow-sm shrink-0" onerror="this.src='';this.parentElement.innerHTML='<div class=\\'w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400 shrink-0\\'>实物包</div>';">`
+      : `<div class="w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400 shrink-0">实物包</div>`;
 
     const tags = Array.isArray(p.tags) ? p.tags : [];
     const tagHtml = tags.map(t => `<span class="bg-amber-50 text-amber-900 border border-amber-200 text-[9px] px-1.5 py-0.2 rounded font-medium">${t}</span>`).join(' ');
 
-    const price = ShopTypeManager.getEffectivePrice(p, shopType);
-    const isTier2 = (price < p.tier_1_price);
+    // 百业自定义展示属性渲染
+    const customAttrs = (p.custom_specs && typeof p.custom_specs === 'object' && p.custom_specs.attrs) ? p.custom_specs.attrs : {};
+    const attrsHtml = Object.entries(customAttrs).map(([k, v]) =>
+      `<span class="bg-stone-100 text-stone-600 border border-stone-200 text-[9px] px-1.5 py-0.2 rounded">${k}:${v}</span>`
+    ).join(' ');
+
+    const { price, badge } = getStorePriceInfo(p);
+    const unit = p.measure_unit || p.pack_unit || '箱';
     const stock = p.stock ?? 999;
     const isOutOfStock = stock <= 0;
 
@@ -1054,18 +1147,18 @@ function renderProductList() {
             ${imgHtml}
             <div>
               <div class="font-bold text-xs text-stone-800">${p.name}</div>
-              <div class="mt-0.5 space-x-1">${tagHtml}</div>
+              ${(tagHtml || attrsHtml) ? `<div class="mt-0.5 flex flex-wrap gap-1">${tagHtml} ${attrsHtml}</div>` : ''}
               <div class="text-[11px] text-stone-400 mt-0.5 font-mono">
-                规格: ${p.spec || '整装'} · 存量: ${isOutOfStock ? '<span class="text-rose-600 font-bold">已售罄</span>' : `${stock}箱`}
+                规格: ${p.spec || '整装'} · 存量: ${isOutOfStock ? '<span class="text-rose-600 font-bold">已售罄</span>' : `${stock}${unit}`}
               </div>
               <div class="text-xs font-bold text-stone-900 mt-0.5 font-mono flex items-center gap-1">
-                ¥${price.toFixed(2)} <span class="text-[10px] text-stone-400 font-normal">/${p.pack_unit || '箱'}</span>
-                ${isTier2 ? `<span class="text-[9px] bg-amber-50 text-amber-900 border border-amber-200 px-1 rounded font-normal">大客价</span>` : ''}
+                ¥${price.toFixed(2)} <span class="text-[10px] text-stone-400 font-normal">/${unit}</span>
+                ${badge ? `<span class="text-[9px] bg-amber-50 text-amber-900 border border-amber-300 px-1 rounded font-bold">${badge}</span>` : ''}
               </div>
             </div>
           </div>
           
-          <div class="flex items-center gap-1.5 pt-1">
+          <div class="flex items-center gap-1.5 pt-1 shrink-0">
             <button type="button" onclick="window.changeOrderQty(${p.id}, -1)" class="w-7 h-7 rounded-xl bg-stone-100 active:scale-95 font-bold text-stone-600 flex items-center justify-center text-sm shadow-sm">-</button>
             <span id="qty-order-${p.id}" class="w-6 text-center font-bold text-xs font-mono">${curState.order || 0}</span>
             <button type="button" onclick="window.changeOrderQty(${p.id}, 1)" ${isOutOfStock ? 'disabled' : ''} class="w-7 h-7 rounded-xl ${isOutOfStock ? 'bg-stone-200 text-stone-400' : 'bg-stone-900 text-white active:scale-95'} font-bold flex items-center justify-center text-sm shadow-sm">+</button>
@@ -1077,12 +1170,12 @@ function renderProductList() {
             <button type="button" onclick="window.openReturnDrawer(${p.id})" class="px-2 py-0.5 rounded-lg font-bold border transition ${
               hasReturn ? 'bg-rose-50 text-rose-700 border-rose-300' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
             }">
-              🔄 退货 ${hasReturn ? `(${curState.return}件)` : ''}
+              🔄 退货 ${hasReturn ? `(${curState.return}${unit})` : ''}
             </button>
             <button type="button" onclick="window.openExchangeDrawer(${p.id})" class="px-2 py-0.5 rounded-lg font-bold border transition ${
               hasExchange ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
             }">
-              🔀 换货 ${hasExchange ? `(${curState.exchange}件)` : ''}
+              🔀 换货 ${hasExchange ? `(${curState.exchange}${unit})` : ''}
             </button>
           </div>
 
@@ -1110,7 +1203,7 @@ window.openReceiptsModal = async () => {
       const returnItems = Array.isArray(o.items_return) ? o.items_return : [];
       const exchangeItems = Array.isArray(o.items_exchange) ? o.items_exchange : [];
 
-      const orderStr = orderItems.map(it => `${it.name} x ${it.qty}箱`).join('、');
+      const orderStr = orderItems.map(it => `${it.name} x ${it.qty}${it.measure_unit || '件'}`).join('、');
       const returnStr = returnItems.map(it => `退:${it.name}x${it.qty}`).join('、');
       const exchangeStr = exchangeItems.map(it => `换:${it.name}x${it.qty}`).join('、');
 
