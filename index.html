@@ -6,6 +6,9 @@
   <title>商道相通 · 门店采销掌中宝</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1b4332">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="商道采销">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -29,7 +32,7 @@
           </button>
 
           <!-- 掌柜锦囊浮层 -->
-          <div id="left-nav-menu" class="hidden absolute left-0 top-11 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all">
+          <div id="left-nav-menu" class="hidden absolute left-0 top-11 w-56 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all">
             <div class="px-2.5 py-1 text-[10px] font-bold text-stone-400">掌柜经营锦囊</div>
             
             <button type="button" onclick="window.openMarketingCenter(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-emerald-50/60 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
@@ -37,6 +40,14 @@
               <div>
                 <div class="font-bold text-stone-800 text-[11px]">邻里宣发画报</div>
                 <div class="text-[9px] text-stone-400">真品海报 · 拼单共惠</div>
+              </div>
+            </button>
+
+            <button type="button" onclick="window.openReferralModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-amber-50/80 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
+              <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center text-xs">🤝</span>
+              <div>
+                <div class="font-bold text-amber-950 text-[11px]">推荐同行 · 领老客礼遇</div>
+                <div class="text-[9px] text-stone-400">生成推荐码 · 签约享好礼</div>
               </div>
             </button>
 
@@ -58,7 +69,7 @@
 
             <div class="my-1 border-t border-stone-100"></div>
 
-            <button type="button" onclick="window.openModal('pwa-install-modal'); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-emerald-50/80 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
+            <button type="button" onclick="window.triggerPwaInstall()" class="w-full px-2.5 py-2 text-left hover:bg-emerald-50/80 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
               <span class="w-6 h-6 rounded-lg bg-[#1b4332] text-amber-300 flex items-center justify-center text-xs">📲</span>
               <div>
                 <div class="font-bold text-[#1b4332] text-[11px]">存到手机桌面</div>
@@ -77,7 +88,6 @@
               <span>🏪 社区便利</span> ▾
             </button>
 
-            <!-- 业态切换菜单 -->
             <div id="shop-type-dropdown" class="hidden absolute left-1/2 -translate-x-1/2 top-9 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-1.5 z-50 text-stone-800 border border-stone-200/80 text-xs">
               <div class="px-2.5 py-1 text-[10px] font-semibold text-stone-400">选择经营业态</div>
               <div class="space-y-0.5">
@@ -111,8 +121,12 @@
           </div>
         </div>
 
-        <!-- 右侧：供货商服务 (···) -->
-        <div class="relative">
+        <!-- 右侧：快捷存桌面图标 + 供货商服务 (···) -->
+        <div class="relative flex items-center gap-1">
+          <button type="button" onclick="window.triggerPwaInstall()" class="px-2 py-1 rounded-full bg-white/15 hover:bg-white/25 text-amber-300 text-[10px] font-bold transition active:scale-95" title="存到手机桌面">
+            📲 存桌面
+          </button>
+
           <button type="button" onclick="window.toggleRightNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white relative" title="供货相照">
             <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
               <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
@@ -121,7 +135,6 @@
             <span id="dot-vendor-feedback" class="hidden absolute top-0.5 right-0.5 w-2 h-2 bg-amber-400 border-2 border-[#1b4332] rounded-full"></span>
           </button>
 
-          <!-- 供货商服务菜单 -->
           <div id="right-nav-menu" class="hidden absolute right-0 top-11 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all">
             <div class="px-2.5 py-1 text-[10px] font-semibold text-stone-400 flex justify-between items-center border-b border-stone-100 pb-1.5 mb-1">
               <span>共赢供货商</span>
@@ -265,25 +278,66 @@
 
   </div>
 
+  <!-- 新增：老客户推荐同行口碑裂变弹窗 -->
+  <div id="referral-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[85] flex items-center justify-center p-4" onclick="if(event.target===this) window.closeModal('referral-modal')">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs text-center">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100 text-left">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🤝 推荐同行 · 共享源头底价与老客礼遇</h3>
+          <p class="text-[10px] text-stone-400">周边小店/餐饮老板扫码预约送样，系统自动记录您的引荐功劳</p>
+        </div>
+        <button type="button" onclick="window.closeModal('referral-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div class="bg-gradient-to-b from-[#1b4332] to-[#143628] text-white p-5 rounded-2xl space-y-2.5 shadow-inner">
+        <div class="text-amber-300 font-bold text-sm" id="ref-store-title">厚德便民老店 · 诚意荐庄</div>
+        <div class="text-[11px] text-emerald-100" id="ref-agent-subtitle">携手源头优质供货商 · 货真价实送货到店</div>
+        <div class="w-40 h-40 bg-white rounded-2xl mx-auto p-2 flex items-center justify-center shadow-lg">
+          <img id="ref-qr-img" src="" alt="推荐同行二维码" class="w-full h-full object-contain">
+        </div>
+        <div class="text-[10px] text-emerald-200">同行老板长按识别二维码，即可预约业务员免费上门送样</div>
+      </div>
+
+      <button type="button" onclick="window.copyReferralShareText()" class="w-full bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+        🔗 复制推荐话术发同行微信群
+      </button>
+    </div>
+  </div>
+
   <!-- 存到手机桌面引导弹窗 -->
-  <div id="pwa-install-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="pwa-install-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[90] flex items-center justify-center p-4" onclick="if(event.target===this) window.closePwaModal()">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-        <h3 class="font-bold text-sm text-stone-900">📲 把订货台存到手机桌面</h3>
-        <button type="button" onclick="window.closeModal('pwa-install-modal')" class="text-stone-400 text-lg">✕</button>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-[#1b4332] text-amber-300 flex items-center justify-center font-bold text-base">商</div>
+          <div>
+            <h3 class="font-bold text-sm text-stone-900">把订货台存到手机桌面</h3>
+            <p class="text-[10px] text-stone-400">以后不用翻微信聊天，点图标直接进店补货</p>
+          </div>
+        </div>
+        <button type="button" onclick="window.closePwaModal()" class="text-stone-400 hover:text-stone-700 text-lg px-1">✕</button>
       </div>
+
+      <div id="pwa-native-install-box" class="hidden bg-emerald-50 border border-emerald-300 p-3 rounded-2xl space-y-2">
+        <p class="text-emerald-950 font-bold">✅ 您的浏览器支持一键生成桌面图标：</p>
+        <button type="button" onclick="window.executeNativePwaInstall()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+          📲 立即添加图标到手机桌面
+        </button>
+      </div>
+
       <div class="space-y-2.5 text-stone-600 leading-relaxed">
-        <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-emerald-950">
-          <b>1. 微信打开的用户：</b><br/>
-          先点击右上角 <b>「···」</b> ➔ 选择 <b>「在默认浏览器打开」</b>（Safari / 手机自带浏览器）。
+        <div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-amber-950">
+          <b>第一步（如果是在微信里点开的）：</b><br/>
+          点屏幕右上角 <b>「···」</b> ➔ 选择 <b>「在默认浏览器打开」</b>（Safari / 手机自带浏览器）。
         </div>
-        <div class="bg-stone-50 border border-stone-200 p-3 rounded-2xl">
-          <b>2. 在浏览器中添加图标：</b><br/>
-          • <b>苹果 iPhone</b>：点底部中间 <b>「分享图标 ⬆️」</b> ➔ 往下滑点 <b>「添加到主屏幕」</b>。<br/>
-          • <b>安卓 / 鸿蒙手机</b>：点底部或右上角 <b>「菜单 ☰ / ⋮」</b> ➔ 点 <b>「添加到桌面 / 主屏幕」</b>。
+        <div class="bg-stone-50 border border-stone-200 p-3 rounded-2xl space-y-1">
+          <b>第二步（在手机浏览器中生成图标）：</b><br/>
+          • <b>苹果 iPhone</b>：点屏幕正下方 <b>「分享 ⬆️」</b> ➔ 往下滑点 <b>「添加到主屏幕」</b>。<br/>
+          • <b>华为 / 小米 / OPPO / vivo</b>：点底部或右上角 <b>「菜单 ☰ / ⋮」</b> ➔ 选择 <b>「添加到桌面 / 主屏幕」</b>。
         </div>
       </div>
-      <button type="button" onclick="window.closeModal('pwa-install-modal')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl">
+
+      <button type="button" onclick="window.closePwaModal()" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-xl">
         我知道了
       </button>
     </div>
@@ -292,7 +346,6 @@
   <!-- 随车送货凭单弹窗 -->
   <div id="settlement-slip-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-3.5">
     <div class="bg-white w-full max-w-sm rounded-[2rem] p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar border border-stone-200/80">
-      
       <div class="border-b border-stone-100 pb-2.5 text-center relative">
         <div class="flex items-center justify-center gap-1.5">
           <h3 class="font-bold text-sm text-stone-900 tracking-wide" id="slip-modal-header-title">随车送货签收凭单</h3>
@@ -366,7 +419,6 @@
           ✅ 确认凭单 · 传至供货庄
         </button>
       </div>
-
     </div>
   </div>
 
@@ -380,11 +432,9 @@
         </div>
         <button type="button" onclick="window.closeModal('all-agents-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
-
       <div class="relative">
         <input type="text" id="agent-search-input" oninput="window.filterAgentList(this.value)" placeholder="🔍 键入厂商全名、品类或代号检索..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs outline-none text-stone-800">
       </div>
-
       <div class="flex gap-1.5 overflow-x-auto no-scrollbar text-[10px] py-0.5">
         <button type="button" onclick="window.filterAgentByCategory('全部')" class="agent-cat-pill bg-stone-900 text-white px-2 py-0.5 rounded-lg font-bold">全部行当</button>
         <button type="button" onclick="window.filterAgentByCategory('粮油副食')" class="agent-cat-pill bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg">粮油副食</button>
@@ -392,9 +442,7 @@
         <button type="button" onclick="window.filterAgentByCategory('冷冻生鲜')" class="agent-cat-pill bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg">冷冻生鲜</button>
         <button type="button" onclick="window.filterAgentByCategory('日化消杀')" class="agent-cat-pill bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg">日化消杀</button>
       </div>
-
       <div id="all-agents-container" class="divide-y divide-stone-100 flex-1 overflow-y-auto no-scrollbar space-y-1"></div>
-
       <div class="pt-2 border-t border-stone-100 flex gap-2">
         <button type="button" onclick="window.openModal('bind-agent-modal'); window.closeModal('all-agents-modal');" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2 rounded-xl text-xs active:scale-95 transition">
           + 绑定接入新供货厂家
@@ -413,12 +461,10 @@
         </div>
         <button type="button" onclick="window.closeModal('marketing-modal')" class="text-stone-400 hover:text-stone-600 text-xl font-bold">✕</button>
       </div>
-
       <div class="space-y-1.5">
         <label class="text-[11px] font-bold text-stone-700 block">① 挑选画报风韵：</label>
         <div id="style-selector-box" class="flex flex-wrap gap-1.5"></div>
       </div>
-
       <div class="space-y-2 text-xs">
         <div>
           <label class="text-[10px] text-stone-500 block mb-0.5">招牌头题：</label>
@@ -429,12 +475,10 @@
           <input type="text" id="flyer-tagline-input" oninput="window.renderLiveFlyerPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none text-stone-700">
         </div>
       </div>
-
       <div class="text-xs">
         <label class="text-[10px] text-stone-500 block mb-0.5">拼团亲邻价 (元)：</label>
         <input type="number" step="0.1" id="flyer-price-input" oninput="window.renderLiveFlyerPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none font-mono font-bold text-rose-700">
       </div>
-
       <div class="space-y-1.5 text-xs">
         <div class="flex justify-between items-center">
           <label class="text-[10px] text-stone-500 font-bold">掌柜交心叮咛 (点选或手写)：</label>
@@ -446,13 +490,10 @@
         </div>
         <textarea id="flyer-note-input" rows="2" oninput="window.renderLiveFlyerPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none text-stone-800 text-xs"></textarea>
       </div>
-
       <div class="rounded-2xl overflow-hidden border border-stone-200 shadow-sm bg-stone-100">
         <img id="flyer-preview-img" src="" class="w-full object-cover" alt="画报预览">
       </div>
-
       <p class="text-[10px] text-stone-400 text-center">长按即可存下图片，传与街坊邻里分享</p>
-
       <button type="button" onclick="window.closeModal('marketing-modal')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition shadow">
         收好画报 · 返回货单
       </button>
@@ -509,6 +550,37 @@
   </div>
 
   <canvas id="hidden-canvas" class="hidden"></canvas>
+
+  <!-- 独立内联 PWA 桌面安装引擎 -->
+  <script>
+    (function() {
+      let deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const nativeBox = document.getElementById('pwa-native-install-box');
+        if (nativeBox) nativeBox.classList.remove('hidden');
+      });
+      window.triggerPwaInstall = function() {
+        document.getElementById('left-nav-menu')?.classList.add('hidden');
+        document.getElementById('right-nav-menu')?.classList.add('hidden');
+        document.getElementById('pwa-install-modal')?.classList.remove('hidden');
+      };
+      window.closePwaModal = function() {
+        document.getElementById('pwa-install-modal')?.classList.add('hidden');
+      };
+      window.executeNativePwaInstall = async function() {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          deferredPrompt = null;
+          document.getElementById('pwa-native-install-box')?.classList.add('hidden');
+          window.closePwaModal();
+        }
+      };
+    })();
+  </script>
 
   <script type="module" src="./src/main.js"></script>
 </body>
