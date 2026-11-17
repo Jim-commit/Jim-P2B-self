@@ -14,11 +14,13 @@ window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden')
 
 window.switchTab = function (tabName) {
   ['apps', 'tenants', 'suggestions', 'categories', 'audit'].forEach((t) => {
-    document.getElementById(`p-tab-${t}`).classList.add('hidden');
-    document.getElementById(`p-tab-btn-${t}`).className = 'flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition';
+    document.getElementById(`p-tab-${t}`)?.classList.add('hidden');
+    const btn = document.getElementById(`p-tab-btn-${t}`);
+    if (btn) btn.className = 'flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition';
   });
-  document.getElementById(`p-tab-${tabName}`).classList.remove('hidden');
-  document.getElementById(`p-tab-btn-${tabName}`).className = 'flex-1 py-2 text-center rounded-xl bg-stone-900 text-white transition';
+  document.getElementById(`p-tab-${tabName}`)?.classList.remove('hidden');
+  const activeBtn = document.getElementById(`p-tab-btn-${tabName}`);
+  if (activeBtn) activeBtn.className = 'flex-1 py-2 text-center rounded-xl bg-stone-900 text-white transition';
 };
 
 window.syncManualModalDefaults = function () {
@@ -142,27 +144,31 @@ window.verifyPlatformAuthPwd = async function (e) {
 async function checkPlatformAuthStatus() {
   const savedToken = sessionStorage.getItem(P_AUTH_SESSION_KEY);
   if (!savedToken) {
-    document.getElementById('platform-auth-gate').classList.remove('hidden');
+    document.getElementById('platform-auth-gate')?.classList.remove('hidden');
     return false;
   }
 
   const { data } = await supabase.from('platform_admin_credential').select('*').eq('secret_token', savedToken).eq('is_active', true).limit(1);
 
   if (data && data.length > 0) {
-    document.getElementById('platform-auth-gate').classList.add('hidden');
+    document.getElementById('platform-auth-gate')?.classList.add('hidden');
     const pill = document.getElementById('totp-status-pill');
     const btnTotp = document.getElementById('btn-platform-totp');
     if (data[0].totp_enabled && data[0].totp_secret) {
-      pill.className = 'bg-emerald-500/20 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-400/40 font-mono font-bold flex items-center gap-1';
-      pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> TOTP 已护航';
+      if (pill) {
+        pill.className = 'bg-emerald-500/20 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-400/40 font-mono font-bold flex items-center gap-1';
+        pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> TOTP 已护航';
+      }
       if (btnTotp) {
         btnTotp.innerHTML = '<span>✅</span> 总控验证器已绑';
         btnTotp.className =
           'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs px-3.5 py-2 rounded-xl font-bold border border-emerald-400/50 active:scale-95 transition flex items-center gap-1.5';
       }
     } else {
-      pill.className = 'bg-stone-800 text-stone-400 text-[10px] px-2.5 py-0.5 rounded-full border border-stone-700 font-mono font-bold flex items-center gap-1';
-      pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-stone-500"></span> TOTP 未激活';
+      if (pill) {
+        pill.className = 'bg-stone-800 text-stone-400 text-[10px] px-2.5 py-0.5 rounded-full border border-stone-700 font-mono font-bold flex items-center gap-1';
+        pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-stone-500"></span> TOTP 未激活';
+      }
       if (btnTotp) {
         btnTotp.innerHTML = '<span>🛡️</span> 绑定总控验证器';
         btnTotp.className =
@@ -172,7 +178,7 @@ async function checkPlatformAuthStatus() {
     return true;
   } else {
     sessionStorage.removeItem(P_AUTH_SESSION_KEY);
-    document.getElementById('platform-auth-gate').classList.remove('hidden');
+    document.getElementById('platform-auth-gate')?.classList.remove('hidden');
     return false;
   }
 }
@@ -181,7 +187,7 @@ window.logoutPlatform = function () {
   sessionStorage.removeItem(P_AUTH_SESSION_KEY);
   sessionStorage.removeItem('p_auth_account');
   sessionStorage.removeItem('p_auth_name');
-  document.getElementById('platform-auth-gate').classList.remove('hidden');
+  document.getElementById('platform-auth-gate')?.classList.remove('hidden');
 };
 
 window.triggerPlatform2FA = async function (actionDesc, onVerifiedCallback) {
