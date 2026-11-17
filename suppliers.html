@@ -16,7 +16,6 @@
 </head>
 <body class="text-stone-800 pb-20">
 
-  <!-- 顶部导航栏 -->
   <header class="bg-[#1b4332] text-white sticky top-0 z-30 shadow-md">
     <div class="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
@@ -34,7 +33,6 @@
     </div>
   </header>
 
-  <!-- 顶部价值宣言与搜索栏 -->
   <section class="bg-gradient-to-b from-[#1b4332] to-[#143628] text-white pt-3 pb-8 px-4">
     <div class="max-w-5xl mx-auto">
       <div class="bg-white/10 backdrop-blur-sm border border-emerald-400/25 rounded-2xl p-4 mb-4">
@@ -53,7 +51,6 @@
         </div>
       </div>
 
-      <!-- 搜索框 -->
       <div class="relative">
         <input
           type="text"
@@ -68,8 +65,12 @@
     </div>
   </section>
 
-  <!-- 主体列表区 -->
   <main class="max-w-5xl mx-auto px-4 -mt-4">
+    <!-- 老客户引荐荣誉横幅 -->
+    <div id="referrer-banner" class="hidden mb-3 bg-emerald-50 border border-emerald-300 text-emerald-950 px-4 py-2.5 rounded-2xl flex items-center justify-between text-xs shadow-xs">
+      <span>🤝 感谢老客【<b id="referrer-name-label"></b>】诚意引荐，预约合作享老客同款源头底价与送样礼遇！</span>
+    </div>
+
     <div id="direct-tenant-banner" class="hidden mb-3 bg-amber-50 border border-amber-300 text-amber-950 px-4 py-2.5 rounded-2xl flex items-center justify-between text-xs shadow-xs">
       <span>🎯 当前已为您置顶展示专属推荐厂商（商号：<b id="direct-tenant-code" class="font-mono"></b>）</span>
       <button onclick="window.clearDirectFilter()" class="text-emerald-900 font-bold underline">查看全部供货商</button>
@@ -139,7 +140,6 @@
     </div>
   </div>
 
-  <!-- 底部四个标准工作台导航 -->
   <footer class="fixed bottom-0 inset-x-0 bg-white border-t border-stone-200 py-2 px-4 z-20">
     <div class="max-w-5xl mx-auto flex items-center justify-around text-xs text-stone-600">
       <a href="suppliers.html" class="flex flex-col items-center text-[#1b4332] font-bold">
@@ -160,8 +160,15 @@
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
 
-    const urlTargetTenant = (new URLSearchParams(window.location.search).get('t') || '').trim().toUpperCase();
+    const params = new URLSearchParams(window.location.search);
+    const urlTargetTenant = (params.get('t') || '').trim().toUpperCase();
+    const urlReferrer = (params.get('ref') || '').trim();
     let allSuppliers = [];
+
+    if (urlReferrer) {
+      document.getElementById('referrer-name-label').textContent = urlReferrer;
+      document.getElementById('referrer-banner').classList.remove('hidden');
+    }
 
     const DEMO_SUPPLIERS = [
       {
@@ -231,7 +238,8 @@
             category: t.business_type || t.business_scope || (cats.length > 0 ? cats.join(' · ') : '实体全品类直供'),
             city: t.region || t.address || '本地仓储配送覆盖',
             description: t.intro || `源头正规供货商（商号：${t.tenant_id}），营业执照与资质已核验，支持签约门店定期配送、电子签收与往来授信对账。`,
-            products: prods
+            products: prods,
+            webhook_url: t.webhook_url || ''
           };
         });
 
@@ -407,6 +415,8 @@
       const note = document.getElementById('lead-note').value.trim();
 
       const orderNo = `LEAD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const refTag = urlReferrer ? ` | 推荐老客:${urlReferrer}` : '';
+      const fullNote = `[新店招商线索] 联系人:${contactName} | 电话:${phone} | 地址:${address}${refTag}${note ? ' | 意向:' + note : ''}`;
 
       try {
         if (supabase && !tenantId.startsWith('DEMO-')) {
@@ -455,7 +465,7 @@
             net_settle_amount: 0,
             order_status: 'pending_confirm',
             delivery_status: 'lead_pending',
-            note: `[新店招商线索] 联系人:${contactName} | 电话:${phone} | 地址:${address}${note ? ' | 意向:' + note : ''}`,
+            note: fullNote,
             driver_action_instruction: `【新店送样线索】联系 ${contactName}(${phone}) 上门洽谈`
           };
 
@@ -470,6 +480,18 @@
           }
 
           if (error) throw error;
+
+          // 同步触发该厂商的群机器人新线索通知
+          const targetSupplier = allSuppliers.find(s => s.tenant_id === tenantId);
+          if (targetSupplier?.webhook_url && targetSupplier.webhook_url.startsWith('http')) {
+            const msg = `🤝【新店招商线索提醒】\n意向门店：${storeName}\n联系人：${contactName} (${phone})\n地址：${address}${refTag}\n请及时联系送样并一鍵建档开户！`;
+            fetch(targetSupplier.webhook_url, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ msgtype: 'text', text: { content: msg }, content: { text: msg } })
+            }).catch(() => {});
+          }
         }
 
         alert('✅ 合作意向已直达厂商调度中枢！厂商业务员或供货师傅将尽快电话联系您安排上门送样。');
