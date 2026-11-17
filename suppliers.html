@@ -229,13 +229,22 @@
           }
         });
 
+        const typeLabelMap = {
+          dealer: '区域总经销 · 源头批发商',
+          factory: '品牌制造工厂 · 源头直供',
+          service: '工料配件 · 综合供应链'
+        };
+
         allSuppliers = validTenants.map(t => {
           const prods = productMap[t.tenant_id] || [];
           const cats = Array.from(new Set(prods.map(p => p.category_main).filter(Boolean)));
+          const rawType = t.business_type || t.business_scope || '';
+          const displayCategory = typeLabelMap[rawType] || rawType || (cats.length > 0 ? cats.join(' · ') : '实体全品类直供');
+
           return {
             tenant_id: t.tenant_id,
             name: t.company_name || t.tenant_id,
-            category: t.business_type || t.business_scope || (cats.length > 0 ? cats.join(' · ') : '实体全品类直供'),
+            category: displayCategory,
             city: t.region || t.address || '本地仓储配送覆盖',
             description: t.intro || `源头正规供货商（商号：${t.tenant_id}），营业执照与资质已核验，支持签约门店定期配送、电子签收与往来授信对账。`,
             products: prods,
@@ -484,7 +493,7 @@
           // 同步触发该厂商的群机器人新线索通知
           const targetSupplier = allSuppliers.find(s => s.tenant_id === tenantId);
           if (targetSupplier?.webhook_url && targetSupplier.webhook_url.startsWith('http')) {
-            const msg = `🤝【新店招商线索提醒】\n意向门店：${storeName}\n联系人：${contactName} (${phone})\n地址：${address}${refTag}\n请及时联系送样并一鍵建档开户！`;
+            const msg = `🤝【新店招商线索提醒】\n意向门店：${storeName}\n联系人：${contactName} (${phone})\n地址：${address}${refTag}\n请及时联系送样并一键建档开户！`;
             fetch(targetSupplier.webhook_url, {
               method: 'POST',
               mode: 'no-cors',
