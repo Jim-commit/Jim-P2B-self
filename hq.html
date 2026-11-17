@@ -377,7 +377,7 @@
 
   </div>
 
-  <!-- 新增：群機器人自動報單提醒配置彈窗（支持企業微信 / 釘釘 / 飛書） -->
+  <!-- 群機器人自動報單提醒配置彈窗（支持企業微信 / 釘釘 / 飛書） -->
   <div id="modal-webhook-setup" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -884,18 +884,24 @@
   <div id="modal-totp-setup" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-        <h3 class="font-bold text-sm text-stone-800">🛡️ 手機身份驗證器綁定</h3>
+        <div>
+          <h3 class="font-bold text-sm text-stone-800">🛡️ 手機身份驗證器綁定</h3>
+          <p class="text-[10px] text-stone-400">支援微信「騰訊身份驗證器」小程序 / Google / Microsoft Authenticator</p>
+        </div>
         <button onclick="window.closeModal('modal-totp-setup')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="w-40 h-40 bg-stone-50 border border-stone-200 rounded-2xl mx-auto flex items-center justify-center p-2">
         <img id="totp-setup-qr" src="" alt="TOTP 二維碼" class="w-full h-full object-contain">
       </div>
-      <div class="bg-stone-50 p-2.5 rounded-xl border border-stone-200 flex justify-between items-center font-mono font-bold">
-        <span id="totp-secret-display">JBSWY3DPEHPK3PXP</span>
-        <button onclick="window.copyTotpSecret()" class="text-emerald-800 text-[10px] underline">複製</button>
+      <div class="bg-stone-50 p-2.5 rounded-xl border border-stone-200 space-y-1">
+        <span class="text-[10px] text-stone-400 block">若不便掃碼，可在驗證器中選擇「手動輸入密鑰」：</span>
+        <div class="flex justify-between items-center font-mono font-bold text-stone-900">
+          <span id="totp-secret-display">JBSWY3DPEHPK3PXP</span>
+          <button type="button" onclick="window.copyTotpSecret()" class="text-emerald-800 text-[10px] underline">複製密鑰</button>
+        </div>
       </div>
-      <input type="text" id="totp-test-code" maxlength="6" placeholder="輸入 6 位驗證碼" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-center font-bold text-base outline-none">
-      <button onclick="window.verifyAndSaveTotp()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow">驗證並儲存綁定</button>
+      <input type="text" id="totp-test-code" maxlength="6" placeholder="輸入驗證器顯示的 6 位動態碼" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base outline-none focus:border-emerald-700">
+      <button type="button" onclick="window.verifyAndSaveTotp()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">驗證並儲存綁定</button>
     </div>
   </div>
 
@@ -994,7 +1000,7 @@
     window.testWebhookPing = async function() {
       const url = document.getElementById('webhook-url-input').value.trim();
       if (!url) return alert('請先粘貼群機器人 Webhook 地址！');
-      const msg = `🔔【${currentTenantData?.company_name || currentAgent}】報單提醒測試成功！后续合作門店下新單或新店預約送樣，本群將第一時間收到通知。`;
+      const msg = `🔔【${currentTenantData?.company_name || currentAgent}】報單提醒測試成功！後續合作門店下新單或新店預約送樣，本群將第一時間收到通知。`;
       try {
         await fetch(url, {
           method: 'POST',
@@ -1446,12 +1452,12 @@
     };
 
     // =========================================================================
-    // RFC 6238 TOTP & 主賬號/屬員子賬號雙模登入門禁
+    // RFC 6238 TOTP & 主賬號/屬員子賬號雙模登入門禁（已升級兼容所有驗證器 App）
     // =========================================================================
     const TOTP = {
       base32chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567',
       base32ToBytes(base32) {
-        let clean = base32.toUpperCase().replace(/=+$/, '');
+        let clean = base32.toUpperCase().replace(/[^A-Z2-7]/g, '');
         let length = clean.length, bits = 0, value = 0, index = 0;
         let bytes = new Uint8Array((length * 5 / 8) | 0);
         for (let i = 0; i < length; i++) {
@@ -1485,7 +1491,7 @@
         const binary = ((hmac[offset] & 0x7f) << 24) | ((hmac[offset + 1] & 0xff) << 16) | ((hmac[offset + 2] & 0xff) << 8) | (hmac[offset + 3] & 0xff);
         return (binary % 1000000).toString().padStart(6, '0');
       },
-      async verifyTOTP(secretBase32, token, windowSteps = 1) {
+      async verifyTOTP(secretBase32, token, windowSteps = 2) {
         if (!secretBase32 || !token) return false;
         try {
           const secretBytes = this.base32ToBytes(secretBase32);
@@ -1506,30 +1512,64 @@
     };
 
     window.openTotpSetupModal = async function() {
-      const { data: tenant } = await supabase.from('platform_tenant').select('*').eq('tenant_id', currentAgent).single();
-      let secret = tenant?.totp_secret;
+      const { data: tenant, error } = await supabase
+        .from('platform_tenant')
+        .select('*')
+        .eq('tenant_id', currentAgent)
+        .single();
+
+      if (error) {
+        return alert('讀取商號信息失敗：' + error.message);
+      }
+
+      let secret = (tenant?.totp_secret || '').trim();
       if (!secret) {
         secret = TOTP.generateRandomSecret();
-        await supabase.from('platform_tenant').update({ totp_secret: secret, totp_enabled: true }).eq('tenant_id', currentAgent);
+        const { error: upErr } = await supabase
+          .from('platform_tenant')
+          .update({ totp_secret: secret, totp_enabled: true })
+          .eq('tenant_id', currentAgent);
+
+        if (upErr) {
+          return alert('⚠️ 雲端數據庫缺少 totp_secret 字段，請先在 Supabase SQL Editor 執行加列語句：' + upErr.message);
+        }
       }
+
       document.getElementById('totp-secret-display').innerText = secret;
       document.getElementById('totp-test-code').value = '';
-      const issuer = encodeURIComponent('供應鏈商貿中樞');
-      const account = encodeURIComponent(`${currentAgent}(${tenant?.company_name || '商號'})`);
+
+      // 採用純英文標準 otpauth 格式，確保騰訊身份驗證器 / Google / Microsoft 驗證器 100% 識別
+      const issuer = encodeURIComponent('SupplyChainHQ');
+      const account = encodeURIComponent(currentAgent);
       const otpauthUrl = `otpauth://totp/${issuer}:${account}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
+
       document.getElementById('totp-setup-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(otpauthUrl)}`;
       window.openModal('modal-totp-setup');
     };
 
-    window.copyTotpSecret = function() { navigator.clipboard.writeText(document.getElementById('totp-secret-display').innerText).then(() => alert('TOTP 金鑰已複製！')); };
+    window.copyTotpSecret = function() {
+      navigator.clipboard.writeText(document.getElementById('totp-secret-display').innerText).then(() => alert('TOTP 金鑰已複製！'));
+    };
 
     window.verifyAndSaveTotp = async function() {
       const code = document.getElementById('totp-test-code').value.trim();
       const secret = document.getElementById('totp-secret-display').innerText.trim();
-      if (!code || code.length !== 6) return alert('請輸入 6 位動態口令！');
-      const isValid = await TOTP.verifyTOTP(secret, code, 1);
-      if (!isValid) return alert('⚠️ 動態口令驗證未通過！');
-      await supabase.from('platform_tenant').update({ totp_secret: secret, totp_enabled: true }).eq('tenant_id', currentAgent);
+      if (!code || code.length !== 6) return alert('請輸入驗證器中顯示的 6 位動態口令！');
+
+      const isValid = await TOTP.verifyTOTP(secret, code, 2);
+      if (!isValid) {
+        return alert('⚠️ 動態口令驗證未通過！\n1. 請確認手機「自動設置時間」已開啟；\n2. 若掃碼異常，請點擊「複製密鑰」，在手機驗證器選擇「手動輸入密鑰」添加（時間基準）。');
+      }
+
+      const { error } = await supabase
+        .from('platform_tenant')
+        .update({ totp_secret: secret, totp_enabled: true })
+        .eq('tenant_id', currentAgent);
+
+      if (error) {
+        return alert('儲存綁定失敗：' + error.message);
+      }
+
       alert('🎉 身份驗證器綁定成功！');
       window.closeModal('modal-totp-setup');
     };
@@ -1554,7 +1594,7 @@
       const isTokenMatch = (tenant.reset_claim_token && oldKey.toUpperCase() === tenant.reset_claim_token.toUpperCase());
       if (!isOldKeyMatch && !isTokenMatch) return alert('⚠️ 原訪問密鑰不正確！');
 
-      const isTotpValid = await TOTP.verifyTOTP(tenant.totp_secret || 'JBSWY3DPEHPK3PXP', totpCode, 1);
+      const isTotpValid = await TOTP.verifyTOTP(tenant.totp_secret || 'JBSWY3DPEHPK3PXP', totpCode, 2);
       if (!isTotpValid) return alert('⚠️ 驗證器 6 位動態碼錯誤！');
 
       await supabase.from('platform_tenant').update({ access_key: newKey, reset_claim_token: null }).eq('tenant_id', currentAgent);
@@ -1578,7 +1618,7 @@
       const code = document.getElementById('input-2fa-code').value.trim();
       if (!code || code.length !== 6) return alert('⚠️ 請輸入 6 位動態碼！');
       const { data: tenant } = await supabase.from('platform_tenant').select('*').eq('tenant_id', currentAgent).single();
-      const isValid = await TOTP.verifyTOTP(tenant?.totp_secret || 'JBSWY3DPEHPK3PXP', code, 1);
+      const isValid = await TOTP.verifyTOTP(tenant?.totp_secret || 'JBSWY3DPEHPK3PXP', code, 2);
       if (!isValid) return alert('⚠️ 動態口令驗證失敗！');
       window.close2FAModal();
       if (typeof pending2FACallback === 'function') pending2FACallback();
