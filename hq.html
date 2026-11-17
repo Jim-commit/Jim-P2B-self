@@ -980,7 +980,7 @@
     window.closeModal = id => document.getElementById(id).classList.add('hidden');
 
     // =========================================================================
-    // 群機器人 Webhook 自動報單提醒配置
+    // 群機器人 Webhook 自動報單提醒配置（帶防靜默寫入校驗）
     // =========================================================================
     window.openWebhookModal = function() {
       document.getElementById('webhook-url-input').value = currentTenantData?.webhook_url || '';
@@ -989,11 +989,18 @@
 
     window.saveWebhookUrl = async function() {
       const url = document.getElementById('webhook-url-input').value.trim();
-      const { error } = await supabase.from('platform_tenant').update({ webhook_url: url }).eq('tenant_id', currentAgent);
-      if (error) return alert('儲存失敗：' + error.message);
+      const { data, error } = await supabase
+        .from('platform_tenant')
+        .update({ webhook_url: url })
+        .eq('tenant_id', currentAgent)
+        .select();
+
+      if (error || !data || data.length === 0) {
+        return alert('⚠️ 儲存失敗（請檢查 Supabase 數據庫是否已執行 RLS 放行策略與 webhook_url 字段）：' + (error?.message || '受影響行數為 0'));
+      }
       if (currentTenantData) currentTenantData.webhook_url = url;
       updateWebhookStatusBadge(url);
-      alert(url ? '✅ 報單群機器人已啟用！後續門店下單或新客預約將秒推至微信/釘釘群。' : '已關閉報單群機器人通知。');
+      alert(url ? '✅ 報單群機器人已真正寫入雲端並啟用！' : '已關閉報單群機器人通知。');
       window.closeModal('modal-webhook-setup');
     };
 
@@ -1452,7 +1459,7 @@
     };
 
     // =========================================================================
-    // RFC 6238 TOTP & 主賬號/屬員子賬號雙模登入門禁（已升級兼容所有驗證器 App）
+    // RFC 6238 TOTP & 主賬號/屬員子賬號雙模登入門禁（帶防靜默寫入校驗）
     // =========================================================================
     const TOTP = {
       base32chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567',
@@ -1525,20 +1532,20 @@
       let secret = (tenant?.totp_secret || '').trim();
       if (!secret) {
         secret = TOTP.generateRandomSecret();
-        const { error: upErr } = await supabase
+        const { data: upData, error: upErr } = await supabase
           .from('platform_tenant')
           .update({ totp_secret: secret, totp_enabled: true })
-          .eq('tenant_id', currentAgent);
+          .eq('tenant_id', currentAgent)
+          .select();
 
-        if (upErr) {
-          return alert('⚠️ 雲端數據庫缺少 totp_secret 字段，請先在 Supabase SQL Editor 執行加列語句：' + upErr.message);
+        if (upErr || !upData || upData.length === 0) {
+          return alert('⚠️ 雲端數據庫寫入秘鑰被攔截，請先在 Supabase SQL Editor 執行 RLS 更新放行策略：' + (upErr?.message || '受影響行數為 0'));
         }
       }
 
       document.getElementById('totp-secret-display').innerText = secret;
       document.getElementById('totp-test-code').value = '';
 
-      // 採用純英文標準 otpauth 格式，確保騰訊身份驗證器 / Google / Microsoft 驗證器 100% 識別
       const issuer = encodeURIComponent('SupplyChainHQ');
       const account = encodeURIComponent(currentAgent);
       const otpauthUrl = `otpauth://totp/${issuer}:${account}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
@@ -1561,16 +1568,22 @@
         return alert('⚠️ 動態口令驗證未通過！\n1. 請確認手機「自動設置時間」已開啟；\n2. 若掃碼異常，請點擊「複製密鑰」，在手機驗證器選擇「手動輸入密鑰」添加（時間基準）。');
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('platform_tenant')
         .update({ totp_secret: secret, totp_enabled: true })
-        .eq('tenant_id', currentAgent);
+        .eq('tenant_id', currentAgent)
+        .select();
 
-      if (error) {
-        return alert('儲存綁定失敗：' + error.message);
+      if (error || !data || data.length === 0) {
+        return alert('⚠️ 數據庫寫入被攔截（請檢查 Supabase RLS 更新權限）：' + (error?.message || '受影響行數為 0'));
       }
 
-      alert('🎉 身份驗證器綁定成功！');
+      if (currentTenantData) {
+        currentTenantData.totp_secret = secret;
+        currentTenantData.totp_enabled = true;
+      }
+
+      alert('🎉 身份驗證器已真正寫入雲端並綁定成功！');
       window.closeModal('modal-totp-setup');
     };
 
@@ -1597,10 +1610,19 @@
       const isTotpValid = await TOTP.verifyTOTP(tenant.totp_secret || 'JBSWY3DPEHPK3PXP', totpCode, 2);
       if (!isTotpValid) return alert('⚠️ 驗證器 6 位動態碼錯誤！');
 
-      await supabase.from('platform_tenant').update({ access_key: newKey, reset_claim_token: null }).eq('tenant_id', currentAgent);
+      const { data: upData, error: upErr } = await supabase
+        .from('platform_tenant')
+        .update({ access_key: newKey, reset_claim_token: null })
+        .eq('tenant_id', currentAgent)
+        .select();
+
+      if (upErr || !upData || upData.length === 0) {
+        return alert('⚠️ 修改密碼寫入雲端被攔截（請檢查 Supabase RLS 更新權限）：' + (upErr?.message || '受影響行數為 0'));
+      }
+
       sessionStorage.setItem('hq_tenant_session_' + currentAgent, newKey);
       document.getElementById('hq-default-pwd-banner')?.classList.add('hidden');
-      alert('🎉 新密鑰已生效存盤！');
+      alert('🎉 新密鑰已真正寫入雲端並生效存盤！');
       window.closeModal('modal-change-password');
     };
 
