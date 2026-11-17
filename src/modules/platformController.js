@@ -15,8 +15,7 @@ window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden')
 window.switchTab = function (tabName) {
   ['apps', 'tenants', 'suggestions', 'categories', 'audit'].forEach((t) => {
     document.getElementById(`p-tab-${t}`).classList.add('hidden');
-    document.getElementById(`p-tab-btn-${t}`).className =
-      'flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition';
+    document.getElementById(`p-tab-btn-${t}`).className = 'flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition';
   });
   document.getElementById(`p-tab-${tabName}`).classList.remove('hidden');
   document.getElementById(`p-tab-btn-${tabName}`).className = 'flex-1 py-2 text-center rounded-xl bg-stone-900 text-white transition';
@@ -41,15 +40,11 @@ window.freeGovAuditCheck = function (companyName, creditCode) {
 };
 
 // =========================================================================
-// 总控 TOTP 绑定（复用统一 TOTP 模块 + 防静默写入校验）
+// 总控 TOTP 验证器绑定与 2FA 核身
 // =========================================================================
 window.openPlatformTotpSetup = async function () {
   const account = sessionStorage.getItem('p_auth_account') || 'admin';
-  const { data: admin, error } = await supabase
-    .from('platform_admin_credential')
-    .select('*')
-    .eq('admin_account', account)
-    .single();
+  const { data: admin, error } = await supabase.from('platform_admin_credential').select('*').eq('admin_account', account).single();
 
   if (error || !admin) {
     return alert('读取总控管理员信息失败：' + (error?.message || '未找到账号'));
@@ -151,20 +146,14 @@ async function checkPlatformAuthStatus() {
     return false;
   }
 
-  const { data } = await supabase
-    .from('platform_admin_credential')
-    .select('*')
-    .eq('secret_token', savedToken)
-    .eq('is_active', true)
-    .limit(1);
+  const { data } = await supabase.from('platform_admin_credential').select('*').eq('secret_token', savedToken).eq('is_active', true).limit(1);
 
   if (data && data.length > 0) {
     document.getElementById('platform-auth-gate').classList.add('hidden');
     const pill = document.getElementById('totp-status-pill');
     const btnTotp = document.getElementById('btn-platform-totp');
     if (data[0].totp_enabled && data[0].totp_secret) {
-      pill.className =
-        'bg-emerald-500/20 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-400/40 font-mono font-bold flex items-center gap-1';
+      pill.className = 'bg-emerald-500/20 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-400/40 font-mono font-bold flex items-center gap-1';
       pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> TOTP 已护航';
       if (btnTotp) {
         btnTotp.innerHTML = '<span>✅</span> 总控验证器已绑';
@@ -172,8 +161,7 @@ async function checkPlatformAuthStatus() {
           'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs px-3.5 py-2 rounded-xl font-bold border border-emerald-400/50 active:scale-95 transition flex items-center gap-1.5';
       }
     } else {
-      pill.className =
-        'bg-stone-800 text-stone-400 text-[10px] px-2.5 py-0.5 rounded-full border border-stone-700 font-mono font-bold flex items-center gap-1';
+      pill.className = 'bg-stone-800 text-stone-400 text-[10px] px-2.5 py-0.5 rounded-full border border-stone-700 font-mono font-bold flex items-center gap-1';
       pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-stone-500"></span> TOTP 未激活';
       if (btnTotp) {
         btnTotp.innerHTML = '<span>🛡️</span> 绑定总控验证器';
@@ -252,9 +240,19 @@ async function recordAuditLog(actionTitle, level, details) {
   } catch (e) {}
 }
 
+// =========================================================================
+// 大盘数据加载与各板块渲染
+// =========================================================================
 window.loadPlatformData = async function () {
-  const { data: apps } = await supabase.from('tenant_application').select('*').order('id', { ascending: false });
-  allApplications = apps || [];
+  const [appsRes, tenantsRes, suggsRes, catsRes, auditsRes] = await Promise.all([
+    supabase.from('tenant_application').select('*').order('id', { ascending: false }),
+    supabase.from('platform_tenant').select('*').order('id', { ascending: false }),
+    supabase.from('platform_suggestion_board').select('*').order('id', { ascending: false }),
+    supabase.from('platform_category').select('*').order('sort_order', { ascending: true }),
+    supabase.from('audit_immutable_log').select('*').order('id', { ascending: false }).limit(25)
+  ]);
+
+  allApplications = appsRes.data || [];
   const pendingApps = allApplications.filter((a) => a.application_status === 'pending_review');
   document.getElementById('stat-pending-apps').innerText = `${pendingApps.length} 份`;
 
@@ -267,13 +265,11 @@ window.loadPlatformData = async function () {
   }
   renderApplications();
 
-  const { data: tenants } = await supabase.from('platform_tenant').select('*').order('id', { ascending: false });
-  allTenants = tenants || [];
+  allTenants = tenantsRes.data || [];
   document.getElementById('stat-total-tenants').innerText = `${allTenants.length} 家`;
   renderTenantsTable();
 
-  const { data: suggs } = await supabase.from('platform_suggestion_board').select('*').order('id', { ascending: false });
-  allSuggestions = suggs || [];
+  allSuggestions = suggsRes.data || [];
   const pendingSuggs = allSuggestions.filter((s) => s.reply_status === 'pending');
   document.getElementById('stat-pending-suggs').innerText = `${pendingSuggs.length} 帖`;
   const sBadge = document.getElementById('badge-sugg-count');
@@ -285,18 +281,15 @@ window.loadPlatformData = async function () {
   }
   renderSuggestions();
 
-  const { data: cats } = await supabase.from('platform_category').select('*').order('sort_order', { ascending: true });
-  allCategories = cats || [];
+  allCategories = catsRes.data || [];
   const l1 = allCategories.filter((c) => c.level === 1);
   const l2 = allCategories.filter((c) => c.level === 2);
   document.getElementById('stat-cat-l1').innerText = `${l1.length} 类`;
   document.getElementById('stat-cat-l2').innerText = `${l2.length} 项`;
   renderCategoryTree();
 
-  const { data: audits } = await supabase.from('audit_immutable_log').select('*').order('id', { ascending: false }).limit(25);
-  allAuditLogs = audits || [];
+  allAuditLogs = auditsRes.data || [];
   renderAuditLogs();
-
   updateAISummaryInsight();
 };
 
@@ -326,8 +319,7 @@ function renderApplications() {
   container.innerHTML = allApplications
     .map((a) => {
       const isPending = a.application_status === 'pending_review';
-      const isApproved =
-        a.application_status === 'approved' || a.application_status === 'approved_by_ai' || a.application_status === 'approved_manually';
+      const isApproved = a.application_status === 'approved' || a.application_status === 'approved_by_ai' || a.application_status === 'approved_manually';
       return `
         <div class="p-4 bg-stone-50 border ${isPending ? 'border-amber-300 shadow-sm' : 'border-stone-200'} rounded-2xl space-y-2.5">
           <div class="flex flex-wrap justify-between items-start gap-2">
@@ -358,10 +350,8 @@ function renderApplications() {
               <span class="text-stone-400">执照原件:</span>
               ${
                 a.license_image_url
-                  ? `
-                <img src="${a.license_image_url}" class="h-10 w-16 object-cover rounded-lg border border-stone-300 cursor-pointer shadow-sm hover:scale-105 transition" onclick="window.previewFullImage('${a.license_image_url}')" title="点击放大核对公章与文字">
-                <span class="text-[10px] text-stone-500">(点击放大肉眼查验公章纹理)</span>
-              `
+                  ? `<img src="${a.license_image_url}" class="h-10 w-16 object-cover rounded-lg border border-stone-300 cursor-pointer shadow-sm hover:scale-105 transition" onclick="window.previewFullImage('${a.license_image_url}')" title="点击放大核对公章与文字">
+                     <span class="text-[10px] text-stone-500">(点击放大肉眼查验公章纹理)</span>`
                   : '<span class="text-stone-400">无附图</span>'
               }
             </div>
@@ -397,17 +387,11 @@ function renderTenantsTable() {
     .map((t) => {
       const status = t.membership_status || (t.is_active ? 'active' : 'paused');
       let statusTag = '';
-      if (!t.is_active || status === 'paused') {
-        statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">🛑 商道暂歇</span>';
-      } else if (status === 'trial') {
-        statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-100 text-cyan-800">🍃 尝鲜体验</span>';
-      } else if (status === 'grace') {
-        statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">🍃 春风宽待</span>';
-      } else if (status === 'restricted') {
-        statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">🛡️ 护盘存续</span>';
-      } else {
-        statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">🟢 和合在册</span>';
-      }
+      if (!t.is_active || status === 'paused') statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">🛑 商道暂歇</span>';
+      else if (status === 'trial') statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-100 text-cyan-800">🍃 尝鲜体验</span>';
+      else if (status === 'grace') statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">🍃 春风宽待</span>';
+      else if (status === 'restricted') statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">🛡️ 护盘存续</span>';
+      else statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">🟢 和合在册</span>';
 
       return `
         <tr class="hover:bg-stone-50 transition">
@@ -530,27 +514,14 @@ function renderAuditLogs() {
 }
 
 window.issueResetTokenPrompt = function (id, tenantId, companyName) {
-  window.triggerPlatform2FA(
-    `您正在为商号【${companyName}】签发专属【自立新约重置信码】。由厂商当家掌柜在后台自行重置密码，平台不留存也不窥探密码：`,
-    async () => {
-      const resetToken = 'CLAIM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-      await supabase
-        .from('platform_tenant')
-        .update({
-          access_key: resetToken,
-          reset_claim_token: resetToken
-        })
-        .eq('tenant_id', tenantId);
+  window.triggerPlatform2FA(`您正在为商号【${companyName}】签发专属【自立新约重置信码】。由厂商当家掌柜在后台自行重置密码，平台不留存也不窥探密码：`, async () => {
+    const resetToken = 'CLAIM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    await supabase.from('platform_tenant').update({ access_key: resetToken, reset_claim_token: resetToken }).eq('tenant_id', tenantId);
 
-      recordAuditLog('签发自立新约信码', 'CRITICAL_2FA', { tenant_id: tenantId, claim_token: resetToken });
-      alert(
-        `📜 已为【${companyName}】签发自立新约信码！\n\n` +
-          `• 单次重置信码：${resetToken}\n` +
-          `• 交付说明：请转交该企业负责人，厂商在 hq.html 凭此信码即可自立新密码。`
-      );
-      window.loadPlatformData();
-    }
-  );
+    recordAuditLog('签发自立新约信码', 'CRITICAL_2FA', { tenant_id: tenantId, claim_token: resetToken });
+    alert(`📜 已为【${companyName}】签发自立新约信码！\n\n• 单次重置信码：${resetToken}\n• 交付说明：请转交该企业负责人，厂商在 hq.html 凭此信码即可自立新密码。`);
+    window.loadPlatformData();
+  });
 };
 
 window.openTenantStatusModal = function (id, tenantId, companyName, currentStatus) {
@@ -581,33 +552,22 @@ window.saveTenantStatusAdjustment = async function () {
 
     let { data, error } = await supabase
       .from('platform_tenant')
-      .update({
-        membership_status: status,
-        is_active: is_active
-      })
+      .update({ membership_status: status, is_active: is_active })
       .eq('tenant_id', tenantKey)
       .select();
 
     if (!error && (!data || data.length === 0) && !isNaN(tenantKey)) {
       const retry = await supabase
         .from('platform_tenant')
-        .update({
-          membership_status: status,
-          is_active: is_active
-        })
+        .update({ membership_status: status, is_active: is_active })
         .eq('id', parseInt(tenantKey))
         .select();
       data = retry.data;
       error = retry.error;
     }
 
-    if (error) {
-      return alert('❌ 数据库更新失败: ' + error.message);
-    }
-
-    if (!data || data.length === 0) {
-      return alert(`⚠️ 未找到商号标识为【${tenantKey}】的数据列！`);
-    }
+    if (error) return alert('❌ 数据库更新失败: ' + error.message);
+    if (!data || data.length === 0) return alert(`⚠️ 未找到商号标识为【${tenantKey}】的数据列！`);
 
     await recordAuditLog('商契气象调控', 'WARN', { tenant_key: tenantKey, target_status: status, note });
 
@@ -628,53 +588,42 @@ window.triggerPurgeFromModal = function () {
 window.confirmPurgeTenantAction = function (tenantId, companyName) {
   const cleanName = (companyName || '').split('(')[0].trim();
 
-  window.triggerPlatform2FA(
-    `⚠️ 最高警戒：即将彻底销号商号【${cleanName || tenantId}】(${tenantId})，清空入驻审核与主体账本。请出示 2FA 口令确认：`,
-    async () => {
-      const confirmCode = prompt(
-        `⚠️ 危险确认：商号【${cleanName || tenantId}】即将作废除名！\n\n` +
-          `该操作将物理清除 platform_tenant 与 tenant_application 记录。\n` +
-          `完成后厂商可持执照原件前往 join.html 重新扫描核验。\n\n` +
-          `若确认销号重置，请在下方输入大写：DELETE`
-      );
+  window.triggerPlatform2FA(`⚠️ 最高警戒：即将彻底销号商号【${cleanName || tenantId}】(${tenantId})，清空入驻审核与主体账本。请出示 2FA 口令确认：`, async () => {
+    const confirmCode = prompt(
+      `⚠️ 危险确认：商号【${cleanName || tenantId}】即将作废除名！\n\n` +
+        `该操作将物理清除 platform_tenant 与 tenant_application 记录。\n` +
+        `完成后厂商可持执照原件前往 join.html 重新扫描核验。\n\n` +
+        `若确认销号重置，请在下方输入大写：DELETE`
+    );
 
-      if (confirmCode !== 'DELETE') {
-        return alert('操作已取消，未做任何变更。');
-      }
+    if (confirmCode !== 'DELETE') return alert('操作已取消，未做任何变更。');
 
+    try {
+      await supabase.from('tenant_application').delete().or(`tenant_id.eq.${tenantId},company_name.eq.${cleanName}`);
       try {
-        await supabase.from('tenant_application').delete().or(`tenant_id.eq.${tenantId},company_name.eq.${cleanName}`);
+        await supabase.from('goods').delete().eq('tenant_id', tenantId);
+      } catch (e) {}
+      try {
+        await supabase.from('customers').delete().eq('tenant_id', tenantId);
+      } catch (e) {}
 
-        try {
-          await supabase.from('product').delete().eq('tenant_id', tenantId);
-        } catch (e) {}
-        try {
-          await supabase.from('store').delete().eq('tenant_id', tenantId);
-        } catch (e) {}
+      const { data: deletedRows, error: delError } = await supabase
+        .from('platform_tenant')
+        .delete()
+        .or(`tenant_id.eq.${tenantId},company_name.eq.${cleanName}`)
+        .select();
 
-        const { data: deletedRows, error: delError } = await supabase
-          .from('platform_tenant')
-          .delete()
-          .or(`tenant_id.eq.${tenantId},company_name.eq.${cleanName}`)
-          .select();
+      if (delError) throw new Error('数据库拒绝删除: ' + delError.message);
+      if (!deletedRows || deletedRows.length === 0) throw new Error(`未找到商号【${tenantId}】，或数据库 RLS 策略阻止了 DELETE 权限！`);
 
-        if (delError) {
-          throw new Error('数据库拒绝删除: ' + delError.message);
-        }
+      await recordAuditLog('商号作废除名销号', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: cleanName });
 
-        if (!deletedRows || deletedRows.length === 0) {
-          throw new Error(`未找到商号【${tenantId}】，或数据库 RLS 策略阻止了 DELETE 权限！`);
-        }
-
-        await recordAuditLog('商号作废除名销号', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: cleanName });
-
-        alert(`✅ 商号【${cleanName}】已彻底清除（已销毁 ${deletedRows.length} 笔在册档案）！\n商号代号已完全释放，厂商可返回 join.html 重新拍照验证。`);
-        await window.loadPlatformData();
-      } catch (err) {
-        alert('❌ 销号执行失败: ' + err.message);
-      }
+      alert(`✅ 商号【${cleanName}】已彻底清除（已销毁 ${deletedRows.length} 笔在册档案）！\n商号代号已完全释放，厂商可返回 join.html 重新拍照验证。`);
+      await window.loadPlatformData();
+    } catch (err) {
+      alert('❌ 销号执行失败: ' + err.message);
     }
-  );
+  });
 };
 
 function renderCategoryTree() {
@@ -724,8 +673,7 @@ window.approveApplication = async function (appId, tenantId, companyName) {
   if (fee === null) return;
 
   const app = allApplications.find((a) => a.id === appId);
-  const defaultLast6Key =
-    app && app.credit_code && app.credit_code.length >= 6 ? app.credit_code.slice(-6).toUpperCase() : `${tenantId.toLowerCase()}@2026`;
+  const defaultLast6Key = app && app.credit_code && app.credit_code.length >= 6 ? app.credit_code.slice(-6).toUpperCase() : `${tenantId.toLowerCase()}@2026`;
 
   const initialKey = prompt('确认初始安家密码（默认为营业执照代码后 6 位）：', defaultLast6Key);
   if (!initialKey) return;
@@ -759,12 +707,7 @@ window.approveApplication = async function (appId, tenantId, companyName) {
 
   recordAuditLog('审批激活新商号', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: companyName });
 
-  alert(
-    `🎉 审核通过并激活建档！\n\n` +
-      `• 厂商全称: ${companyName}\n` +
-      `• 商号代号（唯一标识）: ${tenantId}\n` +
-      `• 初始安家密码（执照后6位）: ${initialKey.trim()}`
-  );
+  alert(`🎉 审核通过并激活建档！\n\n• 厂商全称: ${companyName}\n• 商号代号（唯一标识）: ${tenantId}\n• 初始安家密码（执照后6位）: ${initialKey.trim()}`);
   window.loadPlatformData();
 };
 
@@ -805,33 +748,30 @@ window.submitManualTenant = function () {
 
   if (!company_name || !tenant_id) return alert('请完整填写主体全称与商号代号！');
 
-  window.triggerPlatform2FA(
-    `您正在免审核直接为【${company_name}】特邀开立独立账本商号【${tenant_id}】，请核验总控 2FA 凭证：`,
-    async () => {
-      const { error } = await supabase.from('platform_tenant').insert([
-        {
-          tenant_id,
-          company_name,
-          credit_code,
-          business_type,
-          service_mode,
-          contact_person,
-          contact_name: contact_person,
-          access_key,
-          membership_status: 'active',
-          is_active: true
-        }
-      ]);
-
-      if (error) alert('开户失败: ' + error.message);
-      else {
-        recordAuditLog('线下特邀直通开户', 'CRITICAL_2FA', { tenant_id, company_name });
-        alert(`🎉 厂家【${company_name}】直通开户成功！\n• 商号代号：${tenant_id}\n• 预设安家密钥（执照后6位）：${access_key}`);
-        window.closeModal('manual-tenant-modal');
-        window.loadPlatformData();
+  window.triggerPlatform2FA(`您正在免审核直接为【${company_name}】特邀开立独立账本商号【${tenant_id}】，请核验总控 2FA 凭证：`, async () => {
+    const { error } = await supabase.from('platform_tenant').insert([
+      {
+        tenant_id,
+        company_name,
+        credit_code,
+        business_type,
+        service_mode,
+        contact_person,
+        contact_name: contact_person,
+        access_key,
+        membership_status: 'active',
+        is_active: true
       }
+    ]);
+
+    if (error) alert('开户失败: ' + error.message);
+    else {
+      recordAuditLog('线下特邀直通开户', 'CRITICAL_2FA', { tenant_id, company_name });
+      alert(`🎉 厂家【${company_name}】直通开户成功！\n• 商号代号：${tenant_id}\n• 预设安家密钥（执照后6位）：${access_key}`);
+      window.closeModal('manual-tenant-modal');
+      window.loadPlatformData();
     }
-  );
+  });
 };
 
 window.openAddCategoryModal = function () {
@@ -881,14 +821,12 @@ window.savePlatformCategory = async function () {
 
 window.previewFullImage = function (url) {
   const w = window.open('');
-  w.document.write(
-    `<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`
-  );
+  w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
 };
 
-(async () => {
+export async function initPlatformController() {
   const isAuthed = await checkPlatformAuthStatus();
   if (isAuthed) {
     window.loadPlatformData();
   }
-})();
+}
