@@ -56,7 +56,66 @@ function safeSetText(id, text) {
 }
 
 // ==========================================
-// 核心：统一一客一价 & 专属折扣算价引擎
+// 运营工具 1：群机器人自动报单通知推送器
+// ==========================================
+async function notifyVendorWebhook(tenantId, messageText) {
+  try {
+    const { data: tenant } = await supabase
+      .from('platform_tenant')
+      .select('webhook_url')
+      .eq('tenant_id', tenantId)
+      .single();
+
+    const url = (tenant?.webhook_url || '').trim();
+    if (!url || !url.startsWith('http')) return;
+
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        msgtype: 'text',
+        text: { content: messageText },
+        content: { text: messageText }
+      })
+    });
+  } catch (e) {
+    console.warn('群机器人推送跳过:', e);
+  }
+}
+
+// ==========================================
+// 运营工具 2：老客户带新客户裂变弹窗
+// ==========================================
+window.openReferralModal = function() {
+  window.closeAllMenus();
+  const storeName = currentStore?.name || (document.getElementById('store-title')?.innerText || '').trim() || '厚德便民老店';
+  const curAgentObj = myAgents.find(a => a.id === currentAgent);
+  const agentName = curAgentObj?.name || currentAgent;
+  const refUrl = `${window.location.origin}/suppliers.html?t=${encodeURIComponent(currentAgent)}&ref=${encodeURIComponent(storeName)}`;
+
+  safeSetText('ref-store-title', `${storeName} · 诚意荐庄`);
+  safeSetText('ref-agent-subtitle', `携手【${agentName}】源头直供 · 送货到店`);
+  const qrImg = document.getElementById('ref-qr-img');
+  if (qrImg) {
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(refUrl)}`;
+  }
+  window.openModal('referral-modal');
+};
+
+window.copyReferralShareText = function() {
+  const storeName = currentStore?.name || (document.getElementById('store-title')?.innerText || '').trim() || '厚德便民老店';
+  const curAgentObj = myAgents.find(a => a.id === currentAgent);
+  const agentName = curAgentObj?.name || currentAgent;
+  const refUrl = `${window.location.origin}/suppliers.html?t=${encodeURIComponent(currentAgent)}&ref=${encodeURIComponent(storeName)}`;
+  const shareText = `【同行推荐】我们店一直在用【${agentName}】的货，源头直供、价格实在、送货准时！通过我的专属链接预约业务员免费上门送样：${refUrl}`;
+  navigator.clipboard.writeText(shareText).then(() => {
+    alert('✅ 专属同行推荐话术与链接已复制，可直接转发微信好友或行业群！');
+  });
+};
+
+// ==========================================
+// 统一一客一价 & 专属折扣算价引擎
 // ==========================================
 function getStorePriceInfo(prod) {
   const basePrice = ShopTypeManager.getEffectivePrice(prod, shopType);
@@ -64,7 +123,6 @@ function getStorePriceInfo(prod) {
     ? currentStore.custom_pricing
     : {};
 
-  // 1. 单品协议特价（一客一价最高优先级）
   if (pricing.item_prices && pricing.item_prices[String(prod.id)] !== undefined) {
     const special = parseFloat(pricing.item_prices[String(prod.id)]);
     if (!isNaN(special) && special > 0) {
@@ -72,7 +130,6 @@ function getStorePriceInfo(prod) {
     }
   }
 
-  // 2. 价盘等级（大客惠价）
   let tierPrice = basePrice;
   let badge = (basePrice < parseFloat(prod.tier_1_price || basePrice)) ? '大客价' : '';
   if (pricing.price_tier === 'tier_2' && prod.tier_2_price) {
@@ -80,7 +137,6 @@ function getStorePriceInfo(prod) {
     badge = '大客惠价';
   }
 
-  // 3. 全场协议折扣率（如 0.95 代表 95 折）
   const rate = parseFloat(pricing.discount_rate || 1);
   if (!isNaN(rate) && rate > 0 && rate !== 1) {
     const discounted = Number((tierPrice * rate).toFixed(2));
@@ -90,7 +146,6 @@ function getStorePriceInfo(prod) {
   return { price: tierPrice, badge };
 }
 
-// 退换货凭证图片自动上传 Storage（失败自动回退 Base64）
 async function uploadProofBlobToStorage(base64Data) {
   if (!base64Data || !base64Data.startsWith('data:image')) return base64Data;
   try {
@@ -792,10 +847,11 @@ window.confirmAndSubmitOrder = async () => {
   }
 
   try {
+    const storeName = currentStore ? currentStore.name : '厚德便民老店';
     await StoreService.submitComprehensiveOrder({
       tenantId: currentAgent,
       storeId: currentStore ? currentStore.id : 1,
-      storeName: currentStore ? currentStore.name : '厚德便民老店',
+      storeName: storeName,
       driverName: currentStore ? currentStore.driver_name : '老张师傅',
       orderSource: 'store_order',
       settlementType,
@@ -810,6 +866,16 @@ window.confirmAndSubmitOrder = async () => {
       proofImages: uploadedProofImages,
       currentDebt: currentStore?.current_debt || 0
     });
+
+    const itemsSummary = orderItems.map(i => `${i.name}x${i.qty}${i.measure_unit || '件'}`).join('、');
+    const webhookMsg =
+      `📦【新单报单提醒】\n` +
+      `下单门店：${storeName}\n` +
+      `结算方式：${settlementType} | 应结净额：¥${netTotal.toFixed(2)}\n` +
+      `货品明细：${itemsSummary || '退换货单'}\n` +
+      (deliveryNote ? `随车口信：${deliveryNote}\n` : '') +
+      `请登录厂商调度台审核接单并打印装车总拣货单。`;
+    await notifyVendorWebhook(currentAgent, webhookMsg);
 
     alert(`🎉 凭单已顺利传达供货厂商！\n应付净额: ¥${netTotal.toFixed(2)}\n厂家应允后师傅随车送抵！`);
 
@@ -1074,7 +1140,7 @@ window.callDriver = () => {
 };
 
 // ==========================================
-// 11. 货品列表渲染（支持一客一价专属徽章 + 百业自定义属性）
+// 11. 货品列表渲染（一客一价专属徽章 + 百业自定义属性）
 // ==========================================
 function renderCategoryTabs() {
   const categories = ['全部', ...new Set(allProducts.map(p => p.category_main).filter(Boolean))];
@@ -1125,7 +1191,6 @@ function renderProductList() {
     const tags = Array.isArray(p.tags) ? p.tags : [];
     const tagHtml = tags.map(t => `<span class="bg-amber-50 text-amber-900 border border-amber-200 text-[9px] px-1.5 py-0.2 rounded font-medium">${t}</span>`).join(' ');
 
-    // 百业自定义展示属性渲染
     const customAttrs = (p.custom_specs && typeof p.custom_specs === 'object' && p.custom_specs.attrs) ? p.custom_specs.attrs : {};
     const attrsHtml = Object.entries(customAttrs).map(([k, v]) =>
       `<span class="bg-stone-100 text-stone-600 border border-stone-200 text-[9px] px-1.5 py-0.2 rounded">${k}:${v}</span>`
