@@ -1037,6 +1037,18 @@
       }
     }
 
+    function updateTotpStatusBadge(isEnabled) {
+      const totpBtn = document.getElementById('btn-top-totp');
+      if (!totpBtn) return;
+      if (isEnabled) {
+        totpBtn.innerHTML = '✅ 驗證器已綁';
+        totpBtn.className = 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs px-2.5 py-2 rounded-xl font-bold border border-emerald-400/50 active:scale-95 transition';
+      } else {
+        totpBtn.innerHTML = '🛡️ 驗證器';
+        totpBtn.className = 'bg-[#143628] hover:bg-[#0e271d] text-emerald-300 text-xs px-2.5 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition';
+      }
+    }
+
     function applyRoleViewExperience(roleCode, operatorName) {
       const displayEl = document.getElementById('hq-operator-role-display');
       const roleLabels = {
@@ -1582,6 +1594,7 @@
         currentTenantData.totp_secret = secret;
         currentTenantData.totp_enabled = true;
       }
+      updateTotpStatusBadge(true);
 
       alert('🎉 身份驗證器已真正寫入雲端並綁定成功！');
       window.closeModal('modal-totp-setup');
@@ -1781,6 +1794,7 @@
       document.getElementById('hq-tenant-id').innerText = curTenant.tenant_id;
       document.getElementById('carrier-label-btn').innerText = `${carrierLabel} ✎`;
       updateWebhookStatusBadge(curTenant.webhook_url || '');
+      updateTotpStatusBadge(!!(curTenant.totp_enabled && curTenant.totp_secret));
 
       const defaultBanner = document.getElementById('hq-default-pwd-banner');
       if (currentRoleCode === 'owner' && curTenant.credit_code && curTenant.credit_code.length >= 6) {
