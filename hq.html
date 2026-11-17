@@ -98,7 +98,7 @@
       <span class="text-[10px] text-amber-800 font-mono">商道相攜 · 寬猛相濟</span>
     </div>
 
-    <!-- 第一層：三流合一晴雨表 -->
+    <!-- 第一層：三流合一晴雨表（一屏看穿物品流、資金流、信息流，點擊直達處理） -->
     <section class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
       <div onclick="window.switchTab('products')" class="cursor-pointer bg-white p-4 rounded-3xl shadow-sm border border-stone-200/80 hover:border-emerald-500 transition group">
         <div class="flex justify-between items-center mb-2">
@@ -333,6 +333,7 @@
         <div id="order-fulfillment-list" class="space-y-3 text-xs max-h-[520px] overflow-y-auto no-scrollbar"></div>
       </div>
 
+      <!-- 財務點款入賬 -->
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex justify-between items-center">
           <div>
@@ -344,6 +345,7 @@
         <div id="driver-settle-list" class="space-y-2 text-xs"></div>
       </div>
 
+      <!-- 屬員四權分立 -->
       <div id="rbac-card-box" class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex justify-between items-center">
           <div>
@@ -375,7 +377,7 @@
 
   </div>
 
-  <!-- 彈窗區（群通知、出入庫、客戶策略、貨品發布、揀貨單、招商碼、專供、主動配貨、門禁、改密、2FA、驗證器、屬員、掃碼） -->
+  <!-- 群機器人自動報單提醒配置彈窗（支持企業微信 / 釘釘 / 飛書） -->
   <div id="modal-webhook-setup" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -385,22 +387,30 @@
         </div>
         <button onclick="window.closeModal('modal-webhook-setup')" class="text-stone-400 text-lg">✕</button>
       </div>
+
       <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-emerald-950 space-y-1 text-[11px] leading-relaxed">
         <b>如何獲取群機器人 Webhook 地址？</b><br/>
         • <b>企業微信群</b>：群設置 ➔ 群機器人 ➔ 添加機器人 ➔ 複製 Webhook 地址。<br/>
         • <b>釘釘 / 飛書群</b>：群設置 ➔ 智能群助手 ➔ 添加自定義機器人（關鍵詞填「新單」或「報單」）。
       </div>
+
       <div class="space-y-2">
         <label class="block text-stone-700 font-bold">群機器人 Webhook URL（留空則關閉提醒）：</label>
         <input type="url" id="webhook-url-input" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-xs outline-none focus:border-emerald-700">
       </div>
+
       <div class="flex gap-2 pt-2 border-t border-stone-100">
-        <button type="button" onclick="window.testWebhookPing()" class="bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-3.5 py-2.5 rounded-xl transition">📡 發送測試消息</button>
-        <button type="button" onclick="window.saveWebhookUrl()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">儲存配置並啟用</button>
+        <button type="button" onclick="window.testWebhookPing()" class="bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-3.5 py-2.5 rounded-xl transition">
+          📡 發送測試消息
+        </button>
+        <button type="button" onclick="window.saveWebhookUrl()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">
+          儲存配置並啟用
+        </button>
       </div>
     </div>
   </div>
 
+  <!-- 彈窗 A：倉庫出入庫與實地盤點校準彈窗 -->
   <div id="modal-stock-ops" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -410,13 +420,16 @@
         </div>
         <button onclick="window.closeModal('modal-stock-ops')" class="text-stone-400 text-lg">✕</button>
       </div>
+
       <input type="hidden" id="stock-ops-prod-id" value="">
       <input type="hidden" id="stock-ops-cur-stock" value="0">
+
       <div class="grid grid-cols-3 gap-1.5 bg-stone-100 p-1 rounded-xl font-bold text-center">
         <button type="button" onclick="window.setStockOpsMode('in_purchase')" id="btn-mode-in" class="py-1.5 rounded-lg bg-[#1b4332] text-white transition">+ 採購/生產入庫</button>
         <button type="button" onclick="window.setStockOpsMode('out_loss')" id="btn-mode-out" class="py-1.5 rounded-lg text-stone-600 transition">- 報損/領用出庫</button>
         <button type="button" onclick="window.setStockOpsMode('audit_adjust')" id="btn-mode-audit" class="py-1.5 rounded-lg text-stone-600 transition">⚖️ 實地盤點校準</button>
       </div>
+
       <div class="space-y-2.5">
         <div>
           <label id="stock-ops-qty-label" class="block text-stone-700 font-bold mb-1">本次入庫數量 *：</label>
@@ -431,10 +444,14 @@
           <input type="text" id="stock-ops-remark" placeholder="例：202611批次生產完工入庫" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none">
         </div>
       </div>
-      <button onclick="window.submitStockOperation()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">確認執行並記入倉庫流水賬</button>
+
+      <button onclick="window.submitStockOperation()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+        確認執行並記入倉庫流水賬
+      </button>
     </div>
   </div>
 
+  <!-- 彈窗 B：客戶專屬價格策略與商契配置彈窗 -->
   <div id="store-policy-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -444,7 +461,9 @@
         </div>
         <button onclick="window.closeModal('store-policy-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
+
       <input type="hidden" id="policy-store-id" value="">
+
       <div class="space-y-3">
         <div class="bg-emerald-50/70 border border-emerald-200 p-3 rounded-2xl space-y-2.5">
           <b class="text-emerald-950 block">💎 客戶專屬價格體系（彈性定價）：</b>
@@ -461,14 +480,18 @@
               <input type="number" step="0.01" min="0.1" max="2" id="policy-discount-rate" value="1.00" class="w-full bg-white border border-emerald-300 rounded-xl px-2.5 py-1.5 font-mono font-bold outline-none">
             </div>
           </div>
+
           <div class="space-y-1.5 pt-1 border-t border-emerald-200/70">
             <div class="flex justify-between items-center">
               <span class="text-[11px] font-bold text-emerald-900">單品協議特價（一客一價）：</span>
-              <button type="button" onclick="window.addCustomPriceRuleRow()" class="text-[10px] bg-white border border-emerald-300 text-emerald-900 font-bold px-2 py-0.5 rounded-lg">+ 指定單品特價</button>
+              <button type="button" onclick="window.addCustomPriceRuleRow()" class="text-[10px] bg-white border border-emerald-300 text-emerald-900 font-bold px-2 py-0.5 rounded-lg">
+                + 指定單品特價
+              </button>
             </div>
             <div id="custom-price-rules-box" class="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar"></div>
           </div>
         </div>
+
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-stone-600 font-bold mb-1">免息授信寬限 (元)：</label>
@@ -479,6 +502,7 @@
             <input type="number" id="policy-return-quota" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 font-mono font-bold outline-none">
           </div>
         </div>
+
         <div>
           <label class="block text-stone-600 font-bold mb-1">預設優選結算方式：</label>
           <select id="policy-default-settlement" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none font-bold">
@@ -490,6 +514,7 @@
             <option value="custom">商契專案約定</option>
           </select>
         </div>
+
         <div>
           <label class="block text-stone-600 font-bold mb-1">授權開放的結算白名單：</label>
           <div id="policy-allowed-checkboxes" class="grid grid-cols-2 gap-1.5 bg-stone-50 p-2.5 rounded-xl border border-stone-200 text-[11px]">
@@ -502,6 +527,7 @@
             <label class="flex items-center gap-1.5 col-span-2"><input type="checkbox" value="custom" class="policy-cb"> 允許專案商契條款</label>
           </div>
         </div>
+
         <div>
           <label class="block text-stone-600 font-bold mb-1">交割結算工作流形態：</label>
           <select id="policy-workflow-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none font-bold">
@@ -509,17 +535,22 @@
             <option value="receipt_only">📜 僅驗貨簽回單 (工程/大宗期末統對)</option>
           </select>
         </div>
+
         <div>
           <label class="block text-stone-600 font-bold mb-1">專案約定備忘：</label>
           <input type="text" id="policy-custom-terms" placeholder="如：節令過後第一個週一統對" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
         </div>
       </div>
+
       <div class="flex gap-2 pt-2 border-t border-stone-100">
-        <button onclick="window.saveStorePolicySettings()" class="flex-1 bg-[#1b4332] text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition shadow">儲存價格與商約策略</button>
+        <button onclick="window.saveStorePolicySettings()" class="flex-1 bg-[#1b4332] text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition shadow">
+          儲存價格與商約策略
+        </button>
       </div>
     </div>
   </div>
 
+  <!-- 彈窗 C：貨品發布與全自定義屬性彈窗 -->
   <div id="product-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -529,7 +560,9 @@
         </div>
         <button onclick="window.closeAddProductModal()" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
+
       <input type="hidden" id="editing-prod-id" value="">
+
       <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200 space-y-2">
         <label class="block text-stone-700 font-bold text-xs">貨品投放渠道（可多選）：</label>
         <div class="grid grid-cols-2 gap-3 text-xs">
@@ -543,6 +576,7 @@
             </div>
             <span id="lock-channel-bm" class="hidden text-[10px] bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded font-bold">🔒 未開通</span>
           </label>
+
           <label id="box-channel-ec" class="p-2.5 rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer transition bg-white select-none hover:border-emerald-500">
             <div class="flex items-center gap-2">
               <input type="checkbox" id="chk-channel-ec" class="w-4 h-4 rounded text-emerald-800">
@@ -555,6 +589,7 @@
           </label>
         </div>
       </div>
+
       <div class="grid grid-cols-3 gap-2 bg-stone-50 p-2.5 rounded-2xl border border-stone-200">
         <div>
           <label class="font-bold text-stone-700 text-[11px] block mb-1">一級大項</label>
@@ -569,20 +604,25 @@
           <input type="text" id="prod-cat-tertiary" placeholder="如：304緊固件 / 壓榨油" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 outline-none font-medium text-xs">
         </div>
       </div>
+
       <div>
         <label class="block text-[11px] font-bold text-stone-700 mb-1">貨品全稱 *：</label>
         <input type="text" id="prod-name" placeholder="輸入商品/材料/配件完整名稱" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-700 font-medium">
       </div>
+
       <div class="bg-amber-50/70 p-3 rounded-2xl border border-amber-200 space-y-2">
         <div class="flex justify-between items-center">
           <div>
             <label class="font-bold text-amber-950 text-[11px] block">🧩 百業自定義展示屬性（不寫死規格，按需添加）：</label>
             <span class="text-[10px] text-amber-800">如食品填「保質期: 12個月」，五金填「材質: 304鋼」</span>
           </div>
-          <button type="button" onclick="window.addCustomAttrRow()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[11px] shadow-xs shrink-0">+ 添加屬性</button>
+          <button type="button" onclick="window.addCustomAttrRow()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[11px] shadow-xs shrink-0">
+            + 添加屬性
+          </button>
         </div>
         <div id="custom-attrs-container" class="space-y-1.5"></div>
       </div>
+
       <div class="bg-emerald-50/60 p-2.5 rounded-2xl border border-emerald-100 space-y-1.5">
         <div class="flex justify-between items-center">
           <label class="font-bold text-emerald-950 text-[11px]">🏷️ 營銷特色標籤：</label>
@@ -590,6 +630,7 @@
         </div>
         <div id="quick-tags-box" class="flex flex-wrap gap-1.5"></div>
       </div>
+
       <div class="grid grid-cols-4 gap-2">
         <div>
           <label class="block text-[11px] text-stone-500 mb-1">計量單位：</label>
@@ -608,6 +649,7 @@
           <input type="number" id="prod-min-stock" value="10" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2 py-1.5 font-mono text-xs outline-none">
         </div>
       </div>
+
       <div class="grid grid-cols-2 gap-2 bg-emerald-50/80 border border-emerald-200 p-3 rounded-2xl">
         <div>
           <label class="block text-[11px] font-bold text-emerald-950 mb-1">基礎批發底價 (元) *：</label>
@@ -618,6 +660,7 @@
           <input type="number" step="0.01" id="prod-price-tier2" placeholder="0.00" class="w-full bg-white border border-emerald-300 rounded-xl px-3 py-1.5 font-mono font-bold text-sm text-emerald-950 outline-none">
         </div>
       </div>
+
       <div class="grid grid-cols-3 gap-2">
         <div>
           <label class="block text-[11px] text-stone-600 mb-1">條碼 / 編碼：</label>
@@ -635,6 +678,7 @@
           <input type="text" id="prod-origin-place" placeholder="源頭工坊原產" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2 py-1.5 text-xs outline-none">
         </div>
       </div>
+
       <div class="grid grid-cols-2 gap-3 items-center">
         <div>
           <label class="block text-[11px] font-bold text-stone-700 mb-1">貨品實拍照：</label>
@@ -652,12 +696,16 @@
           <input type="text" id="prod-remark" placeholder="如：防潮輕放 / 整托發運" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
         </div>
       </div>
+
       <div class="flex gap-2.5 pt-2 border-t border-stone-100">
-        <button id="btn-submit-product" onclick="window.submitProductForm()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">儲存並發布貨品</button>
+        <button id="btn-submit-product" onclick="window.submitProductForm()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
+          儲存並發布貨品
+        </button>
       </div>
     </div>
   </div>
 
+  <!-- 裝車總揀貨單、招商二維碼、專供通道、主動配發、門禁、改密、2FA、驗證器、屬員、掃碼 -->
   <div id="modal-batch-picklist" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -765,6 +813,7 @@
     </div>
   </div>
 
+  <!-- 登入門禁 -->
   <div id="hq-auth-gate" class="fixed inset-0 bg-[#0c1e16]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-stone-800 shadow-2xl">
       <div class="text-center space-y-1">
@@ -791,6 +840,7 @@
     </div>
   </div>
 
+  <!-- 改密、2FA、驗證器、屬員、掃碼彈窗 -->
   <div id="modal-change-password" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -880,6 +930,9 @@
     <button onclick="window.stopBarcodeScan()" class="mt-4 bg-white/20 text-white font-bold text-xs px-5 py-2 rounded-xl">關閉識碼</button>
   </div>
 
-  <script type="module" src="./src/modules/hqController.js"></script>
+  <script type="module">
+    import { initHQController } from './src/modules/hqController.js';
+    initHQController();
+  </script>
 </body>
 </html>
