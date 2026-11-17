@@ -84,7 +84,7 @@
       </button>
     </nav>
 
-    <!-- 板块 1~5 -->
+    <!-- 板块 1：入驻审核与执照底库终审 -->
     <section id="p-tab-apps" class="space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
@@ -98,6 +98,7 @@
       </div>
     </section>
 
+    <!-- 板块 2：已入驻正式厂商名册 -->
     <section id="p-tab-tenants" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
@@ -133,6 +134,7 @@
       </div>
     </section>
 
+    <!-- 板块 3：商道建言堂 -->
     <section id="p-tab-suggestions" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
@@ -146,6 +148,7 @@
       </div>
     </section>
 
+    <!-- 板块 4：平台标准一二级品类主字典 -->
     <section id="p-tab-categories" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
@@ -161,5 +164,309 @@
       </div>
     </section>
 
+    <!-- 板块 5：天道明鉴 · 绝对防篡改审计日志 -->
     <section id="p-tab-audit" class="hidden space-y-4">
-      <div class="bg-white p-5 rounded-3xl shadow
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">⚖️ 天道明鉴 · 只读防篡改安全审计流水</h2>
+            <p class="text-[11px] text-stone-400">记录高危指令与重大调控，数据库触发器物理封锁 UPDATE 与 DELETE，任何人无权抹煞历史</p>
+          </div>
+          <button onclick="window.loadPlatformData()" class="text-xs text-emerald-800 font-bold hover:underline">刷新流水</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs whitespace-nowrap">
+            <thead class="bg-stone-50 border-b border-stone-200 text-stone-500 font-medium">
+              <tr>
+                <th class="p-2.5">记录时间</th>
+                <th class="p-2.5">商号标识</th>
+                <th class="p-2.5">经手执事人</th>
+                <th class="p-2.5">安全定级</th>
+                <th class="p-2.5">动作标题</th>
+                <th class="p-2.5">验真防伪摘要</th>
+              </tr>
+            </thead>
+            <tbody id="audit-table-body" class="divide-y divide-stone-100 font-mono text-[11px]"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- 平台总控安全凭证登录拦截模态窗 -->
+  <div id="platform-auth-gate" class="fixed inset-0 bg-stone-950/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+    <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-white shadow-2xl">
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 bg-amber-400 text-stone-950 rounded-2xl flex items-center justify-center font-bold text-xl mx-auto shadow-lg">🏛️</div>
+        <h2 class="text-base font-bold tracking-tight text-white pt-1">平台运营总控安全核验</h2>
+        <p class="text-[11px] text-stone-400">出示管理密钥凭证登录中枢系统</p>
+      </div>
+
+      <form id="pane-p-pwd" onsubmit="window.verifyPlatformAuthPwd(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-stone-400 font-medium mb-1">总控管理账号：</label>
+          <input type="text" id="p-auth-account" required placeholder="如：admin" value="admin" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 outline-none text-white focus:border-amber-400 font-mono">
+        </div>
+        <div>
+          <label class="block text-stone-400 font-medium mb-1">平台安全总控令牌 (Token)：</label>
+          <input type="password" id="p-auth-token" required placeholder="输入安全口令" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 outline-none text-white focus:border-amber-400 font-mono">
+        </div>
+        <button type="submit" id="btn-platform-auth" class="w-full bg-amber-400 hover:bg-amber-500 text-stone-950 font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+          安全验证 · 登录总控台
+        </button>
+      </form>
+
+      <div id="p-auth-error" class="hidden text-rose-400 text-[11px] font-bold text-center"></div>
+      <div class="text-center">
+        <span class="text-[10px] text-stone-500 font-mono">SYSTEM ACCESS AUTHENTICATOR</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 总控专属 TOTP 绑定配置弹窗 -->
+  <div id="modal-platform-totp-setup" class="hidden fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+    <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-white shadow-2xl text-xs">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-800">
+        <div>
+          <h3 class="font-bold text-sm text-amber-400">🛡️ 平台总控 TOTP 身份验证器绑定</h3>
+          <p class="text-[10px] text-stone-400">支持微信「腾讯身份验证器」小程序 / Google / Microsoft Authenticator</p>
+        </div>
+        <button onclick="window.closeModal('modal-platform-totp-setup')" class="text-stone-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3">
+        <p class="text-[11px] text-stone-300 leading-relaxed">
+          请使用手机 Authenticator 或微信身份验证器扫描下方二维码绑定：
+        </p>
+
+        <div class="w-40 h-40 bg-white rounded-2xl mx-auto flex items-center justify-center p-2">
+          <img id="platform-totp-qr" src="" alt="总控 TOTP 二维码" class="w-full h-full object-contain">
+        </div>
+
+        <div class="bg-stone-950 p-2.5 rounded-xl border border-stone-800 space-y-1">
+          <span class="text-[10px] text-stone-400 block">若不便扫码，可在验证器中选择「手动输入密钥」：</span>
+          <div class="flex justify-between items-center font-mono font-bold text-amber-300">
+            <span id="platform-totp-secret-display">JBSWY3DPEHPK3PXP</span>
+            <button type="button" onclick="window.copyPlatformTotpSecret()" class="text-emerald-400 text-[10px] underline">复制密钥</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-stone-300 mb-1">输入 App 生成的 6 位测试验证码：</label>
+          <input type="text" id="platform-totp-test-code" maxlength="6" placeholder="000000" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 font-mono text-center font-bold text-base outline-none text-white focus:border-amber-400">
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2 border-t border-stone-800">
+        <button type="button" onclick="window.verifyAndSavePlatformTotp()" class="flex-1 bg-amber-400 hover:bg-amber-500 text-stone-950 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition shadow">
+          验证并储存绑定
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 总控 2FA 高危二次核验模态窗 -->
+  <div id="modal-platform-2fa" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
+    <div class="bg-stone-900 border border-stone-800 w-full max-w-xs rounded-3xl p-5 space-y-3 text-white shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+        <b class="text-amber-400 text-xs flex items-center gap-1">🛡️ 平台总控 2FA 高危操作核验</b>
+        <button type="button" onclick="window.closePlatform2FAModal()" class="text-stone-400 text-lg hover:text-white">✕</button>
+      </div>
+      <p class="text-[11px] text-stone-300 leading-relaxed" id="modal-platform-2fa-desc">
+        当前业务涉及商号重置或资质核发，请出示 6 位动态口令或管理密钥。
+      </p>
+      <div>
+        <label class="block text-stone-400 mb-1">输入 6 位 TOTP 动态码 或 总控管理令牌：</label>
+        <input type="password" id="input-platform-2fa-token" placeholder="6位动态码 / 管理密钥" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 font-mono text-center font-bold text-sm outline-none text-white focus:border-amber-400">
+      </div>
+      <div class="pt-1 flex gap-2">
+        <button type="button" onclick="window.submitPlatform2FAVerification()" class="flex-1 bg-amber-400 hover:bg-amber-500 text-stone-950 font-bold py-2 rounded-xl active:scale-95 transition shadow">
+          确认授权执行
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 商契气象调控弹窗 -->
+  <div id="modal-status-adjust" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">⚖️ 商道和合 · 契约状态与转正终审</h3>
+          <p id="adjust-tenant-title" class="text-[10px] text-stone-400">商号名称</p>
+        </div>
+        <button onclick="window.closeModal('modal-status-adjust')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <input type="hidden" id="adjust-tenant-id" value="">
+
+      <div class="bg-amber-50/70 border border-amber-200/60 p-3 rounded-2xl space-y-1.5">
+        <b class="text-amber-900 text-[11px] flex items-center gap-1">🤖 终审复核指引：</b>
+        <p id="adjust-ai-insight" class="text-[11px] text-amber-800 leading-relaxed">
+          正在研判该商号履约历史...
+        </p>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-stone-700 font-bold">设定当前商契气象 (六态律令)：</label>
+        <div class="grid grid-cols-1 gap-1.5 max-h-64 overflow-y-auto pr-1 no-scrollbar">
+          <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+            <input type="radio" name="membership_status_choice" value="trial" class="mt-0.5 text-cyan-800">
+            <div>
+              <b class="text-cyan-950 block">🍃 尝鲜开席 · 体验全开</b>
+              <span class="text-[10px] text-stone-500">7 天无门槛试用，双轨权能全放行，满意后再行商约点餐。</span>
+            </div>
+          </label>
+          <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+            <input type="radio" name="membership_status_choice" value="active" class="mt-0.5 text-emerald-800">
+            <div>
+              <b class="text-emerald-900 block">🟢 和合在册 · 正式转正签约</b>
+              <span class="text-[10px] text-stone-500">人工查册在营无误、核收会费后颁布此态，全年畅行全盘。</span>
+            </div>
+          </label>
+          <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+            <input type="radio" name="membership_status_choice" value="grace" class="mt-0.5 text-amber-700">
+            <div>
+              <b class="text-amber-800 block">🍃 春风宽待 · 提请关照 (宽猛相济)</b>
+              <span class="text-[10px] text-stone-500">业务完全不中断，仅在厂商端温情提醒，提请闲暇时通融续会。</span>
+            </div>
+          </label>
+          <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+            <input type="radio" name="membership_status_choice" value="restricted" class="mt-0.5 text-blue-800">
+            <div>
+              <b class="text-blue-900 block">🛡️ 停新保旧 · 护盘存续 (事缓则圆)</b>
+              <span class="text-[10px] text-stone-500">允许已有订单交割、实体门店正常还款，仅暂缓发售全新良品。</span>
+            </div>
+          </label>
+          <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
+            <input type="radio" name="membership_status_choice" value="paused" class="mt-0.5 text-rose-700">
+            <div>
+              <b class="text-rose-900 block">🛑 商道暂歇 · 设案调停 (慎之又慎)</b>
+              <span class="text-[10px] text-stone-500">保留全套账本，暂挂登录权限，待商榷或资质补正后一键复通。</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-stone-600 mb-1 font-bold">平台寄语 / 终审备忘记录：</label>
+        <input type="text" id="adjust-note-input" placeholder="例：已查验工商底库在营无误，签收年契转正" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
+      </div>
+
+      <div class="pt-2 border-t border-stone-100 flex items-center gap-2">
+        <button type="button" onclick="window.saveTenantStatusAdjustment()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
+          依礼颁布生效
+        </button>
+        <button type="button" onclick="window.triggerPurgeFromModal()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2.5 rounded-xl active:scale-95 transition">
+          🗑️ 销号清除
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手动特邀开户弹窗 -->
+  <div id="manual-tenant-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">🏛️ 线下特邀厂家直通开户</h3>
+        <button onclick="window.closeModal('manual-tenant-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <div class="space-y-2.5">
+        <div>
+          <label class="block text-stone-600 font-medium mb-1">主体执照全称 *：</label>
+          <input type="text" id="m-company-name" placeholder="如：河北衡水老白干酒业总厂" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+        </div>
+        <div>
+          <label class="block text-stone-600 font-medium mb-1">统一社会信用代码 (18位 · 自动取后6位为预设密钥) *：</label>
+          <input type="text" id="m-credit-code" maxlength="18" oninput="window.syncManualModalDefaults()" placeholder="输入18位信用代码" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-stone-600 font-medium mb-1">商号代号 (唯一标识) *：</label>
+            <input type="text" id="m-tenant-id" placeholder="如：HB-LAOBAIGAN" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold text-amber-700">
+          </div>
+          <div>
+            <label class="block text-stone-600 font-medium mb-1">行当类型：</label>
+            <select id="m-business-type" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+              <option value="factory">🏭 品牌生产工厂</option>
+              <option value="dealer">🏢 区域总经销 (总代)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-stone-600 font-medium mb-1">供货业务场景模式：</label>
+          <select id="m-service-mode" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+            <option value="both">🔄 双轨通用 (实体配货 + 线上网销)</option>
+            <option value="offline">🏬 纯线下实体 (门店配送/自提)</option>
+            <option value="online">🌐 纯线上网销 (一件代发物流)</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-stone-600 font-medium mb-1">负责人称呼：</label>
+            <input type="text" id="m-contact-person" placeholder="如：陈厂长" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
+          </div>
+          <div>
+            <label class="block text-stone-600 font-medium mb-1">预设安家密钥 (执照后6位)：</label>
+            <input type="text" id="m-access-key" placeholder="自动同步执照后6位" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold text-emerald-800">
+          </div>
+        </div>
+      </div>
+      <div class="pt-2 border-t border-stone-100 flex gap-2">
+        <button onclick="window.submitManualTenant()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
+          🛡️ 2FA 特批直通激活
+        </button>
+        <button onclick="window.closeModal('manual-tenant-modal')" class="bg-stone-100 text-stone-600 font-bold px-4 py-2.5 rounded-xl">
+          取消
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增平台标准品类弹窗 -->
+  <div id="add-category-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">🗂️ 制定新标准平台品类</h3>
+        <button onclick="window.closeModal('add-category-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <div class="space-y-2">
+        <div>
+          <label class="block text-stone-600 mb-1">品类级别：</label>
+          <select id="cat-level-select" onchange="window.onCatLevelChange(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+            <option value="1">一级大项 (如：粮油副食、酒水饮料、五金机电)</option>
+            <option value="2">二级细项 (归属于某大项)</option>
+          </select>
+        </div>
+        <div id="parent-cat-box" class="hidden">
+          <label class="block text-stone-600 mb-1">归属一级大项：</label>
+          <select id="cat-parent-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold"></select>
+        </div>
+        <div>
+          <label class="block text-stone-600 mb-1">品类规范名称 *：</label>
+          <input type="text" id="cat-name-input" placeholder="输入规范名称" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+        </div>
+        <div>
+          <label class="block text-stone-600 mb-1">适用经营模式：</label>
+          <select id="cat-mode-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+            <option value="both">线上线下通用</option>
+            <option value="offline">仅线下实体适用</option>
+            <option value="online">仅线上网销适用</option>
+          </select>
+        </div>
+      </div>
+      <div class="pt-2 border-t border-stone-100 flex gap-2">
+        <button onclick="window.savePlatformCategory()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition">
+          存入标准字典
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initPlatformController } from './src/modules/platformController.js';
+    initPlatformController();
+  </script>
+</body>
+</html>
