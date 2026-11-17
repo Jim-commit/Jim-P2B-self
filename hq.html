@@ -42,6 +42,9 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
+        <button onclick="window.openWebhookModal()" id="btn-webhook-status" class="bg-[#143628] hover:bg-[#0e271d] text-emerald-200 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-500/40 active:scale-95 transition flex items-center gap-1">
+          <span>🔔</span> 報單群通知
+        </button>
         <button onclick="window.openPromoQrModal()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-3 py-2 rounded-xl font-bold shadow active:scale-95 transition flex items-center gap-1">
           <span>📲</span> 招商二維碼
         </button>
@@ -97,7 +100,6 @@
 
     <!-- 第一層：三流合一晴雨表（一屏看穿物品流、資金流、信息流，點擊直達處理） -->
     <section class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-      <!-- 物品流卡片 -->
       <div onclick="window.switchTab('products')" class="cursor-pointer bg-white p-4 rounded-3xl shadow-sm border border-stone-200/80 hover:border-emerald-500 transition group">
         <div class="flex justify-between items-center mb-2">
           <span class="font-bold text-stone-800 flex items-center gap-1.5 text-sm">📦 物品流 <span class="text-[10px] font-normal text-stone-400">倉儲與發運</span></span>
@@ -119,7 +121,6 @@
         </div>
       </div>
 
-      <!-- 資金流卡片 -->
       <div onclick="window.switchTab('settle')" class="cursor-pointer bg-white p-4 rounded-3xl shadow-sm border border-stone-200/80 hover:border-amber-500 transition group">
         <div class="flex justify-between items-center mb-2">
           <span class="font-bold text-stone-800 flex items-center gap-1.5 text-sm">💰 資金流 <span class="text-[10px] font-normal text-stone-400">現款與應收賬</span></span>
@@ -141,7 +142,6 @@
         </div>
       </div>
 
-      <!-- 信息流卡片 -->
       <div onclick="window.switchTab('advisor')" class="cursor-pointer bg-white p-4 rounded-3xl shadow-sm border border-stone-200/80 hover:border-indigo-500 transition group">
         <div class="flex justify-between items-center mb-2">
           <span class="font-bold text-stone-800 flex items-center gap-1.5 text-sm">📡 信息流 <span class="text-[10px] font-normal text-stone-400">待辦與AI參謀</span></span>
@@ -181,9 +181,7 @@
       </button>
     </nav>
 
-    <!-- ========================================================================= -->
     <!-- 工作台 1：經營參謀 & AI 建議 -->
-    <!-- ========================================================================= -->
     <section id="tab-advisor" class="space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-4">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
@@ -201,7 +199,6 @@
         </div>
       </div>
 
-      <!-- 近期倉庫出入庫天道流水速覽 -->
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex justify-between items-center">
           <div>
@@ -214,9 +211,7 @@
       </div>
     </section>
 
-    <!-- ========================================================================= -->
     <!-- 工作台 2：貨品發布 & 倉庫出入庫/盤點 -->
-    <!-- ========================================================================= -->
     <section id="tab-products" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
@@ -258,9 +253,7 @@
       </div>
     </section>
 
-    <!-- ========================================================================= -->
     <!-- 工作台 3：客戶分類 & 專屬價格策略 -->
-    <!-- ========================================================================= -->
     <section id="tab-stores" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
@@ -284,9 +277,7 @@
       </div>
     </section>
 
-    <!-- ========================================================================= -->
     <!-- 工作台 4：配貨制單、統一裝車發運、財務對賬 & 屬員四權分立 -->
-    <!-- ========================================================================= -->
     <section id="tab-settle" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3.5">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
@@ -299,9 +290,7 @@
           </button>
         </div>
 
-        <!-- 清晰兩步流水線操作條 -->
         <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center bg-stone-50/90 p-3 rounded-2xl border border-stone-200/80 text-xs">
-          <!-- 第一步：配貨制單（受單 / 主動並重） -->
           <div class="md:col-span-7 flex flex-wrap items-center gap-1.5">
             <span class="text-[10px] font-bold text-stone-400 mr-1">① 配貨制單:</span>
             <button onclick="window.filterOrderStatus('pending_confirm')" id="order-filter-pending" class="px-3 py-1.5 rounded-xl bg-[#1b4332] text-white font-bold transition">
@@ -315,7 +304,6 @@
             </button>
           </div>
 
-          <!-- 第二步：統一裝車配發 -->
           <div class="md:col-span-5 flex flex-wrap md:justify-end items-center gap-1.5 pt-2 md:pt-0 border-t md:border-t-0 border-stone-200">
             <span class="text-[10px] font-bold text-stone-400 mr-1">② 裝車發運:</span>
             <button onclick="window.filterOrderStatus('confirmed')" id="order-filter-confirmed" class="px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 font-bold transition">
@@ -327,7 +315,6 @@
           </div>
         </div>
 
-        <!-- 輔助視圖切換 -->
         <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] px-1">
           <div class="flex flex-wrap gap-1.5 font-bold">
             <button onclick="window.filterOrderStatus('delivered')" id="order-filter-delivered" class="px-2.5 py-1 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200 transition">
@@ -388,6 +375,39 @@
       </div>
     </section>
 
+  </div>
+
+  <!-- 新增：群機器人自動報單提醒配置彈窗（支持企業微信 / 釘釘 / 飛書） -->
+  <div id="modal-webhook-setup" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🔔 群機器人自動報單提醒</h3>
+          <p class="text-[10px] text-stone-400">門店下新單或新客預約送樣時，倉庫/老闆群秒級自動收到提醒</p>
+        </div>
+        <button onclick="window.closeModal('modal-webhook-setup')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-emerald-950 space-y-1 text-[11px] leading-relaxed">
+        <b>如何獲取群機器人 Webhook 地址？</b><br/>
+        • <b>企業微信群</b>：群設置 ➔ 群機器人 ➔ 添加機器人 ➔ 複製 Webhook 地址。<br/>
+        • <b>釘釘 / 飛書群</b>：群設置 ➔ 智能群助手 ➔ 添加自定義機器人（關鍵詞填「新單」或「報單」）。
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-stone-700 font-bold">群機器人 Webhook URL（留空則關閉提醒）：</label>
+        <input type="url" id="webhook-url-input" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-xs outline-none focus:border-emerald-700">
+      </div>
+
+      <div class="flex gap-2 pt-2 border-t border-stone-100">
+        <button type="button" onclick="window.testWebhookPing()" class="bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-3.5 py-2.5 rounded-xl transition">
+          📡 發送測試消息
+        </button>
+        <button type="button" onclick="window.saveWebhookUrl()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">
+          儲存配置並啟用
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- 彈窗 A：倉庫出入庫與實地盤點校準彈窗 -->
@@ -793,7 +813,7 @@
     </div>
   </div>
 
-  <!-- 登入門禁（支持主賬號密鑰 + 屬員子賬號直登） -->
+  <!-- 登入門禁 -->
   <div id="hq-auth-gate" class="fixed inset-0 bg-[#0c1e16]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-stone-800 shadow-2xl">
       <div class="text-center space-y-1">
@@ -907,9 +927,6 @@
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
 
-    // =========================================================================
-    // 圖片外置上傳 Storage ('supply-images') 引擎
-    // =========================================================================
     async function uploadBlobToStorage(base64Data, folder = 'products') {
       if (!base64Data || !base64Data.startsWith('data:image')) return base64Data;
       try {
@@ -957,8 +974,56 @@
     window.closeModal = id => document.getElementById(id).classList.add('hidden');
 
     // =========================================================================
-    // 屬員崗位視圖自動適配與權限隔離
+    // 群機器人 Webhook 自動報單提醒配置
     // =========================================================================
+    window.openWebhookModal = function() {
+      document.getElementById('webhook-url-input').value = currentTenantData?.webhook_url || '';
+      window.openModal('modal-webhook-setup');
+    };
+
+    window.saveWebhookUrl = async function() {
+      const url = document.getElementById('webhook-url-input').value.trim();
+      const { error } = await supabase.from('platform_tenant').update({ webhook_url: url }).eq('tenant_id', currentAgent);
+      if (error) return alert('儲存失敗：' + error.message);
+      if (currentTenantData) currentTenantData.webhook_url = url;
+      updateWebhookStatusBadge(url);
+      alert(url ? '✅ 報單群機器人已啟用！後續門店下單或新客預約將秒推至微信/釘釘群。' : '已關閉報單群機器人通知。');
+      window.closeModal('modal-webhook-setup');
+    };
+
+    window.testWebhookPing = async function() {
+      const url = document.getElementById('webhook-url-input').value.trim();
+      if (!url) return alert('請先粘貼群機器人 Webhook 地址！');
+      const msg = `🔔【${currentTenantData?.company_name || currentAgent}】報單提醒測試成功！后续合作門店下新單或新店預約送樣，本群將第一時間收到通知。`;
+      try {
+        await fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            msgtype: 'text',
+            text: { content: msg },
+            content: { text: msg }
+          })
+        });
+        alert('📡 測試消息已發出！請打開您的企業微信 / 釘釘 / 飛書群查看是否收到提醒。');
+      } catch (err) {
+        alert('發送失敗，請檢查網址格式是否正確：' + err.message);
+      }
+    };
+
+    function updateWebhookStatusBadge(url) {
+      const btn = document.getElementById('btn-webhook-status');
+      if (!btn) return;
+      if (url && url.startsWith('http')) {
+        btn.innerHTML = '<span>🔔</span> 群通知已開';
+        btn.className = 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-400/50 active:scale-95 transition flex items-center gap-1';
+      } else {
+        btn.innerHTML = '<span>🔔</span> 報單群通知';
+        btn.className = 'bg-[#143628] hover:bg-[#0e271d] text-emerald-200 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-500/40 active:scale-95 transition flex items-center gap-1';
+      }
+    }
+
     function applyRoleViewExperience(roleCode, operatorName) {
       const displayEl = document.getElementById('hq-operator-role-display');
       const roleLabels = {
@@ -970,7 +1035,6 @@
       };
       if (displayEl) displayEl.innerText = roleLabels[roleCode] || operatorName;
 
-      // 屬員登入自動隱藏主賬號改密與驗證器綁定按鈕，並自動跳轉對應工作台
       if (roleCode !== 'owner') {
         document.getElementById('btn-top-chg-pwd')?.classList.add('hidden');
         document.getElementById('btn-top-totp')?.classList.add('hidden');
@@ -980,9 +1044,6 @@
       }
     }
 
-    // =========================================================================
-    // 接單/主動配貨自動扣減庫存並記入《倉庫出入庫天道流水》
-    // =========================================================================
     async function deductStockForOrderItems(items, orderNo, operatorLabel) {
       if (!Array.isArray(items) || items.length === 0) return;
       for (const it of items) {
@@ -1029,9 +1090,6 @@
       }
     };
 
-    // =========================================================================
-    // 倉庫出入庫與實地盤點校準引擎
-    // =========================================================================
     window.openStockOpsModal = function(prodId) {
       const p = allProducts.find(x => x.id === prodId);
       if (!p) return;
@@ -1535,7 +1593,6 @@
 
       btn.disabled = true; btn.innerText = '核對中...'; errBox.classList.add('hidden');
 
-      // 1. 若包含冒號（如 wh_li:123456），校驗屬員子賬號
       if (rawKey.includes(':') || rawKey.includes('：')) {
         const [subAcc, subPwd] = rawKey.split(/[:：]/).map(s => s.trim());
         const { data: tenantList } = await supabase.from('platform_tenant').select('*').eq('tenant_id', tenantId).eq('is_active', true).limit(1);
@@ -1573,7 +1630,6 @@
         return;
       }
 
-      // 2. 主賬號密鑰校驗
       const { data, error } = await supabase
         .from('platform_tenant')
         .select('*')
@@ -1662,6 +1718,7 @@
       document.getElementById('hq-company-badge').innerText = `${curTenant.company_name} (${curTenant.tenant_id})`;
       document.getElementById('hq-tenant-id').innerText = curTenant.tenant_id;
       document.getElementById('carrier-label-btn').innerText = `${carrierLabel} ✎`;
+      updateWebhookStatusBadge(curTenant.webhook_url || '');
 
       const defaultBanner = document.getElementById('hq-default-pwd-banner');
       if (currentRoleCode === 'owner' && curTenant.credit_code && curTenant.credit_code.length >= 6) {
@@ -2282,7 +2339,6 @@
       else driverCmd += `按${order?.settlement_type}簽收！`;
 
       await supabase.from('store_order').update({ order_status: 'confirmed', driver_action_instruction: driverCmd }).eq('id', orderId);
-      // 同步自動扣減庫存並記入倉庫流水賬
       if (order?.items) {
         await deductStockForOrderItems(order.items, order.order_no || order.id, currentOperatorName);
       }
