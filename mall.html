@@ -71,22 +71,36 @@
     </div>
   </header>
 
-  <!-- 态型 A：厂商私域专卖店品牌门面 -->
+  <!-- 态型 A：厂商私域专卖店品牌门面（含可折叠产区与工艺档案） -->
   <section id="brand-hero-section" class="hidden px-3 pt-3">
-    <div class="bg-gradient-to-br from-stone-900 to-[#1b4332] text-white p-4 rounded-3xl shadow-md border border-stone-800 space-y-2">
-      <div class="flex justify-between items-start">
+    <div class="bg-gradient-to-br from-stone-900 to-[#1b4332] text-white p-4 rounded-3xl shadow-md border border-stone-800 space-y-2.5">
+      <div class="flex justify-between items-start gap-2">
         <div>
           <span class="text-[10px] font-mono text-emerald-300 tracking-wider block">OFFICIAL BRAND STORE</span>
           <h2 class="text-base font-bold text-amber-300" id="hero-brand-name">品牌商号专柜</h2>
           <p class="text-[11px] text-stone-300 mt-0.5" id="hero-brand-desc">源头工坊 · 匠心正品 · 支持大宗与定制接单</p>
         </div>
-        <button onclick="window.openC2BDemandModal('', document.getElementById('hero-tenant-id').innerText)" class="bg-amber-400 hover:bg-amber-500 text-stone-950 text-[10px] px-2.5 py-1 rounded-xl font-bold shadow active:scale-95 transition">
+        <button onclick="window.openC2BDemandModal('', document.getElementById('hero-tenant-id').innerText)" class="shrink-0 bg-amber-400 hover:bg-amber-500 text-stone-950 text-[10px] px-2.5 py-1.5 rounded-xl font-bold shadow active:scale-95 transition">
           🎯 向本专柜定制询价
         </button>
       </div>
-      <div class="flex items-center gap-4 text-[10px] text-stone-400 pt-1 border-t border-stone-700/50 font-mono">
-        <span>商号代号: <b id="hero-tenant-id" class="text-white">--</b></span>
-        <span>正品验真: <b class="text-emerald-400">100% PASS</b></span>
+
+      <div class="flex justify-between items-center text-[10px] text-stone-400 pt-1.5 border-t border-stone-700/50 font-mono">
+        <div class="flex items-center gap-3">
+          <span>商号代号: <b id="hero-tenant-id" class="text-white">--</b></span>
+          <span>正品验真: <b class="text-emerald-400">100% PASS</b></span>
+        </div>
+        <button type="button" onclick="window.toggleCraftArchive()" class="text-amber-300 hover:underline font-sans font-bold flex items-center gap-0.5">
+          <span>📜 产区工艺档案</span>
+          <span id="craft-toggle-arrow">▼</span>
+        </button>
+      </div>
+
+      <!-- 可折叠展开的工坊产区与匠心档案卡 -->
+      <div id="brand-craft-archive-panel" class="hidden bg-black/30 border border-emerald-700/40 rounded-2xl p-3 space-y-1.5 text-[11px] text-stone-200">
+        <div class="flex justify-between"><span class="text-stone-400">经营主体规制：</span><b id="craft-type-text">--</b></div>
+        <div class="flex justify-between"><span class="text-stone-400">当值执事对接：</span><b id="craft-contact-text">--</b></div>
+        <p id="craft-story-text" class="text-[10px] text-emerald-100/90 leading-relaxed pt-1 border-t border-stone-700/40"></p>
       </div>
     </div>
   </section>
@@ -117,6 +131,15 @@
         <div class="col-span-full py-16 text-center text-stone-400 text-xs">正调阅百工物勒正品行货...</div>
       </div>
     </main>
+
+    <!-- 街坊验真口碑晒单墙（有真实口碑数据时自动显现） -->
+    <section id="verified-reviews-section" class="hidden px-3 pt-1 pb-2 space-y-1.5">
+      <div class="flex justify-between items-center px-1 text-[11px]">
+        <b class="text-stone-700">🌟 街坊验真口碑墙</b>
+        <span class="text-[10px] text-stone-400">已购实单真实反馈</span>
+      </div>
+      <div id="verified-reviews-list" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+    </section>
   </div>
 
   <!-- 视角二：数字专柜大厅 -->
@@ -130,17 +153,12 @@
     <div id="digital-counters-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
   </div>
 
-  <!-- 视角三：需求发榜与聚量集采大厅 -->
+  <!-- 视角三：需求发榜与聚量集采大厅（统一收拢到底部唯一悬浮按钮，无重复按钮） -->
   <div id="pane-c2b-market" class="hidden p-3 space-y-3">
-    <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 p-4 rounded-3xl shadow-sm flex justify-between items-center gap-3">
-      <div class="space-y-0.5">
-        <span class="text-[10px] bg-stone-950 text-amber-300 px-2 py-0.5 rounded-full font-mono font-bold">按需发榜 · 聚量定产</span>
-        <h2 class="text-sm font-bold pt-1">说出你要买的货，全网源头工坊公开报价</h2>
-        <p class="text-[11px] text-stone-900/80">邻里团购、餐饮采购或小店拼单均可发榜，众人跟单凑量享出厂低价</p>
-      </div>
-      <button onclick="window.openC2BDemandModal()" class="shrink-0 bg-stone-950 hover:bg-stone-800 text-amber-300 font-bold text-xs px-3.5 py-2.5 rounded-2xl shadow active:scale-95 transition">
-        + 立即发榜
-      </button>
+    <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 p-4 rounded-3xl shadow-sm space-y-1">
+      <span class="text-[10px] bg-stone-950 text-amber-300 px-2 py-0.5 rounded-full font-mono font-bold">按需发榜 · 聚量定产</span>
+      <h2 class="text-sm font-bold pt-0.5">说出你要买的货，全网源头工坊公开报价</h2>
+      <p class="text-[11px] text-stone-900/80">邻里团购、餐饮采购或小店拼单均可发榜，众人跟单凑量享出厂低价</p>
     </div>
 
     <div id="c2b-demands-list" class="space-y-3"></div>
@@ -174,7 +192,7 @@
     </button>
   </footer>
 
-  <!-- 底部常驻发布需求悬浮按钮 -->
+  <!-- 底部常驻发布需求唯一主行动按钮 -->
   <footer id="c2b-publish-footer" class="hidden fixed bottom-0 max-w-md left-1/2 -translate-x-1/2 w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-2.5 px-4 z-30 shadow-2xl rounded-t-3xl">
     <button onclick="window.openC2BDemandModal()" class="w-full bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs py-3 rounded-2xl shadow active:scale-95 transition flex items-center justify-center gap-1.5">
       <span>📢 发布我的求购 / 定制需求榜</span>
@@ -371,7 +389,7 @@
     </div>
   </div>
 
-  <!-- 终端消费者下单结算弹窗 (护店润利透明公示 + 平行双履约) -->
+  <!-- 终端消费者下单结算弹窗 (护店润利透明公示 + 邻里拼单随车进度 + 平行双履约) -->
   <div id="modal-checkout" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -383,6 +401,9 @@
       <div id="checkout-profit-notice" class="bg-emerald-50 border border-emerald-200 text-emerald-950 px-3 py-2 rounded-2xl text-[11px] font-bold leading-relaxed">
         📜 商道公示：全网统一零售正价，不破价、不挤兑周边实体小店
       </div>
+
+      <!-- 邻里拼单随车直达进度条 -->
+      <div id="checkout-group-buy-bar" class="hidden bg-amber-50/90 border border-amber-200 px-3 py-2 rounded-2xl"></div>
 
       <div class="space-y-2.5">
         <div>
@@ -451,6 +472,24 @@
       <div id="my-orders-result-list" class="space-y-2">
         <div class="py-6 text-center text-stone-400">输入手机号查询发货进度与工坊报价回复</div>
       </div>
+    </div>
+  </div>
+
+  <!-- 验真晒单口碑弹窗 -->
+  <div id="modal-write-review" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">✍️ 验真晒单 · 邻里口碑见证</h3>
+        <button onclick="window.closeModal('modal-write-review')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <input type="hidden" id="review-order-no">
+      <input type="hidden" id="review-tenant-id">
+      <input type="hidden" id="review-items-summary">
+      <div id="review-order-badge" class="bg-emerald-50 text-emerald-900 border border-emerald-200 px-3 py-1.5 rounded-xl font-mono text-[11px]"></div>
+      <textarea id="review-comment-input" rows="3" placeholder="写下您的真实收货或到店自提体验，供邻里街坊参考..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none"></textarea>
+      <button onclick="window.submitOrderReview()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+        📜 公开提交口碑见证
+      </button>
     </div>
   </div>
 
