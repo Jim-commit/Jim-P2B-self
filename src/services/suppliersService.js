@@ -3,28 +3,28 @@ import { supabase } from '../lib/supabase.js';
 export const DEMO_SUPPLIERS = [
   {
     tenant_id: 'DEMO-HX888',
-    name: '华兴源头粮油食品商行（示例展位）',
-    category: '粮油米面 · 调味干货',
+    name: '伏牛山生态农业合作社 · 源头直供站（示例展位）',
+    category: '🌾 村社合作社 · 产区直供站',
     city: '本地核心仓储配送圈',
-    description: '专注社区超市、餐饮店一站式粮油调味直供，自有厢式货车每日早晚两班准时送货到店，破损包退。',
+    description: '专注合作门店、食堂后厨一站式农产与粮油直供，自有厢式货车每日准时送货到店，破损包退包换。',
     media_url: '',
     hasCounter: true,
     products: [
       {
-        name: '非转基因一级压榨花生油',
+        name: '非转基因一级物理压榨花生油',
         spec: '5L×4桶/箱',
         measure_unit: '箱',
-        origin_place: '源头工坊原产',
-        tags: ['🔥 街坊抢手'],
+        origin_place: '产区合作社原产',
+        tags: ['🌾 合作社直供'],
         custom_specs: { attrs: { 保质期: '18个月', 工艺: '物理压榨' } },
         image_url: ''
       },
       {
-        name: '东北长粒香大米（餐饮专供）',
+        name: '东北长粒香大米（合作社直供）',
         spec: '25kg/袋',
         measure_unit: '袋',
         origin_place: '黑龙江五常',
-        tags: ['💎 高毛利'],
+        tags: ['💎 阳光工价·诚意价'],
         custom_specs: { attrs: { 等级: 'GB/T19266一级' } },
         image_url: ''
       }
@@ -33,9 +33,10 @@ export const DEMO_SUPPLIERS = [
 ];
 
 const TYPE_LABEL_MAP = {
-  dealer: '区域总经销 · 源头批发商',
-  factory: '品牌制造工厂 · 源头直供',
-  service: '工料配件 · 综合供应链'
+  coop: '🌾 村社合作社 · 产区直供站',
+  dealer: '🏢 区域平准仓 · 集散商行',
+  factory: '🏭 源头工坊 · 生产制造厂',
+  service: '🛠️ 工料配件 · 综合服务商'
 };
 
 export const SuppliersService = {
@@ -90,7 +91,7 @@ export const SuppliersService = {
       const prods = productMap[t.tenant_id] || [];
       const cats = Array.from(new Set(prods.map((p) => p.category_main).filter(Boolean)));
       const rawType = t.business_type || t.business_scope || '';
-      const displayCategory = TYPE_LABEL_MAP[rawType] || rawType || (cats.length > 0 ? cats.join(' · ') : '实体全品类直供');
+      const displayCategory = TYPE_LABEL_MAP[rawType] || rawType || (cats.length > 0 ? cats.join(' · ') : '合作门店全品类直供');
 
       return {
         tenant_id: t.tenant_id,
@@ -100,7 +101,7 @@ export const SuppliersService = {
         description:
           t.brand_origin_desc ||
           t.intro ||
-          `源头正规供货商（商号：${t.tenant_id}），营业执照与资质已核验，支持签约门店定期配送、电子签收与往来授信对账。`,
+          `源头合作社与正规工坊（商号：${t.tenant_id}），营业执照与资质已核验，支持合作门店定期配送、电子签收与信用往来对账。`,
         media_url: t.media_url || t.video_url || '',
         hasCounter: !!counterEnabledMap[t.tenant_id] || t.permit_ecommerce !== false,
         products: prods,
@@ -113,8 +114,8 @@ export const SuppliersService = {
     if (!supabase || tenantId.startsWith('DEMO-')) return;
 
     const orderNo = `LEAD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const refTag = referrer ? ` | 推荐老客:${referrer}` : '';
-    const fullNote = `[新店招商线索] 联系人:${contactName} | 电话:${phone} | 地址:${address}${refTag}${note ? ' | 意向:' + note : ''}`;
+    const refTag = referrer ? ` | 引荐同行:${referrer}` : '';
+    const fullNote = `[新店合作意向] 联系人:${contactName} | 电话:${phone} | 地址:${address}${refTag}${note ? ' | 意向:' + note : ''}`;
 
     let validStoreId = null;
     const { data: existingStores } = await supabase.from('store').select('id').eq('tenant_id', tenantId).limit(1);
@@ -148,7 +149,7 @@ export const SuppliersService = {
       tenant_id: tenantId,
       store_id: validStoreId,
       store_name: storeName,
-      driver_name: '待指派业务员',
+      driver_name: '待指派送货师傅',
       settlement_type: 'credit',
       settlement_note: `${contactName}|${phone}|${address}`,
       items: [],
@@ -160,7 +161,7 @@ export const SuppliersService = {
       order_status: 'pending_confirm',
       delivery_status: 'lead_pending',
       note: fullNote,
-      driver_action_instruction: `【新店送样线索】联系 ${contactName}(${phone}) 上门洽谈`
+      driver_action_instruction: `【新店送样意向】联系 ${contactName}(${phone}) 上门送样洽谈`
     };
 
     let { error } = await supabase.from('store_order').insert([
@@ -178,7 +179,7 @@ export const SuppliersService = {
     if (error) throw error;
 
     if (webhookUrl && webhookUrl.startsWith('http')) {
-      const msg = `🤝【新店招商线索提醒】\n意向门店：${storeName}\n联系人：${contactName} (${phone})\n地址：${address}${refTag}\n请及时联系送样并一键建档开户！`;
+      const msg = `🤝【新店合作意向提醒】\n意向门店：${storeName}\n联系人：${contactName} (${phone})\n地址：${address}${refTag}\n请及时联系送样并一键建档立户！`;
       fetch(webhookUrl, {
         method: 'POST',
         mode: 'no-cors',
