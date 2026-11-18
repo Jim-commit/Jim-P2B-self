@@ -33,13 +33,13 @@ export const MallService = {
     return data || [];
   },
 
-  // 严格恪守「各守本分」渠道隔离：仅展示允许进入天街与云端专柜的货品（排除店头常备专供货）
+// 严格恪守「各守本分」渠道隔离：仅展示允许进入天街与云端专柜的货品（排除实体店专供常备货）
   async fetchMallProducts(tenantId = null) {
     let query = supabase
       .from('product')
       .select('*')
       .eq('status', 'active')
-      .in('sales_channel_type', ['online', 'both']);
+      .in('sales_channel_type', ['电子商务', '电商直供', '双轨', '实体与电商双轨', 'online', 'both']);
 
     if (tenantId) {
       query = query.eq('tenant_id', tenantId);
