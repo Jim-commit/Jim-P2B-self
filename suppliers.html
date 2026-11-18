@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>严选供货商名录 · B2B 实体货源招商黄页</title>
+  <title>百业供需合作名录 · 村社合作社与源头工坊直供名册</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1b4332">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -20,8 +20,8 @@
       <div class="flex items-center gap-2.5">
         <div class="w-8 h-8 rounded-xl bg-amber-400 flex items-center justify-center font-bold text-stone-900 text-lg shadow-xs">供</div>
         <div>
-          <h1 class="text-base font-bold leading-tight tracking-wide">严选供货商名录</h1>
-          <p class="text-[11px] text-emerald-200">源头厂商直供 · 资质核验 · 送货到店</p>
+          <h1 class="text-base font-bold leading-tight tracking-wide">百业供需合作名录</h1>
+          <p class="text-[11px] text-emerald-200">源头直供 · 资质核验 · 送货到店</p>
         </div>
       </div>
       <div class="flex items-center gap-2 text-xs">
@@ -29,7 +29,7 @@
           🛍️ 百工天街
         </a>
         <a href="join.html" class="px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-900 font-bold shadow transition">
-          + 厂商入驻
+          + 合作社/工坊入驻
         </a>
       </div>
     </div>
@@ -41,14 +41,14 @@
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <span class="inline-block px-2 py-0.5 text-[11px] font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-300/30 rounded-lg mb-1">
-              纯 B2B 实体批发对接
+              产销直连 · 合作门店对接
             </span>
-            <h2 class="text-lg font-bold">寻找本地一手优质供货商</h2>
-            <p class="text-xs text-emerald-100/90 mt-0.5">所有展示厂商均已核验营业执照，支持预约业务员上门送样、先验货后合作。</p>
+            <h2 class="text-lg font-bold">对接本地村社合作社与源头工坊</h2>
+            <p class="text-xs text-emerald-100/90 mt-0.5">所有在册主体均已核验营业执照，支持预约送货师傅上门送样、先验货后合作。</p>
           </div>
           <div class="text-right hidden sm:block">
             <div class="text-2xl font-bold text-amber-300 font-mono" id="stat-supplier-count">-</div>
-            <div class="text-[11px] text-emerald-200">已核验源头厂商</div>
+            <div class="text-[11px] text-emerald-200">已核验源头供货方</div>
           </div>
         </div>
       </div>
@@ -57,7 +57,7 @@
         <input
           type="text"
           id="search-input"
-          placeholder="搜索商号名称、代号、主营货品、材质或规格..."
+          placeholder="搜索合作社、工坊名称、商号代号、主营货品、材质或规格..."
           class="w-full pl-10 pr-4 py-3 rounded-2xl bg-white text-stone-900 placeholder-stone-400 text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
         />
         <svg class="w-5 h-5 text-stone-400 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,36 +68,36 @@
   </section>
 
   <main class="max-w-5xl mx-auto px-4 -mt-4">
-    <!-- 老客户引荐荣誉横幅 -->
+    <!-- 同行老店引荐荣誉横幅 -->
     <div id="referrer-banner" class="hidden mb-3 bg-emerald-50 border border-emerald-300 text-emerald-950 px-4 py-2.5 rounded-2xl flex items-center justify-between text-xs shadow-xs">
-      <span>🤝 感谢老客【<b id="referrer-name-label"></b>】诚意引荐，预约合作享老客同款源头底价与送样礼遇！</span>
+      <span>🤝 感谢同行老店【<b id="referrer-name-label"></b>】诚意引荐，预约合作享同款阳光直供底价与送样礼遇！</span>
     </div>
 
     <div id="direct-tenant-banner" class="hidden mb-3 bg-amber-50 border border-amber-300 text-amber-950 px-4 py-2.5 rounded-2xl flex items-center justify-between text-xs shadow-xs">
-      <span>🎯 当前已为您置顶展示专属推荐厂商（商号：<b id="direct-tenant-code" class="font-mono"></b>）</span>
-      <button onclick="window.clearDirectFilter()" class="text-emerald-900 font-bold underline">查看全部供货商</button>
+      <span>🎯 当前已为您置顶展示专属推荐供货方（商号：<b id="direct-tenant-code" class="font-mono"></b>）</span>
+      <button onclick="window.clearDirectFilter()" class="text-emerald-900 font-bold underline">查看全部供货名录</button>
     </div>
 
     <div id="loading-state" class="bg-white rounded-3xl p-10 text-center shadow-sm border border-stone-200/80">
       <div class="inline-block w-8 h-8 border-4 border-[#1b4332] border-t-transparent rounded-full animate-spin mb-3"></div>
-      <p class="text-sm text-stone-500">正在加载已核验供货商名录...</p>
+      <p class="text-sm text-stone-500">正在加载已核验供需合作名录...</p>
     </div>
 
     <div id="empty-state" class="hidden bg-white rounded-3xl p-10 text-center shadow-sm border border-stone-200/80">
-      <p class="text-base font-bold text-stone-700">暂未找到匹配的供货商</p>
-      <p class="text-xs text-stone-400 mt-1">请尝试更换关键词，或欢迎优质厂商点击右上角申请入驻</p>
+      <p class="text-base font-bold text-stone-700">暂未找到匹配的合作社或工坊</p>
+      <p class="text-xs text-stone-400 mt-1">请尝试更换关键词，或欢迎各地合作社与源头工坊点击右上角申请入驻</p>
     </div>
 
     <div id="supplier-list" class="space-y-4"></div>
   </main>
 
-  <!-- 预约送样 / 申请供货弹窗 -->
+  <!-- 预约送样 / 申请合作弹窗 -->
   <div id="inquiry-modal" class="fixed inset-0 z-50 hidden bg-stone-900/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden">
       <div class="px-5 py-4 bg-[#1b4332] text-white flex items-center justify-between">
         <div>
-          <h3 class="text-base font-bold">预约供货商上门送样 / 洽谈</h3>
-          <p class="text-xs text-amber-300 mt-0.5 font-bold" id="modal-supplier-name">目标厂商：-</p>
+          <h3 class="text-base font-bold">预约上门送样 / 建立供需合作</h3>
+          <p class="text-xs text-amber-300 mt-0.5 font-bold" id="modal-supplier-name">目标供货方：-</p>
         </div>
         <button onclick="window.closeInquiryModal()" class="text-emerald-200 hover:text-white p-1 text-lg">✕</button>
       </div>
@@ -106,14 +106,14 @@
         <input type="hidden" id="modal-tenant-id" />
 
         <div>
-          <label class="block font-bold text-stone-700 mb-1">您的实体店 / 公司名称 <span class="text-rose-500">*</span></label>
-          <input type="text" id="lead-store-name" required placeholder="例如：阳光便利店 / 兴隆百货超市" class="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:border-emerald-700 focus:outline-none" />
+          <label class="block font-bold text-stone-700 mb-1">您的门店 / 合作社或单位全称 <span class="text-rose-500">*</span></label>
+          <input type="text" id="lead-store-name" required placeholder="例如：厚德便民门店 / 兴隆餐饮饭庄" class="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:border-emerald-700 focus:outline-none" />
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-bold text-stone-700 mb-1">联系人称呼 <span class="text-rose-500">*</span></label>
-            <input type="text" id="lead-contact-name" required placeholder="例如：张老板" class="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:border-emerald-700 focus:outline-none" />
+            <input type="text" id="lead-contact-name" required placeholder="例如：张掌柜" class="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:border-emerald-700 focus:outline-none" />
           </div>
           <div>
             <label class="block font-bold text-stone-700 mb-1">联系电话 / 微信 <span class="text-rose-500">*</span></label>
@@ -122,17 +122,17 @@
         </div>
 
         <div>
-          <label class="block font-bold text-stone-700 mb-1">店铺详细地址 <span class="text-rose-500">*</span></label>
-          <input type="text" id="lead-address" required placeholder="街道门牌号，方便业务员上门送样" class="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:border-emerald-700 focus:outline-none" />
+          <label class="block font-bold text-stone-700 mb-1">门店详细地址 <span class="text-rose-500">*</span></label>
+          <input type="text" id="lead-address" required placeholder="街道门牌号，方便送货师傅顺路上门送样" class="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:border-emerald-700 focus:outline-none" />
         </div>
 
         <div>
-          <label class="block font-bold text-stone-700 mb-1">意向货品或备注（选填）</label>
-          <textarea id="lead-note" rows="2" placeholder="例如：想了解饮料整箱批发价，每周大概进货20箱" class="w-full px-3.5 py-2 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:border-emerald-700 focus:outline-none"></textarea>
+          <label class="block font-bold text-stone-700 mb-1">日常用度需求或备注（选填）</label>
+          <textarea id="lead-note" rows="2" placeholder="例如：想了解压榨食用油整箱直供价，每周大概补货20箱" class="w-full px-3.5 py-2 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:border-emerald-700 focus:outline-none"></textarea>
         </div>
 
         <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900 leading-relaxed">
-          💡 提交后线索将直达厂商调度中枢，厂商业务员或供货师傅将电话联系您安排上门送样与开通专属进货账号。
+          💡 提交后合作意向将直达供货方调度中枢，当值执事或送货师傅将电话联系您安排上门送样与开通专属补货账号。
         </div>
 
         <button type="submit" id="submit-inquiry-btn" class="w-full py-3 rounded-xl bg-[#1b4332] hover:bg-[#143628] text-white font-bold text-sm shadow-md transition active:scale-95">
@@ -145,7 +145,7 @@
   <footer class="fixed bottom-0 inset-x-0 bg-white border-t border-stone-200 py-2 px-4 z-20">
     <div class="max-w-5xl mx-auto flex items-center justify-around text-xs text-stone-600">
       <a href="suppliers.html" class="flex flex-col items-center text-[#1b4332] font-bold">
-        <span>🏢 供货商名录</span>
+        <span>🏢 供需名录</span>
       </a>
       <a href="index.html" class="flex flex-col items-center hover:text-stone-900">
         <span>🛒 门店订货台</span>
@@ -154,7 +154,7 @@
         <span>🛍️ 百工天街</span>
       </a>
       <a href="hq.html" class="flex flex-col items-center hover:text-stone-900">
-        <span>📊 厂商管理台</span>
+        <span>📊 平准调度台</span>
       </a>
     </div>
   </footer>
