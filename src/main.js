@@ -5,7 +5,7 @@ import { MarketingCanvas } from './modules/marketingCanvas.js';
 import { SETTLEMENT_CONFIG, RETURN_REASONS, EXCHANGE_REASONS } from './constants/settlement.js';
 
 // ==========================================
-// 1. 多总代名册管理与三态隔离购物车 (订/退/换)
+// 1. 多供货商名册管理与三态隔离购物车 (订/退/换)
 // ==========================================
 const MY_AGENTS_KEY = 'b2b_my_agents_list';
 const DEFAULT_AGENTS = [
@@ -114,14 +114,14 @@ window.copyCloudShelfLink = function () {
 // ==========================================
 // 运营工具 3：老客户带新客户裂变弹窗
 // ==========================================
-window.openReferralModal = function() {
+window.openReferralModal = function () {
   window.closeAllMenus();
   const storeName = currentStore?.name || (document.getElementById('store-title')?.innerText || '').trim() || '厚德便民老店';
   const curAgentObj = myAgents.find(a => a.id === currentAgent);
   const agentName = curAgentObj?.name || currentAgent;
   const refUrl = `${window.location.origin}/suppliers.html?t=${encodeURIComponent(currentAgent)}&ref=${encodeURIComponent(storeName)}`;
 
-  safeSetText('ref-store-title', `${storeName} · 诚意荐庄`);
+  safeSetText('ref-store-title', `${storeName} · 诚意推荐`);
   safeSetText('ref-agent-subtitle', `携手【${agentName}】源头直供 · 送货到店`);
   const qrImg = document.getElementById('ref-qr-img');
   if (qrImg) {
@@ -130,7 +130,7 @@ window.openReferralModal = function() {
   window.openModal('referral-modal');
 };
 
-window.copyReferralShareText = function() {
+window.copyReferralShareText = function () {
   const storeName = currentStore?.name || (document.getElementById('store-title')?.innerText || '').trim() || '厚德便民老店';
   const curAgentObj = myAgents.find(a => a.id === currentAgent);
   const agentName = curAgentObj?.name || currentAgent;
@@ -202,7 +202,7 @@ window.toggleRightNavMenu = function (e) {
   e.stopPropagation();
   document.getElementById('left-nav-menu')?.classList.add('hidden');
   document.getElementById('shop-type-dropdown')?.classList.add('hidden');
-  
+
   const curObj = myAgents.find(a => a.id === currentAgent);
   safeSetText('menu-current-agent-tag', curObj ? (curObj.name || curObj.id) : currentAgent);
   document.getElementById('right-nav-menu')?.classList.toggle('hidden');
@@ -263,8 +263,8 @@ function renderAgentSelector() {
     const isCur = ag.id === currentAgent;
     return `
       <button type="button" onclick="window.switchActiveAgent('${ag.id}')" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap transition active:scale-95 ${
-        isCur 
-          ? 'bg-amber-400 text-stone-900 border-amber-300 shadow-sm' 
+        isCur
+          ? 'bg-amber-400 text-stone-900 border-amber-300 shadow-sm'
           : 'bg-[#143628] text-emerald-100 border-emerald-700/60 hover:bg-[#1b4332]'
       }">
         ${ag.name || ag.id} ${isCur ? '●' : ''}
@@ -273,12 +273,12 @@ function renderAgentSelector() {
   }).join('');
 }
 
-window.openAllAgentsModal = function() {
+window.openAllAgentsModal = function () {
   window.renderAllAgentsList(myAgents);
   window.openModal('all-agents-modal');
 };
 
-window.renderAllAgentsList = function(list) {
+window.renderAllAgentsList = function (list) {
   const container = document.getElementById('all-agents-container');
   if (!container) return;
 
@@ -296,9 +296,9 @@ window.renderAllAgentsList = function(list) {
           <span class="text-[10px] text-stone-400 font-mono">商号代号: ${ag.id}</span>
         </div>
         <div class="flex items-center gap-2">
-          ${isCur 
-            ? '<span class="text-[10px] bg-amber-400 text-stone-900 px-2 py-0.5 rounded-full font-bold">正供货中</span>' 
-            : `<button type="button" onclick="window.switchActiveAgent('${ag.id}'); window.closeModal('all-agents-modal');" class="text-xs text-stone-600 hover:text-stone-900 font-bold bg-stone-100 hover:bg-stone-200 px-2.5 py-1 rounded-lg transition">进庄 ➔</button>`
+          ${isCur
+            ? '<span class="text-[10px] bg-amber-400 text-stone-900 px-2 py-0.5 rounded-full font-bold">正供货中</span>'
+            : `<button type="button" onclick="window.switchActiveAgent('${ag.id}'); window.closeModal('all-agents-modal');" class="text-xs text-stone-600 hover:text-stone-900 font-bold bg-stone-100 hover:bg-stone-200 px-2.5 py-1 rounded-lg transition">进入选购 ➔</button>`
           }
           <button type="button" onclick="window.confirmUnbindAgent('${ag.id}')" class="text-[10px] text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2 py-1 rounded-lg transition font-medium" title="解除合作">
             解绑
@@ -309,7 +309,7 @@ window.renderAllAgentsList = function(list) {
   }).join('');
 };
 
-window.filterAgentList = function(keyword) {
+window.filterAgentList = function (keyword) {
   const kw = (keyword || '').trim().toLowerCase();
   let filtered = myAgents;
   if (currentAgentFilterCategory !== '全部') {
@@ -321,7 +321,7 @@ window.filterAgentList = function(keyword) {
   window.renderAllAgentsList(filtered);
 };
 
-window.filterAgentByCategory = function(cat) {
+window.filterAgentByCategory = function (cat) {
   currentAgentFilterCategory = cat;
   document.querySelectorAll('.agent-cat-pill').forEach(btn => {
     btn.className = (btn.innerText === cat)
@@ -340,7 +340,7 @@ window.bindByCode = async function () {
   const rawCode = (inputEl ? inputEl.value : '').trim().toUpperCase();
 
   if (!rawCode) {
-    return alert('请输入供货庄提供的商号代号！');
+    return alert('请输入供货商提供的商号代号！');
   }
 
   let targetAgentId = '';
@@ -360,13 +360,13 @@ window.bindByCode = async function () {
       .limit(1);
 
     if (error) {
-      return alert('查询供货庄失败：' + error.message);
+      return alert('查询供货商失败：' + error.message);
     }
 
     if (data && data.length > 0) {
       const supplier = data[0];
       if (!supplier.is_active || supplier.membership_status === 'paused') {
-        return alert(`供货庄【${supplier.company_name}】当前处于「商道暂歇」状态，暂不可接入。`);
+        return alert(`供货商【${supplier.company_name}】当前处于「商道暂歇」状态，暂不可接入。`);
       }
       targetAgentId = supplier.tenant_id;
       targetAgentName = supplier.company_name;
@@ -381,7 +381,7 @@ window.bindByCode = async function () {
   }
 
   if (inputEl) inputEl.value = '';
-  alert(`🎉 成功结识新供货商【${targetAgentName}】(${targetAgentId})！`);
+  alert(`🎉 成功接入新供货商【${targetAgentName}】(${targetAgentId})！`);
   window.closeModal('bind-agent-modal');
   await window.switchActiveAgent(targetAgentId);
 };
@@ -400,11 +400,11 @@ window.bindByPhone = async () => {
     window.closeModal('bind-agent-modal');
     await window.switchActiveAgent(targetAgentId);
   } else {
-    alert('未在名册中查到该手机号，请联系师傅建档。');
+    alert('未在名册中查到该手机号，请联系送货师傅或厂商建档。');
   }
 };
 
-window.confirmUnbindAgent = async function(targetAgentId) {
+window.confirmUnbindAgent = async function (targetAgentId) {
   if (myAgents.length <= 1) {
     return alert('⚠️ 至少需要保留一家供货厂商，无法解绑全部商号！');
   }
@@ -419,12 +419,12 @@ window.confirmUnbindAgent = async function(targetAgentId) {
   if (debt > 0 || baskets > 0) {
     let reason = [];
     if (debt > 0) reason.push(`尚有挂账货资 ¥${debt.toFixed(2)} 未结清`);
-    if (baskets > 0) reason.push(`借存周转空筐 ${baskets} 个未归还`);
-    
+    if (baskets > 0) reason.push(`借存周转筐/载具 ${baskets} 件未归还`);
+
     return alert(
       `🤝 君子之交 · 善始善终：\n\n` +
       `本店在【${targetName}】处：\n• ${reason.join('\n• ')}\n\n` +
-      `商道贵在诚信相照，请联系随车师傅核销清账、交还周转筐后，方可解除合作。`
+      `商道贵在诚信相照，请联系送货师傅核销清账、交还周转载具后，方可解除合作。`
     );
   }
 
@@ -452,7 +452,7 @@ window.confirmUnbindAgent = async function(targetAgentId) {
   }
 };
 
-window.confirmUnbindCurrentAgent = function() {
+window.confirmUnbindCurrentAgent = function () {
   window.confirmUnbindAgent(currentAgent);
 };
 
@@ -517,7 +517,7 @@ window.openReturnDrawer = async (id) => {
   const prod = allProducts.find(x => x.id === id);
   if (!prod) return;
 
-  if (!currentStore) return alert('当前供货商未绑定有效小店档案，无法追溯订购！');
+  if (!currentStore) return alert('当前供货商未绑定有效门店档案，无法追溯订购！');
 
   const quota = await StoreService.getProductReturnableQuota(currentStore.id, currentAgent, id);
   if (quota.maxReturnable <= 0) {
@@ -567,7 +567,7 @@ window.openExchangeDrawer = async (id) => {
   const prod = allProducts.find(x => x.id === id);
   if (!prod) return;
 
-  if (!currentStore) return alert('当前供货商未绑定有效小店档案！');
+  if (!currentStore) return alert('当前供货商未绑定有效门店档案！');
 
   const quota = await StoreService.getProductReturnableQuota(currentStore.id, currentAgent, id);
   if (quota.maxReturnable <= 0) {
@@ -646,7 +646,7 @@ function updateCartSummary() {
 
   const detailEl = document.getElementById('cart-detail-subtext');
   if (detailEl) {
-    detailEl.innerText = hasSpecial 
+    detailEl.innerText = hasSpecial
       ? `进 ${orderCount} | 退 ${returnCount} (-¥${returnTotal.toFixed(1)}) | 换 ${exchangeCount}`
       : `进 ${orderCount} 件`;
   }
@@ -711,7 +711,7 @@ window.openSettlementModal = () => {
   }
 
   const isSpecialOrder = (returnItems.length > 0 || exchangeItems.length > 0);
-  
+
   const headerTitle = document.getElementById('slip-modal-header-title');
   const badgeSpecial = document.getElementById('badge-special-order');
   const boxReturn = document.getElementById('box-return-items');
@@ -805,9 +805,9 @@ window.handleProofUpload = (e) => {
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const reader = new FileReader();
-    reader.onload = function(ev) {
+    reader.onload = function (ev) {
       const img = new Image();
-      img.onload = async function() {
+      img.onload = async function () {
         const canvasEl = document.createElement('canvas');
         const maxDim = 640;
         let w = img.width, h = img.height;
@@ -870,7 +870,7 @@ window.confirmAndSubmitOrder = async () => {
   const btn = document.getElementById('btn-slip-confirm');
   if (btn) {
     btn.disabled = true;
-    btn.innerText = '正在传达供货庄...';
+    btn.innerText = '正在传达供货商...';
   }
 
   try {
@@ -904,7 +904,7 @@ window.confirmAndSubmitOrder = async () => {
       `请登录厂商调度台审核接单并打印装车总拣货单。`;
     await notifyVendorWebhook(currentAgent, webhookMsg);
 
-    alert(`🎉 凭单已顺利传达供货厂商！\n应付净额: ¥${netTotal.toFixed(2)}\n厂家应允后师傅随车送抵！`);
+    alert(`🎉 凭单已顺利传达供货厂商！\n应付净额: ¥${netTotal.toFixed(2)}\n厂家确认后由送货师傅随车送抵！`);
 
     for (const k of Object.keys(cart)) delete cart[k];
     saveAgentCart();
@@ -917,7 +917,7 @@ window.confirmAndSubmitOrder = async () => {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerText = '✅ 确认凭单 · 传至供货庄';
+      btn.innerText = '✅ 确认凭单 · 传至供货商';
     }
   }
 };
@@ -933,7 +933,7 @@ try {
   myCustomNotes = [];
 }
 
-window.renderDynamicNotes = function() {
+window.renderDynamicNotes = function () {
   const box = document.getElementById('dynamic-notes-box');
   if (!box) return;
 
@@ -947,9 +947,9 @@ window.renderDynamicNotes = function() {
   `).join('');
 };
 
-window.promptCustomDeliveryNote = function() {
+window.promptCustomDeliveryNote = function () {
   const current = deliveryNote || '';
-  const input = prompt('💬 随车捎话 / 存放口信（如：放后厨二号货架、送前提前10分钟来电等）：', current);
+  const input = prompt('💬 随车捎话 / 存放口信（如：放库房二号货架、送前提前10分钟来电等）：', current);
   if (input === null) return;
   const clean = input.trim();
   if (!clean) return;
@@ -977,7 +977,7 @@ window.appendDeliveryNote = (txt) => {
 // 8. 快捷工具与锦囊
 // ==========================================
 window.repeatLastOrder = async function () {
-  if (!currentStore) return alert('当前供货厂家未绑定有效小店档案！');
+  if (!currentStore) return alert('当前供货厂家未绑定有效门店档案！');
 
   const myOrders = await StoreService.getMyOrders(currentStore.id, currentAgent);
   if (!myOrders || myOrders.length === 0) {
@@ -1020,13 +1020,13 @@ window.openStoreOverview = function () {
   const curName = myAgents.find(a => a.id === currentAgent)?.name || currentAgent;
   const debt = document.getElementById('credit-debt')?.innerText || '¥0.00';
   const avail = document.getElementById('credit-avail')?.innerText || '¥2000.00';
-  const basket = document.getElementById('store-basket-count')?.innerText || '0 个';
+  const basket = document.getElementById('store-basket-count')?.innerText || '0 件';
 
   alert(
     `📊 【${curName}】往来账本概览：\n\n` +
     `• 本厂家待平账期存量：${debt}\n` +
     `• 互信授信可用余量：${avail}\n` +
-    `• 借用周转筐：${basket}\n\n` +
+    `• 周转筐 / 载具结存：${basket}\n\n` +
     `可于右上角「···」菜单查验历次交接契单。`
   );
 };
@@ -1067,7 +1067,7 @@ window.configureFlyer = (prodId) => {
   if (!prod) return;
   currentFlyerProd = prod;
   if (!currentFlyerStyle) {
-    currentFlyerStyle = (shopType === '餐饮饭庄') ? 'honest' : 'neighborhood';
+    currentFlyerStyle = (shopType === '餐饮饭庄' || shopType === '餐饮饭店') ? 'honest' : 'neighborhood';
   }
 
   const defaultPrice = (getStorePriceInfo(prod).price * 1.15).toFixed(1);
@@ -1143,7 +1143,7 @@ window.renderLiveFlyerPreview = async () => {
 };
 
 // ==========================================
-// 10. 业态选择
+// 10. 业态选择（支持百工百业预设 + 掌柜自定义行当）
 // ==========================================
 window.selectShopType = (type) => {
   shopType = type;
@@ -1155,14 +1155,21 @@ window.selectShopType = (type) => {
   document.getElementById('shop-type-dropdown')?.classList.add('hidden');
 };
 
+window.promptCustomShopType = () => {
+  document.getElementById('shop-type-dropdown')?.classList.add('hidden');
+  const input = prompt('请输入本店实际经营行当（如：烘焙原料坊、茶庄烟行、母婴生活馆、建材五金店）：', shopType);
+  if (!input || !input.trim()) return;
+  window.selectShopType(input.trim().slice(0, 10));
+};
+
 function renderShopType() {
   const el = document.getElementById('shop-type-badge');
-  if (el) el.innerHTML = `<span>${ShopTypeManager.icons[shopType] || '🏪'} ${shopType}</span> ▾`;
+  if (el) el.innerHTML = `<span>${ShopTypeManager.icons[shopType] || '🏷️'} ${shopType}</span> ▾`;
 }
 
 window.callDriver = () => {
-  const driver = currentStore ? (currentStore.driver_name || '老张师傅') : '配送长兄';
-  alert(`正连线送货长兄【${driver}】...`);
+  const driver = currentStore ? (currentStore.driver_name || '老张师傅') : '送货师傅';
+  alert(`正为您连线送货师傅【${driver}】...`);
   window.location.href = 'tel:13800138000';
 };
 
@@ -1284,7 +1291,7 @@ function renderProductList() {
 // 12. 单据存根、街坊到店自提待核销单与收据查验
 // ==========================================
 window.openReceiptsModal = async () => {
-  if (!currentStore) return alert('当前供货商未绑定有效小店档案！');
+  if (!currentStore) return alert('当前供货商未绑定有效门店档案！');
   window.openModal('receipts-modal');
 
   const [myOrders, myReceipts, pickupOrders] = await Promise.all([
@@ -1307,7 +1314,7 @@ window.openReceiptsModal = async () => {
             <div class="flex justify-between items-center font-bold">
               <span class="font-mono text-stone-900">#${po.order_no || po.id}</span>
               <span class="text-[10px] px-1.5 py-0.2 rounded ${isDelivered ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-200 text-amber-950'}">
-                ${isDelivered ? '✅ 随车已到店/已自提' : '🚚 待随车捎带到店'}
+                ${isDelivered ? '✅ 随车已到店/已自提' : '🚚 待送货师傅捎带到店'}
               </span>
             </div>
             <div class="text-[11px] text-stone-800 font-bold">货品：${itemsStr}</div>
@@ -1336,7 +1343,7 @@ window.openReceiptsModal = async () => {
       if (o.order_status === 'counter_proposal') {
         statusBadge = '<span class="text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded font-bold animate-pulse">💬 厂商有修润建议</span>';
       } else if (o.order_status === 'confirmed') {
-        statusBadge = '<span class="text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded font-bold">✅ 厂商已应允接单</span>';
+        statusBadge = '<span class="text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded font-bold">✅ 厂商已确认接单</span>';
       } else if (o.delivery_status === 'delivered') {
         statusBadge = '<span class="text-stone-500 bg-stone-100 px-1.5 py-0.2 rounded">📦 已经交割平账</span>';
       }
@@ -1379,10 +1386,10 @@ window.openReceiptsModal = async () => {
     receiptsListEl.innerHTML = myReceipts.map(r => `
       <div class="p-2.5 bg-stone-50 border border-stone-200 rounded-xl space-y-1 text-xs">
         <div class="flex justify-between font-bold text-stone-900">
-          <span>送货长兄: ${r.driver_name}</span>
+          <span>送货师傅: ${r.driver_name}</span>
           <span>实交款: ¥${parseFloat(r.amount).toFixed(2)} (${r.pay_method})</span>
         </div>
-        ${r.basket_return ? `<div class="text-[10px] text-amber-800">退还周转筐: ${r.basket_return} 个 (折抵 ¥${r.basket_deduct_amount})</div>` : ''}
+        ${r.basket_return ? `<div class="text-[10px] text-amber-800">退还周转筐/载具: ${r.basket_return} 件 (折抵 ¥${r.basket_deduct_amount})</div>` : ''}
         <div class="text-[10px] text-stone-400">核销时间: ${new Date(r.created_at).toLocaleString()}</div>
       </div>
     `).join('') || '<div class="text-stone-400 text-center py-2">暂无还款记录</div>';
@@ -1401,7 +1408,7 @@ window.acceptProposalAndReload = async (orderId) => {
   if (!o) return;
 
   for (const k of Object.keys(cart)) delete cart[k];
-  
+
   (o.items || []).forEach(it => {
     window.initProdItemState(it.id);
     cart[it.id].order = it.qty;
@@ -1446,7 +1453,7 @@ async function initTerminal() {
     safeSetText('store-title', currentStore.name || '厚德便民老店');
     safeSetText('store-boss', currentStore.contact || '主人家');
     safeSetText('store-driver', currentStore.driver_name || '老张师傅');
-    safeSetText('store-basket-count', `${currentStore.basket_count || 0} 个`);
+    safeSetText('store-basket-count', `${currentStore.basket_count || 0} 件`);
 
     const limit = parseFloat(currentStore.credit_limit || 2000);
     const debt = parseFloat(currentStore.current_debt || 0);
@@ -1462,8 +1469,8 @@ async function initTerminal() {
       localStorage.setItem('active_shop_type', shopType);
     }
   } else {
-    safeSetText('store-driver', '待派送货长兄');
-    safeSetText('store-basket-count', '0 个');
+    safeSetText('store-driver', '待指派送货师傅');
+    safeSetText('store-basket-count', '0 件');
     safeSetText('credit-avail', '¥2000.00');
     safeSetText('credit-debt', '¥0.00');
   }
