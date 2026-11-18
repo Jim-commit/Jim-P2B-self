@@ -11,13 +11,14 @@ const LAST_CUST_KEY = 'baigong_mall_last_cust_v1';
 let allProducts = [];
 let allTenants = [];
 let allCategories = [];
+let pickupStores = [];
 let currentCategoryFilter = 'all';
 let currentBrandFilter = 'all';
 let currentKeywordFilter = '';
 let cart = [];
 
 // =========================================================================
-// 基础弹窗与页面导航
+// 基础弹窗与生态导航
 // =========================================================================
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
@@ -46,24 +47,28 @@ window.openCartModal = function () {
   window.openModal('modal-cart');
 };
 
-window.openCheckoutModal = function () {
-  if (cart.length === 0) return alert('购物篮尚无好物，请先挑选良品！');
-  const total = cart.reduce((sum, item) => sum + parseFloat(item.prod.tier_1_price || 0) * item.qty, 0);
-  const el = document.getElementById('checkout-amount-display');
-  if (el) el.innerText = `¥${total.toFixed(2)}`;
+// =========================================================================
+// 阶梯团购批发算价引擎（1件零售价 / 满5件二阶批价 / 满20件三阶大宗价）
+// =========================================================================
+function getEffectiveUnitPrice(prod, qty) {
+  const p1 = parseFloat(prod.tier_1_price || 0);
+  const p2 = parseFloat(prod.tier_2_price || 0);
+  const p3 = parseFloat(prod.tier_3_price || 0);
 
-  // 自动回填上次收件信息
-  try {
-    const saved = JSON.parse(localStorage.getItem(LAST_CUST_KEY) || 'null');
-    if (saved) {
-      if (!document.getElementById('order-cust-name').value) document.getElementById('order-cust-name').value = saved.name || '';
-      if (!document.getElementById('order-cust-phone').value) document.getElementById('order-cust-phone').value = saved.phone || '';
-      if (!document.getElementById('order-cust-addr').value) document.getElementById('order-cust-addr').value = saved.addr || '';
-    }
-  } catch (e) {}
+  if (qty >= 20 && p3 > 0 && p3 < p1) return p3;
+  if (qty >= 5 && p2 > 0 && p2 < p1) return p2;
+  return p1;
+}
 
-  window.openModal('modal-checkout');
-};
+function getTierLabel(prod, qty) {
+  const p1 = parseFloat(prod.tier_1_price || 0);
+  const p2 = parseFloat(prod.tier_2_price || 0);
+  const p3 = parseFloat(prod.tier_3_price || 0);
+
+  if (qty >= 20 && p3 > 0 && p3 < p1) return '🔥 满20件大宗团购价';
+  if (qty >= 5 && p2 > 0 && p2 < p1) return '✨ 满5件阶梯优惠价';
+  return '零售正价';
+}
 
 // =========================================================================
 // 1. 双形态门面初始化（生态公域天街 vs 厂商私域专柜）
@@ -76,6 +81,7 @@ function setupTianJieMode() {
   document.getElementById('btn-find-brand')?.classList.remove('hidden');
   document.getElementById('brand-hero-section')?.classList.add('hidden');
   document.getElementById('tianjie-brand-bar')?.classList.remove('hidden');
+  document.getElementById('promo-banner-section')?.classList.remove('hidden');
 }
 
 function setupBrandStoreMode(tenantId) {
@@ -87,6 +93,7 @@ function setupBrandStoreMode(tenantId) {
   document.getElementById('btn-back-street')?.classList.remove('hidden');
   document.getElementById('btn-find-brand')?.classList.add('hidden');
   document.getElementById('tianjie-brand-bar')?.classList.add('hidden');
+  document.getElementById('promo-banner-section')?.classList.add('hidden');
 
   document.getElementById('hero-brand-name').innerText = name;
   document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '源头工坊 · 匠心正品';
@@ -190,22 +197,28 @@ function renderGoodsGrid() {
       const tenantName = tenant ? tenant.company_name : p.tenant_id;
       const tags = Array.isArray(p.tags) ? p.tags : [];
       const isSingleShop = !!currentTenantParam;
+      const hasTierPrice = parseFloat(p.tier_2_price || 0) > 0 && parseFloat(p.tier_2_price) < parseFloat(p.tier_1_price || 0);
 
       return `
         <div class="bg-white rounded-3xl p-3 border border-stone-200/80 shadow-sm flex flex-col justify-between space-y-2 hover:shadow-md transition">
           <div class="space-y-1.5">
-            <!-- 商品图片（点击可看完整详情） -->
             <div onclick="window.openProductDetail(${p.id})" class="relative w-full h-32 rounded-2xl bg-stone-100 overflow-hidden flex items-center justify-center cursor-pointer">
               ${p.image_url ? `<img src="${p.image_url}" class="w-full h-full object-cover">` : `<span class="text-stone-300 text-xs">正品封装</span>`}
               <span class="absolute top-1.5 left-1.5 bg-[#1b4332]/80 backdrop-blur-sm text-white text-[9px] px-2 py-0.5 rounded-full font-mono">
                 ${p.measure_unit || '件'}装
               </span>
+              ${
+                hasTierPrice
+                  ? `<span class="absolute top-1.5 right-1.5 bg-amber-500 text-stone-950 text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-xs">
+                      满5件批价¥${p.tier_2_price}
+                    </span>`
+                  : ''
+              }
               <button type="button" onclick="event.stopPropagation(); window.viewProductTrace(${p.id})" class="absolute bottom-1.5 right-1.5 bg-white/90 backdrop-blur-sm text-emerald-900 border border-emerald-200 text-[9px] font-bold px-2 py-0.5 rounded-lg active:scale-95 shadow-xs">
                 📜 验真
               </button>
             </div>
 
-            <!-- 标题、出品工坊与标签 -->
             <div onclick="window.openProductDetail(${p.id})" class="cursor-pointer">
               <b class="text-xs text-stone-900 font-bold block line-clamp-1">${p.name}</b>
               <span class="text-[10px] text-stone-400 font-mono block">${p.spec || '标配'} · ${p.category_main || '常规'}</span>
@@ -220,7 +233,6 @@ function renderGoodsGrid() {
             </div>
           </div>
 
-          <!-- 底栏价格与加购 -->
           <div class="pt-2 border-t border-stone-100 flex justify-between items-center">
             <div>
               <span class="text-[9px] text-stone-400 block font-mono">零售正价</span>
@@ -263,7 +275,25 @@ window.openProductDetail = function (prodId) {
   document.getElementById('detail-prod-origin').innerText = p.origin_place || '源头工坊原产';
   document.getElementById('detail-prod-desc').innerText = p.description || p.handover_note || '工坊直发，严选正品，支持溯源验真。';
 
-  // 渲染百业自定义扩展属性
+  // 阶梯批发价明示条
+  const tierBox = document.getElementById('detail-tier-prices');
+  const p2 = parseFloat(p.tier_2_price || 0);
+  const p3 = parseFloat(p.tier_3_price || 0);
+  if (p2 > 0 || p3 > 0) {
+    tierBox.innerHTML = `
+      <b class="text-amber-900 block mb-1">📊 阶梯团购优惠标准：</b>
+      <div class="grid grid-cols-3 gap-1.5 text-center font-mono">
+        <div class="bg-white p-1.5 rounded-lg border border-amber-200"><span class="text-[9px] text-stone-400 block">1~4件</span><b>¥${p.tier_1_price}</b></div>
+        <div class="bg-white p-1.5 rounded-lg border border-amber-200"><span class="text-[9px] text-stone-400 block">满5件</span><b class="text-amber-800">¥${p2 || p.tier_1_price}</b></div>
+        <div class="bg-white p-1.5 rounded-lg border border-amber-200"><span class="text-[9px] text-stone-400 block">满20件</span><b class="text-emerald-800">¥${p3 || p2 || p.tier_1_price}</b></div>
+      </div>
+    `;
+    tierBox.classList.remove('hidden');
+  } else {
+    tierBox.classList.add('hidden');
+  }
+
+  // 百业自定义扩展属性
   const attrsBox = document.getElementById('detail-custom-attrs');
   const customAttrs = p.custom_attributes && typeof p.custom_attributes === 'object' ? p.custom_attributes : {};
   const entries = Object.entries(customAttrs);
@@ -292,7 +322,7 @@ window.openProductDetail = function (prodId) {
 };
 
 // =========================================================================
-// 3. 购物车与一件代发订购逻辑
+// 3. 购物车与一件代发 / 门店自提双履约下单
 // =========================================================================
 function persistCart() {
   try {
@@ -321,9 +351,26 @@ window.addToCart = function (prodId) {
   updateCartBadge();
 };
 
+function calcCartSummary() {
+  let totalQty = 0;
+  let totalAmt = 0;
+  let savedAmt = 0;
+
+  cart.forEach((item) => {
+    const unitPrice = getEffectiveUnitPrice(item.prod, item.qty);
+    const basePrice = parseFloat(item.prod.tier_1_price || 0);
+    totalQty += item.qty;
+    totalAmt += unitPrice * item.qty;
+    if (basePrice > unitPrice) {
+      savedAmt += (basePrice - unitPrice) * item.qty;
+    }
+  });
+
+  return { totalQty, totalAmt, savedAmt };
+}
+
 function updateCartBadge() {
-  const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
-  const totalAmt = cart.reduce((sum, item) => sum + parseFloat(item.prod.tier_1_price || 0) * item.qty, 0);
+  const { totalQty, totalAmt } = calcCartSummary();
 
   const badge = document.getElementById('cart-badge-count');
   if (badge) {
@@ -350,21 +397,25 @@ function renderCartDrawer() {
   }
 
   list.innerHTML = cart
-    .map(
-      (item) => `
-      <div class="py-2 flex justify-between items-center text-xs">
-        <div>
-          <b class="text-stone-900 block">${item.prod.name}</b>
-          <span class="font-mono text-[10px] text-stone-400">单价: ¥${item.prod.tier_1_price} · 小计: ¥${(parseFloat(item.prod.tier_1_price || 0) * item.qty).toFixed(2)}</span>
+    .map((item) => {
+      const unitPrice = getEffectiveUnitPrice(item.prod, item.qty);
+      const tierLabel = getTierLabel(item.prod, item.qty);
+      return `
+        <div class="py-2 flex justify-between items-center text-xs">
+          <div>
+            <b class="text-stone-900 block">${item.prod.name}</b>
+            <span class="font-mono text-[10px] text-stone-500">
+              单价: <b class="text-emerald-800">¥${unitPrice}</b> (${tierLabel}) · 小计: ¥${(unitPrice * item.qty).toFixed(2)}
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="window.changeCartQty(${item.prod.id}, -1)" class="w-6 h-6 bg-stone-100 rounded-lg font-bold font-mono">-</button>
+            <span class="font-bold font-mono">${item.qty}</span>
+            <button onclick="window.changeCartQty(${item.prod.id}, 1)" class="w-6 h-6 bg-stone-100 rounded-lg font-bold font-mono">+</button>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button onclick="window.changeCartQty(${item.prod.id}, -1)" class="w-6 h-6 bg-stone-100 rounded-lg font-bold font-mono">-</button>
-          <span class="font-bold font-mono">${item.qty}</span>
-          <button onclick="window.changeCartQty(${item.prod.id}, 1)" class="w-6 h-6 bg-stone-100 rounded-lg font-bold font-mono">+</button>
-        </div>
-      </div>
-    `
-    )
+      `;
+    })
     .join('');
 }
 
@@ -388,19 +439,90 @@ window.clearCart = function () {
   renderCartDrawer();
 };
 
+window.onDeliveryModeChange = function (mode) {
+  const expressBox = document.getElementById('checkout-express-box');
+  const pickupBox = document.getElementById('checkout-pickup-box');
+  if (mode === 'pickup') {
+    expressBox?.classList.add('hidden');
+    pickupBox?.classList.remove('hidden');
+  } else {
+    expressBox?.classList.remove('hidden');
+    pickupBox?.classList.add('hidden');
+  }
+};
+
+window.openCheckoutModal = async function () {
+  if (cart.length === 0) return alert('购物篮尚无好物，请先挑选良品！');
+  const { totalAmt, savedAmt } = calcCartSummary();
+
+  const el = document.getElementById('checkout-amount-display');
+  if (el) el.innerText = `¥${totalAmt.toFixed(2)}`;
+
+  const savedTip = document.getElementById('checkout-saved-tip');
+  if (savedTip) {
+    if (savedAmt > 0) {
+      savedTip.innerText = `已享阶梯批价立省 ¥${savedAmt.toFixed(2)}`;
+      savedTip.classList.remove('hidden');
+    } else {
+      savedTip.classList.add('hidden');
+    }
+  }
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(LAST_CUST_KEY) || 'null');
+    if (saved) {
+      if (!document.getElementById('order-cust-name').value) document.getElementById('order-cust-name').value = saved.name || '';
+      if (!document.getElementById('order-cust-phone').value) document.getElementById('order-cust-phone').value = saved.phone || '';
+      if (!document.getElementById('order-cust-addr').value) document.getElementById('order-cust-addr').value = saved.addr || '';
+    }
+  } catch (e) {}
+
+  // 加载可自提实体门店列表
+  if (pickupStores.length === 0) {
+    pickupStores = await MallService.fetchPickupStores(currentTenantParam);
+  }
+  const storeSelect = document.getElementById('order-pickup-store');
+  if (storeSelect) {
+    storeSelect.innerHTML =
+      pickupStores.length > 0
+        ? pickupStores
+            .map(
+              (s) =>
+                `<option value="${s.id}" ${refStoreParam && String(s.id) === String(refStoreParam) ? 'selected' : ''}>${s.name} (${s.address || '临街门店'})</option>`
+            )
+            .join('')
+        : '<option value="">暂无附近合作自提点，请选择快递代发</option>';
+  }
+
+  window.openModal('modal-checkout');
+};
+
 window.submitConsumerOrder = async function () {
   const name = document.getElementById('order-cust-name').value.trim();
   const phone = document.getElementById('order-cust-phone').value.trim();
+  const deliveryMode = document.getElementById('order-delivery-mode')?.value || 'express';
   const addr = document.getElementById('order-cust-addr').value.trim();
+  const pickupStoreId = document.getElementById('order-pickup-store')?.value || '';
   const note = document.getElementById('order-cust-note').value.trim();
 
-  if (!name || !phone || phone.length < 11 || !addr) {
-    return alert('请填全收件人姓名、11位手机号与配送详细地址！');
+  if (!name || !phone || phone.length < 11) {
+    return alert('请填全收件人姓名与 11 位手机号！');
   }
-
+  if (deliveryMode === 'express' && !addr) {
+    return alert('请填写快递配送详细地址！');
+  }
+  if (deliveryMode === 'pickup' && !pickupStoreId) {
+    return alert('请选择就近自提的实体合作门店！');
+  }
   if (cart.length === 0) {
     return alert('购物篮尚无好物！');
   }
+
+  const pickupStoreObj = pickupStores.find((s) => String(s.id) === String(pickupStoreId));
+  const finalAddressText =
+    deliveryMode === 'pickup'
+      ? `【门店自提】${pickupStoreObj ? `${pickupStoreObj.name} (${pickupStoreObj.address || ''})` : `门店ID:${pickupStoreId}`}`
+      : addr;
 
   const groupedByTenant = {};
   cart.forEach((item) => {
@@ -415,7 +537,7 @@ window.submitConsumerOrder = async function () {
   let grandTotal = 0;
 
   Object.entries(groupedByTenant).forEach(([tenantId, tenantItems]) => {
-    const subTotal = tenantItems.reduce((sum, item) => sum + parseFloat(item.prod.tier_1_price || 0) * item.qty, 0);
+    const subTotal = tenantItems.reduce((sum, item) => sum + getEffectiveUnitPrice(item.prod, item.qty) * item.qty, 0);
     grandTotal += subTotal;
 
     const orderNo = `ON-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -424,14 +546,17 @@ window.submitConsumerOrder = async function () {
     const itemsPayload = tenantItems.map((item) => ({
       id: item.prod.id,
       name: item.prod.name,
-      price: item.prod.tier_1_price,
+      price: getEffectiveUnitPrice(item.prod, item.qty),
       qty: item.qty,
       measure_unit: item.prod.measure_unit || '件'
     }));
 
+    const effectiveRefStoreId = deliveryMode === 'pickup' ? pickupStoreId : refStoreParam;
+
     orderPayloads.push({
       order_no: orderNo,
       tenant_id: tenantId,
+      store_id: deliveryMode === 'pickup' && pickupStoreId ? parseInt(pickupStoreId) : null,
       order_source: 'online_mall',
       settlement_type: 'online_paid',
       items: itemsPayload,
@@ -442,8 +567,11 @@ window.submitConsumerOrder = async function () {
       net_settle_amount: subTotal,
       order_status: 'confirmed',
       delivery_status: 'ordered',
-      note: `[线上代发] 收件人: ${name} (${phone}) 地址: ${addr} ${note ? `叮咛: ${note}` : ''} ${refStoreParam ? `[推客门店ID: ${refStoreParam}]` : ''}`,
-      driver_action_instruction: `【网销一件代发】由库管打单发快递。收件人: ${name} ${phone}`
+      note: `[线上代发] 收件人: ${name} (${phone}) 地址: ${finalAddressText} ${note ? `叮咛: ${note}` : ''} ${effectiveRefStoreId ? `[推客门店ID: ${effectiveRefStoreId}]` : ''}`,
+      driver_action_instruction:
+        deliveryMode === 'pickup'
+          ? `【网销门店自提单】随车捎带至 ${pickupStoreObj?.name || '指定门店'}，客户 ${name} (${phone}) 到店自提`
+          : `【网销一件代发】由库管打单发快递。收件人: ${name} ${phone}`
     });
   });
 
@@ -456,8 +584,8 @@ window.submitConsumerOrder = async function () {
     alert(
       `🎉 订单提交成功！\n\n` +
         `• 单据标识: ${createdOrderNos.join('、')}\n` +
-        `• 总额: ¥${grandTotal.toFixed(2)}\n` +
-        `• 配送: 厂家库管已接单打包，将由顺丰/京东快递发出！`
+        `• 实付总额: ¥${grandTotal.toFixed(2)}\n` +
+        `• 履约方式: ${deliveryMode === 'pickup' ? `送至 ${pickupStoreObj?.name} 自提` : '厂家直发快递包邮'}`
     );
     window.clearCart();
     window.closeModal('modal-checkout');
@@ -465,7 +593,7 @@ window.submitConsumerOrder = async function () {
 };
 
 // =========================================================================
-// 4. 消费者订单与快递进度查询（找回缺失查询入口）
+// 4. 消费者我的订单与快递进度查询
 // =========================================================================
 window.openMyOrdersModal = function () {
   try {
@@ -511,6 +639,7 @@ window.searchConsumerOrders = async function () {
             </span>
           </div>
           <div class="text-stone-700">${itemsText || '标准商品组合'}</div>
+          <div class="text-[10px] text-stone-500">${o.note || ''}</div>
           <div class="flex justify-between text-[10px] text-stone-400 font-mono pt-1 border-t border-stone-200/60">
             <span>${new Date(o.created_at).toLocaleString()}</span>
             <b class="text-emerald-900">实付 ¥${parseFloat(o.total_amount || 0).toFixed(2)}</b>
@@ -556,6 +685,30 @@ window.openShareModal = function () {
 window.copyShareLink = function () {
   const link = document.getElementById('share-link-text').innerText;
   navigator.clipboard.writeText(link).then(() => alert('专属分润推客链接已复制到剪贴簿！'));
+};
+
+// =========================================================================
+// 7. 商道建言 / 客服咨询反馈弹窗
+// =========================================================================
+window.openMallFeedbackModal = function () {
+  document.getElementById('mall-feedback-text').value = '';
+  window.openModal('modal-mall-feedback');
+};
+
+window.submitMallFeedback = async function () {
+  const contact = document.getElementById('mall-feedback-contact').value.trim();
+  const content = document.getElementById('mall-feedback-text').value.trim();
+  if (!content) return alert('请填写您的商品咨询或建言内容！');
+
+  await MallService.submitMallSuggestion({
+    proposer_type: 'customer',
+    proposer_name: contact || '天街访客',
+    category: currentTenantParam ? `专柜咨询(${currentTenantParam})` : '百工天街集市咨询',
+    content: content
+  });
+
+  alert('🙏 您的咨询与建言已呈达平台与工坊执事，感谢支持源头正品！');
+  window.closeModal('modal-mall-feedback');
 };
 
 // =========================================================================
