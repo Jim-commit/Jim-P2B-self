@@ -61,7 +61,7 @@ export const DriverService = {
       .update({
         order_status: 'over_credit_pending',
         over_credit_amount: overAmount,
-        driver_action_instruction: `【待廠家特批】超授信 ¥${overAmount.toFixed(2)}，待廠商特信放行`
+        driver_action_instruction: `【待调度台特批】超授信 ¥${overAmount.toFixed(2)}，待供货方特信放行`
       })
       .eq('id', parseInt(orderId));
   },
@@ -70,7 +70,6 @@ export const DriverService = {
     const isOnlinePickup = !!record.isOnlinePickup;
     const hasBasketReturn = (record.logPayload?.basket_return || 0) > 0;
 
-    // 天街自提包裹线上已付清：仅在有实际收款或退还周转筐时记录钱箱流水，避免虚增现金流水
     if (record.amount > 0 || hasBasketReturn || !isOnlinePickup) {
       const logPayload = { ...record.logPayload };
       let { error: logErr } = await supabase.from('driver_collection_log').insert([logPayload]);
@@ -103,7 +102,7 @@ export const DriverService = {
           ? 'online_paid'
           : record.amount > 0
           ? 'paid'
-          : record.method === '現金'
+          : record.method === '现金'
           ? 'cash_zero_cleared'
           : 'credit_logged',
         sign_image_url: record.signBase64
