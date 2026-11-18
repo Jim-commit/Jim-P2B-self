@@ -48,7 +48,7 @@ export const StoreService = {
       if (error) throw error;
       let list = (data || []).filter((p) => {
         if (p.channel_brick_and_mortar !== undefined) return !!p.channel_brick_and_mortar;
-        return ['实体店', '实体与电商双轨', '双轨', 'offline', 'both'].includes(p.sales_channel_type) || !p.sales_channel_type;
+        return ['实体店', '实体与电商双轨'].includes(p.sales_channel_type) || !p.sales_channel_type;
       });
 
       if (visibleIds && Array.isArray(visibleIds) && visibleIds.length > 0) {
