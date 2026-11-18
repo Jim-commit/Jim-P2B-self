@@ -7,11 +7,14 @@ const refStoreParam = urlParams.get('ref');
 
 const CART_STORAGE_KEY = 'baigong_mall_cart_v1';
 const LAST_CUST_KEY = 'baigong_mall_last_cust_v1';
+const JOINED_DEMANDS_KEY = 'baigong_c2b_joined_ids_v1';
 
 let allProducts = [];
 let allTenants = [];
 let allCategories = [];
+let allDemands = [];
 let pickupStores = [];
+let currentMarketMode = 'b2c'; // 'b2c' | 'c2b'
 let currentCategoryFilter = 'all';
 let currentBrandFilter = 'all';
 let currentKeywordFilter = '';
@@ -48,6 +51,34 @@ window.openCartModal = function () {
 };
 
 // =========================================================================
+// 双轨市场模式切换（B2C 现货市集 vs C2B 需求发榜集采）
+// =========================================================================
+window.switchMarketMode = async function (mode) {
+  currentMarketMode = mode;
+  const isB2C = mode === 'b2c';
+
+  document.getElementById('pane-b2c-market')?.classList.toggle('hidden', !isB2C);
+  document.getElementById('pane-c2b-market')?.classList.toggle('hidden', isB2C);
+  document.getElementById('b2c-cart-footer')?.classList.toggle('hidden', !isB2C);
+  document.getElementById('c2b-publish-footer')?.classList.toggle('hidden', isB2C);
+
+  const btnB2C = document.getElementById('mode-tab-b2c');
+  const btnC2B = document.getElementById('mode-tab-c2b');
+  if (btnB2C && btnC2B) {
+    btnB2C.className = isB2C
+      ? 'flex-1 py-2 rounded-xl bg-[#1b4332] text-white font-bold shadow transition flex items-center justify-center gap-1'
+      : 'flex-1 py-2 rounded-xl text-stone-600 hover:text-stone-900 font-bold transition flex items-center justify-center gap-1';
+    btnC2B.className = !isB2C
+      ? 'flex-1 py-2 rounded-xl bg-amber-500 text-stone-950 font-bold shadow transition flex items-center justify-center gap-1'
+      : 'flex-1 py-2 rounded-xl text-stone-600 hover:text-stone-900 font-bold transition flex items-center justify-center gap-1';
+  }
+
+  if (!isB2C) {
+    await loadAndRenderC2BDemands();
+  }
+};
+
+// =========================================================================
 // 阶梯团购批发算价引擎（1件零售价 / 满5件二阶批价 / 满20件三阶大宗价）
 // =========================================================================
 function getEffectiveUnitPrice(prod, qty) {
@@ -74,45 +105,68 @@ function getTierLabel(prod, qty) {
 // 1. 双形态门面初始化（生态公域天街 vs 厂商私域专柜）
 // =========================================================================
 function setupTianJieMode() {
-  document.getElementById('mall-header-title').innerText = '百工天街 · 正品大集市';
+  document.getElementById('mall-header-title').innerText = '百工天街 · B2C/C2B 集市';
   document.getElementById('mall-mode-badge').innerText = '生态公域';
-  document.getElementById('mall-header-sub').innerText = '物勒工名 · 源头直发 · 诚信共生';
+  document.getElementById('mall-header-sub').innerText = '现货直发 · 需求发榜 · 以量定产';
   document.getElementById('btn-back-street')?.classList.add('hidden');
   document.getElementById('btn-find-brand')?.classList.remove('hidden');
   document.getElementById('brand-hero-section')?.classList.add('hidden');
+  document.getElementById('tianjie-brand-showcase')?.classList.remove('hidden');
   document.getElementById('tianjie-brand-bar')?.classList.remove('hidden');
-  document.getElementById('promo-banner-section')?.classList.remove('hidden');
 }
 
 function setupBrandStoreMode(tenantId) {
   const tenant = allTenants.find((t) => (t.tenant_id || '').toUpperCase() === (tenantId || '').toUpperCase());
   const name = tenant ? tenant.company_name : tenantId;
-  document.getElementById('mall-header-title').innerText = `${name} · 品牌数字专柜`;
-  document.getElementById('mall-mode-badge').innerText = '私域专卖';
-  document.getElementById('mall-header-sub').innerText = '匠心直供 · 一件代发包邮';
+  document.getElementById('mall-header-title').innerText = `${name} · 数字专柜`;
+  document.getElementById('mall-mode-badge').innerText = '私域专柜';
+  document.getElementById('mall-header-sub').innerText = '工坊直营 · 现货包邮 · 接单定制';
   document.getElementById('btn-back-street')?.classList.remove('hidden');
   document.getElementById('btn-find-brand')?.classList.add('hidden');
+  document.getElementById('tianjie-brand-showcase')?.classList.add('hidden');
   document.getElementById('tianjie-brand-bar')?.classList.add('hidden');
-  document.getElementById('promo-banner-section')?.classList.add('hidden');
 
   document.getElementById('hero-brand-name').innerText = name;
-  document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '源头工坊 · 匠心正品';
+  document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '源头工坊 · 匠心正品 · 支持大宗与定制接单';
   document.getElementById('hero-tenant-id').innerText = tenant ? tenant.tenant_id : tenantId;
   document.getElementById('brand-hero-section')?.classList.remove('hidden');
 }
 
-function renderBrandSelectorBar() {
+function renderBrandShowcaseAndFilter() {
+  // 1. 天街顶部品牌专柜橱窗巡礼卡片
+  const showcase = document.getElementById('brand-showcase-cards');
+  if (showcase) {
+    showcase.innerHTML = allTenants
+      .map(
+        (t) => `
+        <div onclick="window.goToBrandStore('${t.tenant_id}')" class="shrink-0 w-44 bg-white border border-stone-200 hover:border-emerald-700 p-3 rounded-2xl shadow-2xs cursor-pointer transition space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded font-mono font-bold">
+              ${t.business_type === 'factory' ? '🏭 源头工厂' : '🏢 区域总代'}
+            </span>
+            <span class="text-[10px] text-amber-700 font-bold">进专柜 ➔</span>
+          </div>
+          <b class="text-xs text-stone-900 block truncate">${t.company_name}</b>
+          <span class="text-[10px] text-stone-400 font-mono block truncate">代号: ${t.tenant_id}</span>
+        </div>
+      `
+      )
+      .join('');
+  }
+
+  // 2. 货架按工坊筛选标签
   const bar = document.getElementById('dynamic-brand-chips');
-  if (!bar) return;
-  bar.innerHTML = allTenants
-    .map(
-      (t) => `
-      <button onclick="window.filterMallBrand('${t.tenant_id}')" class="mall-brand-chip bg-white border border-stone-200 text-stone-700 hover:border-emerald-700 px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition">
-        🏭 ${t.company_name}
-      </button>
-    `
-    )
-    .join('');
+  if (bar) {
+    bar.innerHTML = allTenants
+      .map(
+        (t) => `
+        <button onclick="window.filterMallBrand('${t.tenant_id}')" class="mall-brand-chip bg-white border border-stone-200 text-stone-700 hover:border-emerald-700 px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition">
+          🏭 ${t.company_name}
+        </button>
+      `
+      )
+      .join('');
+  }
 }
 
 window.filterMallBrand = function (tenantId) {
@@ -159,7 +213,7 @@ window.onSearchMallKeyword = function (val) {
 };
 
 // =========================================================================
-// 2. 商品货架渲染与商品详情预览
+// 2. B2C 现货货架渲染与商品详情预览
 // =========================================================================
 function renderGoodsGrid() {
   const container = document.getElementById('mall-goods-grid');
@@ -187,7 +241,14 @@ function renderGoodsGrid() {
   }
 
   if (filtered.length === 0) {
-    container.innerHTML = '<div class="col-span-full py-16 text-center text-stone-400 text-xs">当前行当尚无上架良品。</div>';
+    container.innerHTML = `
+      <div class="col-span-full py-12 text-center space-y-2.5 bg-white rounded-3xl border border-stone-200 p-6">
+        <div class="text-stone-400 text-xs">当前筛选条件下暂无已上架现货良品。</div>
+        <button onclick="window.switchMarketMode('c2b'); window.openC2BDemandModal();" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs px-4 py-2 rounded-xl shadow active:scale-95 transition">
+          📢 没找到想要的？立即发 C2B 求购榜让工厂报价
+        </button>
+      </div>
+    `;
     return;
   }
 
@@ -275,7 +336,6 @@ window.openProductDetail = function (prodId) {
   document.getElementById('detail-prod-origin').innerText = p.origin_place || '源头工坊原产';
   document.getElementById('detail-prod-desc').innerText = p.description || p.handover_note || '工坊直发，严选正品，支持溯源验真。';
 
-  // 阶梯批发价明示条
   const tierBox = document.getElementById('detail-tier-prices');
   const p2 = parseFloat(p.tier_2_price || 0);
   const p3 = parseFloat(p.tier_3_price || 0);
@@ -293,7 +353,6 @@ window.openProductDetail = function (prodId) {
     tierBox.classList.add('hidden');
   }
 
-  // 百业自定义扩展属性
   const attrsBox = document.getElementById('detail-custom-attrs');
   const customAttrs = p.custom_attributes && typeof p.custom_attributes === 'object' ? p.custom_attributes : {};
   const entries = Object.entries(customAttrs);
@@ -318,11 +377,217 @@ window.openProductDetail = function (prodId) {
     window.closeModal('modal-product-detail');
   };
 
+  // 支持从商品详情一键发起同类大宗定制询价
+  document.getElementById('btn-detail-c2b-custom').onclick = () => {
+    window.closeModal('modal-product-detail');
+    window.openC2BDemandModal(p.name, p.tenant_id);
+  };
+
   window.openModal('modal-product-detail');
 };
 
 // =========================================================================
-// 3. 购物车与一件代发 / 门店自提双履约下单
+// 3. C2B 需求发榜、跟单凑量与专柜定制模块
+// =========================================================================
+async function loadAndRenderC2BDemands() {
+  const listEl = document.getElementById('c2b-demands-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="py-10 text-center text-stone-400 text-xs">正调阅百工天街 C2B 实时求购需求榜...</div>';
+
+  allDemands = await MallService.fetchC2BDemands(currentTenantParam);
+  renderC2BDemandsList();
+}
+
+function parseDemandPayload(rawContent) {
+  try {
+    const parsed = JSON.parse(rawContent);
+    if (parsed && parsed.title) return parsed;
+  } catch (e) {}
+  return {
+    title: rawContent,
+    qty: '若干',
+    budget: '面议',
+    delivery: '快递或门店自提',
+    coBuyers: 1
+  };
+}
+
+function renderC2BDemandsList() {
+  const listEl = document.getElementById('c2b-demands-list');
+  if (!listEl) return;
+
+  if (allDemands.length === 0) {
+    listEl.innerHTML = `
+      <div class="py-12 text-center bg-white rounded-3xl border border-stone-200 p-6 space-y-2">
+        <div class="text-stone-400 text-xs">当前暂无公开求购需求帖。</div>
+        <button onclick="window.openC2BDemandModal()" class="bg-amber-500 text-stone-950 font-bold text-xs px-4 py-2 rounded-xl shadow">
+          + 发布首条 C2B 求购 / 定制需求
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  let joinedIds = [];
+  try {
+    joinedIds = JSON.parse(localStorage.getItem(JOINED_DEMANDS_KEY) || '[]');
+  } catch (e) {}
+
+  listEl.innerHTML = allDemands
+    .map((d) => {
+      const info = parseDemandPayload(d.content);
+      const isJoined = joinedIds.includes(d.id);
+      const hasFactoryReply = !!d.official_reply;
+      const targetTag = (d.category || '').includes('专柜:') ? d.category : '全网公域发榜';
+
+      return `
+        <div class="bg-white border border-stone-200 rounded-3xl p-4 shadow-2xs space-y-2.5 text-xs">
+          <div class="flex justify-between items-start gap-2">
+            <div>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="bg-amber-100 text-amber-950 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                  🔥 ${info.coBuyers || 1} 人已凑单
+                </span>
+                <span class="bg-stone-100 text-stone-600 text-[10px] px-2 py-0.5 rounded-full font-mono">
+                  ${targetTag}
+                </span>
+              </div>
+              <b class="text-sm text-stone-900 block mt-1.5">${info.title}</b>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+              hasFactoryReply ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-50 text-amber-800 border border-amber-200'
+            }">
+              ${hasFactoryReply ? '✅ 工坊已接单报价' : '⏳ 聚量招标中'}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-1.5 bg-stone-50 p-2 rounded-2xl border border-stone-100 text-[11px] font-mono">
+            <div><span class="text-stone-400 block text-[9px]">求购规模</span><b class="text-stone-800">${info.qty}</b></div>
+            <div><span class="text-stone-400 block text-[9px]">期望预算</span><b class="text-emerald-900">${info.budget}</b></div>
+            <div><span class="text-stone-400 block text-[9px]">交付方式</span><b class="text-stone-700 font-sans">${info.delivery}</b></div>
+          </div>
+
+          ${info.note ? `<p class="text-[11px] text-stone-500">💬 规格/定制说明：${info.note}</p>` : ''}
+
+          ${
+            hasFactoryReply
+              ? `<div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-2xl text-[11px] text-emerald-950">
+                  <b>🏭 厂方/平台报价回执：</b> ${d.official_reply}
+                </div>`
+              : ''
+          }
+
+          <div class="pt-2 border-t border-stone-100 flex justify-between items-center text-[10px] text-stone-400">
+            <span>发布时间: ${new Date(d.created_at).toLocaleDateString()}</span>
+            <button onclick="window.coBuyC2BDemand(${d.id})" ${isJoined ? 'disabled' : ''} class="${
+        isJoined
+          ? 'bg-stone-100 text-stone-400 px-3 py-1.5 rounded-xl font-bold'
+          : 'bg-[#1b4332] hover:bg-[#143628] text-white px-3.5 py-1.5 rounded-xl font-bold shadow active:scale-95 transition'
+      }">
+              ${isJoined ? '✓ 已参与跟单凑量' : '🤝 我也要 · +1 跟单凑量'}
+            </button>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+window.openC2BDemandModal = function (presetTitle = '', presetTenantId = '') {
+  document.getElementById('c2b-title-input').value = presetTitle || '';
+  document.getElementById('c2b-qty-input').value = '';
+  document.getElementById('c2b-budget-input').value = '';
+  document.getElementById('c2b-note-input').value = '';
+
+  // 填充可选定向专柜下拉框
+  const targetSelect = document.getElementById('c2b-target-tenant');
+  if (targetSelect) {
+    const defaultTarget = presetTenantId || currentTenantParam || 'all';
+    targetSelect.innerHTML =
+      `<option value="all">🌐 发布至百工天街公域（全网工坊竞价接单）</option>` +
+      allTenants
+        .map(
+          (t) =>
+            `<option value="${t.tenant_id}" ${defaultTarget === t.tenant_id ? 'selected' : ''}>🏭 定向发往【${t.company_name}】数字专柜</option>`
+        )
+        .join('');
+  }
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(LAST_CUST_KEY) || 'null');
+    if (saved) {
+      if (!document.getElementById('c2b-name-input').value) document.getElementById('c2b-name-input').value = saved.name || '';
+      if (!document.getElementById('c2b-phone-input').value) document.getElementById('c2b-phone-input').value = saved.phone || '';
+    }
+  } catch (e) {}
+
+  window.openModal('modal-c2b-demand');
+};
+
+window.submitC2BDemand = async function () {
+  const title = document.getElementById('c2b-title-input').value.trim();
+  const qty = document.getElementById('c2b-qty-input').value.trim();
+  const budget = document.getElementById('c2b-budget-input').value.trim() || '按阶梯批价面议';
+  const delivery = document.getElementById('c2b-delivery-input').value;
+  const targetTenant = document.getElementById('c2b-target-tenant').value;
+  const note = document.getElementById('c2b-note-input').value.trim();
+  const name = document.getElementById('c2b-name-input').value.trim();
+  const phone = document.getElementById('c2b-phone-input').value.trim();
+
+  if (!title || !qty || !phone || phone.length < 11) {
+    return alert('请完整填写求购/定制品名、需求数量以及 11 位联系手机号！');
+  }
+
+  const structuredContent = JSON.stringify({
+    title,
+    qty,
+    budget,
+    delivery,
+    note,
+    coBuyers: 1
+  });
+
+  const categoryTag = targetTenant === 'all' ? 'C2B全网公域发榜' : `C2B定向专柜:${targetTenant}`;
+
+  const { error } = await MallService.publishC2BDemand({
+    proposer_type: 'c2b_demand',
+    proposer_name: `${name || '天街买家'} (${phone})`,
+    category: categoryTag,
+    content: structuredContent
+  });
+
+  if (error) {
+    alert('发布失败: ' + error.message);
+  } else {
+    alert('🎉 C2B 求购/定制需求已成功发榜！\n其他买家可点击跟单凑量，对应行当工坊将尽快报价接单。');
+    window.closeModal('modal-c2b-demand');
+    await loadAndRenderC2BDemands();
+  }
+};
+
+window.coBuyC2BDemand = async function (demandId) {
+  const demand = allDemands.find((x) => x.id === demandId);
+  if (!demand) return;
+
+  const info = parseDemandPayload(demand.content);
+  info.coBuyers = (parseInt(info.coBuyers) || 1) + 1;
+
+  await MallService.joinC2BDemand(demandId, JSON.stringify(info));
+
+  try {
+    const joinedIds = JSON.parse(localStorage.getItem(JOINED_DEMANDS_KEY) || '[]');
+    if (!joinedIds.includes(demandId)) {
+      joinedIds.push(demandId);
+      localStorage.setItem(JOINED_DEMANDS_KEY, JSON.stringify(joinedIds));
+    }
+  } catch (e) {}
+
+  alert(`🤝 跟单凑量成功！当前已有 ${info.coBuyers} 位买家共同聚量，量越大工坊出厂价越优！`);
+  await loadAndRenderC2BDemands();
+};
+
+// =========================================================================
+// 4. 购物车与 B2C 一件代发 / 门店自提双履约下单
 // =========================================================================
 function persistCart() {
   try {
@@ -477,7 +742,6 @@ window.openCheckoutModal = async function () {
     }
   } catch (e) {}
 
-  // 加载可自提实体门店列表
   if (pickupStores.length === 0) {
     pickupStores = await MallService.fetchPickupStores(currentTenantParam);
   }
@@ -593,7 +857,7 @@ window.submitConsumerOrder = async function () {
 };
 
 // =========================================================================
-// 4. 消费者我的订单与快递进度查询
+// 5. 统一查询中心：我的 B2C 订单 + 我的 C2B 需求榜进度
 // =========================================================================
 window.openMyOrdersModal = function () {
   try {
@@ -612,46 +876,75 @@ window.searchConsumerOrders = async function () {
   const phone = document.getElementById('query-order-phone').value.trim();
   const listEl = document.getElementById('my-orders-result-list');
   if (!phone || phone.length < 7) {
-    return alert('请输入下单时预留的收件人手机号！');
+    return alert('请输入下单或发榜时预留的手机号！');
   }
 
-  listEl.innerHTML = '<div class="py-8 text-center text-stone-400">正在查询云端单据...</div>';
-  const orders = await MallService.queryOrdersByPhone(phone);
+  listEl.innerHTML = '<div class="py-8 text-center text-stone-400">正在检索您的 B2C 订单与 C2B 需求...</div>';
+  const { orders, demands } = await MallService.queryOrdersByPhone(phone);
 
-  if (orders.length === 0) {
-    listEl.innerHTML = '<div class="py-8 text-center text-stone-400">未查询到该手机号关联的网销订单。</div>';
+  if (orders.length === 0 && demands.length === 0) {
+    listEl.innerHTML = '<div class="py-8 text-center text-stone-400">未查询到该手机号关联的订单或求购需求。</div>';
     return;
   }
 
-  listEl.innerHTML = orders
-    .map((o) => {
-      const items = Array.isArray(o.items) ? o.items : [];
-      const itemsText = items.map((it) => `${it.name} x${it.qty}${it.measure_unit || '件'}`).join('、');
-      const isDelivered = o.delivery_status === 'delivered';
-      return `
-        <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
-          <div class="flex justify-between items-center">
-            <b class="font-mono text-stone-900">#${o.order_no || o.id}</b>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              isDelivered ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
-            }">
-              ${isDelivered ? '✅ 已发货/签收' : '📦 厂家打包出库中'}
-            </span>
+  let html = '';
+
+  if (demands.length > 0) {
+    html += `<div class="text-[11px] font-bold text-amber-900 pt-1">📢 我发布的 C2B 求购/定制需求 (${demands.length})：</div>`;
+    html += demands
+      .map((d) => {
+        const info = parseDemandPayload(d.content);
+        return `
+          <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-1">
+            <div class="flex justify-between items-center">
+              <b class="text-stone-900">${info.title} (${info.qty})</b>
+              <span class="text-[10px] bg-amber-200 text-amber-950 px-2 py-0.5 rounded-full font-bold">🔥 ${info.coBuyers || 1} 人凑单</span>
+            </div>
+            ${
+              d.official_reply
+                ? `<div class="text-[11px] text-emerald-900 bg-white p-2 rounded-xl border border-emerald-200"><b>🏭 厂方报价回复：</b>${d.official_reply}</div>`
+                : `<div class="text-[10px] text-stone-500">⏳ 正在等待对应行当工坊接单报价...</div>`
+            }
           </div>
-          <div class="text-stone-700">${itemsText || '标准商品组合'}</div>
-          <div class="text-[10px] text-stone-500">${o.note || ''}</div>
-          <div class="flex justify-between text-[10px] text-stone-400 font-mono pt-1 border-t border-stone-200/60">
-            <span>${new Date(o.created_at).toLocaleString()}</span>
-            <b class="text-emerald-900">实付 ¥${parseFloat(o.total_amount || 0).toFixed(2)}</b>
+        `;
+      })
+      .join('');
+  }
+
+  if (orders.length > 0) {
+    html += `<div class="text-[11px] font-bold text-emerald-950 pt-2">📦 我的 B2C 现货订单 (${orders.length})：</div>`;
+    html += orders
+      .map((o) => {
+        const items = Array.isArray(o.items) ? o.items : [];
+        const itemsText = items.map((it) => `${it.name} x${it.qty}${it.measure_unit || '件'}`).join('、');
+        const isDelivered = o.delivery_status === 'delivered';
+        return `
+          <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
+            <div class="flex justify-between items-center">
+              <b class="font-mono text-stone-900">#${o.order_no || o.id}</b>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                isDelivered ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
+              }">
+                ${isDelivered ? '✅ 已发货/签收' : '📦 厂家打包出库中'}
+              </span>
+            </div>
+            <div class="text-stone-700">${itemsText || '标准商品组合'}</div>
+            <div class="text-[10px] text-stone-500">${o.note || ''}</div>
+            <div class="flex justify-between text-[10px] text-stone-400 font-mono pt-1 border-t border-stone-200/60">
+              <span>${new Date(o.created_at).toLocaleString()}</span>
+              <b class="text-emerald-900">实付 ¥${parseFloat(o.total_amount || 0).toFixed(2)}</b>
+            </div>
           </div>
-        </div>
-      `;
-    })
-    .join('');
+        `;
+      })
+      .join('');
+  }
+
+  listEl.innerHTML = html;
 };
 
 // =========================================================================
-// 5. 物勒工名 · 正品溯源验真弹窗
+// 6. 物勒工名 · 正品溯源验真弹窗 & 社交分润推客二维码
 // =========================================================================
 window.viewProductTrace = function (prodId) {
   const p = allProducts.find((x) => x.id === prodId);
@@ -668,9 +961,6 @@ window.viewProductTrace = function (prodId) {
   window.openModal('modal-trace');
 };
 
-// =========================================================================
-// 6. 社交分润与推客二维码
-// =========================================================================
 window.openShareModal = function () {
   const currentUrl = new URL(window.location.href);
   if (currentTenantParam) currentUrl.searchParams.set('t', currentTenantParam);
@@ -688,30 +978,6 @@ window.copyShareLink = function () {
 };
 
 // =========================================================================
-// 7. 商道建言 / 客服咨询反馈弹窗
-// =========================================================================
-window.openMallFeedbackModal = function () {
-  document.getElementById('mall-feedback-text').value = '';
-  window.openModal('modal-mall-feedback');
-};
-
-window.submitMallFeedback = async function () {
-  const contact = document.getElementById('mall-feedback-contact').value.trim();
-  const content = document.getElementById('mall-feedback-text').value.trim();
-  if (!content) return alert('请填写您的商品咨询或建言内容！');
-
-  await MallService.submitMallSuggestion({
-    proposer_type: 'customer',
-    proposer_name: contact || '天街访客',
-    category: currentTenantParam ? `专柜咨询(${currentTenantParam})` : '百工天街集市咨询',
-    content: content
-  });
-
-  alert('🙏 您的咨询与建言已呈达平台与工坊执事，感谢支持源头正品！');
-  window.closeModal('modal-mall-feedback');
-};
-
-// =========================================================================
 // 启动入口
 // =========================================================================
 export async function initMallController() {
@@ -725,7 +991,7 @@ export async function initMallController() {
   allTenants = tenants;
   allCategories = cats;
   renderCategoryChips();
-  renderBrandSelectorBar();
+  renderBrandShowcaseAndFilter();
 
   if (currentTenantParam) {
     const matchedTenant = allTenants.find((t) => (t.tenant_id || '').toUpperCase() === currentTenantParam);
