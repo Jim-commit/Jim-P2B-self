@@ -1,7 +1,7 @@
 export const MarketingCanvas = {
   styles: {
     'neighborhood': {
-      name: '🏮 街坊老友风',
+      name: '🏮 邻里老友风',
       bg: '#fdfbf7',
       headerBg: '#064e3b',
       headerText: '#ffffff',
@@ -10,11 +10,11 @@ export const MarketingCanvas = {
       boxBg: '#fef3c7',
       boxBorder: '#f59e0b',
       boxTextColor: '#92400e',
-      defaultTagline: '实体老店信誉背书 · 假一赔十 · 随时到店取货',
-      defaultNote: '💬 掌柜交心话：好货不多，先到先得！直接在群里回复「我要1件」，老板给您留现货！'
+      defaultTagline: '合作门店信誉背书 · 源头直供保真 · 随时到店自提',
+      defaultNote: '💬 掌柜交心话：源头合作社与正规工坊直供，数量实在！直接在群里回复「我要1件」，门店给您留现货！'
     },
     'hotdeal': {
-      name: '🔥 走量抢批风',
+      name: '🤝 抱团集采风',
       bg: '#fff5f5',
       headerBg: '#b91c1c',
       headerText: '#ffffff',
@@ -23,8 +23,8 @@ export const MarketingCanvas = {
       boxBg: '#fee2e2',
       boxBorder: '#ef4444',
       boxTextColor: '#7f1d1d',
-      defaultTagline: '源头大货直通 · 整箱整提走量 · 手慢拍大腿',
-      defaultNote: '💬 掌柜交代：这批货走的是出厂大宗批发价，数量有限，拼满即封单装车！'
+      defaultTagline: '产区源头直发 · 邻里抱团集采 · 阳光工价更实在',
+      defaultNote: '💬 掌柜交代：这批货走的是源头抱团集采惠价，按需拼满即安排送货师傅随车直达门店！'
     },
     'honest': {
       name: '⭐ 严选厚道风',
@@ -36,11 +36,11 @@ export const MarketingCanvas = {
       boxBg: '#fef3c7',
       boxBorder: '#d97706',
       boxTextColor: '#78350f',
-      defaultTagline: '拒绝杂牌山寨 · 大厂正道货源 · 自己家也天天用',
-      defaultNote: '💬 掌柜承诺：老实做买卖，品质不忽悠！店里端出来的、卖给大家的，件件保真！'
+      defaultTagline: '拒绝杂牌山寨 · 正道源头良品 · 自己家也天天用',
+      defaultNote: '💬 掌柜承诺：老实做买卖，品质不忽悠！端上桌的、卖给街坊的，件件物勒工名、源头可溯！'
     },
     'brand': {
-      name: '🏬 专柜正品风',
+      name: '🏛️ 产区专柜风',
       bg: '#f8fafc',
       headerBg: '#1e293b',
       headerText: '#ffffff',
@@ -49,8 +49,8 @@ export const MarketingCanvas = {
       boxBg: '#e2e8f0',
       boxBorder: '#94a3b8',
       boxTextColor: '#1e293b',
-      defaultTagline: '源头直发质检保真 · 专柜同款品质 · 假一赔百',
-      defaultNote: '💬 品质叮咛：源头金牌厂家直通，包装规格齐全，支持防伪验真与正规核销！'
+      defaultTagline: '产区直发质检保真 · 专柜同源品质 · 支持扫码验真',
+      defaultNote: '💬 品质叮咛：村社合作社与匠心工坊源头直供，规格齐全，支持物勒工名溯源验真！'
     }
   },
 
@@ -69,7 +69,7 @@ export const MarketingCanvas = {
     ctx.fillStyle = style.headerText;
     ctx.font = 'bold 26px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(customTitle.trim() || `【${storeName}】正品现货特惠`, 300, 75);
+    ctx.fillText(customTitle.trim() || `【${storeName}】源头直供现货`, 300, 75);
 
     ctx.font = '15px sans-serif';
     ctx.fillStyle = style.subText;
@@ -89,7 +89,7 @@ export const MarketingCanvas = {
         ctx.fillStyle = '#94a3b8';
         ctx.font = '22px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('正品实物保真包装', 300, 320);
+        ctx.fillText('源头正品封装', 300, 320);
         this.drawDetails(ctx, prod, style, customPrice, customNote);
         resolve(canvas.toDataURL('image/jpeg', 0.88));
       };
@@ -105,12 +105,12 @@ export const MarketingCanvas = {
 
     ctx.fillStyle = '#6b7280';
     ctx.font = '16px sans-serif';
-    ctx.fillText(`规格：${prod.spec || '整装'} · 源头正品直通`, 300, 555);
+    ctx.fillText(`规格：${prod.spec || '整装'} · 源头直供保真`, 300, 555);
 
     const price = customPrice !== null && !isNaN(customPrice) ? parseFloat(customPrice) : (parseFloat(prod.tier_1_price) * 1.15);
     ctx.fillStyle = style.priceColor;
     ctx.font = 'bold 38px sans-serif';
-    ctx.fillText(`老友拼单特惠价：¥${price.toFixed(1)}`, 300, 620);
+    ctx.fillText(`邻里集采便民价：¥${price.toFixed(1)}`, 300, 620);
 
     ctx.fillStyle = style.boxBg;
     ctx.fillRect(45, 665, 510, 120);
