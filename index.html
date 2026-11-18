@@ -32,14 +32,32 @@
           </button>
 
           <!-- 掌柜锦囊浮层 -->
-          <div id="left-nav-menu" class="hidden absolute left-0 top-11 w-60 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all">
-            <div class="px-2.5 py-1 text-[10px] font-bold text-stone-400">掌柜经营锦囊</div>
+          <div id="left-nav-menu" class="hidden absolute left-0 top-11 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all max-h-[82vh] overflow-y-auto no-scrollbar">
+            <div class="px-2.5 py-1 text-[10px] font-bold text-stone-400">供需协同 · 减损降本</div>
 
-            <button type="button" onclick="window.openCloudShelfModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200/80 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98] mb-1">
-              <span class="w-6 h-6 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center text-xs font-bold">🛍️</span>
+            <button type="button" onclick="window.openLocalPoolModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-emerald-50/90 hover:bg-emerald-100/80 border border-emerald-200 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98] mb-1">
+              <span class="w-6 h-6 rounded-lg bg-[#1b4332] text-amber-300 flex items-center justify-center text-xs font-bold">🔄</span>
               <div>
-                <div class="font-bold text-amber-950 text-[11px]">本店云端扩充货架码</div>
-                <div class="text-[9px] text-amber-800">零库存代订 · 服务润利归本店</div>
+                <div class="font-bold text-emerald-950 text-[11px]">同城余缺互调池</div>
+                <div class="text-[9px] text-emerald-800">余货挂池调剂 · 同行互助减损</div>
+              </div>
+            </button>
+
+            <button type="button" onclick="window.openDemandPlanModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-amber-50/90 hover:bg-amber-100/80 border border-amber-200 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98] mb-1.5">
+              <span class="w-6 h-6 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center text-xs font-bold">📅</span>
+              <div>
+                <div class="font-bold text-amber-950 text-[11px]">真实用度计划单</div>
+                <div class="text-[9px] text-amber-800">提前报备用量 · 产区按需排产</div>
+              </div>
+            </button>
+
+            <div class="px-2.5 py-1 text-[10px] font-bold text-stone-400 border-t border-stone-100 pt-1.5">掌柜经营锦囊</div>
+
+            <button type="button" onclick="window.openCloudShelfModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-amber-50/80 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
+              <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center text-xs font-bold">🛍️</span>
+              <div>
+                <div class="font-bold text-stone-800 text-[11px]">本店云端扩充货架码</div>
+                <div class="text-[9px] text-stone-400">零库存代订 · 服务润利归本店</div>
               </div>
             </button>
             
@@ -284,7 +302,7 @@
       </div>
     </header>
 
-    <!-- 分类与百业通用商道标签（兼容历史标签 + 平准直供与余缺调剂标签） -->
+    <!-- 分类与百业通用商道标签 -->
     <div class="sticky top-0 z-10 bg-white border-b border-stone-100 p-2.5 space-y-1.5 shadow-sm">
       <div id="category-bar" class="flex gap-2 overflow-x-auto no-scrollbar text-xs"></div>
       <div id="quick-tag-pills" class="flex gap-1.5 overflow-x-auto no-scrollbar text-[11px] pt-0.5">
@@ -327,6 +345,130 @@
       </div>
     </footer>
 
+  </div>
+
+  <!-- =========================================================================
+       新增核心协同弹窗一：同城余缺互调池 (local_inventory_pool)
+       ========================================================================= -->
+  <div id="local-pool-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('local-pool-modal')">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🔄 同城余缺互调池</h3>
+          <p class="text-[10px] text-stone-400">余货调剂减损耗 · 送货师傅顺路捎带交割</p>
+        </div>
+        <button type="button" onclick="window.closeModal('local-pool-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <!-- 双视角切换：认领同城余货 | 挂出本店余货 -->
+      <div class="bg-stone-100 p-1 rounded-2xl flex gap-1 text-[11px] font-bold">
+        <button type="button" id="pool-tab-browse" onclick="window.switchLocalPoolTab('browse')" class="flex-1 py-2 rounded-xl bg-[#1b4332] text-white shadow transition">
+          🛒 逛同城可调余货
+        </button>
+        <button type="button" id="pool-tab-publish" onclick="window.switchLocalPoolTab('publish')" class="flex-1 py-2 rounded-xl text-stone-600 hover:text-stone-900 transition">
+          📤 挂出本店余货
+        </button>
+      </div>
+
+      <!-- 视图 A：同城余货调剂大厅 -->
+      <div id="pool-pane-browse" class="space-y-2.5">
+        <div id="local-pool-list" class="space-y-2 max-h-80 overflow-y-auto no-scrollbar">
+          <div class="py-8 text-center text-stone-400">正在查探同城同行互调余货...</div>
+        </div>
+      </div>
+
+      <!-- 视图 B：本店余货挂池调剂 -->
+      <form id="pool-pane-publish" onsubmit="window.submitLocalPoolOffer(event)" class="hidden space-y-2.5">
+        <div>
+          <label class="block font-bold text-stone-700 mb-1">调剂品名 (可选本店在架货品或手填) *：</label>
+          <select id="pool-prod-select" onchange="window.onSelectPoolProduct(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold text-emerald-950 mb-1.5">
+            <option value="">-- 自由手填品名，或点选货架货品 --</option>
+          </select>
+          <input type="text" id="pool-prod-name" required placeholder="输入余货品名（如：农夫山泉 550ml 整箱）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold">
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block font-bold text-stone-700 mb-1">规格：</label>
+            <input type="text" id="pool-prod-spec" placeholder="24瓶/箱" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-stone-700 mb-1">余货数量 *：</label>
+            <input type="number" id="pool-prod-qty" min="1" value="5" required class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 font-mono font-bold outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-stone-700 mb-1">调剂单价(元) *：</label>
+            <input type="number" step="0.01" id="pool-prod-price" required placeholder="让利价" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 font-mono font-bold text-emerald-900 outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-stone-700 mb-1">调剂缘由 / 效期说明：</label>
+          <input type="text" id="pool-prod-reason" placeholder="如：活动多备余出8箱，效期新鲜，平价转给急需同行" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+        </div>
+
+        <button type="submit" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+          🚀 挂入同城互调池 · 等待同行认领
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       新增核心协同弹窗二：真实用度计划单 (demand_forecast_plan)
+       ========================================================================= -->
+  <div id="demand-plan-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('demand-plan-modal')">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">📅 真实用度计划单</h3>
+          <p class="text-[10px] text-stone-400">提前报备未来用量 · 合作社与工坊按需采收排产</p>
+        </div>
+        <button type="button" onclick="window.closeModal('demand-plan-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <form onsubmit="window.submitDemandPlan(event)" class="space-y-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-stone-700 mb-1">用度周期 *：</label>
+            <select id="plan-cycle-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 font-bold text-emerald-950 outline-none">
+              <option value="未来3日用度">未来 3 日用度</option>
+              <option value="未来7日用度">未来 7 日用度</option>
+              <option value="节令集中备货">节令集中备货</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-stone-700 mb-1">期望到店日期 *：</label>
+            <input type="date" id="plan-expected-date" required class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 font-mono outline-none">
+          </div>
+        </div>
+
+        <div class="bg-amber-50/70 border border-amber-200 p-3 rounded-2xl space-y-2">
+          <div class="flex justify-between items-center">
+            <b class="text-amber-950 text-[11px]">📋 计划用度明细（可从常备货选择或手填）：</b>
+            <button type="button" onclick="window.addDemandPlanRow()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2 py-0.5 rounded-lg text-[10px]">
+              + 加一行
+            </button>
+          </div>
+          <div id="demand-plan-rows" class="space-y-1.5 max-h-48 overflow-y-auto no-scrollbar"></div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-stone-700 mb-1">排产/配送叮咛（选填）：</label>
+          <input type="text" id="plan-note-input" placeholder="如：周末附近有庙会，预计饮料与粮油用量翻倍" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+        </div>
+
+        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+          📨 提报真实用度计划 · 直达产区排产
+        </button>
+      </form>
+
+      <!-- 本店近期已提报计划记录 -->
+      <div class="pt-2 border-t border-stone-100 space-y-1.5">
+        <b class="text-[11px] text-stone-600 block">📜 本店近期用度计划回执：</b>
+        <div id="my-demand-plans-list" class="space-y-1.5 max-h-36 overflow-y-auto no-scrollbar"></div>
+      </div>
+    </div>
   </div>
 
   <!-- 本店云端扩充货架二维码弹窗 -->
@@ -409,8 +551,8 @@
         </div>
         <div class="bg-stone-50 border border-stone-200 p-3 rounded-2xl space-y-1">
           <b>第二步（在手机浏览器中生成图标）：</b><br/>
-          • <b>苹果 iPhone</b>：点屏幕正下方 <b>「分享 ⬆️」</b> ➔ 往下滑点 <b>「添加到主屏幕」</b>。<br/>
-          • <b>华为 / 小米 / OPPO / vivo</b>：点底部或右上角 <b>「菜单 ☰ / ⋮」</b> ➔ 选择 <b>「添加到桌面 / 主屏幕」</b>。
+- <b>苹果 iPhone</b>：点屏幕正下方 <b>「分享 ⬆️」</b> ➔ 往下滑点 <b>「添加到主屏幕」</b>。<br/>
+- <b>华为 / 小米 / OPPO / vivo</b>：点底部或右上角 <b>「菜单 ☰ / ⋮」</b> ➔ 选择 <b>「添加到桌面 / 主屏幕」</b>。
         </div>
       </div>
 
