@@ -1,7 +1,7 @@
 {
-  "name": "商道相通 · 百工实体供应链中枢",
+  "name": "商道相通 · 门店采销掌中宝",
   "short_name": "商道采销",
-  "description": "实体店与电子商务双轨 · 源头工坊直供 · 随车交割核销",
+  "description": "合作社与工坊源头直供 · 门店随车补货 · 诚信交割核销",
   "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#f7f5f0",
@@ -30,13 +30,13 @@
       "url": "/mall.html"
     },
     {
-      "name": "随车配送核销",
-      "short_name": "随车配送",
+      "name": "随车交割核销",
+      "short_name": "随车交割",
       "url": "/driver.html"
     },
     {
-      "name": "厂商调度中枢",
-      "short_name": "厂商中枢",
+      "name": "平准调度中枢",
+      "short_name": "平准调度",
       "url": "/hq.html"
     }
   ]
