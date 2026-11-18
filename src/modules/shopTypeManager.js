@@ -15,7 +15,7 @@ export const ShopTypeManager = {
     '文体劳保': '📚'
   },
 
-  // 预设百工百业常见业态清单（用于动态渲染下拉框）
+  // 预设百工百业常见业态清单
   presets: [
     { key: '社区便利', icon: '🏪', desc: '整箱快走 · 邻里常顾' },
     { key: '餐饮饭庄', icon: '🍳', desc: '良材优选 · 大宗特价' },
