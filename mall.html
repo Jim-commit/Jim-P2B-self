@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>百工天街 · 數字商貿專櫃市集</title>
+  <title>百工天街 · 数字商贸专柜市集</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -12,9 +12,8 @@
 </head>
 <body class="bg-[#f7f5f0] text-stone-800 font-sans pb-24 min-h-screen select-none">
 
-  <!-- 頂部導航與模式切換標頭 -->
+  <!-- 顶部导航与模式切换标头 -->
   <header class="bg-[#1b4332] text-white sticky top-0 z-40 shadow-lg">
-    <!-- 頂層狀態欄 -->
     <div class="px-4 py-3 flex justify-between items-center border-b border-emerald-800/50">
       <div class="flex items-center gap-2">
         <span class="w-8 h-8 rounded-xl bg-amber-400 text-stone-900 font-bold flex items-center justify-center text-sm shadow">
@@ -24,78 +23,89 @@
           <div class="flex items-center gap-1.5">
             <h1 id="mall-header-title" class="text-sm font-bold tracking-tight">百工天街 · 正品大集市</h1>
             <span id="mall-mode-badge" class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.2 rounded-full border border-emerald-400/30 font-mono">
-              生態公域
+              生态公域
             </span>
           </div>
-          <p id="mall-header-sub" class="text-[10px] text-emerald-200">物勒工名 · 源頭直發 · 誠信共生</p>
+          <p id="mall-header-sub" class="text-[10px] text-emerald-200">物勒工名 · 源头直发 · 诚信共生</p>
         </div>
       </div>
 
-      <!-- 右側動作：直達專櫃、返回天街與分享分潤 -->
-      <div class="flex items-center gap-1.5 text-xs">
-        <button id="btn-find-brand" onclick="window.promptEnterBrandStore()" class="bg-white/10 hover:bg-white/20 text-emerald-200 px-2.5 py-1.5 rounded-xl border border-emerald-400/30 text-[11px] font-bold transition active:scale-95">
-          🔍 進專櫃
+      <!-- 右侧动作：查订单、进专柜、返回天街与分享分润 -->
+      <div class="flex items-center gap-1 text-xs">
+        <button onclick="window.openMyOrdersModal()" class="bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-xl border border-white/20 text-[11px] font-bold transition active:scale-95">
+          📦 查订单
         </button>
-        <button id="btn-back-street" onclick="window.exitToTianJie()" class="hidden bg-white/10 hover:bg-white/20 text-amber-300 px-2.5 py-1.5 rounded-xl border border-amber-400/30 text-[11px] font-bold transition active:scale-95">
-          🏛️ 返回天街
+        <button id="btn-find-brand" onclick="window.promptEnterBrandStore()" class="bg-white/10 hover:bg-white/20 text-emerald-200 px-2 py-1.5 rounded-xl border border-emerald-400/30 text-[11px] font-bold transition active:scale-95">
+          🔍 进专柜
         </button>
-        <button onclick="window.openShareModal()" class="bg-[#2d6a4f] hover:bg-[#143628] text-white px-2.5 py-1.5 rounded-xl border border-emerald-400/30 text-[11px] font-bold transition active:scale-95 flex items-center gap-1">
-          <span>🤝</span> 分享分潤
+        <button id="btn-back-street" onclick="window.exitToTianJie()" class="hidden bg-white/10 hover:bg-white/20 text-amber-300 px-2 py-1.5 rounded-xl border border-amber-400/30 text-[11px] font-bold transition active:scale-95">
+          🏛️ 天街
+        </button>
+        <button onclick="window.openShareModal()" class="bg-[#2d6a4f] hover:bg-[#143628] text-white px-2 py-1.5 rounded-xl border border-emerald-400/30 text-[11px] font-bold transition active:scale-95 flex items-center gap-1">
+          <span>🤝</span> 分润
         </button>
       </div>
     </div>
 
-    <!-- 掌櫃推客血緣宣告條 (有推客參數時彈性呈現) -->
+    <!-- 掌柜推客血缘宣告条 -->
     <div id="referrer-banner" class="hidden bg-amber-500 text-stone-950 px-4 py-1.5 flex justify-between items-center text-[11px] font-bold shadow-inner">
       <div class="flex items-center gap-1.5">
         <span>🏪</span>
-        <span>實體門店結緣：<b id="ref-store-name">便民小店</b> 專享關照通道</span>
+        <span>实体门店结缘：<b id="ref-store-name">便民小店</b> 专享关照通道</span>
       </div>
-      <span class="text-[10px] bg-stone-900 text-amber-300 px-2 py-0.5 rounded-full font-mono">穿透分潤中</span>
+      <span class="text-[10px] bg-stone-900 text-amber-300 px-2 py-0.5 rounded-full font-mono">穿透分润中</span>
     </div>
 
-    <!-- 分類水平滾動滑軌 -->
+    <!-- 分类水平滚动滑轨 -->
     <div class="px-3 py-2 bg-[#143628] overflow-x-auto no-scrollbar flex gap-2 text-xs whitespace-nowrap">
       <button onclick="window.filterMallCategory('all')" class="mall-cat-chip bg-amber-400 text-stone-950 px-3 py-1 rounded-xl font-bold transition">
-        全部精選
+        全部精选
       </button>
       <div id="dynamic-cat-chips" class="flex gap-2"></div>
     </div>
   </header>
 
-  <!-- 態型 A：廠商私域專賣店品牌門面 (僅特定商號時呈現) -->
+  <!-- 态型 A：厂商私域专卖店品牌门面 -->
   <section id="brand-hero-section" class="hidden px-4 pt-4">
     <div class="bg-gradient-to-br from-stone-900 to-[#1b4332] text-white p-4 rounded-3xl shadow-md border border-stone-800 space-y-2">
       <div class="flex justify-between items-start">
         <div>
           <span class="text-[10px] font-mono text-emerald-300 tracking-wider block">OFFICIAL BRAND STORE</span>
-          <h2 class="text-base font-bold text-amber-300" id="hero-brand-name">品牌商號專櫃</h2>
-          <p class="text-[11px] text-stone-300 mt-0.5" id="hero-brand-desc">匠心傳承 · 物勒工名 · 源頭良品</p>
+          <h2 class="text-base font-bold text-amber-300" id="hero-brand-name">品牌商号专柜</h2>
+          <p class="text-[11px] text-stone-300 mt-0.5" id="hero-brand-desc">匠心传承 · 物勒工名 · 源头良品</p>
         </div>
         <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/40 font-mono font-bold">
-          廠家直發
+          厂家直发
         </span>
       </div>
       <div class="flex items-center gap-4 text-[10px] text-stone-400 pt-1 border-t border-stone-700/50 font-mono">
-        <span>商號代號: <b id="hero-tenant-id" class="text-white">--</b></span>
-        <span>正品驗真: <b class="text-emerald-400">100% PASS</b></span>
+        <span>商号代号: <b id="hero-tenant-id" class="text-white">--</b></span>
+        <span>正品验真: <b class="text-emerald-400">100% PASS</b></span>
       </div>
     </div>
   </section>
 
-  <!-- 貨架檢索條 -->
-  <div class="px-3 pt-3">
-    <input type="search" oninput="window.onSearchMallKeyword(this.value)" placeholder="🔍 搜尋良品名稱、規格、產地或出品工坊..." class="w-full bg-white border border-stone-200 rounded-2xl px-3.5 py-2 text-xs outline-none focus:border-emerald-700 shadow-2xs">
+  <!-- 态型 B：天街公域厂商快捷滑轨 -->
+  <section id="tianjie-brand-bar" class="px-3 pt-3 overflow-x-auto no-scrollbar flex gap-1.5 items-center">
+    <button data-brand="all" onclick="window.filterMallBrand('all')" class="mall-brand-chip bg-[#1b4332] text-white border border-[#1b4332] px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition">
+      全部工坊
+    </button>
+    <div id="dynamic-brand-chips" class="flex gap-1.5"></div>
+  </section>
+
+  <!-- 货架检索条 -->
+  <div class="px-3 pt-2.5">
+    <input type="search" oninput="window.onSearchMallKeyword(this.value)" placeholder="🔍 搜索良品名称、规格、产地或出品工坊..." class="w-full bg-white border border-stone-200 rounded-2xl px-3.5 py-2 text-xs outline-none focus:border-emerald-700 shadow-2xs">
   </div>
 
-  <!-- 商品網格貨架 -->
+  <!-- 商品网格货架 -->
   <main class="p-3">
     <div id="mall-goods-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-      <div class="col-span-full py-16 text-center text-stone-400 text-xs">正調閱百工物勒正品行貨...</div>
+      <div class="col-span-full py-16 text-center text-stone-400 text-xs">正调阅百工物勒正品行货...</div>
     </div>
   </main>
 
-  <!-- 底部常駐購物車結算膠囊 -->
+  <!-- 底部常驻购物车结算胶囊 -->
   <footer class="fixed bottom-0 max-w-md left-1/2 -translate-x-1/2 w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-2.5 px-4 z-30 shadow-2xl flex justify-between items-center rounded-t-3xl">
     <div class="flex items-center gap-3">
       <div class="relative cursor-pointer" onclick="window.openCartModal()">
@@ -107,34 +117,61 @@
         </span>
       </div>
       <div>
-        <span class="text-[10px] text-stone-400 block font-mono">訂購淨計 (一件代發包郵)</span>
+        <span class="text-[10px] text-stone-400 block font-mono">订购净计 (一件代发包邮)</span>
         <b id="cart-total-price" class="text-sm font-bold text-stone-900 font-mono">¥0.00</b>
       </div>
     </div>
 
     <button onclick="window.openCheckoutModal()" class="bg-[#1b4332] hover:bg-[#143628] text-white font-bold text-xs px-5 py-2.5 rounded-2xl shadow active:scale-95 transition flex items-center gap-1.5">
-      <span>立即結算下單</span>
+      <span>立即结算下单</span>
       <span>➔</span>
     </button>
   </footer>
 
-  <!-- 物勒工名 · 正品溯源驗真模態窗 -->
+  <!-- 商品详情与百业属性弹窗 -->
+  <div id="modal-product-detail" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">📦 良品详情与工艺说明</h3>
+        <button onclick="window.closeModal('modal-product-detail')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <div id="detail-prod-img" class="w-full h-44 bg-stone-100 rounded-2xl overflow-hidden flex items-center justify-center"></div>
+      <div class="flex justify-between items-start gap-2">
+        <div>
+          <b id="detail-prod-name" class="text-sm font-bold text-stone-900 block">良品名称</b>
+          <span id="detail-prod-spec" class="text-[11px] text-stone-400 font-mono">--</span>
+        </div>
+        <b id="detail-prod-price" class="text-lg font-bold font-mono text-emerald-900">¥0.00</b>
+      </div>
+      <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200 space-y-1 text-[11px]">
+        <div class="flex justify-between"><span class="text-stone-400">出品工坊：</span><b id="detail-prod-tenant">--</b></div>
+        <div class="flex justify-between"><span class="text-stone-400">源头产地：</span><b id="detail-prod-origin">--</b></div>
+      </div>
+      <div id="detail-custom-attrs" class="hidden bg-stone-50 p-2.5 rounded-2xl border border-stone-200 text-[11px]"></div>
+      <p id="detail-prod-desc" class="text-[11px] text-stone-600 leading-relaxed bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100"></p>
+      <button id="btn-detail-add-cart" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+        🧺 加入结缘购物篮
+      </button>
+    </div>
+  </div>
+
+  <!-- 物勒工名 · 正品溯源验真模态窗 -->
   <div id="modal-trace" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-xs rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
         <h3 class="font-bold text-sm text-stone-900 flex items-center gap-1">
-          <span>📜</span> 物勒工名 · 正品溯源印記
+          <span>📜</span> 物勒工名 · 正品溯源印记
         </h3>
         <button onclick="window.closeModal('modal-trace')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
 
       <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl space-y-1.5">
         <div class="flex justify-between items-center">
-          <span class="text-emerald-950 font-bold" id="trace-prod-name">良品名稱</span>
-          <span class="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">正品官方驗真</span>
+          <span class="text-emerald-950 font-bold" id="trace-prod-name">良品名称</span>
+          <span class="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">正品官方验真</span>
         </div>
         <div class="text-[11px] font-mono text-emerald-900">
-          工名專屬溯源印記: <b id="trace-code" class="text-emerald-950 font-bold">--</b>
+          工名专属溯源印记: <b id="trace-code" class="text-emerald-950 font-bold">--</b>
         </div>
       </div>
 
@@ -144,63 +181,63 @@
           <b id="trace-tenant-name" class="text-stone-800">--</b>
         </div>
         <div class="flex justify-between">
-          <span class="text-stone-400">源頭產地證明：</span>
-          <b id="trace-origin" class="text-stone-800">源頭工坊原產</b>
+          <span class="text-stone-400">源头产地证明：</span>
+          <b id="trace-origin" class="text-stone-800">源头工坊原产</b>
         </div>
         <div class="flex justify-between">
-          <span class="text-stone-400">標準品類規制：</span>
+          <span class="text-stone-400">标准品类规制：</span>
           <b id="trace-category" class="text-stone-800">--</b>
         </div>
         <div class="flex justify-between">
-          <span class="text-stone-400">度量衡規格：</span>
+          <span class="text-stone-400">度量衡规格：</span>
           <b id="trace-spec" class="text-stone-800">--</b>
         </div>
       </div>
 
       <p class="text-[10px] text-stone-400 leading-relaxed text-center">
-        古者物勒工名，以考其誠。源頭可溯，去偽存真。
+        古者物勒工名，以考其诚。源头可溯，去伪存真。
       </p>
 
       <button onclick="window.closeModal('modal-trace')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl active:scale-95 transition">
-        驗真完畢 · 放心進購
+        验真完毕 · 放心进购
       </button>
     </div>
   </div>
 
-  <!-- 分享分潤推客二維碼彈窗 -->
+  <!-- 分享分润推客二维码弹窗 -->
   <div id="modal-share" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-xs rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">🤝 社交裂變 · 專屬分享分潤</h3>
+        <h3 class="font-bold text-sm text-stone-900">🤝 社交裂变 · 专属分享分润</h3>
         <button onclick="window.closeModal('modal-share')" class="text-stone-400 text-lg">✕</button>
       </div>
 
       <p class="text-[11px] text-stone-500 leading-relaxed">
-        實體小店掌櫃或推客分享專屬連結，好友下單一件代發，分潤穿透直達小店銀囊：
+        实体小店掌柜或推客分享专属链接，好友下单一件代发，分润穿透直达小店银囊：
       </p>
 
       <div class="w-36 h-36 bg-stone-100 border border-stone-200 rounded-2xl mx-auto flex items-center justify-center p-2">
-        <img id="share-qr-code" src="" alt="分享二維碼" class="w-full h-full object-contain">
+        <img id="share-qr-code" src="" alt="分享二维码" class="w-full h-full object-contain">
       </div>
 
       <div class="bg-stone-50 p-2.5 rounded-xl border border-stone-200 space-y-1">
-        <span class="text-[10px] text-stone-400 block font-mono">推客結緣連結：</span>
+        <span class="text-[10px] text-stone-400 block font-mono">推客结缘链接：</span>
         <div class="text-[11px] font-mono break-all text-stone-700" id="share-link-text">
           --
         </div>
       </div>
 
       <button onclick="window.copyShareLink()" class="w-full bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
-        📋 複製分潤推客連結
+        📋 复制分润推客链接
       </button>
     </div>
   </div>
 
-  <!-- 購物車抽屜彈窗 -->
+  <!-- 购物车抽屉弹窗 -->
   <div id="modal-cart" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end justify-center">
     <div class="bg-white w-full max-w-md rounded-t-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[80vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <b class="text-sm font-bold text-stone-900">🧺 結緣清單購物籃</b>
+        <b class="text-sm font-bold text-stone-900">🧺 结缘清单购物篮</b>
         <div class="flex items-center gap-3">
           <button onclick="window.clearCart()" class="text-rose-600 text-[11px] hover:underline">清空</button>
           <button onclick="window.closeModal('modal-cart')" class="text-stone-400 text-base">✕</button>
@@ -208,50 +245,69 @@
       </div>
       <div id="cart-items-list" class="space-y-2 divide-y divide-stone-100"></div>
       <div class="pt-2 flex justify-between items-center border-t border-stone-100">
-        <span class="font-bold">合計：<b id="cart-drawer-total" class="text-sm font-mono text-emerald-950">¥0.00</b></span>
+        <span class="font-bold">合计：<b id="cart-drawer-total" class="text-sm font-mono text-emerald-950">¥0.00</b></span>
         <button onclick="window.closeModal('modal-cart'); window.openCheckoutModal();" class="bg-[#1b4332] text-white px-4 py-2 rounded-xl font-bold">
-          前往下單
+          前往下单
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 終端消費者下單結算彈窗 (一件代發) -->
+  <!-- 终端消费者下单结算弹窗 (一件代发) -->
   <div id="modal-checkout" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">📦 一件代發 · 結算下單</h3>
+        <h3 class="font-bold text-sm text-stone-900">📦 一件代发 · 结算下单</h3>
         <button onclick="window.closeModal('modal-checkout')" class="text-stone-400 text-lg">✕</button>
       </div>
 
       <div class="space-y-2.5">
         <div>
           <label class="block text-stone-600 font-bold mb-1">收件人姓名 *：</label>
-          <input type="text" id="order-cust-name" placeholder="如：張先生" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold">
+          <input type="text" id="order-cust-name" placeholder="如：张先生" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold">
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">收件人手機號碼 *：</label>
-          <input type="tel" id="order-cust-phone" maxlength="11" placeholder="11位手機號" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono outline-none font-bold">
+          <label class="block text-stone-600 font-bold mb-1">收件人手机号码 *：</label>
+          <input type="tel" id="order-cust-phone" maxlength="11" placeholder="11位手机号" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono outline-none font-bold">
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">快遞配送詳細地址 *：</label>
-          <textarea id="order-cust-addr" rows="2" placeholder="詳細收件街道地址" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none"></textarea>
+          <label class="block text-stone-600 font-bold mb-1">快递配送详细地址 *：</label>
+          <textarea id="order-cust-addr" rows="2" placeholder="详细收件街道地址" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none"></textarea>
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">備註叮嚀 (可選)：</label>
-          <input type="text" id="order-cust-note" placeholder="如：送前電話聯繫" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+          <label class="block text-stone-600 font-bold mb-1">备注叮咛 (可选)：</label>
+          <input type="text" id="order-cust-note" placeholder="如：送前电话联系" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
         </div>
 
         <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200 flex justify-between items-center font-mono">
-          <span class="text-stone-500">應付金銀淨款：</span>
+          <span class="text-stone-500">应付金银净款：</span>
           <b id="checkout-amount-display" class="text-base font-bold text-emerald-950">¥0.00</b>
         </div>
       </div>
 
       <div class="pt-2 border-t border-stone-100 flex gap-2">
         <button onclick="window.submitConsumerOrder()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition text-xs">
-          ✅ 確認訂購 · 提交廠家出庫
+          ✅ 确认订购 · 提交厂家出库
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 消费者我的订单与物流追踪弹窗 -->
+  <div id="modal-my-orders" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[88vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">📦 我的网销代发订单查询</h3>
+        <button onclick="window.closeModal('modal-my-orders')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <div class="flex gap-2">
+        <input type="tel" id="query-order-phone" maxlength="11" placeholder="输入下单收件手机号" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono outline-none font-bold">
+        <button onclick="window.searchConsumerOrders()" class="bg-[#1b4332] text-white font-bold px-3.5 py-2 rounded-xl active:scale-95">
+          查询
+        </button>
+      </div>
+      <div id="my-orders-result-list" class="space-y-2">
+        <div class="py-6 text-center text-stone-400">输入收件人手机号查询发货与出库状态</div>
       </div>
     </div>
   </div>
