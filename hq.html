@@ -336,6 +336,12 @@
 
         <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] px-1">
           <div class="flex flex-wrap gap-1.5 font-bold">
+            <button onclick="window.filterOrderStatus('demand_plans')" id="order-filter-demand-plans" class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-950 border border-emerald-300 hover:bg-emerald-100 transition">
+              📅 真实用度计划 (<span id="count-demand-plans">0</span>)
+            </button>
+            <button onclick="window.filterOrderStatus('local_pool')" id="order-filter-local-pool" class="px-2.5 py-1 rounded-lg bg-cyan-50 text-cyan-950 border border-cyan-300 hover:bg-cyan-100 transition">
+              🔄 同城余缺互调 (<span id="count-local-pool">0</span>)
+            </button>
             <button onclick="window.filterOrderStatus('c2b_demands')" id="order-filter-c2b-demands" class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-950 border border-amber-300 hover:bg-amber-200 transition">
               📢 天街求购榜 (<span id="count-c2b-demands">0</span>)
             </button>
@@ -441,8 +447,8 @@
 
       <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-emerald-950 space-y-1 text-[11px] leading-relaxed">
         <b>如何获取群机器人 Webhook 地址？</b><br/>
-        • <b>企业微信群</b>：群设置 ➔ 群机器人 ➔ 添加机器人 ➔ 复制 Webhook 地址。<br/>
-        • <b>钉钉 / 飞书群</b>：群设置 ➔ 智能群助手 ➔ 添加自定义机器人（关键词填「新单」或「报单」）。
+- <b>企业微信群</b>：群设置 ➔ 群机器人 ➔ 添加机器人 ➔ 复制 Webhook 地址。<br/>
+- <b>钉钉 / 飞书群</b>：群设置 ➔ 智能群助手 ➔ 添加自定义机器人（关键词填「新单」或「报单」）。
       </div>
 
       <div class="space-y-2">
