@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>隨車交割 · 供貨師傅掌中寶</title>
+  <title>随车交割 · 送货师傅掌中宝</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -15,18 +15,18 @@
   
   <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-xl relative">
     
-    <!-- 頂欄：師傅隨車行囊與錢箱 -->
+    <!-- 顶栏：师傅随车行囊与收款台账 -->
     <header class="bg-[#1b4332] text-white p-4 pt-5 rounded-b-3xl shadow-md space-y-3">
       <div class="flex justify-between items-start">
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-base font-bold">🚚 隨車送達 · 現場點驗核銷</h1>
+            <h1 class="text-base font-bold">🚚 随车送达 · 现场点验核销</h1>
             <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 font-mono">
-              隨車管家
+              货畅其流
             </span>
           </div>
           <div class="text-[11px] text-emerald-200 mt-1">
-            供貨師傅: <b id="driver-name-display" class="text-white">老張師傅</b> · 商號代號: <span id="tenant-display" class="font-mono text-amber-300 font-bold">BJ_SHUNDA</span>
+            送货师傅: <b id="driver-name-display" class="text-white">老张师傅</b> · 商号代号: <span id="tenant-display" class="font-mono text-amber-300 font-bold">BJ_SHUNDA</span>
           </div>
         </div>
         <div class="flex items-center gap-1.5">
@@ -34,136 +34,137 @@
             建言堂
           </button>
           <button onclick="window.switchTenantPrompt()" class="text-[10px] bg-white/10 hover:bg-white/20 text-amber-200 border border-amber-400/30 px-2 py-1 rounded-xl transition">
-            換商號
+            换商号
           </button>
           <button onclick="window.switchDriverPrompt()" class="text-[10px] bg-white/10 hover:bg-white/20 text-emerald-100 border border-emerald-400/30 px-2 py-1 rounded-xl transition">
-            換師傅
+            换师傅
           </button>
         </div>
       </div>
 
-      <!-- 錢箱匯總看板 -->
+      <!-- 随车收款汇总看板 -->
       <div class="bg-[#143628] p-3 rounded-2xl border border-emerald-700/50 flex justify-between items-center text-xs shadow-inner">
         <div>
-          <span class="text-emerald-300 text-[10px] block">今日隨車已收錢款 (隨車錢箱)</span>
+          <span class="text-emerald-300 text-[10px] block">今日随车已收款项 (待交财务)</span>
           <b id="today-cash-collected" class="text-amber-300 font-mono text-lg font-bold">¥0.00</b>
         </div>
         <div class="text-right space-y-0.5">
-          <span class="text-emerald-200 text-[10px] block font-mono">現鈔: <span id="stat-cash">¥0</span> | 電子掃碼: <span id="stat-wechat">¥0</span></span>
-          <span class="text-emerald-300 text-[10px] block">已交割完成: <b id="stat-done-count">0</b> 筆</span>
+          <span class="text-emerald-200 text-[10px] block font-mono">现钞: <span id="stat-cash">¥0</span> | 电子扫码: <span id="stat-wechat">¥0</span></span>
+          <span class="text-emerald-300 text-[10px] block">已交割完成: <b id="stat-done-count">0</b> 笔</span>
         </div>
       </div>
     </header>
 
-    <!-- 弱網/地下室離線簽收單同步提醒條 -->
+    <!-- 弱网/地下室离线签收单同步提醒条 -->
     <div id="offline-sync-banner" class="hidden mx-3 mt-3 bg-amber-50 border border-amber-300 text-amber-950 p-2.5 rounded-2xl flex items-center justify-between text-xs shadow-xs">
       <div>
-        <b class="font-bold">📡 離線暫存隊列 (<span id="offline-queue-count">0</span> 筆)</b>
-        <span class="block text-[10px] text-amber-800">地下室弱網時已本地鎖存，恢復信號請點同步</span>
+        <b class="font-bold">📡 离线暂存队列 (<span id="offline-queue-count">0</span> 笔)</b>
+        <span class="block text-[10px] text-amber-800">信号弱时已本地锁存，恢复信号请点同步</span>
       </div>
       <button onclick="window.syncOfflineQueue()" id="btn-sync-offline" class="bg-amber-600 text-white font-bold px-3 py-1.5 rounded-xl text-[11px] shadow active:scale-95">
-        立即同步回庫
+        立即同步回库
       </button>
     </div>
 
-    <!-- 工作模式切換：送貨核銷 / 巡街拓客 -->
+    <!-- 工作模式切换：随车送货路线 / 顺路合作登记 -->
     <div class="p-3 pb-0">
       <div class="bg-stone-100 p-1 rounded-2xl flex gap-1 text-xs font-bold shadow-inner">
         <button id="tab-btn-deliver" onclick="window.switchWorkTab('deliver')" class="flex-1 py-2 rounded-xl bg-[#1b4332] text-white shadow transition flex items-center justify-center gap-1">
-          <span>🚚</span> 隨車送貨路線
+          <span>🚚</span> 随车送货路线
         </button>
         <button id="tab-btn-explore" onclick="window.switchWorkTab('explore')" class="flex-1 py-2 rounded-xl text-stone-600 hover:text-stone-900 transition flex items-center justify-center gap-1">
-          <span>🎯</span> 空車巡街拓客
+          <span>🤝</span> 顺路新店合作登记
         </button>
       </div>
     </div>
 
-    <!-- 配送任務路線 -->
+    <!-- 配送任务路线 -->
     <main id="pane-deliver" class="p-3 flex-1 space-y-3">
       <div class="flex justify-between items-center px-1">
         <div class="flex items-center gap-1.5">
-          <h2 class="text-xs font-bold text-stone-700">📋 配送門店列表</h2>
+          <h2 class="text-xs font-bold text-stone-700">📋 配送合作门店列表</h2>
           <button id="btn-toggle-only-orders" onclick="window.toggleOnlyOrdersFilter()" class="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-lg font-bold transition">
-            全部門店
+            全部门店
           </button>
         </div>
         <button onclick="window.loadDriverTasks()" class="text-[11px] text-emerald-800 font-bold hover:underline">
-          刷新路線
+          刷新路线
         </button>
       </div>
 
       <div id="route-container" class="space-y-3">
-        <div class="p-12 text-center text-stone-400 text-xs">正調閱待配路線...</div>
+        <div class="p-12 text-center text-stone-400 text-xs">正调阅待配路线...</div>
       </div>
     </main>
 
-    <!-- 空車巡街拓客面板 -->
+    <!-- 顺路新店合作登记面板 -->
     <main id="pane-explore" class="hidden p-3 flex-1 space-y-3">
       <div class="bg-stone-50 border border-stone-200 p-4 rounded-3xl space-y-3 text-xs">
         <div>
-          <h2 class="text-sm font-bold text-stone-900">🎯 巡街結緣 · 登記意向實體門店</h2>
-          <p class="text-[10px] text-stone-400 mt-0.5">回程途中順手記下店名與電話，大當家成單計師傅引薦功勞</p>
+          <h2 class="text-sm font-bold text-stone-900">🤝 顺路登记 · 推荐意向合作门店</h2>
+          <p class="text-[10px] text-stone-400 mt-0.5">送货途中顺手记下新店招牌与电话，达成合作计师傅引荐功劳</p>
         </div>
 
         <div class="space-y-2.5">
           <div>
-            <label class="block text-stone-600 font-bold mb-1">實體門店招牌全名 *：</label>
-            <input type="text" id="lead-name-input" placeholder="如：利民五金電料 / 旺順家常小館" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none font-bold">
+            <label class="block text-stone-600 font-bold mb-1">合作门店招牌全名 *：</label>
+            <input type="text" id="lead-name-input" placeholder="如：利民五金电料 / 旺顺家常饭庄" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none font-bold">
           </div>
           <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-stone-600 font-bold mb-1">百工行当业态：</label>
-            <select id="lead-cat-input" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-2 text-xs outline-none font-bold">
-              <option value="社区便利">🏪 社区便利 / 烟酒百货</option>
-              <option value="餐饮饭庄">🍳 餐饮饭庄 / 食堂后厨</option>
-              <option value="精品商超">🏬 精品商超 / 综合卖场</option>
-              <option value="五金机电">🛠️ 五金机电 / 建材水暖</option>
-              <option value="汽修配件">🚗 汽修保养 / 配件工坊</option>
-              <option value="农资农具">🌾 农资农具 / 种子化肥</option>
-              <option value="医药日化">💊 医药保健 / 日化洗护</option>
-              <option value="文体劳保">📚 文体办公 / 劳保用品</option>
-              <option value="其他百工实体">🏷️ 其他百工实体</option>
-            </select>
-          </div>
-              <label class="block text-stone-600 font-bold mb-1">當家掌櫃稱呼：</label>
-              <input type="text" id="lead-boss-input" placeholder="如：劉掌櫃 / 趙大廚" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
+            <div>
+              <label class="block text-stone-600 font-bold mb-1">百工行当业态：</label>
+              <select id="lead-cat-input" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-2 text-xs outline-none font-bold">
+                <option value="社区便利">🏪 社区便利 / 烟酒百货</option>
+                <option value="餐饮饭庄">🍳 餐饮饭庄 / 食堂后厨</option>
+                <option value="精品商超">🏬 精品商超 / 综合卖场</option>
+                <option value="五金机电">🛠️ 五金机电 / 建材水暖</option>
+                <option value="汽修配件">🚗 汽修保养 / 配件工坊</option>
+                <option value="农资农具">🌾 农资农具 / 种子化肥</option>
+                <option value="医药日化">💊 医药保健 / 日化洗护</option>
+                <option value="文体劳保">📚 文体办公 / 劳保用品</option>
+                <option value="其他百工实体">🏷️ 其他百工实体</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-stone-600 font-bold mb-1">当家掌柜称呼：</label>
+              <input type="text" id="lead-boss-input" placeholder="如：刘掌柜 / 赵大厨" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
             </div>
           </div>
           <div>
-            <label class="block text-stone-600 font-bold mb-1">掌櫃聯繫電話 *：</label>
-            <input type="tel" id="lead-phone-input" maxlength="11" placeholder="11位手機號碼" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm font-mono outline-none font-bold">
+            <label class="block text-stone-600 font-bold mb-1">掌柜联系电话 *：</label>
+            <input type="tel" id="lead-phone-input" maxlength="11" placeholder="11位手机号码" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm font-mono outline-none font-bold">
           </div>
           <div>
-            <label class="block text-stone-600 font-bold mb-1">門市街區地址：</label>
-            <input type="text" id="lead-addr-input" placeholder="如：安居南路與向陽街十字東側" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
+            <label class="block text-stone-600 font-bold mb-1">门市街区地址：</label>
+            <input type="text" id="lead-addr-input" placeholder="如：安居南路与向阳街十字东侧" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
           </div>
           <div>
-            <label class="block text-stone-600 font-bold mb-1">交談意向與備忘叮嚀：</label>
-            <input type="text" id="lead-note-input" placeholder="例：對食用油與調味料感興趣，下週送樣品來看看" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
+            <label class="block text-stone-600 font-bold mb-1">需求意向与备忘叮咛：</label>
+            <input type="text" id="lead-note-input" placeholder="例：对压榨食用油与调味料感兴趣，下趟送样品来看看" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
           </div>
           <button onclick="window.submitLeadByDriver()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-2xl text-sm shadow active:scale-95 transition">
-            登記結緣 · 存入商號拓客池
+            登记合作意向 · 存入商号名册
           </button>
         </div>
       </div>
     </main>
 
-    <!-- 底部常駐回庫交賬按鈕 -->
+    <!-- 底部常驻回库交账按钮 -->
     <footer class="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 z-20">
       <button onclick="window.openCheckoutSummaryModal()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-3 rounded-2xl text-xs shadow active:scale-95 transition flex justify-center items-center gap-2">
-        <span>📦 今日跑車交割完畢 · 生成回庫對賬單</span>
+        <span>📦 今日跑车交割完毕 · 生成回库对账单</span>
       </button>
     </footer>
 
   </div>
 
-  <!-- 現場核銷簽收彈窗 -->
+  <!-- 现场核销签收弹窗 -->
   <div id="collect-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
-          <h3 class="font-bold text-sm text-stone-900" id="modal-shop-title">實體門店</h3>
-          <p class="text-[10px] text-stone-400">細心點驗 · 迎回舊件 · 結算清楚 · 彼此安心</p>
+          <h3 class="font-bold text-sm text-stone-900" id="modal-shop-title">合作门店</h3>
+          <p class="text-[10px] text-stone-400">细心点验 · 迎回旧件 · 结算清楚 · 彼此安心</p>
         </div>
         <button onclick="window.closeModal('collect-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
@@ -180,45 +181,45 @@
 
         <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200 space-y-1">
           <div class="flex justify-between items-center">
-            <span class="text-stone-500">本單新進貨物：</span>
+            <span class="text-stone-500">本单新配良品：</span>
             <b id="modal-order-amount-text" class="font-mono text-stone-800 font-bold">¥0.00</b>
           </div>
           <div class="flex justify-between items-center text-rose-700">
-            <span>依約退驗沖抵 (歷史原價)：</span>
+            <span>依约退验冲抵 (历史原价)：</span>
             <b id="modal-return-amount-text" class="font-mono font-bold">-¥0.00</b>
           </div>
           <div class="flex justify-between items-center pt-1 border-t border-stone-200">
-            <span class="font-bold text-emerald-950">當期應結淨額：</span>
+            <span class="font-bold text-emerald-950">当期应结净额：</span>
             <b id="modal-net-amount-text" class="font-mono text-emerald-900 font-bold text-sm">¥0.00</b>
           </div>
           <div class="flex justify-between text-[11px] text-stone-500 pt-0.5">
-            <span>歷次在賬: <b id="modal-debt-text" class="font-mono text-rose-600">¥0.00</b> / 授信: <b id="modal-limit-text" class="font-mono text-stone-700">¥2000</b></span>
-            <span>店內周轉載具: <b id="modal-basket-text" class="font-mono text-amber-800 font-bold">0 件</b></span>
+            <span>历次在账: <b id="modal-debt-text" class="font-mono text-rose-600">¥0.00</b> / 授信: <b id="modal-limit-text" class="font-mono text-stone-700">¥2000</b></span>
+            <span>店内周转载具: <b id="modal-basket-text" class="font-mono text-amber-800 font-bold">0 件</b></span>
           </div>
         </div>
 
         <div id="over-credit-warning-banner" class="hidden bg-rose-50 border border-rose-300 p-2.5 rounded-2xl text-rose-900 space-y-1 text-xs">
-          <b class="font-bold block text-[11px]">🚨 授信度量超額提醒：</b>
+          <b class="font-bold block text-[11px]">🚨 授信额度超额提醒：</b>
           <div id="over-credit-warning-desc" class="text-[10px] leading-tight"></div>
         </div>
 
         <div class="space-y-1.5 bg-stone-50 p-2.5 rounded-2xl border border-stone-200 text-[11px]">
           <div>
-            <b class="text-[10px] text-emerald-800 block">① 應點交新貨 (物勒工名正品溯源 · 逐件點清)：</b>
-            <div id="modal-items-order-list" class="text-stone-700 pl-1 space-y-0.5 mt-0.5">無新到品物</div>
+            <b class="text-[10px] text-emerald-800 block">① 应点交新货 (物勒工名正品溯源 · 逐件点清)：</b>
+            <div id="modal-items-order-list" class="text-stone-700 pl-1 space-y-0.5 mt-0.5">无新到品物</div>
           </div>
           <div class="pt-1 border-t border-stone-200">
-            <b class="text-[10px] text-rose-700 block">② 依約驗退帶回 (舊件清點帶回)：</b>
-            <div id="modal-items-return-list" class="text-rose-700 pl-1 space-y-0.5 mt-0.5">無須帶回舊品</div>
+            <b class="text-[10px] text-rose-700 block">② 依约验退带回 (旧件清点带回)：</b>
+            <div id="modal-items-return-list" class="text-rose-700 pl-1 space-y-0.5 mt-0.5">无须带回旧品</div>
           </div>
           <div class="pt-1 border-t border-stone-200">
-            <b class="text-[10px] text-amber-800 block">③ 平價對調換新 (一新換一舊)：</b>
-            <div id="modal-items-exchange-list" class="text-amber-800 pl-1 space-y-0.5 mt-0.5">無對調品物</div>
+            <b class="text-[10px] text-amber-800 block">③ 平价对调换新 (一新换一旧)：</b>
+            <div id="modal-items-exchange-list" class="text-amber-800 pl-1 space-y-0.5 mt-0.5">无对调品物</div>
           </div>
         </div>
 
         <div class="bg-amber-50/80 border border-amber-200 p-2 rounded-xl flex items-center justify-between">
-          <span class="font-bold text-amber-950">帶回收回周轉載具 (15元/件抵款):</span>
+          <span class="font-bold text-amber-950">带回收回周转载具 (15元/件抵款):</span>
           <div class="flex items-center gap-1">
             <input type="number" id="collect-basket-return" value="0" min="0" oninput="window.calcBasketDeduct(); window.updateDeliverBtnText();" class="w-14 bg-white border border-amber-300 rounded-lg px-2 py-1 text-center font-bold font-mono outline-none">
             <span class="text-amber-800">件</span>
@@ -226,31 +227,31 @@
         </div>
 
         <div>
-          <label class="block text-stone-700 font-bold mb-1">本次實收實付金銀 (元) *：</label>
+          <label class="block text-stone-700 font-bold mb-1">本次实收款项 (元) *：</label>
           <input type="number" step="0.1" id="collect-amount" oninput="window.updateDeliverBtnText()" placeholder="0.00" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-base font-bold text-emerald-950 outline-none focus:border-emerald-700">
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-stone-500 mb-1">隨車抹零禮讓：</label>
+            <label class="block text-stone-500 mb-1">随车抹零礼让：</label>
             <input type="number" id="collect-discount" value="0" oninput="window.updateDeliverBtnText()" placeholder="0" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 font-mono outline-none">
           </div>
           <div>
             <label class="block text-stone-500 mb-1">清款交割方式：</label>
             <select id="collect-method" onchange="window.onCollectMethodChange()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 font-bold outline-none">
-              <option value="電子掃碼/轉賬">📱 電子掃碼 / 轉賬</option>
-              <option value="現金">💵 現場收取現鈔</option>
-              <option value="掛賬簽收">📝 掛賬 / 賬期免收現</option>
-              <option value="僅簽收回單">📜 僅驗貨簽回單 (期末統對)</option>
+              <option value="电子扫码/转账">📱 电子扫码 / 转账</option>
+              <option value="现金">💵 现场收取现钞</option>
+              <option value="挂账签收">📝 挂账 / 账期免收现</option>
+              <option value="仅签收回单">📜 仅验货签回单 (期末统对)</option>
             </select>
           </div>
         </div>
 
         <div class="bg-stone-50 border border-stone-200 p-2.5 rounded-xl space-y-1.5">
           <div class="flex justify-between items-center">
-            <span class="text-[11px] font-bold text-stone-700">📸 轉賬截圖 / 破損憑證拍照 (選填)：</span>
+            <span class="text-[11px] font-bold text-stone-700">📸 转账截图 / 破损凭证拍照 (选填)：</span>
             <label class="cursor-pointer bg-white hover:bg-stone-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-lg active:scale-95 transition">
-              + 拍照/選圖
+              + 拍照/选图
               <input type="file" accept="image/*" onchange="window.handleProofImageUpload(event)" class="hidden">
             </label>
           </div>
@@ -259,8 +260,8 @@
 
         <div>
           <div class="flex justify-between items-center mb-1">
-            <label class="text-[11px] font-bold text-stone-700">收貨人立信手寫簽名 *：</label>
-            <button type="button" onclick="window.clearSignature()" class="text-[10px] text-rose-600 hover:underline">重簽</button>
+            <label class="text-[11px] font-bold text-stone-700">收货人立信手写签名 *：</label>
+            <button type="button" onclick="window.clearSignature()" class="text-[10px] text-rose-600 hover:underline">重签</button>
           </div>
           <div class="border border-stone-300 rounded-xl bg-stone-50 overflow-hidden">
             <canvas id="sign-pad" width="300" height="100" class="w-full h-24 touch-none cursor-crosshair"></canvas>
@@ -270,7 +271,7 @@
 
       <div class="flex gap-2 pt-2 border-t border-stone-100">
         <button type="button" id="btn-submit-collection" onclick="window.submitCollection()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
-          ✅ 確認收訖 · 錢貨結清
+          ✅ 确认收讫 · 钱货两清
         </button>
         <button type="button" onclick="window.closeModal('collect-modal')" class="bg-stone-100 text-stone-600 font-bold px-4 py-2.5 rounded-2xl text-xs">
           取消
@@ -279,64 +280,64 @@
     </div>
   </div>
 
-  <!-- 回庫清算匯總彈窗 -->
+  <!-- 回库清算汇总弹窗 -->
   <div id="checkout-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-        <h3 class="font-bold text-sm text-stone-800">🏁 今日跑車清算對賬單</h3>
+        <h3 class="font-bold text-sm text-stone-800">🏁 今日跑车清算对账单</h3>
         <button onclick="window.closeModal('checkout-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
 
       <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200 text-xs space-y-2">
         <div class="flex justify-between">
-          <span class="text-stone-500">配送負責人：</span>
-          <b id="chk-driver" class="font-bold">老張師傅</b>
+          <span class="text-stone-500">配送负责人：</span>
+          <b id="chk-driver" class="font-bold">老张师傅</b>
         </div>
         <div class="flex justify-between">
-          <span class="text-stone-500">實收現鈔 (點清交出納)：</span>
+          <span class="text-stone-500">实收现钞 (点清交出纳)：</span>
           <b id="chk-cash" class="font-mono text-emerald-800 font-bold">¥0.00</b>
         </div>
         <div class="flex justify-between">
-          <span class="text-stone-500">電子掃碼/轉賬 (出納對賬)：</span>
+          <span class="text-stone-500">电子扫码/转账 (出纳对账)：</span>
           <b id="chk-wechat" class="font-mono text-emerald-800 font-bold">¥0.00</b>
         </div>
         <div class="flex justify-between">
-          <span class="text-stone-500">收回周轉載具：</span>
+          <span class="text-stone-500">收回周转载具：</span>
           <b id="chk-baskets" class="font-mono text-amber-800 font-bold">0 件</b>
         </div>
         <div class="flex justify-between">
-          <span class="text-stone-500">抹零讓利總計：</span>
+          <span class="text-stone-500">抹零礼让总计：</span>
           <b id="chk-discount" class="font-mono text-rose-600">¥0.00</b>
         </div>
         <div class="pt-2 border-t border-stone-200 flex justify-between items-center text-sm">
-          <span class="font-bold text-stone-800">交繳金銀真款合計：</span>
+          <span class="font-bold text-stone-800">交缴实款合计：</span>
           <b id="chk-total" class="font-mono text-lg font-bold text-emerald-950">¥0.00</b>
         </div>
       </div>
 
-      <p class="text-[10px] text-stone-400 text-center">出納核對無誤後，錢箱清零，安心收工。</p>
+      <p class="text-[10px] text-stone-400 text-center">出纳核对无误后，随车台账清零，安心收工。</p>
 
       <button onclick="window.finalizeSettlement()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
-        出納已清點入庫 · 隨車錢箱歸零
+        出纳已清点入库 · 随车台账归零
       </button>
     </div>
   </div>
 
-  <!-- 商道建言堂模態窗 -->
+  <!-- 商道建言堂模态窗 -->
   <div id="modal-suggestion" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">📜 供貨師傅 · 呈遞商道建言</h3>
+        <h3 class="font-bold text-sm text-stone-900">📜 送货师傅 · 呈递商道建言</h3>
         <button onclick="window.closeModal('modal-suggestion')" class="text-stone-400 text-lg">✕</button>
       </div>
       <p class="text-[11px] text-stone-500 leading-relaxed">
-        行車送貨辛苦！對掌中寶操作、隨車錢箱點驗或系統使用有何建議，敬請直言：
+        行车送货辛苦！对掌中宝操作、随车点验对账或顺路捎带有什么建议，敬请直言：
       </p>
       <div>
-        <textarea id="driver-suggestion-text" rows="3" placeholder="寫下您的意見或遇到的操作不便..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none text-xs"></textarea>
+        <textarea id="driver-suggestion-text" rows="3" placeholder="写下您的意见或遇到的操作不便..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none text-xs"></textarea>
       </div>
       <button onclick="window.submitDriverSuggestion()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
-        呈達平台總控
+        呈达平台总控
       </button>
     </div>
   </div>
