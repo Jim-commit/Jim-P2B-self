@@ -25,7 +25,7 @@ export const MallService = {
       .from('store')
       .select('id, name, address, phone, tenant_id')
       .order('id', { ascending: false })
-      .limit(50);
+      .limit(100);
     if (tenantId) {
       query = query.eq('tenant_id', tenantId);
     }
@@ -33,16 +33,19 @@ export const MallService = {
     return data || [];
   },
 
+  // 严格恪守「各守本分」渠道隔离：仅展示允许进入天街与云端专柜的货品（排除店头常备专供货）
   async fetchMallProducts(tenantId = null) {
-    let query = supabase.from('product').select('*').eq('status', 'active');
+    let query = supabase
+      .from('product')
+      .select('*')
+      .eq('status', 'active')
+      .in('sales_channel_type', ['online', 'both']);
+
     if (tenantId) {
       query = query.eq('tenant_id', tenantId);
     }
     const { data } = await query.order('id', { ascending: false });
-    const list = data || [];
-    if (tenantId) return list;
-    const onlineOnly = list.filter((p) => ['online', 'both'].includes(p.sales_channel_type));
-    return onlineOnly.length > 0 ? onlineOnly : list;
+    return data || [];
   },
 
   async submitOnlineOrder(orderPayloads, cartItems) {
@@ -82,10 +85,17 @@ export const MallService = {
     return await supabase.from('platform_suggestion_board').insert([payload]);
   },
 
-  async joinC2BDemand(demandId, updatedContent) {
+  async updateC2BDemandContent(demandId, updatedContent) {
     return await supabase
       .from('platform_suggestion_board')
       .update({ content: updatedContent })
+      .eq('id', demandId);
+  },
+
+  async cancelC2BDemand(demandId) {
+    return await supabase
+      .from('platform_suggestion_board')
+      .delete()
       .eq('id', demandId);
   },
 
