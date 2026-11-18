@@ -14,9 +14,10 @@ let allTenants = [];
 let allCategories = [];
 let allDemands = [];
 let pickupStores = [];
-let currentMarketMode = 'b2c';
+let currentMarketMode = 'b2c'; // 'b2c' | 'counters' | 'c2b'
 let currentCategoryFilter = 'all';
 let currentKeywordFilter = '';
+let counterSearchKeyword = '';
 let cart = [];
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
@@ -50,27 +51,39 @@ window.openCartModal = function () {
   window.openModal('modal-cart');
 };
 
+// =========================================================================
+// 三视角切换：天街好物 (B2C) | 数字专柜 (工坊铺面) | 需求发榜 (C2B)
+// =========================================================================
 window.switchMarketMode = async function (mode) {
   currentMarketMode = mode;
   const isB2C = mode === 'b2c';
+  const isCounters = mode === 'counters';
+  const isC2B = mode === 'c2b';
 
   document.getElementById('pane-b2c-market')?.classList.toggle('hidden', !isB2C);
-  document.getElementById('pane-c2b-market')?.classList.toggle('hidden', isB2C);
-  document.getElementById('b2c-cart-footer')?.classList.toggle('hidden', !isB2C);
-  document.getElementById('c2b-publish-footer')?.classList.toggle('hidden', isB2C);
+  document.getElementById('pane-counters-market')?.classList.toggle('hidden', !isCounters);
+  document.getElementById('pane-c2b-market')?.classList.toggle('hidden', !isC2B);
 
-  const btnB2C = document.getElementById('mode-tab-b2c');
-  const btnC2B = document.getElementById('mode-tab-c2b');
-  if (btnB2C && btnC2B) {
-    btnB2C.className = isB2C
-      ? 'flex-1 py-2 rounded-xl bg-[#1b4332] text-white font-bold shadow transition flex items-center justify-center gap-1'
-      : 'flex-1 py-2 rounded-xl text-stone-600 hover:text-stone-900 font-bold transition flex items-center justify-center gap-1';
-    btnC2B.className = !isB2C
-      ? 'flex-1 py-2 rounded-xl bg-amber-500 text-stone-950 font-bold shadow transition flex items-center justify-center gap-1'
-      : 'flex-1 py-2 rounded-xl text-stone-600 hover:text-stone-900 font-bold transition flex items-center justify-center gap-1';
-  }
+  document.getElementById('b2c-cart-footer')?.classList.toggle('hidden', isC2B);
+  document.getElementById('c2b-publish-footer')?.classList.toggle('hidden', !isC2B);
 
-  if (!isB2C) {
+  const tabs = [
+    { id: 'mode-tab-b2c', active: isB2C, activeCls: 'bg-[#1b4332] text-white' },
+    { id: 'mode-tab-counters', active: isCounters, activeCls: 'bg-emerald-700 text-white' },
+    { id: 'mode-tab-c2b', active: isC2B, activeCls: 'bg-amber-500 text-stone-950' }
+  ];
+
+  tabs.forEach((t) => {
+    const el = document.getElementById(t.id);
+    if (!el) return;
+    el.className = t.active
+      ? `flex-1 py-2 rounded-xl ${t.activeCls} font-bold shadow transition flex items-center justify-center gap-1`
+      : 'flex-1 py-2 rounded-xl text-stone-200 hover:text-white font-bold transition flex items-center justify-center gap-1';
+  });
+
+  if (isCounters) {
+    renderDigitalCountersGrid();
+  } else if (isC2B) {
     await loadAndRenderC2BDemands();
   }
 };
@@ -96,12 +109,13 @@ function getTierLabel(prod, qty) {
 }
 
 function setupTianJieMode() {
-  document.getElementById('mall-header-title').innerText = '百工天街 · B2C/C2B 集市';
-  document.getElementById('mall-mode-badge').innerText = '生态公域';
-  document.getElementById('mall-header-sub').innerText = '现货直发 · 需求发榜 · 以量定产';
+  document.getElementById('mall-header-title').innerText = '百工天街 · 数字专柜集市';
+  document.getElementById('mall-mode-badge').innerText = '天街公域';
+  document.getElementById('mall-header-sub').innerText = '天街赶集 · 专柜直营 · 反向定制';
   document.getElementById('btn-back-street')?.classList.add('hidden');
   document.getElementById('btn-find-brand')?.classList.remove('hidden');
   document.getElementById('brand-hero-section')?.classList.add('hidden');
+  document.getElementById('mode-tab-counters')?.classList.remove('hidden');
 }
 
 function setupBrandStoreMode(tenantId) {
@@ -112,6 +126,8 @@ function setupBrandStoreMode(tenantId) {
   document.getElementById('mall-header-sub').innerText = '工坊直营 · 现货包邮 · 接单定制';
   document.getElementById('btn-back-street')?.classList.remove('hidden');
   document.getElementById('btn-find-brand')?.classList.add('hidden');
+  // 已在单店专柜内时隐藏“逛专柜”Tab，聚焦本专柜货架与定制
+  document.getElementById('mode-tab-counters')?.classList.add('hidden');
 
   document.getElementById('hero-brand-name').innerText = name;
   document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '源头工坊 · 匠心正品 · 支持大宗与定制接单';
@@ -119,7 +135,92 @@ function setupBrandStoreMode(tenantId) {
   document.getElementById('brand-hero-section')?.classList.remove('hidden');
 }
 
-// 弹性品类栏：优先取平台配置的一级分类，若未配置则自动从在售商品提取；若均无则整栏隐藏不占空间
+// =========================================================================
+// 数字专柜大厅渲染（每家工坊一张独立专柜铺面名片，支持按名/代号/行当检索）
+// =========================================================================
+window.onSearchCounterKeyword = function (val) {
+  counterSearchKeyword = (val || '').trim().toLowerCase();
+  renderDigitalCountersGrid();
+};
+
+function renderDigitalCountersGrid() {
+  const grid = document.getElementById('digital-counters-grid');
+  if (!grid) return;
+
+  let list = allTenants;
+  if (counterSearchKeyword) {
+    list = list.filter(
+      (t) =>
+        (t.company_name || '').toLowerCase().includes(counterSearchKeyword) ||
+        (t.tenant_id || '').toLowerCase().includes(counterSearchKeyword) ||
+        (t.brand_origin_desc || '').toLowerCase().includes(counterSearchKeyword)
+    );
+  }
+
+  if (list.length === 0) {
+    grid.innerHTML = '<div class="col-span-full py-12 text-center text-stone-400 text-xs">未找到匹配的数字专柜工坊。</div>';
+    return;
+  }
+
+  grid.innerHTML = list
+    .map((t) => {
+      const tenantProds = allProducts.filter((p) => p.tenant_id === t.tenant_id);
+      const sampleProds = tenantProds.slice(0, 3);
+      return `
+        <div class="bg-white border border-stone-200 hover:border-emerald-700 rounded-3xl p-4 shadow-xs transition flex flex-col justify-between space-y-3">
+          <div class="space-y-2">
+            <div class="flex justify-between items-start gap-2">
+              <div>
+                <span class="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-mono font-bold">
+                  ${t.business_type === 'factory' ? '🏭 源头工坊专柜' : '🏢 区域总代专柜'}
+                </span>
+                <h3 class="text-sm font-bold text-stone-900 mt-1.5">${t.company_name}</h3>
+                <span class="text-[10px] text-stone-400 font-mono block">专柜编号: ${t.tenant_id}</span>
+              </div>
+              <span class="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg font-mono shrink-0">
+                在售 ${tenantProds.length} 款
+              </span>
+            </div>
+
+            <p class="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
+              ${t.brand_origin_desc || '源头直供 · 物勒工名 · 支持一件代发与批量定制接单'}
+            </p>
+
+            ${
+              sampleProds.length > 0
+                ? `<div class="grid grid-cols-3 gap-1.5 pt-1">
+                    ${sampleProds
+                      .map(
+                        (sp) => `
+                        <div class="bg-stone-50 border border-stone-100 rounded-xl p-1.5 text-center">
+                          <div class="w-full h-12 rounded-lg bg-stone-200/60 overflow-hidden flex items-center justify-center mb-1">
+                            ${sp.image_url ? `<img src="${sp.image_url}" class="w-full h-full object-cover">` : '<span class="text-[9px] text-stone-400">正品</span>'}
+                          </div>
+                          <span class="text-[9px] text-stone-700 block truncate">${sp.name}</span>
+                          <b class="text-[10px] font-mono text-emerald-900">¥${sp.tier_1_price}</b>
+                        </div>
+                      `
+                      )
+                      .join('')}
+                  </div>`
+                : `<div class="bg-stone-50 rounded-xl p-2 text-[10px] text-stone-400 text-center">该专柜支持来样/按需定制接单</div>`
+            }
+          </div>
+
+          <div class="pt-2 border-t border-stone-100 flex gap-2 text-xs">
+            <button onclick="window.openC2BDemandModal('', '${t.tenant_id}')" class="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold px-3 py-2 rounded-xl transition">
+              🎯 定制询价
+            </button>
+            <button onclick="window.goToBrandStore('${t.tenant_id}')" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2 rounded-xl shadow active:scale-95 transition">
+              进入数字专柜 ➔
+            </button>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
 function renderCategoryChips() {
   const bar = document.getElementById('category-filter-bar');
   const container = document.getElementById('dynamic-cat-chips');
@@ -158,7 +259,6 @@ window.filterMallCategory = function (catName) {
   renderGoodsGrid();
 };
 
-// 智能搜索：既筛商品，又在输入厂名关键词时弹性弹出「直达数字专柜」快捷卡片
 window.onSearchMallKeyword = function (val) {
   currentKeywordFilter = (val || '').trim().toLowerCase();
   updateMatchedTenantShortcut();
@@ -192,10 +292,10 @@ function updateMatchedTenantShortcut() {
       (t) => `
       <div onclick="window.goToBrandStore('${t.tenant_id}')" class="bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-emerald-100/70 transition">
         <div class="text-xs">
-          <span class="text-emerald-800 font-bold">🏭 直达数字专柜：${t.company_name}</span>
+          <span class="text-emerald-800 font-bold">🏛️ 直达数字专柜：${t.company_name}</span>
           <span class="text-[10px] text-emerald-700/80 font-mono ml-1.5">(${t.tenant_id})</span>
         </div>
-        <span class="text-[11px] font-bold text-emerald-900">进店 ➔</span>
+        <span class="text-[11px] font-bold text-emerald-900">进专柜 ➔</span>
       </div>
     `
     )
@@ -226,11 +326,20 @@ function renderGoodsGrid() {
 
   if (filtered.length === 0) {
     container.innerHTML = `
-      <div class="col-span-full py-12 text-center space-y-2.5 bg-white rounded-3xl border border-stone-200 p-6">
-        <div class="text-stone-400 text-xs">当前筛选条件下暂无已上架现货良品。</div>
-        <button onclick="window.switchMarketMode('c2b'); window.openC2BDemandModal(document.getElementById('mall-search-input')?.value || '');" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs px-4 py-2 rounded-xl shadow active:scale-95 transition">
-          📢 没找到想要的？立即发 C2B 求购榜让工厂报价
-        </button>
+      <div class="col-span-full py-12 text-center space-y-3 bg-white rounded-3xl border border-stone-200 p-6">
+        <div class="text-stone-500 text-xs">当前筛选条件下暂无已上架现货良品</div>
+        <div class="flex flex-wrap justify-center gap-2">
+          ${
+            !currentTenantParam
+              ? `<button onclick="window.switchMarketMode('counters')" class="bg-[#1b4332] hover:bg-[#143628] text-white font-bold text-xs px-4 py-2 rounded-xl shadow active:scale-95 transition">
+                  🏛️ 逛逛在册数字专柜 (${allTenants.length})
+                </button>`
+              : ''
+          }
+          <button onclick="window.switchMarketMode('c2b'); window.openC2BDemandModal(document.getElementById('mall-search-input')?.value || '');" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs px-4 py-2 rounded-xl shadow active:scale-95 transition">
+            📢 发 C2B 求购榜让工坊报价
+          </button>
+        </div>
       </div>
     `;
     return;
@@ -987,6 +1096,9 @@ export async function initMallController() {
   allTenants = tenants;
   allCategories = cats;
 
+  const countBadge = document.getElementById('counter-count-badge');
+  if (countBadge) countBadge.innerText = allTenants.length;
+
   if (currentTenantParam) {
     const matchedTenant = allTenants.find((t) => (t.tenant_id || '').toUpperCase() === currentTenantParam);
     if (matchedTenant) {
@@ -1008,4 +1120,5 @@ export async function initMallController() {
   allProducts = await MallService.fetchMallProducts(currentTenantParam);
   renderCategoryChips();
   renderGoodsGrid();
+  renderDigitalCountersGrid();
 }
