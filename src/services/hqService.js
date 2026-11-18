@@ -87,7 +87,7 @@ export const HQService = {
         before_stock: beforeStock,
         after_stock: afterStock,
         operator_name: operatorLabel,
-        remark: `配貨發運自動扣庫 (單號 #${orderNo})`,
+        remark: `配货发运自动扣库 (单号 #${orderNo})`,
         created_at: new Date().toISOString()
       });
     }
