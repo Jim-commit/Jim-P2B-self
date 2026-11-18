@@ -17,28 +17,28 @@
     
     <!-- 顶栏：师傅随车行囊与收款台账 -->
     <header class="bg-[#1b4332] text-white p-4 pt-5 rounded-b-3xl shadow-md space-y-3">
-      <div class="flex justify-between items-start">
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-base font-bold">🚚 随车送达 · 现场点验核销</h1>
-            <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 font-mono">
+      <div class="space-y-2">
+        <div class="flex justify-between items-center gap-2">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <h1 class="text-sm sm:text-base font-bold truncate">🚚 随车送达 · 现场点验核销</h1>
+            <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 font-mono whitespace-nowrap shrink-0">
               货畅其流
             </span>
           </div>
-          <div class="text-[11px] text-emerald-200 mt-1">
-            送货师傅: <b id="driver-name-display" class="text-white">老张师傅</b> · 商号代号: <span id="tenant-display" class="font-mono text-amber-300 font-bold">BJ_SHUNDA</span>
+          <div class="flex items-center gap-1 shrink-0">
+            <button onclick="window.openSuggestionModal()" class="text-[10px] bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 px-2 py-1 rounded-xl font-bold whitespace-nowrap transition">
+              建言堂
+            </button>
+            <button onclick="window.switchTenantPrompt()" class="text-[10px] bg-white/10 hover:bg-white/20 text-amber-200 border border-amber-400/30 px-2 py-1 rounded-xl whitespace-nowrap transition">
+              换商号
+            </button>
+            <button onclick="window.switchDriverPrompt()" class="text-[10px] bg-white/10 hover:bg-white/20 text-emerald-100 border border-emerald-400/30 px-2 py-1 rounded-xl whitespace-nowrap transition">
+              换师傅
+            </button>
           </div>
         </div>
-        <div class="flex items-center gap-1.5">
-          <button onclick="window.openSuggestionModal()" class="text-[10px] bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 px-2 py-1 rounded-xl font-bold transition">
-            建言堂
-          </button>
-          <button onclick="window.switchTenantPrompt()" class="text-[10px] bg-white/10 hover:bg-white/20 text-amber-200 border border-amber-400/30 px-2 py-1 rounded-xl transition">
-            换商号
-          </button>
-          <button onclick="window.switchDriverPrompt()" class="text-[10px] bg-white/10 hover:bg-white/20 text-emerald-100 border border-emerald-400/30 px-2 py-1 rounded-xl transition">
-            换师傅
-          </button>
+        <div class="text-[11px] text-emerald-200">
+          送货师傅: <b id="driver-name-display" class="text-white">老张师傅</b> · 商号代号: <span id="tenant-display" class="font-mono text-amber-300 font-bold">BJ_SHUNDA</span>
         </div>
       </div>
 
