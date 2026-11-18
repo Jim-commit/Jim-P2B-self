@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>供应链数字商贸 · 平台商道运营总控台</title>
+  <title>百工百业数字协作平台 · 平准与入驻总控中枢</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -18,16 +18,16 @@
       <div>
         <div class="flex items-center gap-2.5">
           <span class="w-7 h-7 rounded-lg bg-amber-400 text-stone-900 flex items-center justify-center font-bold text-sm shadow">🏛️</span>
-          <h1 class="text-lg font-bold tracking-tight">平台商道运营总控调度中枢</h1>
+          <h1 class="text-lg font-bold tracking-tight">平准与入驻总控调度中枢</h1>
           <span id="totp-status-pill" class="bg-stone-800 text-stone-400 text-[10px] px-2.5 py-0.5 rounded-full border border-stone-700 font-mono font-bold flex items-center gap-1">
             <span class="w-1.5 h-1.5 rounded-full bg-stone-500"></span> TOTP 未激活
           </span>
           <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 font-mono">
-            AI 谋士当席 · 知雄守雌
+            AI 参谋当席 · 知雄守雌
           </span>
         </div>
         <div class="text-xs text-stone-400 mt-1 flex flex-wrap gap-4 font-mono">
-          <span>正式在册厂商: <b id="stat-total-tenants" class="text-white">0 家</b></span>
+          <span>在册合作社/工坊: <b id="stat-total-tenants" class="text-white">0 家</b></span>
           <span>待审入驻申请: <b id="stat-pending-apps" class="text-amber-400 font-bold">0 份</b></span>
           <span>百工建言呈报: <b id="stat-pending-suggs" class="text-emerald-400">0 帖</b></span>
           <span>标准化一级品类: <b id="stat-cat-l1" class="text-emerald-400">0 类</b></span>
@@ -40,7 +40,7 @@
           <span>🛡️</span> 绑定总控验证器
         </button>
         <button onclick="window.openManualTenantModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-900 font-bold text-xs px-3.5 py-2 rounded-xl shadow active:scale-95 transition flex items-center gap-1">
-          <span>+</span> 手动特邀开户 (直通发证)
+          <span>+</span> 特邀直通立户
         </button>
         <button onclick="window.loadPlatformData()" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs px-3.5 py-2 rounded-xl font-bold border border-stone-700 active:scale-95 transition">
           刷新大盘
@@ -51,13 +51,13 @@
       </div>
     </header>
 
-    <!-- AI 谋士：百工商道生态研判提示卡 -->
+    <!-- AI 参谋：百工百业供需生态体察简报 -->
     <div id="ai-platform-adviser" class="bg-gradient-to-r from-stone-900 via-stone-800 to-emerald-950 text-white p-4 rounded-3xl shadow-sm border border-stone-700 flex flex-wrap items-center justify-between gap-3 text-xs">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-2xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-lg">💡</div>
         <div>
-          <b class="text-amber-300 font-bold block text-xs">AI 谋士 · 百工商道生态体察简报</b>
-          <span id="ai-adviser-text" class="text-stone-300 text-[11px] leading-relaxed">全盘数据调和安泰，在册厂商商道守信良好，各品类供销两旺。</span>
+          <b class="text-amber-300 font-bold block text-xs">AI 参谋 · 百工百业供需生态体察简报</b>
+          <span id="ai-adviser-text" class="text-stone-300 text-[11px] leading-relaxed">全盘数据调和安泰，在册合作社与工坊履约守信良好，城乡供需平衡运转。</span>
         </div>
       </div>
       <span class="text-[10px] text-stone-400 font-mono">辅佐人断 · 宽猛相济</span>
@@ -66,18 +66,18 @@
     <!-- 导航切换标签 -->
     <nav class="flex bg-white rounded-2xl shadow-sm border border-stone-200 p-1.5 gap-2 text-xs font-bold">
       <button id="p-tab-btn-apps" onclick="window.switchTab('apps')" class="flex-1 py-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1.5">
-        📝 厂商入驻与执照查验
+        📝 合作社 / 工坊入驻查验
         <span id="badge-pending-count" class="bg-rose-500 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
       </button>
       <button id="p-tab-btn-tenants" onclick="window.switchTab('tenants')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
-        🏢 正式入驻商号名册 (独立账本与转正签约)
+        🏢 在册供货主体名册 (独立账本与契约)
       </button>
       <button id="p-tab-btn-suggestions" onclick="window.switchTab('suggestions')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition flex items-center justify-center gap-1.5">
-        📜 商道建言堂 (倾听万家言)
+        📜 商道建言堂 (倾听百工心声)
         <span id="badge-sugg-count" class="bg-emerald-600 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
       </button>
       <button id="p-tab-btn-categories" onclick="window.switchTab('categories')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
-        🗂️ 平台标准一二级品类字典
+        🗂️ 标准一二级品类字典
       </button>
       <button id="p-tab-btn-audit" onclick="window.switchTab('audit')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
         ⚖️ 天道明鉴 (只读防篡改审计)
@@ -90,7 +90,7 @@
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-stone-900">入驻申请与执照档案池 (人工终审与退回批示站)</h2>
-            <p class="text-[11px] text-stone-400">查看前端光学核验结果、放大查验执照公章原件，并可「一键免费查验工商底库」确认企业是否在营</p>
+            <p class="text-[11px] text-stone-400">查看前端光学核验结果、放大查验执照公章原件，并可「一键免费查验工商底库」确认合作社/企业是否在营</p>
           </div>
           <span class="text-xs text-stone-500 font-mono">实名资质审查 · 零成本官方查册</span>
         </div>
@@ -98,12 +98,12 @@
       </div>
     </section>
 
-    <!-- 板块 2：已入驻正式厂商名册 -->
+    <!-- 板块 2：在册供货主体名册 -->
     <section id="p-tab-tenants" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-sm font-bold text-stone-900">正式入驻商号管辖名册</h2>
+            <h2 class="text-sm font-bold text-stone-900">在册合作社与工坊管辖名册</h2>
             <p class="text-[11px] text-stone-400">统一使用商号代号作为唯一商业标识，预设初始安家密钥为执照信用代码后 6 位</p>
           </div>
           <div class="text-[11px] text-stone-400 flex flex-wrap gap-2 font-mono">
@@ -121,7 +121,7 @@
               <tr>
                 <th class="p-3">商号代号 (唯一标识)</th>
                 <th class="p-3">主体执照全称 / 信用代码</th>
-                <th class="p-3">行当类型</th>
+                <th class="p-3">主体身份</th>
                 <th class="p-3">当家负责人</th>
                 <th class="p-3">后台安全凭证</th>
                 <th class="p-3">商契会籍气象</th>
@@ -140,7 +140,7 @@
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-stone-900">📜 商道建言堂 · 倾听百工心声</h2>
-            <p class="text-[11px] text-stone-400">开门纳谏，汇集供货师傅、实体门店掌柜与厂商员工对系统的改善建言与诉求</p>
+            <p class="text-[11px] text-stone-400">开门纳谏，汇集送货师傅、合作门店掌柜与合作社/工坊一线人员对系统的改善建言与诉求</p>
           </div>
           <span class="text-xs text-stone-500 font-mono">见素抱朴 · 共建共荣</span>
         </div>
@@ -154,7 +154,7 @@
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-stone-900">平台标准一二级品类字典 (根基准绳)</h2>
-            <p class="text-[11px] text-stone-400">平台牢固管控一级大项与二级细项，确保全盘索引规整；厂商发品可自定延伸三级细分类</p>
+            <p class="text-[11px] text-stone-400">平台牢固管控一级大项与二级细项，确保全盘索引规整；合作社与工坊发布良品可自定延伸三级细分类</p>
           </div>
           <button onclick="window.openAddCategoryModal()" class="text-xs bg-stone-900 hover:bg-stone-800 text-white font-bold px-3 py-1.5 rounded-xl shadow active:scale-95 transition">
             + 制定新标准品类
@@ -199,7 +199,7 @@
     <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-white shadow-2xl">
       <div class="text-center space-y-1">
         <div class="w-12 h-12 bg-amber-400 text-stone-950 rounded-2xl flex items-center justify-center font-bold text-xl mx-auto shadow-lg">🏛️</div>
-        <h2 class="text-base font-bold tracking-tight text-white pt-1">平台运营总控安全核验</h2>
+        <h2 class="text-base font-bold tracking-tight text-white pt-1">平准与入驻总控安全核验</h2>
         <p class="text-[11px] text-stone-400">出示管理密钥凭证登录中枢系统</p>
       </div>
 
@@ -304,7 +304,7 @@
       <div class="bg-amber-50/70 border border-amber-200/60 p-3 rounded-2xl space-y-1.5">
         <b class="text-amber-900 text-[11px] flex items-center gap-1">🤖 终审复核指引：</b>
         <p id="adjust-ai-insight" class="text-[11px] text-amber-800 leading-relaxed">
-          正在研判该商号履约历史...
+          正在研判该主体履约历史...
         </p>
       </div>
 
@@ -315,28 +315,28 @@
             <input type="radio" name="membership_status_choice" value="trial" class="mt-0.5 text-cyan-800">
             <div>
               <b class="text-cyan-950 block">🍃 尝鲜开席 · 体验全开</b>
-              <span class="text-[10px] text-stone-500">7 天无门槛试用，双轨权能全放行，满意后再行商约点餐。</span>
+              <span class="text-[10px] text-stone-500">7 天无门槛试用，双轨权能全放行，满意后再行商约签约。</span>
             </div>
           </label>
           <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
             <input type="radio" name="membership_status_choice" value="active" class="mt-0.5 text-emerald-800">
             <div>
               <b class="text-emerald-900 block">🟢 和合在册 · 正式转正签约</b>
-              <span class="text-[10px] text-stone-500">人工查册在营无误、核收会费后颁布此态，全年畅行全盘。</span>
+              <span class="text-[10px] text-stone-500">人工查册在营无误后颁布此态，全年畅行全盘供需调度。</span>
             </div>
           </label>
           <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
             <input type="radio" name="membership_status_choice" value="grace" class="mt-0.5 text-amber-700">
             <div>
               <b class="text-amber-800 block">🍃 春风宽待 · 提请关照 (宽猛相济)</b>
-              <span class="text-[10px] text-stone-500">业务完全不中断，仅在厂商端温情提醒，提请闲暇时通融续会。</span>
+              <span class="text-[10px] text-stone-500">业务完全不中断，仅在调度中枢温情提醒，提请闲暇时通融续契。</span>
             </div>
           </label>
           <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
             <input type="radio" name="membership_status_choice" value="restricted" class="mt-0.5 text-blue-800">
             <div>
               <b class="text-blue-900 block">🛡️ 停新保旧 · 护盘存续 (事缓则圆)</b>
-              <span class="text-[10px] text-stone-500">允许已有订单交割、实体门店正常还款，仅暂缓发售全新良品。</span>
+              <span class="text-[10px] text-stone-500">允许已有订单交割、合作门店正常平账，仅暂缓发布全新良品。</span>
             </div>
           </label>
           <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
@@ -369,13 +369,13 @@
   <div id="manual-tenant-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">🏛️ 线下特邀厂家直通开户</h3>
+        <h3 class="font-bold text-sm text-stone-900">🏛️ 线下特邀合作社 / 工坊直通立户</h3>
         <button onclick="window.closeModal('manual-tenant-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="space-y-2.5">
         <div>
           <label class="block text-stone-600 font-medium mb-1">主体执照全称 *：</label>
-          <input type="text" id="m-company-name" placeholder="如：河北衡水老白干酒业总厂" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+          <input type="text" id="m-company-name" placeholder="如：南阳伏牛山生态农业专业合作社" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
         </div>
         <div>
           <label class="block text-stone-600 font-medium mb-1">统一社会信用代码 (18位 · 自动取后6位为预设密钥) *：</label>
@@ -384,28 +384,30 @@
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-stone-600 font-medium mb-1">商号代号 (唯一标识) *：</label>
-            <input type="text" id="m-tenant-id" placeholder="如：HB-LAOBAIGAN" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold text-amber-700">
+            <input type="text" id="m-tenant-id" placeholder="如：NY-FUNIU" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold text-amber-700">
           </div>
           <div>
-            <label class="block text-stone-600 font-medium mb-1">行当类型：</label>
+            <label class="block text-stone-600 font-medium mb-1">经营主体身份：</label>
             <select id="m-business-type" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
-              <option value="factory">🏭 品牌生产工厂</option>
-              <option value="dealer">🏢 区域总经销 (总代)</option>
+              <option value="coop">🌾 村社合作社 / 产区直供站</option>
+              <option value="factory">🏭 源头工坊 / 生产制造厂</option>
+              <option value="dealer">🏢 区域平准仓 / 集散商行</option>
+              <option value="service">🛠️ 工料配件 / 综合服务商</option>
             </select>
           </div>
         </div>
         <div>
-          <label class="block text-stone-600 font-medium mb-1">供货业务场景模式：</label>
+          <label class="block text-stone-600 font-medium mb-1">供货协作场景模式：</label>
           <select id="m-service-mode" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
-            <option value="实体与电商双轨">🔄 实体与电商双轨 (实体配货 + 天街直供)</option>
-            <option value="实体店">🏬 实体店专供 (门店配送/自提)</option>
-            <option value="电子商务">🌐 电子商务直供 (百工天街/数字专柜)</option>
+            <option value="实体与电商双轨">🔄 实体与电商双轨 (门店直配 + 天街专柜)</option>
+            <option value="实体店">🏬 合作门店专供 (随车配送/自提)</option>
+            <option value="电子商务">🌐 电子商务直供 (百工天街/产区专柜)</option>
           </select>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-stone-600 font-medium mb-1">负责人称呼：</label>
-            <input type="text" id="m-contact-person" placeholder="如：陈厂长" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
+            <input type="text" id="m-contact-person" placeholder="如：陈理事长 / 陈厂长" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
           </div>
           <div>
             <label class="block text-stone-600 font-medium mb-1">预设安家密钥 (执照后6位)：</label>
@@ -451,7 +453,7 @@
           <label class="block text-stone-600 mb-1">适用经营模式：</label>
           <select id="cat-mode-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
             <option value="实体与电商双轨">实体与电商双轨通用</option>
-            <option value="实体店">仅实体店渠道适用</option>
+            <option value="实体店">仅合作门店渠道适用</option>
             <option value="电子商务">仅电子商务渠道适用</option>
           </select>
         </div>
