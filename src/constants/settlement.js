@@ -6,12 +6,12 @@ export const SETTLEMENT_CONFIG = {
   cash: { label: '当面现结 (现款/即付)', desc: '钱货当面相照，一手点物一手交款' },
   monthly: { label: '月度期结 (按期对账)', desc: '按月规整单据，依约清账' },
   rolling: { label: '压批流转 (压一付一)', desc: '新货压存为底，收回上批货资' },
-  consignment: { label: '铺市代销 (实销实结)', desc: '助友试销，卖出方结，滞销完好还库' },
+  consignment: { label: '铺市代销 / 产销对冲', desc: '助友试销实销实结，或以产区农产货款直接冲抵平账' },
   custom: { label: '商契专约 (量身定规)', desc: '因时因地制宜，双方情分专案约定' }
 };
 
 export const RETURN_REASONS = [
-  '包装受挤破损 · 难呈顾客',
+  '包装受挤破损 · 不便上架',
   '时令流转滞销 · 避损调换',
   '错订规格偏差 · 原样退换',
   '物料异议商榷 · 诚信退验'
@@ -61,13 +61,13 @@ export function analyzeOrderRiskAI({
   if (returnTotal > remainQuota) {
     score -= 30;
     const diff = returnTotal - remainQuota;
-    tips.push(`🚨 【度量超额】退款超出当期免批宽限 ¥${diff.toFixed(2)} (结余 ¥${remainQuota.toFixed(2)})，宜请随车人亲查残损原由。`);
+    tips.push(`🚨 【度量超额】退款超出当期免批宽限 ¥${diff.toFixed(2)} (结余 ¥${remainQuota.toFixed(2)})，宜请送货师傅亲查残损原由。`);
   }
 
-  // 3. 体察借用物资（周转筐）流转情况
+  // 3. 体察借用物资（周转筐/载具）流转情况
   if (basketCount >= 18) {
     score -= 10;
-    tips.push(`🧺 【物料融通】小店借存周转筐 ${basketCount} 个，宜顺道迎回闲置空筐，免占店面空间。`);
+    tips.push(`🧺 【物料融通】合作门店借存周转载具 ${basketCount} 件，宜顺道迎回闲置空筐，免占店面空间。`);
   }
 
   // 4. 衡量信用负荷
@@ -82,7 +82,7 @@ export function analyzeOrderRiskAI({
   else if (score < 75) healthLevel = 'amber';
 
   if (tips.length === 0) {
-    tips.push('🌸 【履约淳厚】往来账目明澈，调退循矩，宜即刻排单装车，共赢商机。');
+    tips.push('🌸 【履约淳厚】往来账目明澈，调退循矩，宜即刻排单装车，和合共赢。');
   }
 
   return {
