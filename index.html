@@ -284,15 +284,15 @@
       </div>
     </header>
 
-    <!-- 分类与百业通用特色标签 -->
+    <!-- 分类与百业通用特色标签（兼容历史食品标签 + 百工百业通用标签） -->
     <div class="sticky top-0 z-10 bg-white border-b border-stone-100 p-2.5 space-y-1.5 shadow-sm">
       <div id="category-bar" class="flex gap-2 overflow-x-auto no-scrollbar text-xs"></div>
       <div id="quick-tag-pills" class="flex gap-1.5 overflow-x-auto no-scrollbar text-[11px] pt-0.5">
-        <button type="button" onclick="window.filterBySpecialTag('全部')" class="tag-filter-chip bg-stone-800 text-white px-2.5 py-0.5 rounded-lg whitespace-nowrap font-bold">全选品类</button>
-        <button type="button" onclick="window.filterBySpecialTag('🔥 街坊抢手')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap">🔥 街坊抢手</button>
-        <button type="button" onclick="window.filterBySpecialTag('💎 高毛利')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap">💎 丰厚毛利</button>
-        <button type="button" onclick="window.filterBySpecialTag('⏳ 临期捡漏')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap">⏳ 临期捡漏</button>
-        <button type="button" onclick="window.filterBySpecialTag('❄️ 需冷藏')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap">❄️ 需冷藏</button>
+        <button type="button" onclick="window.filterBySpecialTag('全部')" class="tag-filter-chip bg-stone-900 text-white px-2.5 py-0.5 rounded-lg whitespace-nowrap font-bold shadow-sm">全选品类</button>
+        <button type="button" onclick="window.filterBySpecialTag('🔥 畅销常备')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap">🔥 畅销常备</button>
+        <button type="button" onclick="window.filterBySpecialTag('💎 高毛利')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap">💎 高毛利推荐</button>
+        <button type="button" onclick="window.filterBySpecialTag('📦 整件特惠')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap">📦 整件特惠</button>
+        <button type="button" onclick="window.filterBySpecialTag('🛡️ 质保/效期优')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap">🛡️ 质保/效期优</button>
       </div>
     </div>
 
@@ -499,7 +499,7 @@
     </div>
   </div>
 
-  <!-- 大超/特大终端专用弹窗 -->
+  <!-- 合作供货商名册弹窗 -->
   <div id="all-agents-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3.5">
     <div class="bg-white w-full max-w-sm rounded-[2rem] p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar border border-stone-100 flex flex-col">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
