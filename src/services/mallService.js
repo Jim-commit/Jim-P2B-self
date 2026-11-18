@@ -120,7 +120,6 @@ export const MallService = {
       .eq('id', demandId);
   },
 
-  // 读取全网/指定工坊的街坊验真晒单口碑
   async fetchVerifiedReviews(tenantId = null) {
     let query = supabase
       .from('platform_suggestion_board')
