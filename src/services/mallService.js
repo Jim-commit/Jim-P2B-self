@@ -39,7 +39,7 @@ export const MallService = {
       .from('product')
       .select('*')
       .eq('status', 'active')
-      .in('sales_channel_type', ['电子商务', '电商直供', '双轨', '实体与电商双轨', 'online', 'both']);
+      .in('sales_channel_type', ['电子商务', '实体与电商双轨']);
 
     if (tenantId) {
       query = query.eq('tenant_id', tenantId);
