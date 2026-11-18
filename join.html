@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>百工商道 · 厂商实名资质入驻与进度查询</title>
+  <title>百工商道 · 合作社与源头工坊实名入驻中心</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
@@ -21,7 +21,7 @@
       <div class="w-14 h-14 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-inner">
         🏛️
       </div>
-      <h1 class="text-xl font-bold text-white tracking-wide">百工商道 · 厂商实名资质入驻中心</h1>
+      <h1 class="text-xl font-bold text-white tracking-wide">百工商道 · 合作社与工坊实名入驻中心</h1>
       <p class="text-xs text-stone-400">
         商号代号唯一标识 · 执照后六位即预设安家密钥 · 光学验真秒开席
       </p>
@@ -30,14 +30,14 @@
     <!-- 双模式导航切换标签 -->
     <nav class="flex bg-stone-900 p-1.5 rounded-2xl border border-stone-800 text-xs font-bold gap-2">
       <button type="button" id="tab-btn-apply" onclick="window.switchJoinTab('apply')" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-stone-950 transition shadow">
-        📝 厂商入驻立约 / 补件重提
+        📝 合作社 / 工坊入驻立约
       </button>
       <button type="button" id="tab-btn-query" onclick="window.switchJoinTab('query')" class="flex-1 py-2.5 rounded-xl text-stone-400 hover:text-white transition">
         🔍 查询审核结果与商号信物
       </button>
     </nav>
 
-    <!-- 视图 1：厂商入驻表单（支援首次立约 + 退回补件修正） -->
+    <!-- 视图 1：主体入驻表单（支援首次立约 + 退回补件修正） -->
     <form id="join-vendor-form" onsubmit="window.handleVendorRegister(event)" class="space-y-4 text-xs">
       
       <div id="resubmit-banner" class="hidden bg-amber-950/60 border border-amber-500/50 p-3.5 rounded-2xl flex items-center justify-between gap-2 text-amber-200">
@@ -118,19 +118,20 @@
             <input type="text" id="v-tenant-id" required placeholder="如：NY-FUNIU" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase font-bold text-amber-400 outline-none focus:border-amber-500">
           </div>
           <div>
-            <label class="block text-stone-400 mb-1">行当类型 *：</label>
+            <label class="block text-stone-400 mb-1">经营主体身份 *：</label>
             <select id="v-business-type" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 font-bold outline-none focus:border-amber-500">
-              <option value="factory">🏭 品牌工坊 (源头生产)</option>
-              <option value="dealer">🏢 区域总经销 (渠道大代)</option>
-              <option value="service">🛠️ 工料配件 / 综合供应商</option>
+              <option value="coop">🌾 村社合作社 / 产区直供站</option>
+              <option value="factory">🏭 源头工坊 / 生产制造厂</option>
+              <option value="dealer">🏢 区域平准仓 / 集散商行</option>
+              <option value="service">🛠️ 工料配件 / 综合服务商</option>
             </select>
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-stone-400 mb-1">大当家负责人称呼 *：</label>
-            <input type="text" id="v-contact-person" required placeholder="如：王掌柜" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 outline-none focus:border-amber-500">
+            <label class="block text-stone-400 mb-1">当家负责人称呼 *：</label>
+            <input type="text" id="v-contact-person" required placeholder="如：王理事长 / 王掌柜" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 outline-none focus:border-amber-500">
           </div>
           <div>
             <label class="block text-stone-400 mb-1">联络电话 (查询进度凭证) *：</label>
@@ -170,7 +171,7 @@
     </section>
 
     <div class="text-center pt-2 border-t border-stone-800 flex justify-center gap-4 text-[11px]">
-      <a href="hq.html" class="text-amber-400 hover:text-amber-300 font-bold underline">前往厂商调度中枢登录</a>
+      <a href="hq.html" class="text-amber-400 hover:text-amber-300 font-bold underline">前往平准调度中枢登录</a>
       <a href="mall.html" class="text-stone-400 hover:text-stone-200 underline">逛逛百工天街集市</a>
     </div>
 
