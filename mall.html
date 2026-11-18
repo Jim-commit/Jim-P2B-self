@@ -88,32 +88,20 @@
     </div>
   </section>
 
-  <!-- 轨道一：B2C 现货直供市集与数字专柜巡礼 -->
+  <!-- 轨道一：B2C 现货直供市集（智能搜索 + 弹性分类 + 货架） -->
   <div id="pane-b2c-market">
-    <div class="px-3 pt-2.5 overflow-x-auto no-scrollbar flex gap-1.5 text-xs whitespace-nowrap">
+    <div class="px-3 pt-3 space-y-2">
+      <input id="mall-search-input" type="search" oninput="window.onSearchMallKeyword(this.value)" placeholder="🔍 搜良品名称、产地，或输工坊名直达专柜..." class="w-full bg-white border border-stone-200 rounded-2xl px-3.5 py-2.5 text-xs outline-none focus:border-emerald-700 shadow-2xs">
+      <!-- 搜索匹配到工坊时才弹性浮出的直达专柜入口 -->
+      <div id="matched-tenant-shortcut" class="hidden space-y-1.5"></div>
+    </div>
+
+    <!-- 弹性分类滑轨（有分类数据时才自动显示） -->
+    <div id="category-filter-bar" class="hidden px-3 pt-2.5 overflow-x-auto no-scrollbar flex gap-1.5 text-xs whitespace-nowrap">
       <button onclick="window.filterMallCategory('all')" class="mall-cat-chip bg-amber-400 text-stone-950 px-3 py-1 rounded-xl font-bold transition">
         全部精选
       </button>
       <div id="dynamic-cat-chips" class="flex gap-1.5"></div>
-    </div>
-
-    <section id="tianjie-brand-showcase" class="px-3 pt-2.5 space-y-1.5">
-      <div class="flex justify-between items-center px-1 text-[11px]">
-        <b class="text-stone-700">🏛️ 源头工坊 · 数字专柜巡礼</b>
-        <span class="text-[10px] text-stone-400">点击直达厂方旗舰专柜 ➔</span>
-      </div>
-      <div id="brand-showcase-cards" class="flex gap-2 overflow-x-auto no-scrollbar pb-0.5"></div>
-    </section>
-
-    <section id="tianjie-brand-bar" class="px-3 pt-2 overflow-x-auto no-scrollbar flex gap-1.5 items-center">
-      <button data-brand="all" onclick="window.filterMallBrand('all')" class="mall-brand-chip bg-[#1b4332] text-white border border-[#1b4332] px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition">
-        全部工坊良品
-      </button>
-      <div id="dynamic-brand-chips" class="flex gap-1.5"></div>
-    </section>
-
-    <div class="px-3 pt-2.5">
-      <input type="search" oninput="window.onSearchMallKeyword(this.value)" placeholder="🔍 搜索良品名称、规格、产地或出品工坊..." class="w-full bg-white border border-stone-200 rounded-2xl px-3.5 py-2 text-xs outline-none focus:border-emerald-700 shadow-2xs">
     </div>
 
     <main class="p-3">
