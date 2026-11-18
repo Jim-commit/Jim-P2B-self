@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>百工天街 · 数字专柜集市</title>
+  <title>百工天街 · 云端直供集市与数字专柜</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -21,12 +21,12 @@
         </span>
         <div>
           <div class="flex items-center gap-1.5">
-            <h1 id="mall-header-title" class="text-sm font-bold tracking-tight">百工天街 · 数字专柜集市</h1>
+            <h1 id="mall-header-title" class="text-sm font-bold tracking-tight">百工天街 · 云端直供集市</h1>
             <span id="mall-mode-badge" class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.2 rounded-full border border-emerald-400/30 font-mono">
               天街公域
             </span>
           </div>
-          <p id="mall-header-sub" class="text-[10px] text-emerald-200">天街赶集 · 专柜直营 · 反向定制</p>
+          <p id="mall-header-sub" class="text-[10px] text-emerald-200">物勒工名 · 润利护店 · 源头直发</p>
         </div>
       </div>
 
@@ -41,21 +41,21 @@
           🏛️ 天街
         </button>
         <button onclick="window.openShareModal()" class="bg-[#2d6a4f] hover:bg-[#143628] text-white px-2 py-1.5 rounded-xl border border-emerald-400/30 text-[11px] font-bold transition active:scale-95 flex items-center gap-1">
-          <span>🤝</span> 分润
+          <span>🤝</span> 结缘
         </button>
       </div>
     </div>
 
-    <!-- 掌柜推客血缘宣告条 -->
+    <!-- 实体小店云端扩充货架结缘宣告条 -->
     <div id="referrer-banner" class="hidden bg-amber-500 text-stone-950 px-4 py-1.5 flex justify-between items-center text-[11px] font-bold shadow-inner">
       <div class="flex items-center gap-1.5">
         <span>🏪</span>
-        <span>实体门店结缘：<b id="ref-store-name">便民小店</b> 专享关照通道</span>
+        <span><b id="ref-store-name">邻里小店</b> 云端扩充货架 · 本单润利归属该店</span>
       </div>
-      <span class="text-[10px] bg-stone-900 text-amber-300 px-2 py-0.5 rounded-full font-mono">穿透分润中</span>
+      <span class="text-[10px] bg-stone-900 text-amber-300 px-2 py-0.5 rounded-full font-mono">护店结缘中</span>
     </div>
 
-    <!-- 天街三视角主导航：天街好物 (B2C) | 数字专柜 (工坊铺面) | 需求发榜 (C2B) -->
+    <!-- 天街三视角主导航：天街好物 | 数字专柜 | 需求发榜 -->
     <div class="px-3 py-2 bg-[#143628]">
       <div class="bg-black/25 p-1 rounded-2xl flex gap-1 text-xs">
         <button id="mode-tab-b2c" onclick="window.switchMarketMode('b2c')" class="flex-1 py-2 rounded-xl bg-[#1b4332] text-white font-bold shadow transition flex items-center justify-center gap-1">
@@ -91,13 +91,18 @@
     </div>
   </section>
 
-  <!-- ======================================================================= -->
-  <!-- 视角一：天街好物（B2C 现货直供货架） -->
-  <!-- ======================================================================= -->
+  <!-- 视角一：天街好物（云端直供货架） -->
   <div id="pane-b2c-market">
     <div class="px-3 pt-3 space-y-2">
       <input id="mall-search-input" type="search" oninput="window.onSearchMallKeyword(this.value)" placeholder="🔍 搜良品名称、产地，或输工坊名直达专柜..." class="w-full bg-white border border-stone-200 rounded-2xl px-3.5 py-2.5 text-xs outline-none focus:border-emerald-700 shadow-2xs">
       <div id="matched-tenant-shortcut" class="hidden space-y-1.5"></div>
+    </div>
+
+    <div id="tianjie-quick-counter-pill" class="px-3 pt-2">
+      <div onclick="window.switchMarketMode('counters')" class="bg-white border border-stone-200 hover:border-emerald-700 px-3.5 py-2 rounded-2xl flex justify-between items-center cursor-pointer transition shadow-2xs text-xs">
+        <span class="text-stone-700 font-bold">🏛️ 源头工坊直营专柜 · <b id="quick-counter-count" class="text-emerald-900">在册工坊专柜</b></span>
+        <span class="text-[11px] text-emerald-800 font-bold">进大厅逛铺子 ➔</span>
+      </div>
     </div>
 
     <div id="category-filter-bar" class="hidden px-3 pt-2.5 overflow-x-auto no-scrollbar flex gap-1.5 text-xs whitespace-nowrap">
@@ -114,23 +119,24 @@
     </main>
   </div>
 
-  <!-- ======================================================================= -->
-  <!-- 视角二：数字专柜大厅（工坊铺面巡礼 · 支持搜索与进店） -->
-  <!-- ======================================================================= -->
-  <div id="pane-counters-market" class="hidden p-3 space-y-3">
+  <!-- 视角二：数字专柜大厅 -->
+  <div id="pane-counters-market" class="hidden p-3 space-y-2.5">
     <input type="search" oninput="window.onSearchCounterKeyword(this.value)" placeholder="🔍 按工坊名称、主营行当或代号检索数字专柜..." class="w-full bg-white border border-stone-200 rounded-2xl px-3.5 py-2.5 text-xs outline-none focus:border-emerald-700 shadow-2xs">
+    <div class="flex gap-1.5 text-xs">
+      <button data-ctype="all" onclick="window.filterCounterType('all')" class="counter-type-chip bg-[#1b4332] text-white px-3 py-1 rounded-xl font-bold transition">全部专柜</button>
+      <button data-ctype="factory" onclick="window.filterCounterType('factory')" class="counter-type-chip bg-white border border-stone-200 text-stone-700 hover:border-emerald-700 px-3 py-1 rounded-xl font-bold transition">🏭 源头工厂</button>
+      <button data-ctype="agent" onclick="window.filterCounterType('agent')" class="counter-type-chip bg-white border border-stone-200 text-stone-700 hover:border-emerald-700 px-3 py-1 rounded-xl font-bold transition">🏢 区域总代</button>
+    </div>
     <div id="digital-counters-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
   </div>
 
-  <!-- ======================================================================= -->
-  <!-- 视角三：C2B 需求发榜与聚量集采大厅 -->
-  <!-- ======================================================================= -->
+  <!-- 视角三：需求发榜与聚量集采大厅 -->
   <div id="pane-c2b-market" class="hidden p-3 space-y-3">
     <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 p-4 rounded-3xl shadow-sm flex justify-between items-center gap-3">
       <div class="space-y-0.5">
-        <span class="text-[10px] bg-stone-950 text-amber-300 px-2 py-0.5 rounded-full font-mono font-bold">C2B 反向定制 · 以量定产</span>
-        <h2 class="text-sm font-bold pt-1">说出你要买的货，全网源头工坊竞价接单</h2>
-        <p class="text-[11px] text-stone-900/80">个人团购、餐饮采购或门店拼单均可发榜，众人跟单凑量享出厂低价</p>
+        <span class="text-[10px] bg-stone-950 text-amber-300 px-2 py-0.5 rounded-full font-mono font-bold">按需发榜 · 聚量定产</span>
+        <h2 class="text-sm font-bold pt-1">说出你要买的货，全网源头工坊公开报价</h2>
+        <p class="text-[11px] text-stone-900/80">邻里团购、餐饮采购或小店拼单均可发榜，众人跟单凑量享出厂低价</p>
       </div>
       <button onclick="window.openC2BDemandModal()" class="shrink-0 bg-stone-950 hover:bg-stone-800 text-amber-300 font-bold text-xs px-3.5 py-2.5 rounded-2xl shadow active:scale-95 transition">
         + 立即发榜
@@ -142,10 +148,10 @@
 
   <!-- 极简平台背书与源头合作暗门 -->
   <div class="px-4 pt-3 pb-6 text-center text-[10px] text-stone-400">
-    百工天街 · 物勒工名源头直供集市 ｜ <a href="join.html" class="hover:text-emerald-800 underline transition">工坊入驻合作</a>
+    百工天街 · 各守本分、润利护店源头直供集市 ｜ <a href="join.html" class="hover:text-emerald-800 underline transition">工坊入驻合作</a>
   </div>
 
-  <!-- 底部常驻 B2C 购物车结算胶囊 -->
+  <!-- 底部常驻购物车结算胶囊 -->
   <footer id="b2c-cart-footer" class="fixed bottom-0 max-w-md left-1/2 -translate-x-1/2 w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-2.5 px-4 z-30 shadow-2xl flex justify-between items-center rounded-t-3xl">
     <div class="flex items-center gap-3">
       <div class="relative cursor-pointer" onclick="window.openCartModal()">
@@ -157,7 +163,7 @@
         </span>
       </div>
       <div>
-        <span class="text-[10px] text-stone-400 block font-mono">订购净计 (一件代发包邮)</span>
+        <span class="text-[10px] text-stone-400 block font-mono">订购净计 (门店自提/工坊直发)</span>
         <b id="cart-total-price" class="text-sm font-bold text-stone-900 font-mono">¥0.00</b>
       </div>
     </div>
@@ -168,18 +174,18 @@
     </button>
   </footer>
 
-  <!-- 底部常驻 C2B 发布需求悬浮按钮 -->
+  <!-- 底部常驻发布需求悬浮按钮 -->
   <footer id="c2b-publish-footer" class="hidden fixed bottom-0 max-w-md left-1/2 -translate-x-1/2 w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-2.5 px-4 z-30 shadow-2xl rounded-t-3xl">
     <button onclick="window.openC2BDemandModal()" class="w-full bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs py-3 rounded-2xl shadow active:scale-95 transition flex items-center justify-center gap-1.5">
-      <span>📢 发布我的 C2B 求购 / 定制需求榜</span>
+      <span>📢 发布我的求购 / 定制需求榜</span>
     </button>
   </footer>
 
-  <!-- 发布 C2B 求购/定制需求弹窗（全弹性自由表单） -->
+  <!-- 发布求购/定制需求弹窗 -->
   <div id="modal-c2b-demand" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">📢 发布 C2B 求购 / 反向定制需求</h3>
+        <h3 class="font-bold text-sm text-stone-900">📢 发布求购 / 反向定制需求</h3>
         <button onclick="window.closeModal('modal-c2b-demand')" class="text-stone-400 text-lg">✕</button>
       </div>
 
@@ -204,11 +210,11 @@
           </div>
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">期望交付方式与时间 (自由填写或点选快捷标签)：</label>
-          <input type="text" id="c2b-delivery-input" placeholder="如：周五前快递直发 / 送至附近门店自提" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+          <label class="block text-stone-600 font-bold mb-1">期望交付方式与时间 (自由填写或点选标签)：</label>
+          <input type="text" id="c2b-delivery-input" placeholder="如：周五前送至附近合作门店自提" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
           <div class="flex flex-wrap gap-1 mt-1.5 text-[10px]">
-            <button type="button" onclick="window.appendC2BDeliveryChip('快递包邮直发')" class="bg-stone-100 hover:bg-emerald-50 text-stone-700 px-2 py-0.5 rounded-lg border border-stone-200">+ 快递包邮直发</button>
-            <button type="button" onclick="window.appendC2BDeliveryChip('门店随车自提')" class="bg-stone-100 hover:bg-emerald-50 text-stone-700 px-2 py-0.5 rounded-lg border border-stone-200">+ 门店随车自提</button>
+            <button type="button" onclick="window.appendC2BDeliveryChip('合作门店随车自提')" class="bg-stone-100 hover:bg-emerald-50 text-stone-700 px-2 py-0.5 rounded-lg border border-stone-200">+ 合作门店随车自提</button>
+            <button type="button" onclick="window.appendC2BDeliveryChip('工坊直发快递包邮')" class="bg-stone-100 hover:bg-emerald-50 text-stone-700 px-2 py-0.5 rounded-lg border border-stone-200">+ 工坊直发快递包邮</button>
             <button type="button" onclick="window.appendC2BDeliveryChip('大宗专车送货')" class="bg-stone-100 hover:bg-emerald-50 text-stone-700 px-2 py-0.5 rounded-lg border border-stone-200">+ 大宗专车送货</button>
           </div>
         </div>
@@ -316,16 +322,16 @@
     </div>
   </div>
 
-  <!-- 分享分润推客二维码弹窗 -->
+  <!-- 结缘分享推客二维码弹窗 -->
   <div id="modal-share" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-xs rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">🤝 社交裂变 · 专属分享分润</h3>
+        <h3 class="font-bold text-sm text-stone-900">🤝 护店结缘 · 专属云端货架码</h3>
         <button onclick="window.closeModal('modal-share')" class="text-stone-400 text-lg">✕</button>
       </div>
 
       <p class="text-[11px] text-stone-500 leading-relaxed">
-        实体小店掌柜或推客分享专属链接，好友下单一件代发，分润穿透直达小店银囊：
+        实体小店掌柜分享专属云端货架链接，邻里下单不占店面库存，零售润利全额归属小店：
       </p>
 
       <div class="w-36 h-36 bg-stone-100 border border-stone-200 rounded-2xl mx-auto flex items-center justify-center p-2">
@@ -333,14 +339,14 @@
       </div>
 
       <div class="bg-stone-50 p-2.5 rounded-xl border border-stone-200 space-y-1">
-        <span class="text-[10px] text-stone-400 block font-mono">推客结缘链接：</span>
+        <span class="text-[10px] text-stone-400 block font-mono">结缘货架链接：</span>
         <div class="text-[11px] font-mono break-all text-stone-700" id="share-link-text">
           --
         </div>
       </div>
 
       <button onclick="window.copyShareLink()" class="w-full bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
-        📋 复制分润推客链接
+        📋 复制结缘货架链接
       </button>
     </div>
   </div>
@@ -365,20 +371,25 @@
     </div>
   </div>
 
-  <!-- 终端消费者下单结算弹窗 (一件代发 / 门店自提) -->
+  <!-- 终端消费者下单结算弹窗 (护店润利透明公示 + 平行双履约) -->
   <div id="modal-checkout" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
         <h3 class="font-bold text-sm text-stone-900">📦 结缘下单 · 结算中心</h3>
         <button onclick="window.closeModal('modal-checkout')" class="text-stone-400 text-lg">✕</button>
       </div>
 
+      <!-- 护店润利归属透明公示条 -->
+      <div id="checkout-profit-notice" class="bg-emerald-50 border border-emerald-200 text-emerald-950 px-3 py-2 rounded-2xl text-[11px] font-bold leading-relaxed">
+        📜 商道公示：全网统一零售正价，不破价、不挤兑周边实体小店
+      </div>
+
       <div class="space-y-2.5">
         <div>
-          <label class="block text-stone-600 font-bold mb-1">履约收货方式：</label>
+          <label class="block text-stone-600 font-bold mb-1">履约收货方式 (自由选择)：</label>
           <select id="order-delivery-mode" onchange="window.onDeliveryModeChange(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold text-emerald-950">
-            <option value="express">🚚 厂家直发快递包邮（一件代发）</option>
-            <option value="pickup">🏪 就近合作实体门店自提（免邮验货）</option>
+            <option value="pickup">🏪 就近合作实体门店自提（免邮验货 · 润利归属该店）</option>
+            <option value="express">🚚 工坊直发快递到家（一件代发包邮）</option>
           </select>
         </div>
 
@@ -391,14 +402,15 @@
           <input type="tel" id="order-cust-phone" maxlength="11" placeholder="11位手机号" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono outline-none font-bold">
         </div>
 
-        <div id="checkout-express-box">
-          <label class="block text-stone-600 font-bold mb-1">快递配送详细地址 *：</label>
-          <textarea id="order-cust-addr" rows="2" placeholder="详细收件街道地址" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none"></textarea>
+        <div id="checkout-pickup-box" class="space-y-1.5">
+          <label class="block text-stone-600 font-bold">自提实体门店（可搜索点选，或手填常去小店名） *：</label>
+          <input type="text" id="order-pickup-input" oninput="window.onSearchPickupStore(this.value)" placeholder="输入店名/街道检索，或直接填写常去小店名" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold">
+          <div id="pickup-store-candidates" class="space-y-1 max-h-28 overflow-y-auto no-scrollbar"></div>
         </div>
 
-        <div id="checkout-pickup-box" class="hidden">
-          <label class="block text-stone-600 font-bold mb-1">选择自提实体门店 *：</label>
-          <select id="order-pickup-store" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold"></select>
+        <div id="checkout-express-box" class="hidden">
+          <label class="block text-stone-600 font-bold mb-1">快递配送详细地址 *：</label>
+          <textarea id="order-cust-addr" rows="2" placeholder="详细收件街道地址" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none"></textarea>
         </div>
 
         <div>
@@ -417,17 +429,17 @@
 
       <div class="pt-2 border-t border-stone-100 flex gap-2">
         <button onclick="window.submitConsumerOrder()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition text-xs">
-          ✅ 确认订购 · 提交厂家出库
+          ✅ 确认订购 · 提交工坊履约
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 统一查询中心：我的 B2C 订单与 C2B 需求进度弹窗 -->
+  <!-- 统一查询中心：我的天街订单与求购进度弹窗 -->
   <div id="modal-my-orders" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[88vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">📦 我的 B2C 订单与 C2B 需求查询</h3>
+        <h3 class="font-bold text-sm text-stone-900">📦 我的天街订单与求购进度</h3>
         <button onclick="window.closeModal('modal-my-orders')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="flex gap-2">
