@@ -30,7 +30,6 @@
         </div>
       </div>
 
-      <!-- 右侧动作：查单/需求、进专柜、返回天街与分享分润 -->
       <div class="flex items-center gap-1 text-xs">
         <button onclick="window.openMyOrdersModal()" class="bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-xl border border-white/20 text-[11px] font-bold transition active:scale-95">
           📦 查进度
@@ -89,11 +88,8 @@
     </div>
   </section>
 
-  <!-- ======================================================================= -->
   <!-- 轨道一：B2C 现货直供市集与数字专柜巡礼 -->
-  <!-- ======================================================================= -->
   <div id="pane-b2c-market">
-    <!-- 分类水平滚动滑轨 -->
     <div class="px-3 pt-2.5 overflow-x-auto no-scrollbar flex gap-1.5 text-xs whitespace-nowrap">
       <button onclick="window.filterMallCategory('all')" class="mall-cat-chip bg-amber-400 text-stone-950 px-3 py-1 rounded-xl font-bold transition">
         全部精选
@@ -101,7 +97,6 @@
       <div id="dynamic-cat-chips" class="flex gap-1.5"></div>
     </div>
 
-    <!-- 天街公域：品牌数字专柜橱窗巡礼 -->
     <section id="tianjie-brand-showcase" class="px-3 pt-2.5 space-y-1.5">
       <div class="flex justify-between items-center px-1 text-[11px]">
         <b class="text-stone-700">🏛️ 源头工坊 · 数字专柜巡礼</b>
@@ -110,7 +105,6 @@
       <div id="brand-showcase-cards" class="flex gap-2 overflow-x-auto no-scrollbar pb-0.5"></div>
     </section>
 
-    <!-- 天街公域：货架按工坊筛选 -->
     <section id="tianjie-brand-bar" class="px-3 pt-2 overflow-x-auto no-scrollbar flex gap-1.5 items-center">
       <button data-brand="all" onclick="window.filterMallBrand('all')" class="mall-brand-chip bg-[#1b4332] text-white border border-[#1b4332] px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition">
         全部工坊良品
@@ -118,12 +112,10 @@
       <div id="dynamic-brand-chips" class="flex gap-1.5"></div>
     </section>
 
-    <!-- 货架检索条 -->
     <div class="px-3 pt-2.5">
       <input type="search" oninput="window.onSearchMallKeyword(this.value)" placeholder="🔍 搜索良品名称、规格、产地或出品工坊..." class="w-full bg-white border border-stone-200 rounded-2xl px-3.5 py-2 text-xs outline-none focus:border-emerald-700 shadow-2xs">
     </div>
 
-    <!-- 商品网格货架 -->
     <main class="p-3">
       <div id="mall-goods-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         <div class="col-span-full py-16 text-center text-stone-400 text-xs">正调阅百工物勒正品行货...</div>
@@ -131,9 +123,7 @@
     </main>
   </div>
 
-  <!-- ======================================================================= -->
   <!-- 轨道二：C2B 需求发榜与聚量集采大厅 -->
-  <!-- ======================================================================= -->
   <div id="pane-c2b-market" class="hidden p-3 space-y-3">
     <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 p-4 rounded-3xl shadow-sm flex justify-between items-center gap-3">
       <div class="space-y-0.5">
@@ -184,7 +174,7 @@
     </button>
   </footer>
 
-  <!-- 发布 C2B 求购/定制需求弹窗 -->
+  <!-- 发布 C2B 求购/定制需求弹窗（全弹性自由表单） -->
   <div id="modal-c2b-demand" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -194,8 +184,9 @@
 
       <div class="space-y-2.5">
         <div>
-          <label class="block text-stone-600 font-bold mb-1">发布去向：</label>
-          <select id="c2b-target-tenant" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold text-emerald-950"></select>
+          <label class="block text-stone-600 font-bold mb-1">意向行当 / 产区或指定工坊 (选填)：</label>
+          <input type="text" id="c2b-target-input" placeholder="留空则全网公开招标，也可输入产区或工坊名" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold text-emerald-950">
+          <span id="c2b-scope-hint" class="text-[10px] text-stone-400 block mt-0.5">留空则面向全网对应行当工坊公开招标，也可自由输入指定工坊或产区</span>
         </div>
         <div>
           <label class="block text-stone-600 font-bold mb-1">求购或定制良品名称 *：</label>
@@ -212,16 +203,17 @@
           </div>
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">期望交付方式：</label>
-          <select id="c2b-delivery-input" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold">
-            <option value="厂家直发快递包邮">🚚 厂家直发快递包邮</option>
-            <option value="随车送至合作门店自提">🏪 随车送至合作门店自提</option>
-            <option value="专车大宗配送上门">🚛 专车大宗配送上门</option>
-          </select>
+          <label class="block text-stone-600 font-bold mb-1">期望交付方式与时间 (自由填写或点选快捷标签)：</label>
+          <input type="text" id="c2b-delivery-input" placeholder="如：周五前快递直发 / 送至附近门店自提" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+          <div class="flex flex-wrap gap-1 mt-1.5 text-[10px]">
+            <button type="button" onclick="window.appendC2BDeliveryChip('快递包邮直发')" class="bg-stone-100 hover:bg-emerald-50 text-stone-700 px-2 py-0.5 rounded-lg border border-stone-200">+ 快递包邮直发</button>
+            <button type="button" onclick="window.appendC2BDeliveryChip('门店随车自提')" class="bg-stone-100 hover:bg-emerald-50 text-stone-700 px-2 py-0.5 rounded-lg border border-stone-200">+ 门店随车自提</button>
+            <button type="button" onclick="window.appendC2BDeliveryChip('大宗专车送货')" class="bg-stone-100 hover:bg-emerald-50 text-stone-700 px-2 py-0.5 rounded-lg border border-stone-200">+ 大宗专车送货</button>
+          </div>
         </div>
         <div>
           <label class="block text-stone-600 font-bold mb-1">规格要求与定制细节：</label>
-          <textarea id="c2b-note-input" rows="2" placeholder="说明包装规格、交货时间或定制要求..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none"></textarea>
+          <textarea id="c2b-note-input" rows="2" placeholder="说明包装规格、材质标准或个性化定制要求..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none"></textarea>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
