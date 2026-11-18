@@ -1535,7 +1535,6 @@ window.openLocalPoolModal = async function () {
   window.openModal('local-pool-modal');
   window.switchLocalPoolTab('browse');
 
-  // 填充挂出余货下拉选择框
   const selectEl = document.getElementById('pool-prod-select');
   if (selectEl) {
     selectEl.innerHTML =
@@ -1718,37 +1717,50 @@ window.claimLocalPoolItem = async function (poolId) {
 
   if (error) return alert('认领失败：' + error.message);
 
-  // 同步生成一条随车顺路调剂指令单，方便调度台与师傅端直接可见
-  await supabase.from('store_order').insert([
-    {
-      order_no: `SWAP-${Date.now().toString().slice(-6)}`,
-      tenant_id: currentAgent,
-      store_id: currentStore.id,
-      store_name: currentStore.name || '厚德便民门店',
-      driver_name: currentStore.driver_name || item.driver_name || '老张师傅',
-      settlement_type: 'credit',
-      settlement_note: `同城余缺互调平账（调出方：${item.from_store_name}）`,
-      items: [
-        {
-          id: item.product_id || 0,
-          name: `[同城调剂] ${item.product_name}`,
-          spec: item.spec || '整装',
-          measure_unit: item.measure_unit || '件',
-          price: parseFloat(item.transfer_price || 0),
-          qty: parseInt(item.qty || 1)
-        }
-      ],
-      items_return: [],
-      items_exchange: [],
-      total_amount: parseFloat(totalVal),
-      return_amount: 0,
-      net_settle_amount: parseFloat(totalVal),
-      order_status: 'confirmed',
-      delivery_status: 'pending',
-      note: `【同城余缺互调】从【${item.from_store_name}】顺路取货送至【${currentStore.name}】`,
-      driver_action_instruction: `顺路先去【${item.from_store_name}】取调剂货 ${item.product_name}x${item.qty}，再送至【${currentStore.name}】`
-    }
-  ]);
+  // 同步生成随车顺路调剂单并带兼容字段重试与错误提示兜底
+  const swapOrderPayload = {
+    order_no: `SWAP-${Date.now().toString().slice(-6)}`,
+    tenant_id: currentAgent,
+    store_id: currentStore.id,
+    store_name: currentStore.name || '厚德便民门店',
+    driver_name: currentStore.driver_name || item.driver_name || '老张师傅',
+    settlement_type: 'credit',
+    settlement_note: `同城余缺互调平账（调出方：${item.from_store_name}）`,
+    items: [
+      {
+        id: item.product_id || 0,
+        name: `[同城调剂] ${item.product_name}`,
+        spec: item.spec || '整装',
+        measure_unit: item.measure_unit || '件',
+        price: parseFloat(item.transfer_price || 0),
+        qty: parseInt(item.qty || 1)
+      }
+    ],
+    total_amount: parseFloat(totalVal),
+    return_amount: 0,
+    net_settle_amount: parseFloat(totalVal),
+    order_status: 'confirmed',
+    delivery_status: 'ordered',
+    note: `【同城余缺互调】从【${item.from_store_name}】顺路取货送至【${currentStore.name}】`,
+    driver_action_instruction: `顺路先去【${item.from_store_name}】取调剂货 ${item.product_name}x${item.qty}，再送至【${currentStore.name}】`
+  };
+
+  let { error: swapOrderErr } = await supabase.from('store_order').insert([swapOrderPayload]);
+  if (swapOrderErr) {
+    const fallbackPayload = { ...swapOrderPayload };
+    delete fallbackPayload.driver_action_instruction;
+    delete fallbackPayload.settlement_note;
+    delete fallbackPayload.net_settle_amount;
+    delete fallbackPayload.return_amount;
+    const retryRes = await supabase.from('store_order').insert([fallbackPayload]);
+    swapOrderErr = retryRes.error;
+  }
+
+  if (swapOrderErr) {
+    alert(`⚠️ 互调池已认领，但同步生成随车顺路单时出现异常：${swapOrderErr.message}\n请联系供货调度中枢安排随车捎带。`);
+    await loadLocalPoolList();
+    return;
+  }
 
   await notifyVendorWebhook(
     currentAgent,
