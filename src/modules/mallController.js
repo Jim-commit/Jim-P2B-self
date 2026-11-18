@@ -13,6 +13,7 @@ let allProducts = [];
 let allTenants = [];
 let allCategories = [];
 let allDemands = [];
+let allReviews = [];
 let pickupStores = [];
 let currentMarketMode = 'b2c';
 let currentCategoryFilter = 'all';
@@ -147,9 +148,29 @@ function setupBrandStoreMode(tenantId) {
   document.getElementById('hero-brand-name').innerText = name;
   document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '源头工坊 · 匠心正品 · 支持大宗与定制接单';
   document.getElementById('hero-tenant-id').innerText = tenant ? tenant.tenant_id : tenantId;
+
+  // 填充可折叠「产区与匠心工艺档案」
+  document.getElementById('craft-type-text').innerText =
+    tenant?.business_type === 'factory' ? '源头生产制造工坊' : '区域授权总代专柜';
+  document.getElementById('craft-contact-text').innerText = tenant?.contact_person || '工坊当值执事';
+  document.getElementById('craft-story-text').innerText =
+    tenant?.brand_origin_desc ||
+    '恪守“物勒工名、以考其诚”古训，全系直供货品实行全网统一零售正价，优先通过结缘实体门店惠及邻里。';
+
   document.getElementById('brand-hero-section')?.classList.remove('hidden');
 }
 
+window.toggleCraftArchive = function () {
+  const panel = document.getElementById('brand-craft-archive-panel');
+  const arrow = document.getElementById('craft-toggle-arrow');
+  if (!panel) return;
+  const isHidden = panel.classList.toggle('hidden');
+  if (arrow) arrow.innerText = isHidden ? '▼' : '▲';
+};
+
+// =========================================================================
+// 数字专柜大厅
+// =========================================================================
 window.onSearchCounterKeyword = function (val) {
   counterSearchKeyword = (val || '').trim().toLowerCase();
   renderDigitalCountersGrid();
@@ -369,7 +390,7 @@ function renderGoodsGrid() {
               : ''
           }
           <button onclick="window.switchMarketMode('c2b'); window.openC2BDemandModal(document.getElementById('mall-search-input')?.value || '');" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs px-4 py-2 rounded-xl shadow active:scale-95 transition">
-            📢 发 C2B 求购榜让工坊报价
+            📢 发求购榜让工坊报价
           </button>
         </div>
       </div>
@@ -384,6 +405,9 @@ function renderGoodsGrid() {
       const tags = Array.isArray(p.tags) ? p.tags : [];
       const isSingleShop = !!currentTenantParam;
       const hasTierPrice = parseFloat(p.tier_2_price || 0) > 0 && parseFloat(p.tier_2_price) < parseFloat(p.tier_1_price || 0);
+      const isStoreRecommended =
+        !!referrerStoreObj ||
+        tags.some((t) => String(t).includes('推荐') || String(t).includes('严选') || String(t).includes('爆款'));
 
       return `
         <div class="bg-white rounded-3xl p-3 border border-stone-200/80 shadow-sm flex flex-col justify-between space-y-2 hover:shadow-md transition">
@@ -397,6 +421,13 @@ function renderGoodsGrid() {
                 hasTierPrice
                   ? `<span class="absolute top-1.5 right-1.5 bg-amber-500 text-stone-950 text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-xs">
                       满5件批价¥${p.tier_2_price}
+                    </span>`
+                  : ''
+              }
+              ${
+                isStoreRecommended
+                  ? `<span class="absolute bottom-1.5 left-1.5 bg-amber-100/95 text-amber-950 border border-amber-300 text-[8px] font-bold px-1.5 py-0.5 rounded-md">
+                      🏪 掌柜严选
                     </span>`
                   : ''
               }
@@ -510,10 +541,91 @@ window.openProductDetail = function (prodId) {
   window.openModal('modal-product-detail');
 };
 
+// =========================================================================
+// 街坊验真口碑晒单墙（公平公开透明的真实收货口碑）
+// =========================================================================
+function renderVerifiedReviewsWall() {
+  const section = document.getElementById('verified-reviews-section');
+  const listEl = document.getElementById('verified-reviews-list');
+  if (!section || !listEl) return;
+
+  if (allReviews.length === 0) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  section.classList.remove('hidden');
+  listEl.innerHTML = allReviews
+    .slice(0, 8)
+    .map((r) => {
+      let info = { orderNo: '', itemsSummary: '', comment: r.content };
+      try {
+        const parsed = JSON.parse(r.content);
+        if (parsed && parsed.comment) info = parsed;
+      } catch (e) {}
+
+      return `
+        <div class="shrink-0 w-60 bg-white border border-stone-200 rounded-2xl p-3 shadow-2xs space-y-1.5 text-xs">
+          <div class="flex justify-between items-center text-[10px]">
+            <span class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded font-bold">📜 验真已购口碑</span>
+            <span class="text-stone-400 font-mono">${new Date(r.created_at).toLocaleDateString()}</span>
+          </div>
+          <p class="text-stone-800 text-[11px] line-clamp-2 leading-relaxed">“${info.comment}”</p>
+          <div class="text-[10px] text-stone-400 truncate border-t border-stone-100 pt-1">
+            ${info.itemsSummary ? `已购：${info.itemsSummary}` : r.proposer_name || '街坊买家'}
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+window.openReviewModal = function (orderNo, tenantId, itemsSummary) {
+  document.getElementById('review-order-no').value = orderNo;
+  document.getElementById('review-tenant-id').value = tenantId || '';
+  document.getElementById('review-items-summary').value = itemsSummary || '';
+  document.getElementById('review-order-badge').innerText = `单据 #${orderNo} · ${itemsSummary || '天街良品'}`;
+  document.getElementById('review-comment-input').value = '';
+  window.openModal('modal-write-review');
+};
+
+window.submitOrderReview = async function () {
+  const orderNo = document.getElementById('review-order-no').value;
+  const tenantId = document.getElementById('review-tenant-id').value;
+  const itemsSummary = document.getElementById('review-items-summary').value;
+  const comment = document.getElementById('review-comment-input').value.trim();
+
+  if (!comment) return alert('请写下一句您的真实收货或自提体验！');
+
+  const payload = {
+    proposer_type: 'mall_review',
+    proposer_name: '天街验真街坊',
+    category: `口碑晒单:${tenantId || 'PLATFORM'}`,
+    content: JSON.stringify({
+      orderNo,
+      itemsSummary,
+      comment
+    })
+  };
+
+  const { error } = await MallService.submitVerifiedReview(payload);
+  if (error) {
+    alert('提交失败: ' + error.message);
+  } else {
+    alert('🙏 感谢您的真实口碑！已同步展示于天街与对应工坊专柜验真墙。');
+    window.closeModal('modal-write-review');
+    allReviews = await MallService.fetchVerifiedReviews(currentTenantParam);
+    renderVerifiedReviewsWall();
+  }
+};
+
+// =========================================================================
+// C2B 需求发榜、跟单凑量、认可报价与撤销闭环
+// =========================================================================
 async function loadAndRenderC2BDemands() {
   const listEl = document.getElementById('c2b-demands-list');
   if (!listEl) return;
-  listEl.innerHTML = '<div class="py-10 text-center text-stone-400 text-xs">正调阅百工天街 C2B 实时求购需求榜...</div>';
+  listEl.innerHTML = '<div class="py-10 text-center text-stone-400 text-xs">正调阅百工天街实时求购需求榜...</div>';
 
   allDemands = await MallService.fetchC2BDemands(currentTenantParam);
   renderC2BDemandsList();
@@ -538,13 +650,12 @@ function renderC2BDemandsList() {
   const listEl = document.getElementById('c2b-demands-list');
   if (!listEl) return;
 
+  // 消除重复按钮：空状态只做纯净文字引导，发榜动作统一由底部悬浮主按钮触发
   if (allDemands.length === 0) {
     listEl.innerHTML = `
-      <div class="py-12 text-center bg-white rounded-3xl border border-stone-200 p-6 space-y-2">
-        <div class="text-stone-400 text-xs">当前暂无公开求购需求帖。</div>
-        <button onclick="window.openC2BDemandModal()" class="bg-amber-500 text-stone-950 font-bold text-xs px-4 py-2 rounded-xl shadow">
-          + 发布首条 C2B 求购 / 定制需求
-        </button>
+      <div class="py-12 text-center bg-white rounded-3xl border border-stone-200 p-6 space-y-1.5">
+        <div class="text-stone-600 font-bold text-xs">当前暂无公开求购需求帖</div>
+        <div class="text-stone-400 text-[11px]">点击下方按钮即可发布您的采购或定制需求，由对应工坊公开报价</div>
       </div>
     `;
     return;
@@ -714,7 +825,7 @@ window.submitC2BDemand = async function () {
   if (error) {
     alert('发布失败: ' + error.message);
   } else {
-    alert('🎉 C2B 求购/定制需求已成功发榜！\n其他买家可点击跟单凑量，对应行当工坊将尽快报价接单。');
+    alert('🎉 求购/定制需求已成功发榜！\n其他买家可点击跟单凑量，对应行当工坊将尽快报价接单。');
     window.closeModal('modal-c2b-demand');
     await loadAndRenderC2BDemands();
   }
@@ -757,6 +868,9 @@ window.cancelMyC2BDemand = async function (demandId) {
   await window.searchConsumerOrders();
 };
 
+// =========================================================================
+// 购物车与一键按原单复购
+// =========================================================================
 function persistCart() {
   try {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
@@ -772,16 +886,39 @@ function restoreCart() {
   }
 }
 
-window.addToCart = function (prodId) {
+window.addToCart = function (prodId, qtyToAdd = 1) {
   const p = allProducts.find((x) => x.id === prodId);
-  if (!p) return;
+  if (!p) return false;
 
   const item = cart.find((x) => x.prod.id === prodId);
-  if (item) item.qty += 1;
-  else cart.push({ prod: p, qty: 1 });
+  if (item) item.qty += qtyToAdd;
+  else cart.push({ prod: p, qty: qtyToAdd });
 
   persistCart();
   updateCartBadge();
+  return true;
+};
+
+window.reorderPastOrder = function (encodedItems) {
+  let items = [];
+  try {
+    items = JSON.parse(decodeURIComponent(encodedItems));
+  } catch (e) {}
+  if (!Array.isArray(items) || items.length === 0) return;
+
+  let addedCount = 0;
+  items.forEach((it) => {
+    if (window.addToCart(it.id, parseInt(it.qty || 1))) {
+      addedCount++;
+    }
+  });
+
+  window.closeModal('modal-my-orders');
+  if (addedCount > 0) {
+    window.openCartModal();
+  } else {
+    alert('该历史单据中的部分商品已调整规格或暂未上架，请前往专柜挑选新品。');
+  }
 };
 
 function calcCartSummary() {
@@ -888,24 +1025,45 @@ window.clearCart = function () {
 };
 
 // =========================================================================
-// 结账中心：护店润利归属透明公示 + 平行双履约方式
+// 结账中心：护店润利归属透明公示 + 邻里拼单随车直达进度
 // =========================================================================
-function updateCheckoutProfitNotice() {
+async function updateCheckoutProfitAndGroupNotice() {
   const noticeEl = document.getElementById('checkout-profit-notice');
+  const groupBar = document.getElementById('checkout-group-buy-bar');
   if (!noticeEl) return;
 
   const mode = document.getElementById('order-delivery-mode')?.value || 'pickup';
   const pickupName = document.getElementById('order-pickup-input')?.value.trim();
+  const activeStoreId = selectedPickupStoreId || (referrerStoreObj ? String(referrerStoreObj.id) : '');
 
   if (mode === 'pickup' && pickupName) {
     noticeEl.innerText = `🤝 结缘护店契约：本单零售润利全额归属【${pickupName}】，工坊直供品质担保`;
-    noticeEl.classList.remove('hidden');
   } else if (referrerStoreObj) {
     noticeEl.innerText = `🤝 结缘护店契约：本单零售润利全额归属【${referrerStoreObj.name}】，工坊直供品质担保`;
-    noticeEl.classList.remove('hidden');
   } else {
     noticeEl.innerText = '📜 商道公示：全网统一零售正价，不破价、不挤兑周边实体小店';
-    noticeEl.classList.remove('hidden');
+  }
+
+  // 邻里拼单满发随车直达进度条
+  if (groupBar && mode === 'pickup' && activeStoreId) {
+    const existingQty = await MallService.fetchStoreGroupBuyCount(activeStoreId);
+    const { totalQty } = calcCartSummary();
+    const combinedQty = existingQty + totalQty;
+    const targetQty = 10;
+    const pct = Math.min(100, Math.round((combinedQty / targetQty) * 100));
+
+    groupBar.innerHTML = `
+      <div class="flex justify-between text-[10px] font-bold text-amber-950 mb-1">
+        <span>🚚 本店邻里拼单随车直达进度（含本单共 ${combinedQty}/${targetQty} 件）</span>
+        <span>${combinedQty >= targetQty ? '🎉 已满随车直发线' : `再拼 ${targetQty - combinedQty} 件整车捎带`}</span>
+      </div>
+      <div class="w-full h-1.5 bg-amber-200/70 rounded-full overflow-hidden">
+        <div class="h-full bg-amber-600 rounded-full transition-all" style="width: ${pct}%"></div>
+      </div>
+    `;
+    groupBar.classList.remove('hidden');
+  } else if (groupBar) {
+    groupBar.classList.add('hidden');
   }
 }
 
@@ -919,13 +1077,13 @@ window.onDeliveryModeChange = function (mode) {
     expressBox?.classList.remove('hidden');
     pickupBox?.classList.add('hidden');
   }
-  updateCheckoutProfitNotice();
+  updateCheckoutProfitAndGroupNotice();
 };
 
 window.onSearchPickupStore = function (keyword) {
   const q = (keyword || '').trim().toLowerCase();
   const listEl = document.getElementById('pickup-store-candidates');
-  updateCheckoutProfitNotice();
+  updateCheckoutProfitAndGroupNotice();
   if (!listEl) return;
 
   const matched = q
@@ -1100,6 +1258,9 @@ window.submitConsumerOrder = async function () {
   }
 };
 
+// =========================================================================
+// 统一查询中心：支持「一键再来一单」与「验真晒单」
+// =========================================================================
 window.openMyOrdersModal = function () {
   try {
     const saved = JSON.parse(localStorage.getItem(LAST_CUST_KEY) || 'null');
@@ -1172,6 +1333,8 @@ window.searchConsumerOrders = async function () {
         const items = Array.isArray(o.items) ? o.items : [];
         const itemsText = items.map((it) => `${it.name} x${it.qty}${it.measure_unit || '件'}`).join('、');
         const isDelivered = o.delivery_status === 'delivered';
+        const encodedItems = encodeURIComponent(JSON.stringify(items));
+        const safeItemsSummary = itemsText.replace(/'/g, '');
         return `
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
             <div class="flex justify-between items-center">
@@ -1184,9 +1347,16 @@ window.searchConsumerOrders = async function () {
             </div>
             <div class="text-stone-700">${itemsText || '标准商品组合'}</div>
             <div class="text-[10px] text-stone-500">${o.note || ''}</div>
-            <div class="flex justify-between text-[10px] text-stone-400 font-mono pt-1 border-t border-stone-200/60">
-              <span>${new Date(o.created_at).toLocaleString()}</span>
-              <b class="text-emerald-900">实付 ¥${parseFloat(o.total_amount || 0).toFixed(2)}</b>
+            <div class="flex justify-between items-center text-[10px] text-stone-400 font-mono pt-1.5 border-t border-stone-200/60">
+              <span>实付 <b class="text-emerald-900">¥${parseFloat(o.total_amount || 0).toFixed(2)}</b></span>
+              <div class="flex items-center gap-1.5 font-sans">
+                <button onclick="window.openReviewModal('${o.order_no || o.id}', '${o.tenant_id || ''}', '${safeItemsSummary}')" class="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold px-2 py-1 rounded-lg">
+                  ✍️ 验真晒单
+                </button>
+                <button onclick="window.reorderPastOrder('${encodedItems}')" class="bg-[#1b4332] text-white font-bold px-2.5 py-1 rounded-lg">
+                  🔁 再来一单
+                </button>
+              </div>
             </div>
           </div>
         `;
@@ -1263,8 +1433,15 @@ export async function initMallController() {
     }
   }
 
-  allProducts = await MallService.fetchMallProducts(currentTenantParam);
+  const [products, reviews] = await Promise.all([
+    MallService.fetchMallProducts(currentTenantParam),
+    MallService.fetchVerifiedReviews(currentTenantParam)
+  ]);
+  allProducts = products;
+  allReviews = reviews;
+
   renderCategoryChips();
   renderGoodsGrid();
   renderDigitalCountersGrid();
+  renderVerifiedReviewsWall();
 }
