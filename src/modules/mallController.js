@@ -14,15 +14,12 @@ let allTenants = [];
 let allCategories = [];
 let allDemands = [];
 let pickupStores = [];
-let currentMarketMode = 'b2c'; // 'b2c' | 'c2b'
+let currentMarketMode = 'b2c';
 let currentCategoryFilter = 'all';
 let currentBrandFilter = 'all';
 let currentKeywordFilter = '';
 let cart = [];
 
-// =========================================================================
-// 基础弹窗与生态导航
-// =========================================================================
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
 
@@ -50,9 +47,6 @@ window.openCartModal = function () {
   window.openModal('modal-cart');
 };
 
-// =========================================================================
-// 双轨市场模式切换（B2C 现货市集 vs C2B 需求发榜集采）
-// =========================================================================
 window.switchMarketMode = async function (mode) {
   currentMarketMode = mode;
   const isB2C = mode === 'b2c';
@@ -78,9 +72,6 @@ window.switchMarketMode = async function (mode) {
   }
 };
 
-// =========================================================================
-// 阶梯团购批发算价引擎（1件零售价 / 满5件二阶批价 / 满20件三阶大宗价）
-// =========================================================================
 function getEffectiveUnitPrice(prod, qty) {
   const p1 = parseFloat(prod.tier_1_price || 0);
   const p2 = parseFloat(prod.tier_2_price || 0);
@@ -101,9 +92,6 @@ function getTierLabel(prod, qty) {
   return '零售正价';
 }
 
-// =========================================================================
-// 1. 双形态门面初始化（生态公域天街 vs 厂商私域专柜）
-// =========================================================================
 function setupTianJieMode() {
   document.getElementById('mall-header-title').innerText = '百工天街 · B2C/C2B 集市';
   document.getElementById('mall-mode-badge').innerText = '生态公域';
@@ -133,7 +121,6 @@ function setupBrandStoreMode(tenantId) {
 }
 
 function renderBrandShowcaseAndFilter() {
-  // 1. 天街顶部品牌专柜橱窗巡礼卡片
   const showcase = document.getElementById('brand-showcase-cards');
   if (showcase) {
     showcase.innerHTML = allTenants
@@ -154,7 +141,6 @@ function renderBrandShowcaseAndFilter() {
       .join('');
   }
 
-  // 2. 货架按工坊筛选标签
   const bar = document.getElementById('dynamic-brand-chips');
   if (bar) {
     bar.innerHTML = allTenants
@@ -212,9 +198,6 @@ window.onSearchMallKeyword = function (val) {
   renderGoodsGrid();
 };
 
-// =========================================================================
-// 2. B2C 现货货架渲染与商品详情预览
-// =========================================================================
 function renderGoodsGrid() {
   const container = document.getElementById('mall-goods-grid');
   if (!container) return;
@@ -377,7 +360,6 @@ window.openProductDetail = function (prodId) {
     window.closeModal('modal-product-detail');
   };
 
-  // 支持从商品详情一键发起同类大宗定制询价
   document.getElementById('btn-detail-c2b-custom').onclick = () => {
     window.closeModal('modal-product-detail');
     window.openC2BDemandModal(p.name, p.tenant_id);
@@ -386,9 +368,6 @@ window.openProductDetail = function (prodId) {
   window.openModal('modal-product-detail');
 };
 
-// =========================================================================
-// 3. C2B 需求发榜、跟单凑量与专柜定制模块
-// =========================================================================
 async function loadAndRenderC2BDemands() {
   const listEl = document.getElementById('c2b-demands-list');
   if (!listEl) return;
@@ -499,7 +478,6 @@ window.openC2BDemandModal = function (presetTitle = '', presetTenantId = '') {
   document.getElementById('c2b-budget-input').value = '';
   document.getElementById('c2b-note-input').value = '';
 
-  // 填充可选定向专柜下拉框
   const targetSelect = document.getElementById('c2b-target-tenant');
   if (targetSelect) {
     const defaultTarget = presetTenantId || currentTenantParam || 'all';
@@ -586,9 +564,6 @@ window.coBuyC2BDemand = async function (demandId) {
   await loadAndRenderC2BDemands();
 };
 
-// =========================================================================
-// 4. 购物车与 B2C 一件代发 / 门店自提双履约下单
-// =========================================================================
 function persistCart() {
   try {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
@@ -856,9 +831,6 @@ window.submitConsumerOrder = async function () {
   }
 };
 
-// =========================================================================
-// 5. 统一查询中心：我的 B2C 订单 + 我的 C2B 需求榜进度
-// =========================================================================
 window.openMyOrdersModal = function () {
   try {
     const saved = JSON.parse(localStorage.getItem(LAST_CUST_KEY) || 'null');
@@ -943,9 +915,6 @@ window.searchConsumerOrders = async function () {
   listEl.innerHTML = html;
 };
 
-// =========================================================================
-// 6. 物勒工名 · 正品溯源验真弹窗 & 社交分润推客二维码
-// =========================================================================
 window.viewProductTrace = function (prodId) {
   const p = allProducts.find((x) => x.id === prodId);
   if (!p) return;
@@ -977,9 +946,6 @@ window.copyShareLink = function () {
   navigator.clipboard.writeText(link).then(() => alert('专属分润推客链接已复制到剪贴簿！'));
 };
 
-// =========================================================================
-// 启动入口
-// =========================================================================
 export async function initMallController() {
   restoreCart();
   updateCartBadge();
