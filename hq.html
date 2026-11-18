@@ -20,62 +20,77 @@
 <body class="bg-[#f7f5f0] text-stone-800 font-sans p-3 sm:p-4 min-h-screen">
   <div class="max-w-7xl mx-auto space-y-3.5">
     
-    <!-- 顶栏：东方墨韵与松石绿，百业通用弹性商号中枢 -->
-    <header class="bg-[#1b4332] text-white p-4 sm:p-5 rounded-3xl shadow-lg flex flex-wrap justify-between items-center gap-3">
-      <div>
-        <div class="flex flex-wrap items-center gap-2">
-          <h1 id="hq-title" class="text-base sm:text-lg font-bold">源头直供与总销调度中枢</h1>
-          <select id="entity-type-selector" onchange="window.switchEntityType(this.value)" class="bg-[#143628] border border-emerald-600/50 text-amber-300 text-xs px-2.5 py-0.5 rounded-full font-bold outline-none">
-            <option value="dealer" selected>🏢 区域总经销 / 批发行商</option>
-            <option value="factory">🏭 品牌制造工坊 / 源头工厂</option>
-            <option value="service">🛠️ 工料配件 / 综合供应商</option>
-          </select>
-          <span id="tenant-membership-badge" class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 和合在册 · TOTP 2FA
-          </span>
-        </div>
-        <div class="text-xs text-emerald-200 mt-1 flex flex-wrap gap-3 font-mono">
-          <span>商号代号: <b id="hq-tenant-id" class="text-amber-300 tracking-wider">--</b></span>
-          <span>当值身份: <b id="hq-operator-role-display" class="text-white">大当家主账号</b></span>
-          <span>载具名称: <button onclick="window.customizeCarrierName()" id="carrier-label-btn" class="underline text-amber-200 hover:text-white font-bold" title="点击可自定义周转载具名称（如：周转筐/托盘/气瓶/料箱）">周转载具 ✎</button></span>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-2">
-        <button onclick="window.openCounterProfileModal()" class="bg-[#143628] hover:bg-[#0e271d] text-amber-300 text-xs px-3 py-2 rounded-xl font-bold border border-amber-400/40 active:scale-95 transition flex items-center gap-1">
-          <span>🎥</span> 专柜实拍
-        </button>
-        <button onclick="window.openWebhookModal()" id="btn-webhook-status" class="bg-[#143628] hover:bg-[#0e271d] text-emerald-200 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-500/40 active:scale-95 transition flex items-center gap-1">
-          <span>🔔</span> 报单群通知
-        </button>
-        <button onclick="window.openPromoQrModal()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-3 py-2 rounded-xl font-bold shadow active:scale-95 transition flex items-center gap-1">
-          <span>📲</span> 招商二维码
-        </button>
-        <button onclick="window.openPushOrderModal()" class="bg-[#2d6a4f] hover:bg-[#1b4332] text-white text-xs px-3 py-2 rounded-xl font-bold shadow active:scale-95 transition flex items-center gap-1 border border-emerald-500/30">
-          <span>📦</span> 主动配货
-        </button>
-        <button id="btn-top-chg-pwd" onclick="window.openChangePasswordModal()" class="bg-[#143628] hover:bg-[#0e271d] text-amber-300 text-xs px-2.5 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition">
-          🔑 改密
-        </button>
-        <button id="btn-top-totp" onclick="window.openTotpSetupModal()" class="bg-[#143628] hover:bg-[#0e271d] text-emerald-300 text-xs px-2.5 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition">
-          🛡️ 验证器
-        </button>
-
-        <div class="bg-[#143628] border border-emerald-600/50 px-3 py-1.5 rounded-xl flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <div>
-            <b id="hq-company-badge" class="text-white text-xs block font-bold">校验中...</b>
-            <span class="text-[9px] text-emerald-300 font-mono">独立专属账本</span>
+    <!-- 顶栏：公司招牌置顶 + 三层清晰视觉层级 -->
+    <header class="bg-gradient-to-r from-[#1b4332] via-[#1f4d3a] to-[#143628] text-white p-4 sm:p-5 rounded-3xl shadow-lg space-y-3 border border-emerald-700/40">
+      
+      <!-- 第一层：企业招牌主标题 + 系统控制 -->
+      <div class="flex flex-wrap justify-between items-start sm:items-center gap-3">
+        <div class="space-y-1">
+          <div class="text-[11px] text-emerald-300/90 font-medium tracking-wider flex items-center gap-1.5">
+            <span id="hq-title">源头直供与总销调度中枢</span>
+            <span class="text-emerald-600">|</span>
+            <span>独立专属账本</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
+              <h1 id="hq-company-badge" class="text-lg sm:text-xl font-bold tracking-wide text-white">校验中...</h1>
+            </div>
+            <select id="entity-type-selector" onchange="window.switchEntityType(this.value)" class="bg-[#143628]/90 border border-emerald-500/40 text-amber-300 text-xs px-2.5 py-1 rounded-full font-bold outline-none cursor-pointer hover:border-amber-400/60 transition">
+              <option value="dealer" selected>🏢 区域总经销 / 批发行商</option>
+              <option value="factory">🏭 品牌制造工坊 / 源头工厂</option>
+              <option value="service">🛠️ 工料配件 / 综合供应商</option>
+            </select>
+            <span id="tenant-membership-badge" class="bg-emerald-500/15 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 和合在册 · TOTP 2FA
+            </span>
           </div>
         </div>
 
-        <button onclick="window.loadHQData()" class="bg-white text-emerald-950 text-xs px-3 py-2 rounded-xl font-bold shadow hover:bg-stone-50 transition active:scale-95">
-          刷新
-        </button>
-        <button onclick="window.logoutHQ()" class="bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-xs px-2.5 py-2 rounded-xl font-bold border border-rose-700/50 transition">
-          退出
-        </button>
+        <div class="flex items-center gap-2 shrink-0">
+          <button onclick="window.loadHQData()" class="bg-white/95 hover:bg-white text-emerald-950 text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-xs transition active:scale-95">
+            ↻ 刷新
+          </button>
+          <button onclick="window.logoutHQ()" class="bg-rose-950/70 hover:bg-rose-800 text-rose-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-rose-700/50 transition active:scale-95">
+            退出
+          </button>
+        </div>
       </div>
+
+      <!-- 第二层：商号核心身份与载具参数条 -->
+      <div class="bg-[#112d21]/70 px-3.5 py-2 rounded-2xl border border-emerald-700/40 text-xs text-emerald-100/90 flex flex-wrap items-center gap-x-5 gap-y-1 font-mono">
+        <span>商号代号: <b id="hq-tenant-id" class="text-amber-300 tracking-wider">--</b></span>
+        <span>当值身份: <b id="hq-operator-role-display" class="text-white">大当家主账号</b></span>
+        <span>周转载具: <button onclick="window.customizeCarrierName()" id="carrier-label-btn" class="underline text-amber-200 hover:text-white font-bold" title="点击可自定义周转载具名称（如：周转筐/托盘/气瓶/料箱）">周转载具 ✎</button></span>
+      </div>
+
+      <!-- 第三层：高频业务工具 vs 安全维护按钮分区 -->
+      <div class="flex flex-wrap justify-between items-center gap-2 pt-0.5">
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="window.openPushOrderModal()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-xs active:scale-95 transition flex items-center gap-1.5">
+            <span>📦</span> 主动配货
+          </button>
+          <button onclick="window.openPromoQrModal()" class="bg-emerald-700/60 hover:bg-emerald-600/70 text-white text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/30 active:scale-95 transition flex items-center gap-1">
+            <span>📲</span> 招商二维码
+          </button>
+          <button onclick="window.openCounterProfileModal()" class="bg-[#143628]/80 hover:bg-[#0e271d] text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/30 active:scale-95 transition flex items-center gap-1">
+            <span>🎥</span> 专柜实拍
+          </button>
+          <button onclick="window.openWebhookModal()" id="btn-webhook-status" class="bg-[#143628]/80 hover:bg-[#0e271d] text-emerald-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-500/30 active:scale-95 transition flex items-center gap-1">
+            <span>🔔</span> 报单群通知
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="btn-top-chg-pwd" onclick="window.openChangePasswordModal()" class="bg-white/5 hover:bg-white/15 text-emerald-200 text-xs px-2.5 py-1.5 rounded-xl font-medium border border-emerald-600/40 active:scale-95 transition">
+            🔑 改密
+          </button>
+          <button id="btn-top-totp" onclick="window.openTotpSetupModal()" class="bg-white/5 hover:bg-white/15 text-emerald-200 text-xs px-2.5 py-1.5 rounded-xl font-medium border border-emerald-600/40 active:scale-95 transition">
+            🛡️ 验证器
+          </button>
+        </div>
+      </div>
+
     </header>
 
     <!-- 预设密钥安全提醒条 -->
@@ -189,7 +204,7 @@
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-4">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
-            <h2 class="text-sm font-bold text-stone-900">🤖 AI 商道经营参謀（自动扫描全盘异常与机会）</h2>
+            <h2 class="text-sm font-bold text-stone-900">🤖 AI 商道经营参谋（自动扫描全盘异常与机会）</h2>
             <p class="text-[11px] text-stone-400">实时分析库存安全线、应收账款健康度、载具回收与天街求购商机，点击按钮一键落地执行</p>
           </div>
           <span class="text-[11px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-3 py-1 rounded-xl font-bold">
@@ -300,7 +315,7 @@
               📥 受单配货 <span id="count-pending-confirm" class="bg-amber-400 text-stone-900 px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-1">0</span>
             </button>
             <button onclick="window.openPushOrderModal()" class="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold transition active:scale-95 flex items-center gap-1">
-              <span>📦</span> + 主动配货 (代客/铺底)
+              <span>📦</span> + 主主动配货 (代客/铺底)
             </button>
             <button onclick="window.filterOrderStatus('over_credit_pending')" id="order-filter-over-credit" class="px-2.5 py-1.5 rounded-xl bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100 font-bold transition">
               🚨 超信待裁 <span id="count-over-credit" class="bg-rose-600 text-white px-1.5 py-0.2 rounded-full font-mono text-[10px] ml-0.5">0</span>
@@ -313,7 +328,7 @@
               待装车明细
             </button>
             <button onclick="window.openBatchPickListModal()" class="px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold shadow-xs transition active:scale-95 flex items-center gap-1">
-              <span>🚛</span> 本车装車总拣货单
+              <span>🚛</span> 本车装车总拣货单
             </button>
           </div>
         </div>
@@ -806,7 +821,7 @@
         <button onclick="window.closeModal('visibility-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
       <div class="flex justify-between items-center text-xs">
-        <span class="text-stone-500">勾选允许进货的品项：</span>
+        <span class="text-stone-500">勾选购选允许进货的品项：</span>
         <div class="space-x-2">
           <button onclick="window.selectAllVisibility(true)" class="text-emerald-800 font-bold hover:underline">全部开放</button>
           <button onclick="window.selectAllVisibility(false)" class="text-stone-400 hover:underline">清空</button>
