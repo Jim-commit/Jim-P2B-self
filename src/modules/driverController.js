@@ -14,6 +14,7 @@ let allPendingOrders = [];
 let onlyShowWithOrders = false;
 let proofImagesList = [];
 let isSigned = false;
+let isCurrentOrderOnlinePickup = false;
 let canvas, ctx, drawing = false;
 let signPadBound = false;
 
@@ -223,7 +224,7 @@ window.clearSignature = function () {
 };
 
 // =========================================================================
-// 4. 配送路線載入與渲染
+// 4. 配送路線載入與渲染（含百工天街門店自提捎帶單識別）
 // =========================================================================
 window.loadDriverTasks = async function () {
   const container = document.getElementById('route-container');
@@ -273,17 +274,23 @@ function renderRouteStores() {
 
           const isOverCreditPending = o.order_status === 'over_credit_pending';
           const isOverCreditApproved = o.order_status === 'over_credit_approved';
+          const isMallPickup = o.order_source === 'online_mall' || o.settlement_type === 'online_paid';
           const netAmount = parseFloat(o.net_settle_amount || o.total_amount || 0);
 
           return `
-            <div class="bg-stone-50 border ${isOverCreditPending ? 'border-rose-400 bg-rose-50/40' : 'border-stone-200'} rounded-xl p-2.5 text-[11px] text-stone-800 mt-1 space-y-1">
+            <div class="bg-stone-50 border ${
+              isMallPickup ? 'border-emerald-400 bg-emerald-50/40' : isOverCreditPending ? 'border-rose-400 bg-rose-50/40' : 'border-stone-200'
+            } rounded-xl p-2.5 text-[11px] text-stone-800 mt-1 space-y-1">
               <div class="flex justify-between items-center font-bold">
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center gap-1.5 flex-wrap">
                   <span>契約 #${o.order_no || o.id}</span>
+                  ${isMallPickup ? '<span class="text-[9px] bg-emerald-700 text-white px-1.5 py-0.2 rounded font-bold">🛍️ 天街自提捎帶單（已付清）</span>' : ''}
                   ${isOverCreditPending ? '<span class="text-[9px] bg-rose-500 text-white px-1.5 py-0.2 rounded font-bold animate-pulse">待特信放行</span>' : ''}
                   ${isOverCreditApproved ? '<span class="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">總代已特批</span>' : ''}
                 </div>
-                <span class="text-rose-700 font-mono font-bold">淨付: ¥${netAmount.toFixed(2)}</span>
+                <span class="${isMallPickup ? 'text-emerald-800' : 'text-rose-700'} font-mono font-bold">
+                  ${isMallPickup ? '已付 ¥0到付' : `淨付: ¥${netAmount.toFixed(2)}`}
+                </span>
               </div>
 
               ${
@@ -305,7 +312,10 @@ function renderRouteStores() {
         .join('');
 
       const firstOrder = storeOrders.length > 0 ? storeOrders[0] : null;
-      const totalNetOrderAmount = storeOrders.reduce((sum, o) => sum + parseFloat(o.net_settle_amount || o.total_amount || 0), 0);
+      const totalNetOrderAmount = storeOrders.reduce((sum, o) => {
+        if (o.order_source === 'online_mall' || o.settlement_type === 'online_paid') return sum;
+        return sum + parseFloat(o.net_settle_amount || o.total_amount || 0);
+      }, 0);
 
       return `
         <div class="p-3.5 ${hasOrders ? 'bg-amber-50/30 border-amber-300 shadow-xs' : 'bg-stone-50/60 border-stone-200/80'} border rounded-2xl space-y-2 hover:bg-white transition">
@@ -350,7 +360,7 @@ function renderRouteStores() {
 }
 
 // =========================================================================
-// 5. 現場核銷彈窗與動態算賬引擎
+// 5. 現場核銷彈窗與動態算賬引擎（支持天街門店自提單免收現簽收）
 // =========================================================================
 window.openCollectModal = async function (storeId, storeName, debt, orderId, orderAmount, basketCount, creditLimit) {
   document.getElementById('modal-shop-title').innerText = storeName;
@@ -361,6 +371,7 @@ window.openCollectModal = async function (storeId, storeName, debt, orderId, ord
   document.getElementById('modal-basket-count').value = basketCount;
 
   proofImagesList = [];
+  isCurrentOrderOnlinePickup = false;
   renderProofPreview();
 
   let itemsOrder = [];
@@ -378,16 +389,25 @@ window.openCollectModal = async function (storeId, storeName, debt, orderId, ord
       itemsOrder = Array.isArray(o.items) ? o.items : [];
       itemsReturn = Array.isArray(o.items_return) ? o.items_return : [];
       itemsExchange = Array.isArray(o.items_exchange) ? o.items_exchange : [];
-      totalOrderAmount = parseFloat(o.total_amount || 0);
-      returnDeductAmount = parseFloat(o.return_amount || 0);
-      netAmount = parseFloat(o.net_settle_amount || totalOrderAmount - returnDeductAmount);
       settlementType = o.settlement_type || 'credit';
       instructionText = o.driver_action_instruction || '';
+
+      isCurrentOrderOnlinePickup = o.order_source === 'online_mall' || settlementType === 'online_paid';
+      if (isCurrentOrderOnlinePickup) {
+        totalOrderAmount = 0;
+        returnDeductAmount = 0;
+        netAmount = 0;
+        instructionText = `🛍️【天街門店自提捎帶單】街坊線上已付清（潤利歸屬該店），請門店掌櫃點收包裹簽字即可，切勿向掌櫃重複收款！`;
+      } else {
+        totalOrderAmount = parseFloat(o.total_amount || 0);
+        returnDeductAmount = parseFloat(o.return_amount || 0);
+        netAmount = parseFloat(o.net_settle_amount || totalOrderAmount - returnDeductAmount);
+      }
     }
   }
 
   document.getElementById('modal-settlement-type').value = settlementType;
-  document.getElementById('modal-order-amount-text').innerText = `¥${totalOrderAmount.toFixed(2)}`;
+  document.getElementById('modal-order-amount-text').innerText = isCurrentOrderOnlinePickup ? '¥0.00 (天街已付)' : `¥${totalOrderAmount.toFixed(2)}`;
   document.getElementById('modal-return-amount-text').innerText = `-¥${returnDeductAmount.toFixed(2)}`;
   document.getElementById('modal-net-amount-text').innerText = `¥${netAmount.toFixed(2)}`;
   document.getElementById('modal-debt-text').innerText = `¥${debt.toFixed(2)}`;
@@ -415,10 +435,10 @@ window.openCollectModal = async function (storeId, storeName, debt, orderId, ord
   }
 
   const methodSelect = document.getElementById('collect-method');
-  if (settlementType === 'cash') {
-    methodSelect.value = '現金';
-  } else if (settlementType === 'receipt_only') {
+  if (isCurrentOrderOnlinePickup || settlementType === 'receipt_only') {
     methodSelect.value = '僅簽收回單';
+  } else if (settlementType === 'cash') {
+    methodSelect.value = '現金';
   } else {
     methodSelect.value = '掛賬簽收';
   }
@@ -486,6 +506,13 @@ window.updateDeliverBtnText = function () {
 
   btn.disabled = false;
   btn.className = 'flex-1 text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition ';
+
+  if (isCurrentOrderOnlinePickup) {
+    warnBanner?.classList.add('hidden');
+    btn.classList.add('bg-[#1b4332]', 'hover:bg-[#143628]');
+    btn.innerText = '🛍️ 天街自提包裹到店 · 掌櫃簽收存信';
+    return;
+  }
 
   if (netAmount < 0) {
     const refund = Math.abs(netAmount) + basketDeduct;
@@ -563,12 +590,14 @@ window.submitCollection = async function () {
   const basketReturn = parseInt(document.getElementById('collect-basket-return').value) || 0;
   const basketDeduct = basketReturn * 15;
   const method = document.getElementById('collect-method').value;
-  const netAmount = parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
+  const netAmount = isCurrentOrderOnlinePickup ? 0 : parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
 
   if (!isSigned) return alert('請請收貨人手寫正楷簽名，以存商道信義！');
 
-  const expectedNewDebt = Math.max(0, curDebt + netAmount - amount - discount - basketDeduct);
-  const isOverCredit = expectedNewDebt > creditLimit;
+  const expectedNewDebt = isCurrentOrderOnlinePickup
+    ? Math.max(0, curDebt - amount - discount - basketDeduct)
+    : Math.max(0, curDebt + netAmount - amount - discount - basketDeduct);
+  const isOverCredit = !isCurrentOrderOnlinePickup && expectedNewDebt > creditLimit;
 
   if (isOverCredit && amount < netAmount && method !== '僅簽收回單') {
     const overAmount = expectedNewDebt - creditLimit;
@@ -586,7 +615,7 @@ window.submitCollection = async function () {
   let collectType = 'order_delivery';
   if (netAmount < 0) {
     collectType = 'refund_payout';
-  } else if (method === '掛賬簽收' || method === '僅簽收回單' || amount === 0) {
+  } else if (isCurrentOrderOnlinePickup || method === '掛賬簽收' || method === '僅簽收回單' || amount === 0) {
     collectType = 'credit_sign';
   }
 
@@ -599,6 +628,7 @@ window.submitCollection = async function () {
     expectedNewDebt,
     newBaskets,
     signBase64,
+    isOnlinePickup: isCurrentOrderOnlinePickup,
     proofImages: [...proofImagesList],
     logPayload: {
       tenant_id: currentAgent,
@@ -617,7 +647,11 @@ window.submitCollection = async function () {
 
   try {
     await DriverService.executeSettlement(recordToSave);
-    alert(`✅ 交割完好！\n實收金銀: ¥${amount.toFixed(2)} (${method})\n迎回周轉載具: ${basketReturn} 件 (抵¥${basketDeduct})\n門店剩餘在賬: ¥${expectedNewDebt.toFixed(2)}。仁信共生！`);
+    if (isCurrentOrderOnlinePickup) {
+      alert(`✅ 天街自提包裹已送達並簽收存信！\n掌櫃可通知街坊到店自提，本單零售潤利全額歸屬該實體門店。`);
+    } else {
+      alert(`✅ 交割完好！\n實收金銀: ¥${amount.toFixed(2)} (${method})\n迎回周轉載具: ${basketReturn} 件 (抵¥${basketDeduct})\n門店剩餘在賬: ¥${expectedNewDebt.toFixed(2)}。仁信共生！`);
+    }
   } catch (err) {
     console.warn('網絡信號較弱，已自動存入離線防丟單隊列:', err);
     DriverService.enqueueOfflineRecord(recordToSave);
