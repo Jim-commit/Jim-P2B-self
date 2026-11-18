@@ -116,10 +116,10 @@ function updateWebhookStatusBadge(url) {
   if (!btn) return;
   if (url && url.startsWith('http')) {
     btn.innerHTML = '<span>🔔</span> 群通知已開';
-    btn.className = 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-400/50 active:scale-95 transition flex items-center gap-1';
+    btn.className = 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/50 active:scale-95 transition flex items-center gap-1';
   } else {
     btn.innerHTML = '<span>🔔</span> 報單群通知';
-    btn.className = 'bg-[#143628] hover:bg-[#0e271d] text-emerald-200 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-500/40 active:scale-95 transition flex items-center gap-1';
+    btn.className = 'bg-[#143628]/80 hover:bg-[#0e271d] text-emerald-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-500/30 active:scale-95 transition flex items-center gap-1';
   }
 }
 
@@ -128,10 +128,10 @@ function updateTotpStatusBadge(isEnabled) {
   if (!totpBtn) return;
   if (isEnabled) {
     totpBtn.innerHTML = '✅ 驗證器已綁';
-    totpBtn.className = 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs px-2.5 py-2 rounded-xl font-bold border border-emerald-400/50 active:scale-95 transition';
+    totpBtn.className = 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs px-2.5 py-1.5 rounded-xl font-bold border border-emerald-400/50 active:scale-95 transition';
   } else {
     totpBtn.innerHTML = '🛡️ 驗證器';
-    totpBtn.className = 'bg-[#143628] hover:bg-[#0e271d] text-emerald-300 text-xs px-2.5 py-2 rounded-xl font-bold border border-emerald-600/50 active:scale-95 transition';
+    totpBtn.className = 'bg-white/5 hover:bg-white/15 text-emerald-200 text-xs px-2.5 py-1.5 rounded-xl font-medium border border-emerald-600/40 active:scale-95 transition';
   }
 }
 
@@ -283,13 +283,14 @@ window.addCustomAttrRow = function (keyVal = '', valStr = '') {
   `;
   box.appendChild(row);
 };
+
 window.applyIndustryAttrTemplate = function (type) {
   const templates = {
-    food: [['保质期', '12个月'], ['贮存方式', '阴凉干燥'], ['执行标准', 'GB标准']],
-    hardware: [['材质工艺', '304不锈钢'], ['规格型号', '国标通用'], ['表面处理', '防锈镀锌']],
-    auto: [['适配车型', '全系通用'], ['原厂件号', 'OEM标准'], ['质保期限', '12个月/2万公里']],
-    agri: [['有效成分', '高纯度配方'], ['净含量', '25kg/袋'], ['登记证号', '正规备案']],
-    daily: [['香型/款式', '经典款'], ['安全标准', '国标合格'], ['箱规包装', '整件批发']]
+    food: [['保質期', '12個月'], ['貯存方式', '陰涼乾燥'], ['執行標準', 'GB標準']],
+    hardware: [['材質工藝', '304不鏽鋼'], ['規格型號', '國標通用'], ['表面處理', '防鏽鍍鋅']],
+    auto: [['適配車型', '全系通用'], ['原廠件號', 'OEM標準'], ['質保期限', '12個月/2萬公里']],
+    agri: [['有效成分', '高純度配方'], ['淨含量', '25kg/袋'], ['登記證號', '正規備案']],
+    daily: [['香型/款式', '經典款'], ['安全標準', '國標合格'], ['箱規包裝', '整件批發']]
   };
   const rows = templates[type] || [];
   const container = document.getElementById('custom-attrs-container');
@@ -297,6 +298,7 @@ window.applyIndustryAttrTemplate = function (type) {
   container.innerHTML = '';
   rows.forEach(([k, v]) => window.addCustomAttrRow(k, v));
 };
+
 function collectCustomAttrs() {
   const attrs = {};
   document.querySelectorAll('#custom-attrs-container .custom-attr-row').forEach((row) => {
@@ -415,7 +417,7 @@ function renderThreeFlowsAndAIAdvisor() {
       level: 'emerald',
       icon: '🌿',
       title: '三流運轉健康：庫存充足、賬款平穩、無積壓異常',
-      desc: '當前所有在售貨品庫存均在安全線以上，合作客戶授信健康。可點擊右上角「📲 招商二維碼」持續拓展新客源。',
+      desc: '當前所有在售貨品庫存均在安全線以上，合作客戶授信健康。可點擊上方「📲 招商二維碼」持續拓展新客源。',
       btnText: '📲 分享招商名片',
       action: `window.openPromoQrModal()`
     });
@@ -853,7 +855,8 @@ window.loadHQData = async function () {
   }
 
   currentTenantData = curTenant;
-  document.getElementById('hq-company-badge').innerText = `${curTenant.company_name} (${curTenant.tenant_id})`;
+  // 頂欄招牌主標題直接顯示公司全稱（商號代號已在下方狀態條單獨展示，不再重複括號）
+  document.getElementById('hq-company-badge').innerText = curTenant.company_name || curTenant.tenant_id;
   document.getElementById('hq-tenant-id').innerText = curTenant.tenant_id;
   document.getElementById('carrier-label-btn').innerText = `${carrierLabel} ✎`;
   updateWebhookStatusBadge(curTenant.webhook_url || '');
@@ -1056,7 +1059,7 @@ function renderStoreTable() {
                 </div>
                 <div class="text-[11px] text-stone-400 mt-1 flex flex-wrap gap-3 font-mono">
                   <span>分類標籤: ${tagBadges || '<span class="text-stone-300">未分類</span>'}</span>
-                  <span>供貨師傅: <b class="text-emerald-900">${s.driver_name || '張師傅'}</b></span>
+                  <span>送貨師傅: <b class="text-emerald-900">${s.driver_name || '張師傅'}</b></span>
                   <span>專供品道: <b class="text-amber-800">${s.visible_product_ids ? `${s.visible_product_ids.length} 種專享` : '全品類開放'}</b></span>
                 </div>
               </div>
@@ -1064,7 +1067,7 @@ function renderStoreTable() {
                 <button onclick="window.editStoreTagsPrompt(${s.id}, '${JSON.stringify(s.tags || []).replace(/"/g, '"')}')" class="text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 px-2.5 py-1 rounded-xl font-bold">🏷️ 貼分類標籤</button>
                 <button onclick="window.openStorePolicyModal(${s.id})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-1 rounded-xl font-bold">💎 專屬價格 & 授信</button>
                 <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '"')}')" class="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-xl font-bold">🎯 專供品道</button>
-                <button onclick="window.reassignDriverPrompt(${s.id}, '${s.driver_name || '供貨師傅'}')" class="text-[11px] bg-stone-50 text-stone-700 border border-stone-200 px-2.5 py-1 rounded-xl font-bold">🚚 指派師傅</button>
+                <button onclick="window.reassignDriverPrompt(${s.id}, '${s.driver_name || '送貨師傅'}')" class="text-[11px] bg-stone-50 text-stone-700 border border-stone-200 px-2.5 py-1 rounded-xl font-bold">🚚 指派師傅</button>
               </div>
             </div>
           `;
@@ -1684,7 +1687,7 @@ function renderSubUsersTable() {
       const roles = {
         finance: '賬房財務 (管賬審單 · 不過手現金)',
         warehouse: '倉儲調度 (出入庫盤點發貨 · 不碰錢賬)',
-        driver: '供貨師傅 (隨車收款簽收 · 不管總賬)',
+        driver: '送貨師傅 (隨車收款簽收 · 不管總賬)',
         auditor: '廠商獨立稽核 (只讀查看流水)'
       };
       return `
@@ -1759,7 +1762,7 @@ window.saveVisibilitySettings = async function () {
 };
 
 window.reassignDriverPrompt = async function (storeId, currentDriver) {
-  const newDriver = prompt(`當前供貨師傅為【${currentDriver}】，輸入新師傅姓名：`, '張師傅');
+  const newDriver = prompt(`當前送貨師傅為【${currentDriver}】，輸入新師傅姓名：`, '張師傅');
   if (newDriver && newDriver.trim()) {
     await supabase.from('store').update({ driver_name: newDriver.trim() }).eq('id', storeId);
     window.loadHQData();
