@@ -7,7 +7,6 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1b4332">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background-color: #f7f5f0; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -26,6 +25,9 @@
         </div>
       </div>
       <div class="flex items-center gap-2 text-xs">
+        <a href="mall.html" class="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-emerald-100 border border-emerald-400/30 font-bold transition">
+          🛍️ 百工天街
+        </a>
         <a href="join.html" class="px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-900 font-bold shadow transition">
           + 厂商入驻
         </a>
@@ -148,8 +150,8 @@
       <a href="index.html" class="flex flex-col items-center hover:text-stone-900">
         <span>🛒 门店订货台</span>
       </a>
-      <a href="driver.html" class="flex flex-col items-center hover:text-stone-900">
-        <span>🚚 司机配送端</span>
+      <a href="mall.html" class="flex flex-col items-center hover:text-stone-900">
+        <span>🛍️ 百工天街</span>
       </a>
       <a href="hq.html" class="flex flex-col items-center hover:text-stone-900">
         <span>📊 厂商管理台</span>
@@ -177,6 +179,8 @@
         category: '粮油米面 · 调味干货',
         city: '本地核心仓储配送圈',
         description: '专注社区超市、餐饮店一站式粮油调味直供，自有厢式货车每日早晚两班准时送货到店，破损包退。',
+        media_url: '',
+        hasCounter: true,
         products: [
           { name: '非转基因一级压榨花生油', spec: '5L×4桶/箱', measure_unit: '箱', origin_place: '源头工坊原产', tags: ['🔥 街坊抢手'], custom_specs: { attrs: { 保质期: '18个月', 工艺: '物理压榨' } }, image_url: '' },
           { name: '东北长粒香大米（餐饮专供）', spec: '25kg/袋', measure_unit: '袋', origin_place: '黑龙江五常', tags: ['💎 高毛利'], custom_specs: { attrs: { 等级: 'GB/T19266一级' } }, image_url: '' }
@@ -202,8 +206,10 @@
 
         if (tErr) throw tErr;
 
+        // 兼容商道中文渠道标识：排除仅限纯电商的商家
         const validTenants = (tenants || []).filter(t =>
-          (t.permit_brick_and_mortar !== false) && (t.service_mode !== 'online')
+          (t.permit_brick_and_mortar !== false) &&
+          !['电子商务', '电商直供', 'online'].includes(t.service_mode)
         );
 
         if (validTenants.length === 0) {
@@ -214,15 +220,26 @@
 
         const { data: products, error: pErr } = await supabase
           .from('product')
-          .select('id, tenant_id, name, category_main, category_sub, spec, measure_unit, origin_place, image_url, tags, custom_specs, status, channel_brick_and_mortar, sales_channel_type')
+          .select('id, tenant_id, name, category_main, category_sub, spec, measure_unit, origin_place, image_url, tags, custom_specs, status, channel_brick_and_mortar, channel_ecommerce, sales_channel_type')
           .eq('status', 'active');
 
         if (pErr) console.warn('读取商品样例失败:', pErr);
 
         const productMap = {};
+        const counterEnabledMap = {};
+
         (products || []).forEach(p => {
-          const isBM = (p.channel_brick_and_mortar !== undefined) ? p.channel_brick_and_mortar : (p.sales_channel_type !== 'online');
+          const isBM = (p.channel_brick_and_mortar !== undefined)
+            ? !!p.channel_brick_and_mortar
+            : (['实体店', '实体与电商双轨', '双轨', 'offline', 'both'].includes(p.sales_channel_type) || !p.sales_channel_type);
+
+          const isEC = (p.channel_ecommerce !== undefined)
+            ? !!p.channel_ecommerce
+            : ['电子商务', '电商直供', '实体与电商双轨', '双轨', 'online', 'both'].includes(p.sales_channel_type);
+
+          if (isEC) counterEnabledMap[p.tenant_id] = true;
           if (!isBM) return;
+
           if (!productMap[p.tenant_id]) productMap[p.tenant_id] = [];
           if (productMap[p.tenant_id].length < 8) {
             productMap[p.tenant_id].push(p);
@@ -246,7 +263,9 @@
             name: t.company_name || t.tenant_id,
             category: displayCategory,
             city: t.region || t.address || '本地仓储配送覆盖',
-            description: t.intro || `源头正规供货商（商号：${t.tenant_id}），营业执照与资质已核验，支持签约门店定期配送、电子签收与往来授信对账。`,
+            description: t.brand_origin_desc || t.intro || `源头正规供货商（商号：${t.tenant_id}），营业执照与资质已核验，支持签约门店定期配送、电子签收与往来授信对账。`,
+            media_url: t.media_url || t.video_url || '',
+            hasCounter: !!counterEnabledMap[t.tenant_id] || (t.permit_ecommerce !== false),
             products: prods,
             webhook_url: t.webhook_url || ''
           };
@@ -347,6 +366,7 @@
                     ✓ 营业执照已核验
                   </span>
                   <span class="px-2 py-0.5 rounded-lg text-[11px] bg-stone-100 text-stone-700 font-mono font-bold">商号：${s.tenant_id}</span>
+                  ${s.media_url ? `<a href="${s.media_url}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded-lg text-[11px] bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold transition">🎥 车间实拍</a>` : ''}
                 </div>
 
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500 mt-1.5">
@@ -366,12 +386,15 @@
                 >
                   预约送样 / 申请供货
                 </button>
-                <button
-                  onclick="window.shareSupplierCard('${escapeHtml(s.tenant_id)}', '${escapeHtml(s.name)}')"
-                  class="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-bold transition cursor-pointer"
-                >
-                  🔗 分享名片
-                </button>
+                <div class="flex items-center gap-1.5">
+                  ${s.hasCounter && !s.tenant_id.startsWith('DEMO-') ? `<a href="mall.html?t=${encodeURIComponent(s.tenant_id)}" class="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 text-[11px] font-bold transition">🏛️ 数字专柜</a>` : ''}
+                  <button
+                    onclick="window.shareSupplierCard('${escapeHtml(s.tenant_id)}', '${escapeHtml(s.name)}')"
+                    class="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-bold transition cursor-pointer"
+                  >
+                    🔗 分享名片
+                  </button>
+                </div>
               </div>
             </div>
             ${samplesHtml}
