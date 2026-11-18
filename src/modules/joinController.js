@@ -101,7 +101,7 @@ function renderInteractiveFeedback(passed, successes, issues, creditCode) {
 
       list.innerHTML = [
         '<li>系统检测到当前照片可能存在<b>镜面反光、旧版执照或设备兼容限制</b>。</li>',
-        '<li>请在下方核对填写您的<b>18位统一社会信用代码</b>（系统将自动取后6位为预设密钥），提交后直接转交平台大当家人工复核。</li>'
+        '<li>请在下方核对填写您的<b>18位统一社会信用代码</b>（系统将自动取后6位为预设密钥），提交后直接转交平台总控人工复核。</li>'
       ].join('');
 
       if (!document.getElementById('v-tenant-id').value) {
@@ -175,7 +175,7 @@ async function runInteractiveLicenseCheck(imgElement, base64Data) {
   const issues = [];
   const successes = [];
 
-  const keywords = ['营业执照', '统一社会信用代码', '法定代表人', '登记机关', '住所', '有限责任公司', '经营范围'];
+  const keywords = ['营业执照', '统一社会信用代码', '法定代表人', '登记机关', '住所', '有限责任公司', '经营范围', '专业合作社'];
   const hitKeywords = keywords.filter((kw) => recognizedText.includes(kw));
 
   if (hitKeywords.length >= 2) {
@@ -206,7 +206,7 @@ async function runInteractiveLicenseCheck(imgElement, base64Data) {
     issues.push('❌ <b>未提取到 18 位统一社会信用代码</b>：请确保代码区域完整入镜。');
   }
 
-  const nameMatch = recognizedText.match(/名称[:：]?([\u4e00-\u9fa5()（）]{4,30}(?:公司|厂|店|社|中心))/);
+  const nameMatch = recognizedText.match(/名称[:：]?([\u4e00-\u9fa5()（）]{4,30}(?:合作社|公司|厂|店|社|中心))/);
   if (nameMatch && nameMatch[1] && !document.getElementById('v-company-name').value) {
     document.getElementById('v-company-name').value = nameMatch[1];
   }
@@ -280,7 +280,7 @@ window.handleVendorRegister = async function (e) {
           updateSubmitButtonState(true, isManualFallbackMode);
           return;
         } else {
-          alert(`⚠️ 商号代号【${tenantId}】已被其他厂家占用，请在后方加上数字（如 ${tenantId}01）后重新提交！`);
+          alert(`⚠️ 商号代号【${tenantId}】已被其他合作社或工坊使用，请在后方加上数字（如 ${tenantId}01）后重新提交！`);
           btn.disabled = false;
           updateSubmitButtonState(true, isManualFallbackMode);
           return;
@@ -316,7 +316,7 @@ window.handleVendorRegister = async function (e) {
           `• 登记手机：${contactPhone}\n` +
           `• 执照代码后 6 位（查询与预设密码）：${defaultLast6Key}\n` +
           `• 商号代号：${tenantId}\n\n` +
-          `平台大当家核对原件后将第一时间批示，您随时可凭「手机号 + 执照后6位」查询结果！`
+          `平台总控核对原件后将第一时间批示，您随时可凭「手机号 + 执照后6位」查询结果！`
       );
     }
 
@@ -389,7 +389,7 @@ window.queryApplicationStatus = async function () {
               </div>
 
               <p class="text-[11px] text-emerald-200/80">
-                🎉 核验成功！您可凭商号代号【<b>${app.tenant_id}</b>】与安家密钥【<b>${codeLast6}</b>】登录厂家调度台；下游门店直接输入您的商号代号【<b>${app.tenant_id}</b>】即可绑定供货。
+                🎉 核验成功！您可凭商号代号【<b>${app.tenant_id}</b>】与安家密钥【<b>${codeLast6}</b>】登录平准调度台；合作门店直接输入您的商号代号【<b>${app.tenant_id}</b>】即可绑定直供。
               </p>
 
               <div class="pt-1 flex justify-end gap-2">
@@ -397,7 +397,7 @@ window.queryApplicationStatus = async function () {
                   🏛️ 查看我的数字专柜
                 </a>
                 <a href="hq.html" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-4 py-2 rounded-xl shadow transition">
-                  🚀 立即登录厂家调度台 ➔
+                  🚀 立即登录平准调度台 ➔
                 </a>
               </div>
             </div>
@@ -438,7 +438,7 @@ window.queryApplicationStatus = async function () {
                 </span>
               </div>
               <p class="text-[11px] text-stone-300 leading-relaxed">
-                您的营业执照与申请资料已进入平台人工复核队列。大当家核对无误后，您即可凭商号代号【<b>${app.tenant_id}</b>】及执照后 6 位【<b>${codeLast6}</b>】登录运营。
+                您的营业执照与申请资料已进入平台人工复核队列。总控核对无误后，您即可凭商号代号【<b>${app.tenant_id}</b>】及执照后 6 位【<b>${codeLast6}</b>】登录运营。
               </p>
               <div class="text-[10px] text-stone-500 font-mono">
                 提交时间：${new Date(app.created_at).toLocaleString()}
@@ -464,7 +464,7 @@ window.startResubmitCorrection = function (appId) {
   document.getElementById('v-credit-code').value = app.credit_code || '';
   window.syncAccessKeyFromCreditCode(app.credit_code || '');
   document.getElementById('v-tenant-id').value = app.tenant_id || '';
-  document.getElementById('v-business-type').value = app.business_type || 'factory';
+  document.getElementById('v-business-type').value = app.business_type || 'coop';
   document.getElementById('v-contact-person').value = app.contact_person || '';
   document.getElementById('v-contact-phone').value = app.contact_phone || '';
 
