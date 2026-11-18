@@ -20,6 +20,15 @@ export const MallService = {
     return data || null;
   },
 
+  async fetchPickupStores(tenantId = null) {
+    let query = supabase.from('store').select('id, name, address, phone, tenant_id').order('id', { ascending: false }).limit(50);
+    if (tenantId) {
+      query = query.eq('tenant_id', tenantId);
+    }
+    const { data } = await query;
+    return data || [];
+  },
+
   async fetchMallProducts(tenantId = null) {
     let query = supabase.from('product').select('*').eq('status', 'active');
     if (tenantId) {
@@ -36,16 +45,12 @@ export const MallService = {
     const { error } = await supabase.from('store_order').insert(rows);
     if (error) return { error };
 
-    // 同步扣减对应商品库存并写入库存流水（若商品表启用库存管理）
     for (const item of cartItems) {
       try {
         const curStock = parseInt(item.prod.stock_qty ?? item.prod.stock ?? -1);
         if (curStock >= 0) {
           const nextStock = Math.max(0, curStock - item.qty);
-          await supabase
-            .from('product')
-            .update({ stock_qty: nextStock })
-            .eq('id', item.prod.id);
+          await supabase.from('product').update({ stock_qty: nextStock }).eq('id', item.prod.id);
         }
       } catch (e) {}
     }
@@ -64,5 +69,9 @@ export const MallService = {
       .order('id', { ascending: false })
       .limit(20);
     return data || [];
+  },
+
+  async submitMallSuggestion(payload) {
+    return await supabase.from('platform_suggestion_board').insert([payload]);
   }
 };
