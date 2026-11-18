@@ -253,7 +253,11 @@ window.loadPlatformData = async function () {
   const [appsRes, tenantsRes, suggsRes, catsRes, auditsRes] = await Promise.all([
     supabase.from('tenant_application').select('*').order('id', { ascending: false }),
     supabase.from('platform_tenant').select('*').order('id', { ascending: false }),
-    supabase.from('platform_suggestion_board').select('*').order('id', { ascending: false }),
+    supabase
+      .from('platform_suggestion_board')
+      .select('*')
+      .not('proposer_type', 'in', '("c2b_demand","mall_review")')
+      .order('id', { ascending: false }),
     supabase.from('platform_category').select('*').order('sort_order', { ascending: true }),
     supabase.from('audit_immutable_log').select('*').order('id', { ascending: false }).limit(25)
   ]);
@@ -700,7 +704,7 @@ window.approveApplication = async function (appId, tenantId, companyName) {
       company_name: companyName,
       credit_code: app ? app.credit_code : '',
       business_type: app ? app.business_type : 'dealer',
-      service_mode: app ? app.service_mode : 'both',
+      service_mode: app ? app.service_mode : '实体与电商双轨',
       contact_person: app ? app.contact_person : '掌柜',
       contact_name: app ? app.contact_person : '掌柜',
       phone: app ? app.contact_phone : '',
@@ -801,7 +805,7 @@ window.quickAddSubCategory = function (parentId, parentName) {
   if (name && name.trim()) {
     supabase
       .from('platform_category')
-      .insert([{ name: name.trim(), level: 2, parent_id: parentId, applicable_mode: 'both' }])
+      .insert([{ name: name.trim(), level: 2, parent_id: parentId, applicable_mode: '实体与电商双轨' }])
       .then(() => {
         recordAuditLog('新增二级细项品类', 'INFO', { parent_id: parentId, sub_name: name.trim() });
         window.loadPlatformData();
