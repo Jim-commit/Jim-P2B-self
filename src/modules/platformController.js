@@ -9,6 +9,16 @@ let allSuggestions = [];
 let allAuditLogs = [];
 let pendingPlatform2FACallback = null;
 
+function formatBusinessTypeLabel(type) {
+  const map = {
+    coop: '🌾 村社合作社 / 产区直供',
+    factory: '🏭 源头工坊 / 生产制造',
+    dealer: '🏢 区域平准仓 / 集散商行',
+    service: '🛠️ 工料配件 / 综合服务'
+  };
+  return map[type] || '🏢 区域平准仓 / 集散商行';
+}
+
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
 
@@ -33,7 +43,7 @@ window.freeGovAuditCheck = function (companyName, creditCode) {
   navigator.clipboard
     .writeText(queryKey)
     .then(() => {
-      alert(`📋 已自动复制：【${queryKey}】\n\n即将打开免费工商查询页（爱企查），请直接贴上核对该企业是否为「存续/在营」状态！`);
+      alert(`📋 已自动复制：【${queryKey}】\n\n即将打开免费工商查询页（爱企查），请直接贴上核对该合作社/企业是否为「存续/在营」状态！`);
       window.open(`https://aiqicha.baidu.com/s?q=${encodeURIComponent(queryKey)}`, '_blank');
     })
     .catch(() => {
@@ -230,7 +240,7 @@ window.submitPlatform2FAVerification = async function () {
 async function recordAuditLog(actionTitle, level, details) {
   try {
     const account = sessionStorage.getItem('p_auth_account') || 'admin';
-    const name = sessionStorage.getItem('p_auth_name') || '总控掌柜';
+    const name = sessionStorage.getItem('p_auth_name') || '总控执事';
     const seal = 'SEAL-' + Math.random().toString(36).substring(2, 9).toUpperCase();
     await supabase.from('audit_immutable_log').insert([
       {
@@ -310,12 +320,12 @@ function updateAISummaryInsight() {
   const restCount = allTenants.filter((t) => t.membership_status === 'restricted').length;
   const pausedCount = allTenants.filter((t) => !t.is_active || t.membership_status === 'paused').length;
 
-  let insight = `当前在册商号 ${allTenants.length} 家，和合畅运 ${activeCount} 家。`;
+  let insight = `当前在册合作社与工坊商号 ${allTenants.length} 家，和合畅运 ${activeCount} 家。`;
   if (trialCount > 0) insight += ` 尝鲜开席试用中 ${trialCount} 家（转正前请点击查册核对工商存续状态）；`;
   if (graceCount > 0) insight += ` 有 ${graceCount} 家商号处于【春风宽待期】；`;
   if (restCount > 0) insight += ` ${restCount} 家处于【护盘存续】；`;
   if (pausedCount > 0) insight += ` ${pausedCount} 家【商道暂歇】；`;
-  insight += ` 货品供给规制严整。`;
+  insight += ` 城乡供需与品类标准运转平稳。`;
   document.getElementById('ai-adviser-text').innerText = insight;
 }
 
@@ -337,6 +347,7 @@ function renderApplications() {
               <div class="flex flex-wrap items-center gap-2">
                 <b class="text-sm text-stone-900">${a.company_name}</b>
                 <span class="text-[10px] bg-stone-200 text-stone-700 font-mono px-1.5 py-0.2 rounded font-bold">${a.tenant_id}</span>
+                ${a.business_type ? `<span class="text-[10px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-1.5 py-0.2 rounded font-bold">${formatBusinessTypeLabel(a.business_type)}</span>` : ''}
                 ${a.credit_code ? `<span class="text-[10px] bg-amber-100/80 text-amber-900 font-mono px-1.5 py-0.2 rounded font-bold">${a.credit_code}</span>` : ''}
                 <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${
                   isPending ? 'bg-amber-100 text-amber-900 animate-pulse' : isApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
@@ -410,7 +421,7 @@ function renderTenantsTable() {
             <div class="font-bold text-stone-900">${t.company_name}</div>
             <div class="text-[10px] font-mono text-stone-400">${t.credit_code || '未记录信用代码'}</div>
           </td>
-          <td class="p-3">${t.business_type === 'factory' ? '🏭 品牌生产工厂' : '🏢 区域总经销'}</td>
+          <td class="p-3 font-sans">${formatBusinessTypeLabel(t.business_type)}</td>
           <td class="p-3 font-sans">${t.contact_person || t.contact_name || '-'}</td>
           <td class="p-3 font-mono text-stone-400">
             <span class="tracking-widest font-bold">••••••••</span>
@@ -450,7 +461,7 @@ function renderSuggestions() {
         <div class="flex justify-between items-center text-xs">
           <div class="flex items-center gap-2">
             <span class="px-2 py-0.5 rounded font-bold ${s.proposer_type === 'driver' ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'}">
-              ${s.proposer_type === 'driver' ? '🚚 供货师傅' : '🏪 实体客商'}
+              ${s.proposer_type === 'driver' ? '🚚 送货师傅' : '🏪 合作门店与客商'}
             </span>
             <b class="text-stone-900">${s.proposer_name}</b>
             <span class="text-stone-400 font-mono text-[10px]">${new Date(s.created_at).toLocaleString()}</span>
@@ -524,12 +535,12 @@ function renderAuditLogs() {
 }
 
 window.issueResetTokenPrompt = function (id, tenantId, companyName) {
-  window.triggerPlatform2FA(`您正在为商号【${companyName}】签发专属【自立新约重置信码】。由厂商当家掌柜在后台自行重置密码，平台不留存也不窥探密码：`, async () => {
+  window.triggerPlatform2FA(`您正在为商号【${companyName}】签发专属【自立新约重置信码】。由当家掌柜在调度台自行重置密码，平台不留存也不窥探密码：`, async () => {
     const resetToken = 'CLAIM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
     await supabase.from('platform_tenant').update({ access_key: resetToken, reset_claim_token: resetToken }).eq('tenant_id', tenantId);
 
     recordAuditLog('签发自立新约信码', 'CRITICAL_2FA', { tenant_id: tenantId, claim_token: resetToken });
-    alert(`📜 已为【${companyName}】签发自立新约信码！\n\n• 单次重置信码：${resetToken}\n• 交付说明：请转交该企业负责人，厂商在 hq.html 凭此信码即可自立新密码。`);
+    alert(`📜 已为【${companyName}】签发自立新约信码！\n\n• 单次重置信码：${resetToken}\n• 交付说明：请转交该合作社/企业负责人，在 hq.html 凭此信码即可自立新密码。`);
     window.loadPlatformData();
   });
 };
@@ -541,7 +552,7 @@ window.openTenantStatusModal = function (id, tenantId, companyName, currentStatu
   const radios = document.getElementsByName('membership_status_choice');
   radios.forEach((r) => (r.checked = r.value === currentStatus));
 
-  const aiInsight = `人工终审提示：若该商号正由【🍃 尝鲜体验】转正为【🟢 和合在册】，请先点击列表上的「🔍 查底库」确认企业处于「存续/在营」且核收会费后，再颁布生效。`;
+  const aiInsight = `人工终审提示：若该商号正由【🍃 尝鲜体验】转正为【🟢 和合在册】，请先点击列表上的「🔍 查底库」确认合作社/企业处于「存续/在营」状态后，再颁布生效。`;
   document.getElementById('adjust-ai-insight').innerText = aiInsight;
 
   window.openModal('modal-status-adjust');
@@ -602,7 +613,7 @@ window.confirmPurgeTenantAction = function (tenantId, companyName) {
     const confirmCode = prompt(
       `⚠️ 危险确认：商号【${cleanName || tenantId}】即将作废除名！\n\n` +
         `该操作将物理清除 platform_tenant 与 tenant_application 记录。\n` +
-        `完成后厂商可持执照原件前往 join.html 重新扫描核验。\n\n` +
+        `完成后合作社/工坊可持执照原件前往 join.html 重新扫描核验。\n\n` +
         `若确认销号重置，请在下方输入大写：DELETE`
     );
 
@@ -628,7 +639,7 @@ window.confirmPurgeTenantAction = function (tenantId, companyName) {
 
       await recordAuditLog('商号作废除名销号', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: cleanName });
 
-      alert(`✅ 商号【${cleanName}】已彻底清除（已销毁 ${deletedRows.length} 笔在册档案）！\n商号代号已完全释放，厂商可返回 join.html 重新拍照验证。`);
+      alert(`✅ 商号【${cleanName}】已彻底清除（已销毁 ${deletedRows.length} 笔在册档案）！\n商号代号已完全释放，可返回 join.html 重新拍照验证。`);
       await window.loadPlatformData();
     } catch (err) {
       alert('❌ 销号执行失败: ' + err.message);
@@ -679,7 +690,7 @@ function renderCategoryTree() {
 }
 
 window.approveApplication = async function (appId, tenantId, companyName) {
-  const fee = prompt(`为【${companyName}】核定年契会费（元）：`, '0');
+  const fee = prompt(`为【${companyName}】核定年度公共维护费（元，公益试点可填 0）：`, '0');
   if (fee === null) return;
 
   const app = allApplications.find((a) => a.id === appId);
@@ -703,7 +714,7 @@ window.approveApplication = async function (appId, tenantId, companyName) {
       tenant_id: tenantId,
       company_name: companyName,
       credit_code: app ? app.credit_code : '',
-      business_type: app ? app.business_type : 'dealer',
+      business_type: app ? app.business_type : 'coop',
       service_mode: app ? app.service_mode : '实体与电商双轨',
       contact_person: app ? app.contact_person : '掌柜',
       contact_name: app ? app.contact_person : '掌柜',
@@ -717,12 +728,12 @@ window.approveApplication = async function (appId, tenantId, companyName) {
 
   recordAuditLog('审批激活新商号', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: companyName });
 
-  alert(`🎉 审核通过并激活建档！\n\n• 厂商全称: ${companyName}\n• 商号代号（唯一标识）: ${tenantId}\n• 初始安家密码（执照后6位）: ${initialKey.trim()}`);
+  alert(`🎉 审核通过并激活立户！\n\n• 主体全称: ${companyName}\n• 商号代号（唯一标识）: ${tenantId}\n• 初始安家密码（执照后6位）: ${initialKey.trim()}`);
   window.loadPlatformData();
 };
 
 window.rejectApplication = async function (appId) {
-  const reason = prompt('输入商榷退回说明（掌柜将在查询页面看到此意见并重新上传补件）：', '执照公章略有反光模糊，请掌柜在光线均匀处重新拍摄上传。');
+  const reason = prompt('输入商榷退回说明（负责人将在查询页面看到此意见并重新上传补件）：', '执照公章略有反光模糊，请在光线均匀处重新拍摄上传。');
   if (!reason) return;
 
   await supabase
@@ -734,7 +745,7 @@ window.rejectApplication = async function (appId) {
     })
     .eq('id', appId);
 
-  alert('已退回修润建议！掌柜凭手机号与执照后6位查询即可看到并补件重提。');
+  alert('已退回修润建议！负责人凭手机号与执照后6位查询即可看到并补件重提。');
   window.loadPlatformData();
 };
 
@@ -776,8 +787,8 @@ window.submitManualTenant = function () {
 
     if (error) alert('开户失败: ' + error.message);
     else {
-      recordAuditLog('线下特邀直通开户', 'CRITICAL_2FA', { tenant_id, company_name });
-      alert(`🎉 厂家【${company_name}】直通开户成功！\n• 商号代号：${tenant_id}\n• 预设安家密钥（执照后6位）：${access_key}`);
+      recordAuditLog('线下特邀直通立户', 'CRITICAL_2FA', { tenant_id, company_name });
+      alert(`🎉 主体【${company_name}】直通立户成功！\n• 商号代号：${tenant_id}\n• 预设安家密钥（执照后6位）：${access_key}`);
       window.closeModal('manual-tenant-modal');
       window.loadPlatformData();
     }
