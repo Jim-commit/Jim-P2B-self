@@ -32,7 +32,7 @@ window.exitToTianJie = function () {
 };
 
 window.promptEnterBrandStore = function () {
-  const code = prompt('请输入工坊名称关键词或商号代号（如 顺达 或 NY-FUNIU）：');
+  const code = prompt('请输入合作社/工坊名称关键词或商号代号（如 顺达 或 NY-FUNIU）：');
   if (!code || !code.trim()) return;
   const clean = code.trim().toUpperCase();
   const found = allTenants.find(
@@ -41,7 +41,7 @@ window.promptEnterBrandStore = function () {
       (t.company_name || '').toUpperCase().includes(clean)
   );
   if (!found) {
-    return alert(`未找到匹配【${code.trim()}】的在册专柜！`);
+    return alert(`未找到匹配【${code.trim()}】的在册直供专柜！`);
   }
   window.location.href = `mall.html?t=${found.tenant_id}${refStoreParam ? `&ref=${refStoreParam}` : ''}`;
 };
@@ -104,9 +104,9 @@ function getTierLabel(prod, qty) {
   const p2 = parseFloat(prod.tier_2_price || 0);
   const p3 = parseFloat(prod.tier_3_price || 0);
 
-  if (qty >= 20 && p3 > 0 && p3 < p1) return '🔥 满20件集采团购价';
-  if (qty >= 5 && p2 > 0 && p2 < p1) return '✨ 满5件阶梯优惠价';
-  return '统一零售正价';
+  if (qty >= 20 && p3 > 0 && p3 < p1) return '🔥 满20件抱团集采价';
+  if (qty >= 5 && p2 > 0 && p2 < p1) return '✨ 满5件阶梯惠价';
+  return '阳光直供正价';
 }
 
 function getNextTierHint(prod, qty) {
@@ -124,9 +124,9 @@ function getNextTierHint(prod, qty) {
 }
 
 function setupTianJieMode() {
-  document.getElementById('mall-header-title').innerText = '百工天街 · 云端直供集市';
+  document.getElementById('mall-header-title').innerText = '百工天街 · 源头平准直供集市';
   document.getElementById('mall-mode-badge').innerText = '天街公域';
-  document.getElementById('mall-header-sub').innerText = '物勒工名 · 润利护店 · 源头直发';
+  document.getElementById('mall-header-sub').innerText = '物勒工名 · 服务归店 · 产区直达';
   document.getElementById('btn-back-street')?.classList.add('hidden');
   document.getElementById('btn-find-brand')?.classList.remove('hidden');
   document.getElementById('brand-hero-section')?.classList.add('hidden');
@@ -138,23 +138,23 @@ function setupBrandStoreMode(tenantId) {
   const tenant = allTenants.find((t) => (t.tenant_id || '').toUpperCase() === (tenantId || '').toUpperCase());
   const name = tenant ? tenant.company_name : tenantId;
   document.getElementById('mall-header-title').innerText = `${name} · 数字专柜`;
-  document.getElementById('mall-mode-badge').innerText = '工坊专柜';
-  document.getElementById('mall-header-sub').innerText = '源头直营 · 严守正价 · 支持定制';
+  document.getElementById('mall-mode-badge').innerText = '源头专柜';
+  document.getElementById('mall-header-sub').innerText = '产区直营 · 阳光工价 · 按需直配';
   document.getElementById('btn-back-street')?.classList.remove('hidden');
   document.getElementById('btn-find-brand')?.classList.add('hidden');
   document.getElementById('mode-tab-counters')?.classList.add('hidden');
   document.getElementById('tianjie-quick-counter-pill')?.classList.add('hidden');
 
   document.getElementById('hero-brand-name').innerText = name;
-  document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '源头工坊 · 匠心正品 · 支持大宗与定制接单';
+  document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '村社合作社与匠心工坊 · 按需直配 · 阳光工价';
   document.getElementById('hero-tenant-id').innerText = tenant ? tenant.tenant_id : tenantId;
 
   document.getElementById('craft-type-text').innerText =
-    tenant?.business_type === 'factory' ? '源头生产制造工坊' : '区域授权总代专柜';
-  document.getElementById('craft-contact-text').innerText = tenant?.contact_person || '工坊当值执事';
+    tenant?.business_type === 'factory' ? '村社合作社 / 源头工坊专柜' : '区域平准仓集散专柜';
+  document.getElementById('craft-contact-text').innerText = tenant?.contact_person || '专柜当值执事';
   document.getElementById('craft-story-text').innerText =
     tenant?.brand_origin_desc ||
-    '恪守“物勒工名、以考其诚”古训，全系直供货品实行全网统一零售正价，优先通过结缘实体门店惠及邻里。';
+    '恪守“物勒工名、以考其诚”古训，全系直供良品实行阳光平准正价，优先通过合作门店自提惠及邻里。';
 
   const mediaBtn = document.getElementById('craft-media-link');
   const mediaUrl = tenant?.video_url || tenant?.media_url || '';
@@ -215,7 +215,7 @@ function renderDigitalCountersGrid() {
   }
 
   if (list.length === 0) {
-    grid.innerHTML = '<div class="col-span-full py-12 text-center text-stone-400 text-xs">未找到匹配的数字专柜工坊。</div>';
+    grid.innerHTML = '<div class="col-span-full py-12 text-center text-stone-400 text-xs">未找到匹配的产区或工坊专柜。</div>';
     return;
   }
 
@@ -229,7 +229,7 @@ function renderDigitalCountersGrid() {
             <div class="flex justify-between items-start gap-2">
               <div>
                 <span class="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-mono font-bold">
-                  ${t.business_type === 'factory' ? '🏭 源头工坊专柜' : '🏢 区域总代专柜'}
+                  ${t.business_type === 'factory' ? '🌾 合作社 / 源头工坊' : '🏢 区域平准仓专柜'}
                 </span>
                 <h3 class="text-sm font-bold text-stone-900 mt-1.5">${t.company_name}</h3>
                 <span class="text-[10px] text-stone-400 font-mono block">专柜编号: ${t.tenant_id}</span>
@@ -240,7 +240,7 @@ function renderDigitalCountersGrid() {
             </div>
 
             <p class="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
-              ${t.brand_origin_desc || '物勒工名 · 源头直供 · 支持小店自提与批量定制接单'}
+              ${t.brand_origin_desc || '物勒工名 · 源头直供 · 支持合作门店自提与按需集采配货'}
             </p>
 
             ${
@@ -251,7 +251,7 @@ function renderDigitalCountersGrid() {
                         (sp) => `
                         <div class="bg-stone-50 border border-stone-100 rounded-xl p-1.5 text-center">
                           <div class="w-full h-12 rounded-lg bg-stone-200/60 overflow-hidden flex items-center justify-center mb-1">
-                            ${sp.image_url ? `<img src="${sp.image_url}" class="w-full h-full object-cover">` : '<span class="text-[9px] text-stone-400">正品</span>'}
+                            ${sp.image_url ? `<img src="${sp.image_url}" class="w-full h-full object-cover">` : '<span class="text-[9px] text-stone-400">良品</span>'}
                           </div>
                           <span class="text-[9px] text-stone-700 block truncate">${sp.name}</span>
                           <b class="text-[10px] font-mono text-emerald-900">¥${sp.tier_1_price}</b>
@@ -260,16 +260,16 @@ function renderDigitalCountersGrid() {
                       )
                       .join('')}
                   </div>`
-                : `<div class="bg-stone-50 rounded-xl p-2 text-[10px] text-stone-400 text-center">该专柜支持来样/按需定制接单</div>`
+                : `<div class="bg-stone-50 rounded-xl p-2 text-[10px] text-stone-400 text-center">该专柜支持按需预订与集采排产</div>`
             }
           </div>
 
           <div class="pt-2 border-t border-stone-100 flex gap-2 text-xs">
             <button onclick="window.openC2BDemandModal('', '${t.tenant_id}')" class="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold px-3 py-2 rounded-xl transition">
-              🎯 定制询价
+              🎯 按需询价
             </button>
             <button onclick="window.goToBrandStore('${t.tenant_id}')" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2 rounded-xl shadow active:scale-95 transition">
-              进入数字专柜 ➔
+              进入专柜选货 ➔
             </button>
           </div>
         </div>
@@ -349,7 +349,7 @@ function updateMatchedTenantShortcut() {
       (t) => `
       <div onclick="window.goToBrandStore('${t.tenant_id}')" class="bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-emerald-100/70 transition">
         <div class="text-xs">
-          <span class="text-emerald-800 font-bold">🏛️ 直达数字专柜：${t.company_name}</span>
+          <span class="text-emerald-800 font-bold">🏛️ 直达产区专柜：${t.company_name}</span>
           <span class="text-[10px] text-emerald-700/80 font-mono ml-1.5">(${t.tenant_id})</span>
         </div>
         <span class="text-[11px] font-bold text-emerald-900">进专柜 ➔</span>
@@ -384,20 +384,20 @@ function renderGoodsGrid() {
   if (filtered.length === 0) {
     container.innerHTML = `
       <div class="col-span-full py-12 text-center space-y-3 bg-white rounded-3xl border border-stone-200 p-6">
-        <div class="text-stone-600 font-bold text-xs">当前货架暂无天街直供礼盒/大件良品</div>
+        <div class="text-stone-600 font-bold text-xs">当前货架暂无匹配的云端直供良品</div>
         <p class="text-[11px] text-stone-400 max-w-xs mx-auto leading-relaxed">
-          日常民生常备品均留存附近实体小店，您可逛工坊专柜或直接发求购需求由工坊接单。
+          日常民生常备品优先配置于附近合作门店，您可逛产区专柜或直接发布真实用度求购榜由源头直供回应。
         </p>
         <div class="flex flex-wrap justify-center gap-2 pt-1">
           ${
             !currentTenantParam
               ? `<button onclick="window.switchMarketMode('counters')" class="bg-[#1b4332] hover:bg-[#143628] text-white font-bold text-xs px-4 py-2 rounded-xl shadow active:scale-95 transition">
-                  🏛️ 逛逛在册数字专柜 (${allTenants.length})
+                  🏛️ 逛逛在册产区专柜 (${allTenants.length})
                 </button>`
               : ''
           }
           <button onclick="window.switchMarketMode('c2b'); window.openC2BDemandModal(document.getElementById('mall-search-input')?.value || '');" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs px-4 py-2 rounded-xl shadow active:scale-95 transition">
-            📢 发求购榜让工坊报价
+            📢 发求购榜让源头报价
           </button>
         </div>
       </div>
@@ -414,27 +414,27 @@ function renderGoodsGrid() {
       const hasTierPrice = parseFloat(p.tier_2_price || 0) > 0 && parseFloat(p.tier_2_price) < parseFloat(p.tier_1_price || 0);
       const isStoreRecommended =
         !!referrerStoreObj ||
-        tags.some((t) => String(t).includes('推荐') || String(t).includes('严选') || String(t).includes('爆款'));
+        tags.some((t) => String(t).includes('直供') || String(t).includes('严选') || String(t).includes('常备'));
 
       return `
         <div class="bg-white rounded-3xl p-3 border border-stone-200/80 shadow-sm flex flex-col justify-between space-y-2 hover:shadow-md transition">
           <div class="space-y-1.5">
             <div onclick="window.openProductDetail(${p.id})" class="relative w-full h-32 rounded-2xl bg-stone-100 overflow-hidden flex items-center justify-center cursor-pointer">
-              ${p.image_url ? `<img src="${p.image_url}" class="w-full h-full object-cover">` : `<span class="text-stone-300 text-xs">正品封装</span>`}
+              ${p.image_url ? `<img src="${p.image_url}" class="w-full h-full object-cover">` : `<span class="text-stone-300 text-xs">良品封装</span>`}
               <span class="absolute top-1.5 left-1.5 bg-[#1b4332]/80 backdrop-blur-sm text-white text-[9px] px-2 py-0.5 rounded-full font-mono">
                 ${p.measure_unit || '件'}装
               </span>
               ${
                 hasTierPrice
                   ? `<span class="absolute top-1.5 right-1.5 bg-amber-500 text-stone-950 text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-xs">
-                      满5件批价¥${p.tier_2_price}
+                      满5件集采¥${p.tier_2_price}
                     </span>`
                   : ''
               }
               ${
                 isStoreRecommended
                   ? `<span class="absolute bottom-1.5 left-1.5 bg-amber-100/95 text-amber-950 border border-amber-300 text-[8px] font-bold px-1.5 py-0.5 rounded-md">
-                      🏪 掌柜严选
+                      🌾 源头直供
                     </span>`
                   : ''
               }
@@ -445,7 +445,7 @@ function renderGoodsGrid() {
 
             <div onclick="window.openProductDetail(${p.id})" class="cursor-pointer">
               <b class="text-xs text-stone-900 font-bold block line-clamp-1">${p.name}</b>
-              <span class="text-[10px] text-stone-400 font-mono block">${p.spec || '标配'} · ${p.category_main || '常规'}</span>
+              <span class="text-[10px] text-stone-400 font-mono block">${p.spec || '整装'} · ${p.category_main || '常规'}</span>
               ${!isSingleShop ? `<span class="text-[9px] text-emerald-800/80 block truncate mt-0.5">🏭 ${tenantName}</span>` : ''}
               ${
                 tags.length
@@ -459,14 +459,14 @@ function renderGoodsGrid() {
 
           <div class="pt-2 border-t border-stone-100 flex justify-between items-center">
             <div>
-              <span class="text-[9px] text-stone-400 block font-mono">统一正价</span>
+              <span class="text-[9px] text-stone-400 block font-mono">阳光正价</span>
               <b class="font-mono text-sm text-emerald-900 font-bold">¥${p.tier_1_price}</b>
             </div>
 
             <div class="flex items-center gap-1">
               ${
                 !isSingleShop
-                  ? `<button onclick="window.goToBrandStore('${p.tenant_id}')" class="text-[10px] bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold px-2 py-1.5 rounded-xl transition" title="进该厂专柜">
+                  ? `<button onclick="window.goToBrandStore('${p.tenant_id}')" class="text-[10px] bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold px-2 py-1.5 rounded-xl transition" title="进该产区专柜">
                       专柜
                     </button>`
                   : ''
@@ -491,20 +491,20 @@ window.openProductDetail = function (prodId) {
 
   document.getElementById('detail-prod-img').innerHTML = p.image_url
     ? `<img src="${p.image_url}" class="w-full h-full object-cover">`
-    : '<span class="text-stone-400 text-xs">源头正品封装</span>';
+    : '<span class="text-stone-400 text-xs">源头良品封装</span>';
   document.getElementById('detail-prod-name').innerText = p.name;
   document.getElementById('detail-prod-price').innerText = `¥${p.tier_1_price}`;
   document.getElementById('detail-prod-spec').innerText = `${p.spec || '整装'} · ${p.measure_unit || '件'}装`;
   document.getElementById('detail-prod-tenant').innerText = tenantName;
-  document.getElementById('detail-prod-origin').innerText = p.origin_place || '源头工坊原产';
-  document.getElementById('detail-prod-desc').innerText = p.description || p.handover_note || '工坊直发，严选正品，支持溯源验真。';
+  document.getElementById('detail-prod-origin').innerText = p.origin_place || '源头合作社/工坊原产';
+  document.getElementById('detail-prod-desc').innerText = p.description || p.handover_note || '产区直发，阳光工价，支持物勒工名溯源验真。';
 
   const tierBox = document.getElementById('detail-tier-prices');
   const p2 = parseFloat(p.tier_2_price || 0);
   const p3 = parseFloat(p.tier_3_price || 0);
   if (p2 > 0 || p3 > 0) {
     tierBox.innerHTML = `
-      <b class="text-amber-900 block mb-1">📊 集采阶梯优惠标准：</b>
+      <b class="text-amber-900 block mb-1">📊 抱团集采阶梯惠价标准：</b>
       <div class="grid grid-cols-3 gap-1.5 text-center font-mono">
         <div class="bg-white p-1.5 rounded-lg border border-amber-200"><span class="text-[9px] text-stone-400 block">1~4件</span><b>¥${p.tier_1_price}</b></div>
         <div class="bg-white p-1.5 rounded-lg border border-amber-200"><span class="text-[9px] text-stone-400 block">满5件</span><b class="text-amber-800">¥${p2 || p.tier_1_price}</b></div>
@@ -576,7 +576,7 @@ function renderVerifiedReviewsWall() {
           </div>
           <p class="text-stone-800 text-[11px] line-clamp-2 leading-relaxed">“${info.comment}”</p>
           <div class="text-[10px] text-stone-400 truncate border-t border-stone-100 pt-1">
-            ${info.itemsSummary ? `已购：${info.itemsSummary}` : r.proposer_name || '街坊买家'}
+            ${info.itemsSummary ? `已购：${info.itemsSummary}` : r.proposer_name || '邻里买家'}
           </div>
         </div>
       `;
@@ -599,11 +599,11 @@ window.submitOrderReview = async function () {
   const itemsSummary = document.getElementById('review-items-summary').value;
   const comment = document.getElementById('review-comment-input').value.trim();
 
-  if (!comment) return alert('请写下一句您的真实收货或自提体验！');
+  if (!comment) return alert('请写下一句您的真实收货或到店自提体验！');
 
   const payload = {
     proposer_type: 'mall_review',
-    proposer_name: '天街验真街坊',
+    proposer_name: '天街验真邻里',
     category: `口碑晒单:${tenantId || 'PLATFORM'}`,
     content: JSON.stringify({
       orderNo,
@@ -616,7 +616,7 @@ window.submitOrderReview = async function () {
   if (error) {
     alert('提交失败: ' + error.message);
   } else {
-    alert('🙏 感谢您的真实口碑！已同步展示于天街与对应工坊专柜验真墙。');
+    alert('🙏 感谢您的真实口碑！已同步展示于天街与对应专柜验真墙。');
     window.closeModal('modal-write-review');
     allReviews = await MallService.fetchVerifiedReviews(currentTenantParam);
     renderVerifiedReviewsWall();
@@ -655,7 +655,7 @@ function renderC2BDemandsList() {
     listEl.innerHTML = `
       <div class="py-12 text-center bg-white rounded-3xl border border-stone-200 p-6 space-y-1.5">
         <div class="text-stone-600 font-bold text-xs">当前暂无公开求购需求帖</div>
-        <div class="text-stone-400 text-[11px]">点击下方按钮即可发布您的采购或定制需求，由对应工坊公开报价</div>
+        <div class="text-stone-400 text-[11px]">点击下方按钮即可发布您的真实用度或集采需求，由对应合作社与工坊阳光报价</div>
       </div>
     `;
     return;
@@ -694,13 +694,13 @@ function renderC2BDemandsList() {
                 ? 'bg-emerald-100 text-emerald-800'
                 : 'bg-amber-50 text-amber-800 border border-amber-200'
             }">
-              ${info.acceptedByBuyer ? '🤝 双方已达成意向' : hasFactoryReply ? '✅ 工坊已接单报价' : '⏳ 聚量招标中'}
+              ${info.acceptedByBuyer ? '🤝 双方已锁定意向' : hasFactoryReply ? '✅ 源头已回应报价' : '⏳ 抱团集采征集中'}
             </span>
           </div>
 
           <div class="grid grid-cols-3 gap-1.5 bg-stone-50 p-2 rounded-2xl border border-stone-100 text-[11px] font-mono">
             <div><span class="text-stone-400 block text-[9px]">求购规模</span><b class="text-stone-800">${info.qty}</b></div>
-            <div><span class="text-stone-400 block text-[9px]">期望预算</span><b class="text-emerald-900">${info.budget}</b></div>
+            <div><span class="text-stone-400 block text-[9px]">期望工价</span><b class="text-emerald-900">${info.budget}</b></div>
             <div><span class="text-stone-400 block text-[9px]">交付要求</span><b class="text-stone-700 font-sans">${info.delivery}</b></div>
           </div>
 
@@ -709,7 +709,7 @@ function renderC2BDemandsList() {
           ${
             hasFactoryReply
               ? `<div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-2xl text-[11px] text-emerald-950">
-                  <b>🏭 厂方/平台报价回执：</b> ${d.official_reply}
+                  <b>🌾 源头直供回应：</b> ${d.official_reply}
                 </div>`
               : ''
           }
@@ -721,7 +721,7 @@ function renderC2BDemandsList() {
           ? 'bg-stone-100 text-stone-400 px-3 py-1.5 rounded-xl font-bold'
           : 'bg-[#1b4332] hover:bg-[#143628] text-white px-3.5 py-1.5 rounded-xl font-bold shadow active:scale-95 transition'
       }">
-              ${isJoined ? '✓ 已参与跟单凑量' : '🤝 我也要 · +1 跟单凑量'}
+              ${isJoined ? '✓ 已参与抱团凑单' : '🤝 我也要 · +1 抱团凑单'}
             </button>
           </div>
         </div>
@@ -750,8 +750,8 @@ window.openC2BDemandModal = function (presetTitle = '', presetTenantId = '') {
   }
   if (scopeHint) {
     scopeHint.innerText = matchedTenant
-      ? `当前已关联【${matchedTenant.company_name}】，清空即可发往全网工坊公开竞价`
-      : '留空则面向全网对应行当工坊公开招标，也可自由输入指定工坊或产区';
+      ? `当前已关联【${matchedTenant.company_name}】，清空即可发往全网合作社与工坊公开征集报价`
+      : '留空则面向全网对应行当合作社与工坊公开征集报价';
   }
 
   try {
@@ -779,15 +779,15 @@ window.appendC2BDeliveryChip = function (chipText) {
 window.submitC2BDemand = async function () {
   const title = document.getElementById('c2b-title-input').value.trim();
   const qty = document.getElementById('c2b-qty-input').value.trim();
-  const budget = document.getElementById('c2b-budget-input').value.trim() || '按阶梯批价面议';
-  const delivery = document.getElementById('c2b-delivery-input').value.trim() || '灵活协商（门店自提/工坊直发）';
+  const budget = document.getElementById('c2b-budget-input').value.trim() || '按阶梯惠价面议';
+  const delivery = document.getElementById('c2b-delivery-input').value.trim() || '灵活协商（门店自提/产区直发）';
   const targetText = document.getElementById('c2b-target-input').value.trim();
   const note = document.getElementById('c2b-note-input').value.trim();
   const name = document.getElementById('c2b-name-input').value.trim();
   const phone = document.getElementById('c2b-phone-input').value.trim();
 
   if (!title || !qty || !phone || phone.length < 11) {
-    return alert('请完整填写求购/定制品名、需求数量以及 11 位联系手机号！');
+    return alert('请完整填写求购良品名称、需求数量规模以及 11 位联系手机号！');
   }
 
   const matchedTenant = targetText
@@ -825,7 +825,7 @@ window.submitC2BDemand = async function () {
   if (error) {
     alert('发布失败: ' + error.message);
   } else {
-    alert('🎉 求购/定制需求已成功发榜！\n其他买家可点击跟单凑量，对应行当工坊将尽快报价接单。');
+    alert('🎉 求购/集采需求已成功发榜！\n其他买家可点击抱团凑单，对应行当合作社与工坊将尽快阳光报价。');
     window.closeModal('modal-c2b-demand');
     await loadAndRenderC2BDemands();
   }
@@ -848,21 +848,21 @@ window.coBuyC2BDemand = async function (demandId) {
     }
   } catch (e) {}
 
-  alert(`🤝 跟单凑量成功！当前已有 ${info.coBuyers} 位买家共同聚量，量越大工坊出厂价越优！`);
+  alert(`🤝 抱团凑单成功！当前已有 ${info.coBuyers} 位买家共同聚量，聚量越大源头直供价越优！`);
   await loadAndRenderC2BDemands();
 };
 
 window.acceptC2BQuote = async function (demandId, rawContent) {
-  if (!confirm('确认认可厂方报价并锁定合作意向？确认后平台与对应工坊将立即联系您安排排产交付。')) return;
+  if (!confirm('确认认可源头报价并锁定合作意向？确认后对应合作社或工坊将立即联系您安排排产交付。')) return;
   const info = parseDemandPayload(rawContent);
   info.acceptedByBuyer = true;
   await MallService.updateC2BDemandContent(demandId, JSON.stringify(info));
-  alert('🤝 已锁定合作意向！厂方执事将尽快致电与您对接排产与交付细节。');
+  alert('🤝 已锁定合作意向！专柜执事将尽快致电与您对接排产与交付细节。');
   await window.searchConsumerOrders();
 };
 
 window.cancelMyC2BDemand = async function (demandId) {
-  if (!confirm('确认撤销此条求购需求？撤销后将从天街需求榜下架。')) return;
+  if (!confirm('确认撤销此条求购需求？撤销后将从天街求购榜下架。')) return;
   await MallService.cancelC2BDemand(demandId);
   alert('已撤销该求购需求。');
   await window.searchConsumerOrders();
@@ -1031,11 +1031,11 @@ async function updateCheckoutProfitAndGroupNotice() {
   const activeStoreId = selectedPickupStoreId || (referrerStoreObj ? String(referrerStoreObj.id) : '');
 
   if (mode === 'pickup' && pickupName) {
-    noticeEl.innerText = `🤝 结缘护店契约：本单零售润利全额归属【${pickupName}】，工坊直供品质担保`;
+    noticeEl.innerText = `🤝 服务归店契约：本单服务润利全额归属【${pickupName}】，源头直供品质担保`;
   } else if (referrerStoreObj) {
-    noticeEl.innerText = `🤝 结缘护店契约：本单零售润利全额归属【${referrerStoreObj.name}】，工坊直供品质担保`;
+    noticeEl.innerText = `🤝 服务归店契约：本单服务润利全额归属【${referrerStoreObj.name}】，源头直供品质担保`;
   } else {
-    noticeEl.innerText = '📜 商道公示：全网统一零售正价，不破价、不挤兑周边实体小店';
+    noticeEl.innerText = '📜 商道公示：全网统一阳光正价，不破价、不挤兑周边合作门店';
   }
 
   if (groupBar && mode === 'pickup' && activeStoreId) {
@@ -1047,7 +1047,7 @@ async function updateCheckoutProfitAndGroupNotice() {
 
     groupBar.innerHTML = `
       <div class="flex justify-between text-[10px] font-bold text-amber-950 mb-1">
-        <span>🚚 本店邻里拼单随车直达进度（含本单共 ${combinedQty}/${targetQty} 件）</span>
+        <span>🚚 本门店邻里拼单随车直达进度（含本单共 ${combinedQty}/${targetQty} 件）</span>
         <span>${combinedQty >= targetQty ? '🎉 已满随车直发线' : `再拼 ${targetQty - combinedQty} 件整车捎带`}</span>
       </div>
       <div class="w-full h-1.5 bg-amber-200/70 rounded-full overflow-hidden">
@@ -1088,7 +1088,7 @@ window.onSearchPickupStore = function (keyword) {
     : pickupStores.slice(0, 6);
 
   if (matched.length === 0) {
-    listEl.innerHTML = '<span class="text-[10px] text-stone-400">未匹配到在册门店，直接填写您常去的邻里小店名称即可</span>';
+    listEl.innerHTML = '<span class="text-[10px] text-stone-400">未匹配到在册门店，直接填写您常去的合作门店名称即可</span>';
     selectedPickupStoreId = '';
     return;
   }
@@ -1102,7 +1102,7 @@ window.onSearchPickupStore = function (keyword) {
           ? 'bg-emerald-50 border-emerald-600 text-emerald-950 font-bold'
           : 'bg-white border-stone-200 text-stone-700 hover:border-emerald-600'
       }">
-        🏪 ${s.name} <span class="text-[10px] text-stone-400">(${s.address || '邻里门店'})</span>
+        🏪 ${s.name} <span class="text-[10px] text-stone-400">(${s.address || '合作门店'})</span>
       </button>
     `
     )
@@ -1126,7 +1126,7 @@ window.openCheckoutModal = async function () {
   const savedTip = document.getElementById('checkout-saved-tip');
   if (savedTip) {
     if (savedAmt > 0) {
-      savedTip.innerText = `已享阶梯团购立省 ¥${savedAmt.toFixed(2)}`;
+      savedTip.innerText = `已享抱团集采立省 ¥${savedAmt.toFixed(2)}`;
       savedTip.classList.remove('hidden');
     } else {
       savedTip.classList.add('hidden');
@@ -1175,7 +1175,7 @@ window.submitConsumerOrder = async function () {
     return alert('请填写快递配送详细地址！');
   }
   if (deliveryMode === 'pickup' && !pickupCustomText) {
-    return alert('请选择或填写自提实体门店名称！');
+    return alert('请选择或填写自提合作门店名称！');
   }
   if (cart.length === 0) {
     return alert('购物篮尚无好物！');
@@ -1226,11 +1226,11 @@ window.submitConsumerOrder = async function () {
       net_settle_amount: subTotal,
       order_status: 'confirmed',
       delivery_status: 'ordered',
-      note: `[天街订单] 收件人: ${name} (${phone}) 地址: ${finalAddressText} ${note ? `叮咛: ${note}` : ''} ${effectiveRefStoreId ? `[结缘门店ID: ${effectiveRefStoreId}]` : ''}`,
+      note: `[天街订单] 收件人: ${name} (${phone}) 地址: ${finalAddressText} ${note ? `叮咛: ${note}` : ''} ${effectiveRefStoreId ? `[专属门店ID: ${effectiveRefStoreId}]` : ''}`,
       driver_action_instruction:
         deliveryMode === 'pickup'
-          ? `【天街门店自提单】随车捎带至 ${pickupCustomText}，客户 ${name} (${phone}) 到店自提（润利归属该门店）`
-          : `【天街工坊直发单】由库管打单发快递。收件人: ${name} ${phone}`
+          ? `【天街门店自提单】随车捎带至 ${pickupCustomText}，客户 ${name} (${phone}) 到店自提（服务润利归属该门店）`
+          : `【天街产区直发单】由仓管打单发快递。收件人: ${name} ${phone}`
     });
   });
 
@@ -1242,9 +1242,9 @@ window.submitConsumerOrder = async function () {
     localStorage.setItem(LAST_CUST_KEY, JSON.stringify({ name, phone, addr }));
     alert(
       `🎉 订购提交成功！\n\n` +
-        `• 单据标识: ${createdOrderNos.join('、')}\n` +
+        `• 单据编号: ${createdOrderNos.join('、')}\n` +
         `• 实付总额: ¥${grandTotal.toFixed(2)}\n` +
-        `• 履约方式: ${deliveryMode === 'pickup' ? `送至 ${pickupCustomText} 自提` : '工坊直发快递包邮'}`
+        `• 履约方式: ${deliveryMode === 'pickup' ? `送至 ${pickupCustomText} 自提` : '产区直发快递包邮'}`
     );
     window.clearCart();
     window.closeModal('modal-checkout');
@@ -1282,7 +1282,7 @@ window.searchConsumerOrders = async function () {
   let html = '';
 
   if (demands.length > 0) {
-    html += `<div class="text-[11px] font-bold text-amber-900 pt-1">📢 我发布的求购/定制需求 (${demands.length})：</div>`;
+    html += `<div class="text-[11px] font-bold text-amber-900 pt-1">📢 我发布的求购/集采需求 (${demands.length})：</div>`;
     html += demands
       .map((d) => {
         const info = parseDemandPayload(d.content);
@@ -1296,17 +1296,17 @@ window.searchConsumerOrders = async function () {
             ${
               d.official_reply
                 ? `<div class="text-[11px] text-emerald-900 bg-white p-2 rounded-xl border border-emerald-200 space-y-1.5">
-                    <div><b>🏭 厂方报价回复：</b>${d.official_reply}</div>
+                    <div><b>🌾 源头报价回复：</b>${d.official_reply}</div>
                     ${
                       info.acceptedByBuyer
-                        ? `<div class="text-[10px] font-bold text-emerald-700">✓ 您已认可报价，工坊执事正在对接履约</div>`
+                        ? `<div class="text-[10px] font-bold text-emerald-700">✓ 您已认可报价，专柜执事正在对接履约</div>`
                         : `<button onclick="window.acceptC2BQuote(${d.id}, decodeURIComponent('${safeRaw}'))" class="bg-[#1b4332] text-white text-[10px] font-bold px-2.5 py-1 rounded-lg active:scale-95">
                             🤝 认可此报价 · 锁定合作意向
                           </button>`
                     }
                   </div>`
                 : `<div class="flex justify-between items-center text-[10px] text-stone-500">
-                    <span>⏳ 正在等待对应行当工坊接单报价...</span>
+                    <span>⏳ 正在等待对应行当合作社与工坊阳光报价...</span>
                     <button onclick="window.cancelMyC2BDemand(${d.id})" class="text-rose-600 hover:underline font-bold">撤销需求</button>
                   </div>`
             }
@@ -1332,10 +1332,10 @@ window.searchConsumerOrders = async function () {
               <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
                 isDelivered ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
               }">
-                ${isDelivered ? '✅ 已送达/自提完成' : '📦 工坊备货出库中'}
+                ${isDelivered ? '✅ 已送达/自提完成' : '📦 产区备货出库中'}
               </span>
             </div>
-            <div class="text-stone-700">${itemsText || '标准商品组合'}</div>
+            <div class="text-stone-700">${itemsText || '标准良品组合'}</div>
             <div class="text-[10px] text-stone-500">${o.note || ''}</div>
             <div class="flex justify-between items-center text-[10px] text-stone-400 font-mono pt-1.5 border-t border-stone-200/60">
               <span>实付 <b class="text-emerald-900">¥${parseFloat(o.total_amount || 0).toFixed(2)}</b></span>
@@ -1365,7 +1365,7 @@ window.viewProductTrace = function (prodId) {
   document.getElementById('trace-prod-name').innerText = p.name;
   document.getElementById('trace-code').innerText = `${p.trace_code_prefix || 'SHUNDA-QC-'}${p.id}`;
   document.getElementById('trace-tenant-name').innerText = tenant ? tenant.company_name : p.tenant_id;
-  document.getElementById('trace-origin').innerText = p.origin_place || '源头工坊原产';
+  document.getElementById('trace-origin').innerText = p.origin_place || '源头合作社/工坊原产';
   document.getElementById('trace-category').innerText = `${p.category_main} ➔ ${p.category_sub || '常规'}`;
   document.getElementById('trace-spec').innerText = `${p.spec || '整装'} / ${p.measure_unit || '件'}`;
 
@@ -1385,7 +1385,7 @@ window.openShareModal = function () {
 
 window.copyShareLink = function () {
   const link = document.getElementById('share-link-text').innerText;
-  navigator.clipboard.writeText(link).then(() => alert('专属结缘推客链接已复制到剪贴簿！'));
+  navigator.clipboard.writeText(link).then(() => alert('专属云端扩充货架链接已复制到剪贴簿！'));
 };
 
 export async function initMallController() {
@@ -1402,7 +1402,7 @@ export async function initMallController() {
   const countBadge = document.getElementById('counter-count-badge');
   const quickCountEl = document.getElementById('quick-counter-count');
   if (countBadge) countBadge.innerText = allTenants.length;
-  if (quickCountEl) quickCountEl.innerText = `${allTenants.length} 家在册工坊专柜`;
+  if (quickCountEl) quickCountEl.innerText = `${allTenants.length} 家在册直供专柜`;
 
   if (currentTenantParam) {
     const matchedTenant = allTenants.find((t) => (t.tenant_id || '').toUpperCase() === currentTenantParam);
