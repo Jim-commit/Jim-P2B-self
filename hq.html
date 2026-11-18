@@ -42,6 +42,9 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
+        <button onclick="window.openCounterProfileModal()" class="bg-[#143628] hover:bg-[#0e271d] text-amber-300 text-xs px-3 py-2 rounded-xl font-bold border border-amber-400/40 active:scale-95 transition flex items-center gap-1">
+          <span>🎥</span> 專櫃實拍
+        </button>
         <button onclick="window.openWebhookModal()" id="btn-webhook-status" class="bg-[#143628] hover:bg-[#0e271d] text-emerald-200 text-xs px-3 py-2 rounded-xl font-bold border border-emerald-500/40 active:scale-95 transition flex items-center gap-1">
           <span>🔔</span> 報單群通知
         </button>
@@ -98,7 +101,7 @@
       <span class="text-[10px] text-amber-800 font-mono">商道相攜 · 寬猛相濟</span>
     </div>
 
-    <!-- 第一層：三流合一晴雨表（一屏看穿物品流、資金流、信息流，點擊直達處理） -->
+    <!-- 第一層：三流合一晴雨表 -->
     <section class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
       <div onclick="window.switchTab('products')" class="cursor-pointer bg-white p-4 rounded-3xl shadow-sm border border-stone-200/80 hover:border-emerald-500 transition group">
         <div class="flex justify-between items-center mb-2">
@@ -149,7 +152,7 @@
         </div>
         <div class="grid grid-cols-3 gap-2 pt-1 border-t border-stone-100 text-center">
           <div>
-            <span class="text-[10px] text-stone-400 block">待審新訂貨</span>
+            <span class="text-[10px] text-stone-400 block">新單與求購</span>
             <b id="flow-info-orders" class="font-mono text-sm font-bold text-stone-900">0 筆</b>
           </div>
           <div>
@@ -187,7 +190,7 @@
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
             <h2 class="text-sm font-bold text-stone-900">🤖 AI 商道經營參謀（自動掃描全盤異常與機會）</h2>
-            <p class="text-[11px] text-stone-400">實時分析庫存安全線、應收賬款健康度、載具回收與動銷趨勢，點擊按鈕一鍵落地執行</p>
+            <p class="text-[11px] text-stone-400">實時分析庫存安全線、應收賬款健康度、載具回收與天街求購商機，點擊按鈕一鍵落地執行</p>
           </div>
           <span class="text-[11px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-3 py-1 rounded-xl font-bold">
             合作客戶: <b id="stat-active-stores">0 家</b> · 在外載具: <b id="stat-baskets">0 件</b>
@@ -317,6 +320,9 @@
 
         <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] px-1">
           <div class="flex flex-wrap gap-1.5 font-bold">
+            <button onclick="window.filterOrderStatus('c2b_demands')" id="order-filter-c2b-demands" class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-950 border border-amber-300 hover:bg-amber-200 transition">
+              📢 天街求購需求 (<span id="count-c2b-demands">0</span>)
+            </button>
             <button onclick="window.filterOrderStatus('delivered')" id="order-filter-delivered" class="px-2.5 py-1 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200 transition">
               ✓ 已核銷交割
             </button>
@@ -377,7 +383,36 @@
 
   </div>
 
-  <!-- 群機器人自動報單提醒配置彈窗（支持企業微信 / 釘釘 / 飛書） -->
+  <!-- 專櫃門面與車間實拍配置彈窗 -->
+  <div id="modal-counter-profile" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🎥 數字專櫃工藝檔案與車間實拍</h3>
+          <p class="text-[10px] text-stone-400">填寫後自動同步展示於百工天街「數字專柜」產區工藝檔案卡</p>
+        </div>
+        <button onclick="window.closeModal('modal-counter-profile')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div class="space-y-2.5">
+        <div>
+          <label class="block text-stone-700 font-bold mb-1">工坊產區實力與匠心工藝簡介：</label>
+          <textarea id="counter-origin-desc-input" rows="3" placeholder="如：自有壓榨車間3000平，非轉基因原產地直供，支持定製包裝與門店自提..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none focus:border-emerald-700"></textarea>
+        </div>
+        <div>
+          <label class="block text-stone-700 font-bold mb-1">車間實拍 / 視頻號 / 圖文溯源鏈接 (選填)：</label>
+          <input type="url" id="counter-media-url-input" placeholder="粘貼抖音/快手/視頻號或公眾號車間實拍鏈接..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-xs outline-none focus:border-emerald-700">
+          <span class="text-[10px] text-stone-400 block mt-0.5">留空則不顯示視頻按鈕；填寫後街坊點開專櫃「產區工藝檔案」即可一鍵觀看</span>
+        </div>
+      </div>
+
+      <button type="button" onclick="window.saveCounterProfile()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">
+        儲存並同步至數字專櫃
+      </button>
+    </div>
+  </div>
+
+  <!-- 群機器人自動報單提醒配置彈窗 -->
   <div id="modal-webhook-setup" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -564,14 +599,14 @@
       <input type="hidden" id="editing-prod-id" value="">
 
       <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200 space-y-2">
-        <label class="block text-stone-700 font-bold text-xs">貨品投放渠道（可多選）：</label>
+        <label class="block text-stone-700 font-bold text-xs">貨品投放渠道（恪守各守本分，可多選）：</label>
         <div class="grid grid-cols-2 gap-3 text-xs">
           <label id="box-channel-bm" class="p-2.5 rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer transition bg-white select-none hover:border-emerald-500">
             <div class="flex items-center gap-2">
               <input type="checkbox" id="chk-channel-bm" class="w-4 h-4 rounded text-emerald-800">
               <div>
-                <b class="text-stone-900 block text-xs">🏬 實體門店 / B2B批發</b>
-                <span class="text-[9px] text-stone-400 block">訂貨台 & 招商名錄可見</span>
+                <b class="text-stone-900 block text-xs">🏬 實體店專供 / 批發</b>
+                <span class="text-[9px] text-stone-400 block">實體門店進貨台可見</span>
               </div>
             </div>
             <span id="lock-channel-bm" class="hidden text-[10px] bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded font-bold">🔒 未開通</span>
@@ -581,8 +616,8 @@
             <div class="flex items-center gap-2">
               <input type="checkbox" id="chk-channel-ec" class="w-4 h-4 rounded text-emerald-800">
               <div>
-                <b class="text-stone-900 block text-xs">🌐 電子商務 / 零售商城</b>
-                <span class="text-[9px] text-stone-400 block">線上商城渠道可見</span>
+                <b class="text-stone-900 block text-xs">🌐 電子商務 / 天街專櫃</b>
+                <span class="text-[9px] text-stone-400 block">百工天街與雲端貨架可見</span>
               </div>
             </div>
             <span id="lock-channel-ec" class="hidden text-[10px] bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded font-bold">🔒 未開通</span>
@@ -652,11 +687,11 @@
 
       <div class="grid grid-cols-2 gap-2 bg-emerald-50/80 border border-emerald-200 p-3 rounded-2xl">
         <div>
-          <label class="block text-[11px] font-bold text-emerald-950 mb-1">基礎批發底價 (元) *：</label>
+          <label class="block text-[11px] font-bold text-emerald-950 mb-1">基礎批發/統一正價 (元) *：</label>
           <input type="number" step="0.01" id="prod-price" placeholder="0.00" class="w-full bg-white border border-emerald-300 rounded-xl px-3 py-1.5 font-mono font-bold text-sm text-emerald-950 outline-none">
         </div>
         <div>
-          <label class="block text-[11px] font-bold text-emerald-950 mb-1">大客專享惠價 (元)：</label>
+          <label class="block text-[11px] font-bold text-emerald-950 mb-1">大客/滿5件階梯惠價 (元)：</label>
           <input type="number" step="0.01" id="prod-price-tier2" placeholder="0.00" class="w-full bg-white border border-emerald-300 rounded-xl px-3 py-1.5 font-mono font-bold text-sm text-emerald-950 outline-none">
         </div>
       </div>
