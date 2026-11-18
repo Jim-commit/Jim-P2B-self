@@ -52,7 +52,7 @@ export const SuppliersService = {
     if (tErr) throw tErr;
 
     const validTenants = (tenants || []).filter(
-      (t) => t.permit_brick_and_mortar !== false && !['电子商务', '电商直供', 'online'].includes(t.service_mode)
+      (t) => t.permit_brick_and_mortar !== false && t.service_mode !== '电子商务'
     );
 
     if (validTenants.length === 0) return DEMO_SUPPLIERS;
@@ -71,12 +71,12 @@ export const SuppliersService = {
       const isBM =
         p.channel_brick_and_mortar !== undefined
           ? !!p.channel_brick_and_mortar
-          : ['实体店', '实体与电商双轨', '双轨', 'offline', 'both'].includes(p.sales_channel_type) || !p.sales_channel_type;
+          : ['实体店', '实体与电商双轨'].includes(p.sales_channel_type) || !p.sales_channel_type;
 
       const isEC =
         p.channel_ecommerce !== undefined
           ? !!p.channel_ecommerce
-          : ['电子商务', '电商直供', '实体与电商双轨', '双轨', 'online', 'both'].includes(p.sales_channel_type);
+          : ['电子商务', '实体与电商双轨'].includes(p.sales_channel_type);
 
       if (isEC) counterEnabledMap[p.tenant_id] = true;
       if (!isBM) return;
