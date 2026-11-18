@@ -1,3 +1,4 @@
+import { supabase } from '../lib/supabase.js';
 import { compressImageFile } from '../utils/storage.js';
 import { DriverService } from '../services/driverService.js';
 
@@ -224,7 +225,7 @@ window.clearSignature = function () {
 };
 
 // =========================================================================
-// 4. 配送路线载入与渲染（含百工天街门店自提捎带单识别）
+// 4. 配送路线载入与渲染（含百工天街门店自提捎带单 & 同城余缺顺路调剂单识别）
 // =========================================================================
 window.loadDriverTasks = async function () {
   const container = document.getElementById('route-container');
@@ -275,15 +276,23 @@ function renderRouteStores() {
           const isOverCreditPending = o.order_status === 'over_credit_pending';
           const isOverCreditApproved = o.order_status === 'over_credit_approved';
           const isMallPickup = o.order_source === 'online_mall' || o.settlement_type === 'online_paid';
+          const isSwapOrder = String(o.order_no || '').startsWith('SWAP-') || String(o.note || '').includes('同城余缺互调');
           const netAmount = parseFloat(o.net_settle_amount || o.total_amount || 0);
 
           return `
             <div class="bg-stone-50 border ${
-              isMallPickup ? 'border-emerald-400 bg-emerald-50/40' : isOverCreditPending ? 'border-rose-400 bg-rose-50/40' : 'border-stone-200'
+              isSwapOrder
+                ? 'border-cyan-400 bg-cyan-50/40'
+                : isMallPickup
+                ? 'border-emerald-400 bg-emerald-50/40'
+                : isOverCreditPending
+                ? 'border-rose-400 bg-rose-50/40'
+                : 'border-stone-200'
             } rounded-xl p-2.5 text-[11px] text-stone-800 mt-1 space-y-1">
               <div class="flex justify-between items-center font-bold">
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span>契单 #${o.order_no || o.id}</span>
+                  ${isSwapOrder ? '<span class="text-[9px] bg-cyan-800 text-white px-1.5 py-0.2 rounded font-bold">🔄 同城余缺顺路捎带</span>' : ''}
                   ${isMallPickup ? '<span class="text-[9px] bg-emerald-700 text-white px-1.5 py-0.2 rounded font-bold">🛍️ 天街自提捎带单（已付清）</span>' : ''}
                   ${isOverCreditPending ? '<span class="text-[9px] bg-rose-500 text-white px-1.5 py-0.2 rounded font-bold animate-pulse">待特信放行</span>' : ''}
                   ${isOverCreditApproved ? '<span class="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">调度台已特批</span>' : ''}
@@ -647,6 +656,20 @@ window.submitCollection = async function () {
 
   try {
     await DriverService.executeSettlement(recordToSave);
+
+    // 若本次签收包含「同城余缺顺路捎带单 (SWAP-)」，自动将互调池对应记录标记为已交割平账
+    if (orderId) {
+      const targetOrder = allPendingOrders.find((o) => String(o.id) === String(orderId));
+      if (targetOrder && (String(targetOrder.order_no || '').startsWith('SWAP-') || String(targetOrder.note || '').includes('同城余缺互调'))) {
+        await supabase
+          .from('local_inventory_pool')
+          .update({ status: 'completed', completed_at: new Date().toISOString() })
+          .eq('tenant_id', currentAgent)
+          .eq('to_store_id', storeId)
+          .eq('status', 'claimed');
+      }
+    }
+
     if (isCurrentOrderOnlinePickup) {
       alert(`✅ 天街自提包裹已送达并签收存信！\n掌柜可通知街坊到店自提，本单服务润利全额归属该合作门店。`);
     } else {
