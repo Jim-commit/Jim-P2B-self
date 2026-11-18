@@ -16,7 +16,6 @@ let allDemands = [];
 let pickupStores = [];
 let currentMarketMode = 'b2c';
 let currentCategoryFilter = 'all';
-let currentBrandFilter = 'all';
 let currentKeywordFilter = '';
 let cart = [];
 
@@ -28,7 +27,7 @@ window.exitToTianJie = function () {
 };
 
 window.promptEnterBrandStore = function () {
-  const code = prompt('请输入厂商名称关键词或商号代号（如 顺达 或 NY-FUNIU）：');
+  const code = prompt('请输入工坊名称关键词或商号代号（如 顺达 或 NY-FUNIU）：');
   if (!code || !code.trim()) return;
   const clean = code.trim().toUpperCase();
   const found = allTenants.find(
@@ -103,8 +102,6 @@ function setupTianJieMode() {
   document.getElementById('btn-back-street')?.classList.add('hidden');
   document.getElementById('btn-find-brand')?.classList.remove('hidden');
   document.getElementById('brand-hero-section')?.classList.add('hidden');
-  document.getElementById('tianjie-brand-showcase')?.classList.remove('hidden');
-  document.getElementById('tianjie-brand-bar')?.classList.remove('hidden');
 }
 
 function setupBrandStoreMode(tenantId) {
@@ -115,8 +112,6 @@ function setupBrandStoreMode(tenantId) {
   document.getElementById('mall-header-sub').innerText = '工坊直营 · 现货包邮 · 接单定制';
   document.getElementById('btn-back-street')?.classList.remove('hidden');
   document.getElementById('btn-find-brand')?.classList.add('hidden');
-  document.getElementById('tianjie-brand-showcase')?.classList.add('hidden');
-  document.getElementById('tianjie-brand-bar')?.classList.add('hidden');
 
   document.getElementById('hero-brand-name').innerText = name;
   document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '源头工坊 · 匠心正品 · 支持大宗与定制接单';
@@ -124,65 +119,28 @@ function setupBrandStoreMode(tenantId) {
   document.getElementById('brand-hero-section')?.classList.remove('hidden');
 }
 
-function renderBrandShowcaseAndFilter() {
-  const showcase = document.getElementById('brand-showcase-cards');
-  if (showcase) {
-    // 最多展示前 12 家活跃工坊，避免厂家增多后横向无限膨胀，其余通过搜索秒达
-    showcase.innerHTML = allTenants
-      .slice(0, 12)
-      .map(
-        (t) => `
-        <div onclick="window.goToBrandStore('${t.tenant_id}')" class="shrink-0 w-44 bg-white border border-stone-200 hover:border-emerald-700 p-3 rounded-2xl shadow-2xs cursor-pointer transition space-y-1.5">
-          <div class="flex items-center justify-between">
-            <span class="text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded font-mono font-bold">
-              ${t.business_type === 'factory' ? '🏭 源头工厂' : '🏢 区域总代'}
-            </span>
-            <span class="text-[10px] text-amber-700 font-bold">进专柜 ➔</span>
-          </div>
-          <b class="text-xs text-stone-900 block truncate">${t.company_name}</b>
-          <span class="text-[10px] text-stone-400 font-mono block truncate">代号: ${t.tenant_id}</span>
-        </div>
-      `
-      )
-      .join('');
-  }
-
-  const bar = document.getElementById('dynamic-brand-chips');
-  if (bar) {
-    bar.innerHTML = allTenants
-      .slice(0, 15)
-      .map(
-        (t) => `
-        <button onclick="window.filterMallBrand('${t.tenant_id}')" class="mall-brand-chip bg-white border border-stone-200 text-stone-700 hover:border-emerald-700 px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition">
-          🏭 ${t.company_name}
-        </button>
-      `
-      )
-      .join('');
-  }
-}
-
-window.filterMallBrand = function (tenantId) {
-  currentBrandFilter = tenantId;
-  document.querySelectorAll('.mall-brand-chip').forEach((b) => {
-    const isAll = tenantId === 'all' && b.dataset.brand === 'all';
-    const isMatch = isAll || b.getAttribute('onclick')?.includes(`'${tenantId}'`);
-    b.className = isMatch
-      ? 'mall-brand-chip bg-[#1b4332] text-white border border-[#1b4332] px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition'
-      : 'mall-brand-chip bg-white border border-stone-200 text-stone-700 hover:border-emerald-700 px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition';
-  });
-  renderGoodsGrid();
-};
-
+// 弹性品类栏：优先取平台配置的一级分类，若未配置则自动从在售商品提取；若均无则整栏隐藏不占空间
 function renderCategoryChips() {
-  const l1Cats = allCategories.filter((c) => c.level === 1);
+  const bar = document.getElementById('category-filter-bar');
   const container = document.getElementById('dynamic-cat-chips');
-  if (!container) return;
-  container.innerHTML = l1Cats
+  if (!bar || !container) return;
+
+  let catNames = allCategories.filter((c) => c.level === 1).map((c) => c.name);
+  if (catNames.length === 0 && allProducts.length > 0) {
+    catNames = [...new Set(allProducts.map((p) => p.category_main).filter(Boolean))];
+  }
+
+  if (catNames.length === 0) {
+    bar.classList.add('hidden');
+    return;
+  }
+
+  bar.classList.remove('hidden');
+  container.innerHTML = catNames
     .map(
-      (c) => `
-      <button onclick="window.filterMallCategory('${c.name}')" class="mall-cat-chip bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-xl transition">
-        ${c.name}
+      (name) => `
+      <button onclick="window.filterMallCategory('${name}')" class="mall-cat-chip bg-white border border-stone-200 text-stone-700 hover:border-emerald-700 px-3 py-1 rounded-xl font-bold transition">
+        ${name}
       </button>
     `
     )
@@ -192,18 +150,57 @@ function renderCategoryChips() {
 window.filterMallCategory = function (catName) {
   currentCategoryFilter = catName;
   document.querySelectorAll('.mall-cat-chip').forEach((b) => {
-    const isMatch = (catName === 'all' && b.innerText.includes('全部精选')) || b.innerText.includes(catName);
+    const isMatch = (catName === 'all' && b.innerText.includes('全部精选')) || b.innerText.trim() === catName;
     b.className = isMatch
       ? 'mall-cat-chip bg-amber-400 text-stone-950 px-3 py-1 rounded-xl font-bold transition'
-      : 'mall-cat-chip bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-xl transition';
+      : 'mall-cat-chip bg-white border border-stone-200 text-stone-700 hover:border-emerald-700 px-3 py-1 rounded-xl font-bold transition';
   });
   renderGoodsGrid();
 };
 
+// 智能搜索：既筛商品，又在输入厂名关键词时弹性弹出「直达数字专柜」快捷卡片
 window.onSearchMallKeyword = function (val) {
   currentKeywordFilter = (val || '').trim().toLowerCase();
+  updateMatchedTenantShortcut();
   renderGoodsGrid();
 };
+
+function updateMatchedTenantShortcut() {
+  const box = document.getElementById('matched-tenant-shortcut');
+  if (!box) return;
+
+  if (currentTenantParam || !currentKeywordFilter) {
+    box.classList.add('hidden');
+    return;
+  }
+
+  const matched = allTenants.filter(
+    (t) =>
+      (t.company_name || '').toLowerCase().includes(currentKeywordFilter) ||
+      (t.tenant_id || '').toLowerCase().includes(currentKeywordFilter)
+  );
+
+  if (matched.length === 0) {
+    box.classList.add('hidden');
+    return;
+  }
+
+  box.classList.remove('hidden');
+  box.innerHTML = matched
+    .slice(0, 3)
+    .map(
+      (t) => `
+      <div onclick="window.goToBrandStore('${t.tenant_id}')" class="bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-emerald-100/70 transition">
+        <div class="text-xs">
+          <span class="text-emerald-800 font-bold">🏭 直达数字专柜：${t.company_name}</span>
+          <span class="text-[10px] text-emerald-700/80 font-mono ml-1.5">(${t.tenant_id})</span>
+        </div>
+        <span class="text-[11px] font-bold text-emerald-900">进店 ➔</span>
+      </div>
+    `
+    )
+    .join('');
+}
 
 function renderGoodsGrid() {
   const container = document.getElementById('mall-goods-grid');
@@ -213,9 +210,6 @@ function renderGoodsGrid() {
 
   if (currentCategoryFilter !== 'all') {
     filtered = filtered.filter((p) => p.category_main === currentCategoryFilter);
-  }
-  if (!currentTenantParam && currentBrandFilter !== 'all') {
-    filtered = filtered.filter((p) => p.tenant_id === currentBrandFilter);
   }
   if (currentKeywordFilter) {
     filtered = filtered.filter((p) => {
@@ -234,7 +228,7 @@ function renderGoodsGrid() {
     container.innerHTML = `
       <div class="col-span-full py-12 text-center space-y-2.5 bg-white rounded-3xl border border-stone-200 p-6">
         <div class="text-stone-400 text-xs">当前筛选条件下暂无已上架现货良品。</div>
-        <button onclick="window.switchMarketMode('c2b'); window.openC2BDemandModal();" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs px-4 py-2 rounded-xl shadow active:scale-95 transition">
+        <button onclick="window.switchMarketMode('c2b'); window.openC2BDemandModal(document.getElementById('mall-search-input')?.value || '');" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs px-4 py-2 rounded-xl shadow active:scale-95 transition">
           📢 没找到想要的？立即发 C2B 求购榜让工厂报价
         </button>
       </div>
@@ -375,9 +369,6 @@ window.openProductDetail = function (prodId) {
   window.openModal('modal-product-detail');
 };
 
-// =========================================================================
-// 弹性 C2B 需求发榜（情境自动识别 + 自由输入匹配，不锁死下拉框）
-// =========================================================================
 async function loadAndRenderC2BDemands() {
   const listEl = document.getElementById('c2b-demands-list');
   if (!listEl) return;
@@ -489,7 +480,6 @@ window.openC2BDemandModal = function (presetTitle = '', presetTenantId = '') {
   document.getElementById('c2b-delivery-input').value = '';
   document.getElementById('c2b-note-input').value = '';
 
-  // 情境感知：如果在某家专柜内，自动带入该厂名称，但允许用户随时清空改成全网公开招标或输入任意行当/工坊名
   const activeTid = presetTenantId || currentTenantParam || '';
   const matchedTenant = activeTid
     ? allTenants.find((t) => (t.tenant_id || '').toUpperCase() === activeTid.toUpperCase())
@@ -543,7 +533,6 @@ window.submitC2BDemand = async function () {
     return alert('请完整填写求购/定制品名、需求数量以及 11 位联系手机号！');
   }
 
-  // 智能匹配用户手输的意向工坊（若命中在册商号则附带商号标识以便对方后台优先看到）
   const matchedTenant = targetText
     ? allTenants.find(
         (t) =>
@@ -997,8 +986,6 @@ export async function initMallController() {
   ]);
   allTenants = tenants;
   allCategories = cats;
-  renderCategoryChips();
-  renderBrandShowcaseAndFilter();
 
   if (currentTenantParam) {
     const matchedTenant = allTenants.find((t) => (t.tenant_id || '').toUpperCase() === currentTenantParam);
@@ -1019,5 +1006,6 @@ export async function initMallController() {
   }
 
   allProducts = await MallService.fetchMallProducts(currentTenantParam);
+  renderCategoryChips();
   renderGoodsGrid();
 }
