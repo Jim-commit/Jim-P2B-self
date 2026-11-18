@@ -41,7 +41,6 @@ export const MallService = {
     const { data } = await query.order('id', { ascending: false });
     const list = data || [];
     if (tenantId) return list;
-    // 优先展示 online / both 商品；若后台均未区分渠道则展示全部在售良品，避免货架空白
     const onlineOnly = list.filter((p) => ['online', 'both'].includes(p.sales_channel_type));
     return onlineOnly.length > 0 ? onlineOnly : list;
   },
@@ -64,9 +63,6 @@ export const MallService = {
     return { error: null };
   },
 
-  // =========================================================================
-  // C2B 需求发榜、跟单凑量与工厂接单报价（复用 platform_suggestion_board）
-  // =========================================================================
   async fetchC2BDemands(tenantId = null) {
     let query = supabase
       .from('platform_suggestion_board')
@@ -93,9 +89,6 @@ export const MallService = {
       .eq('id', demandId);
   },
 
-  // =========================================================================
-  // 统一查询：B2C 现货订单 + C2B 需求榜进度
-  // =========================================================================
   async queryOrdersByPhone(phone) {
     const cleanPhone = (phone || '').trim();
     if (!cleanPhone) return { orders: [], demands: [] };
