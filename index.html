@@ -32,8 +32,16 @@
           </button>
 
           <!-- 掌柜锦囊浮层 -->
-          <div id="left-nav-menu" class="hidden absolute left-0 top-11 w-56 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all">
+          <div id="left-nav-menu" class="hidden absolute left-0 top-11 w-60 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all">
             <div class="px-2.5 py-1 text-[10px] font-bold text-stone-400">掌柜经营锦囊</div>
+
+            <button type="button" onclick="window.openCloudShelfModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200/80 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98] mb-1">
+              <span class="w-6 h-6 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center text-xs font-bold">🛍️</span>
+              <div>
+                <div class="font-bold text-amber-950 text-[11px]">本店云端扩充货架码</div>
+                <div class="text-[9px] text-amber-800">零库存卖大件 · 润利归本店</div>
+              </div>
+            </button>
             
             <button type="button" onclick="window.openMarketingCenter(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-emerald-50/60 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
               <span class="w-6 h-6 rounded-lg bg-emerald-100/70 text-emerald-800 flex items-center justify-center text-xs">🎨</span>
@@ -163,8 +171,8 @@
               <div class="flex items-center gap-2.5">
                 <span class="w-6 h-6 rounded-lg bg-amber-50 text-amber-800 flex items-center justify-center text-xs">📜</span>
                 <div>
-                  <div class="font-bold text-stone-800 text-[11px]">历次交接契单与收条</div>
-                  <div class="text-[9px] text-stone-400">来往明细 · 相互照看</div>
+                  <div class="font-bold text-stone-800 text-[11px]">历次交接契单与自提单</div>
+                  <div class="text-[9px] text-stone-400">进货存根 · 街坊自提核销</div>
                 </div>
               </div>
               <span id="menu-proposal-count" class="hidden text-[9px] bg-amber-500 text-white font-bold px-1.5 py-0.2 rounded-full">有修润建议</span>
@@ -278,7 +286,33 @@
 
   </div>
 
-  <!-- 新增：老客户推荐同行口碑裂变弹窗 -->
+  <!-- 新增：本店云端扩充货架二维码弹窗（零库存扩展经营面积，润利全额归属小店） -->
+  <div id="cloud-shelf-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[85] flex items-center justify-center p-4" onclick="if(event.target===this) window.closeModal('cloud-shelf-modal')">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs text-center">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100 text-left">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🛍️ 本店专属云端扩充货架码</h3>
+          <p class="text-[10px] text-stone-400">店里摆不下的大件礼盒、特产与定制品，让顾客扫码下单</p>
+        </div>
+        <button type="button" onclick="window.closeModal('cloud-shelf-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div class="bg-gradient-to-b from-[#1b4332] to-[#143628] text-white p-5 rounded-2xl space-y-2.5 shadow-inner">
+        <div class="text-amber-300 font-bold text-sm" id="cloud-shelf-store-title">厚德便民老店 · 云端扩充货架</div>
+        <div class="text-[11px] text-emerald-100">工坊直供品质担保 · 零库存压货 · 零售润利全额归属本店</div>
+        <div class="w-40 h-40 bg-white rounded-2xl mx-auto p-2 flex items-center justify-center shadow-lg">
+          <img id="cloud-shelf-qr-img" src="" alt="云端货架二维码" class="w-full h-full object-contain">
+        </div>
+        <div class="text-[10px] text-emerald-200 font-mono break-all" id="cloud-shelf-link-text">--</div>
+      </div>
+
+      <button type="button" onclick="window.copyCloudShelfLink()" class="w-full bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+        📋 复制云端货架话术发街坊群
+      </button>
+    </div>
+  </div>
+
+  <!-- 老客户推荐同行口碑裂变弹窗 -->
   <div id="referral-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[85] flex items-center justify-center p-4" onclick="if(event.target===this) window.closeModal('referral-modal')">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs text-center">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100 text-left">
@@ -500,15 +534,22 @@
     </div>
   </div>
 
-  <!-- 单据与收条核照 -->
+  <!-- 单据、街坊到店自提单与收条核照 -->
   <div id="receipts-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[88vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-        <h3 class="font-bold text-sm text-stone-800">📜 往来存信凭条与交割收据</h3>
+        <h3 class="font-bold text-sm text-stone-800">📜 往来存信凭条与街坊自提单</h3>
         <button type="button" onclick="window.closeModal('receipts-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
+
+      <!-- 街坊在百工天街下单并选「到本店自提」的订单 -->
+      <div id="mall-pickup-orders-box" class="hidden space-y-2 pb-2 border-b border-stone-100">
+        <b class="text-xs text-amber-900 block">🏪 街坊到本店自提结缘单（润利归属本店）</b>
+        <div id="mall-pickup-orders-list" class="space-y-2 text-xs"></div>
+      </div>
+
       <div class="space-y-2">
-        <b class="text-xs text-stone-700 block">🚚 历次要货单据与修润建议</b>
+        <b class="text-xs text-stone-700 block">🚚 本店进货单据与修润建议</b>
         <div id="my-orders-list" class="space-y-2.5 text-xs"></div>
       </div>
       <div class="space-y-2 pt-2 border-t border-stone-100">
