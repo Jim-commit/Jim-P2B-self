@@ -1528,4 +1528,380 @@ async function initTerminal() {
   await checkVendorProposalBadge();
 }
 
+// ==========================================
+// 14. 同城余缺互调池 (local_inventory_pool)
+// ==========================================
+window.openLocalPoolModal = async function () {
+  window.openModal('local-pool-modal');
+  window.switchLocalPoolTab('browse');
+
+  // 填充挂出余货下拉选择框
+  const selectEl = document.getElementById('pool-prod-select');
+  if (selectEl) {
+    selectEl.innerHTML =
+      '<option value="">-- 自由手填品名，或点选在架良品 --</option>' +
+      allProducts
+        .map((p) => {
+          const { price } = getStorePriceInfo(p);
+          return `<option value="${p.id}" data-name="${p.name}" data-spec="${p.spec || '整装'}" data-price="${price}">${p.name} (${p.spec || '整装'} · ¥${price.toFixed(2)})</option>`;
+        })
+        .join('');
+  }
+
+  await loadLocalPoolList();
+};
+
+window.switchLocalPoolTab = function (tab) {
+  const browsePane = document.getElementById('pool-pane-browse');
+  const publishPane = document.getElementById('pool-pane-publish');
+  const btnBrowse = document.getElementById('pool-tab-browse');
+  const btnPublish = document.getElementById('pool-tab-publish');
+
+  if (tab === 'browse') {
+    browsePane?.classList.remove('hidden');
+    publishPane?.classList.add('hidden');
+    if (btnBrowse) btnBrowse.className = 'flex-1 py-2 rounded-xl bg-[#1b4332] text-white shadow transition';
+    if (btnPublish) btnPublish.className = 'flex-1 py-2 rounded-xl text-stone-600 hover:text-stone-900 transition';
+    loadLocalPoolList();
+  } else {
+    browsePane?.classList.add('hidden');
+    publishPane?.classList.remove('hidden');
+    if (btnPublish) btnPublish.className = 'flex-1 py-2 rounded-xl bg-[#1b4332] text-white shadow transition';
+    if (btnBrowse) btnBrowse.className = 'flex-1 py-2 rounded-xl text-stone-600 hover:text-stone-900 transition';
+  }
+};
+
+window.onSelectPoolProduct = function (prodId) {
+  const selectEl = document.getElementById('pool-prod-select');
+  if (!selectEl || !prodId) return;
+  const opt = selectEl.options[selectEl.selectedIndex];
+  if (!opt) return;
+  document.getElementById('pool-prod-name').value = opt.dataset.name || '';
+  document.getElementById('pool-prod-spec').value = opt.dataset.spec || '';
+  document.getElementById('pool-prod-price').value = opt.dataset.price || '';
+};
+
+async function loadLocalPoolList() {
+  const listEl = document.getElementById('local-pool-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="py-8 text-center text-stone-400">正在查探同城同行互调余货...</div>';
+
+  const { data, error } = await supabase
+    .from('local_inventory_pool')
+    .select('*')
+    .eq('tenant_id', currentAgent)
+    .in('status', ['open', 'claimed'])
+    .order('id', { ascending: false })
+    .limit(30);
+
+  if (error) {
+    listEl.innerHTML = `<div class="py-6 text-center text-rose-500">读取互调池异常：${error.message}</div>`;
+    return;
+  }
+
+  const rows = data || [];
+  if (rows.length === 0) {
+    listEl.innerHTML = '<div class="py-8 text-center text-stone-400">当前同城互调池暂无挂出余货，若有临期/富余货品可点上方「挂出本店余货」调剂。</div>';
+    return;
+  }
+
+  const myStoreId = currentStore?.id || 0;
+  listEl.innerHTML = rows
+    .map((item) => {
+      const isMine = Number(item.from_store_id) === Number(myStoreId);
+      const isOpen = item.status === 'open';
+      return `
+        <div class="p-3 bg-stone-50 border ${isOpen ? 'border-emerald-200' : 'border-stone-200 opacity-75'} rounded-2xl space-y-1.5">
+          <div class="flex justify-between items-start gap-2">
+            <div>
+              <b class="text-xs text-stone-900">${item.product_name}</b>
+              <span class="text-[10px] text-stone-500 block font-mono">规格: ${item.spec || '整装'} · 余量: <b class="text-emerald-900">${item.qty} ${item.measure_unit || '件'}</b></span>
+            </div>
+            <div class="text-right shrink-0">
+              <b class="text-sm font-mono font-bold text-rose-700">¥${parseFloat(item.transfer_price || 0).toFixed(2)}</b>
+              <span class="text-[9px] text-stone-400 block">/${item.measure_unit || '件'}</span>
+            </div>
+          </div>
+
+          <div class="text-[10px] text-stone-600 bg-white px-2.5 py-1 rounded-xl border border-stone-100">
+            🏪 挂出门店：<b>${item.from_store_name}</b> ${item.reason ? `· ${item.reason}` : ''}
+          </div>
+
+          <div class="flex justify-between items-center pt-1">
+            <span class="text-[10px] font-bold ${isOpen ? 'text-emerald-800' : 'text-amber-800'}">
+              ${isOpen ? '🟢 待认领调剂' : `🚚 已由【${item.to_store_name || '同行门店'}】认领待捎带`}
+            </span>
+            ${
+              isOpen && !isMine
+                ? `<button type="button" onclick="window.claimLocalPoolItem(${item.id})" class="px-3 py-1 rounded-xl bg-[#1b4332] hover:bg-[#143628] text-white text-[10px] font-bold shadow active:scale-95 transition">🤝 认领调入本店</button>`
+                : isOpen && isMine
+                ? `<button type="button" onclick="window.cancelLocalPoolItem(${item.id})" class="px-2.5 py-1 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 text-[10px] font-bold">撤回挂单</button>`
+                : ''
+            }
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+window.submitLocalPoolOffer = async function (e) {
+  e.preventDefault();
+  if (!currentStore) return alert('当前供货方尚未绑定有效门店档案，无法发起同城余货调剂！');
+
+  const prodIdVal = document.getElementById('pool-prod-select')?.value;
+  const prodName = document.getElementById('pool-prod-name').value.trim();
+  const spec = document.getElementById('pool-prod-spec').value.trim() || '整装';
+  const qty = parseInt(document.getElementById('pool-prod-qty').value) || 1;
+  const transferPrice = parseFloat(document.getElementById('pool-prod-price').value) || 0;
+  const reason = document.getElementById('pool-prod-reason').value.trim();
+
+  if (!prodName || qty <= 0) return alert('请完整填写余货品名与调剂数量！');
+
+  const { error } = await supabase.from('local_inventory_pool').insert([
+    {
+      tenant_id: currentAgent,
+      from_store_id: currentStore.id,
+      from_store_name: currentStore.name || '厚德便民门店',
+      product_id: prodIdVal ? parseInt(prodIdVal) : null,
+      product_name: prodName,
+      spec,
+      measure_unit: '件',
+      qty,
+      transfer_price: transferPrice,
+      reason,
+      driver_name: currentStore.driver_name || '老张师傅',
+      status: 'open'
+    }
+  ]);
+
+  if (error) return alert('挂入互调池失败：' + error.message);
+
+  await notifyVendorWebhook(
+    currentAgent,
+    `🔄【同城余缺互调挂单】\n挂出门店：${currentStore.name}\n调剂良品：${prodName} (${spec}) x ${qty}件\n调剂让利价：¥${transferPrice.toFixed(2)}/件\n请调度中枢留意顺路捎带调剂！`
+  );
+
+  alert('✅ 已成功挂入同城余缺互调池！同行门店认领后将由送货师傅顺路捎带交割。');
+  document.getElementById('pool-pane-publish')?.reset();
+  window.switchLocalPoolTab('browse');
+};
+
+window.claimLocalPoolItem = async function (poolId) {
+  if (!currentStore) return alert('当前供货方尚未绑定有效门店档案，无法认领余货！');
+  const { data: item } = await supabase.from('local_inventory_pool').select('*').eq('id', poolId).single();
+  if (!item || item.status !== 'open') return alert('该笔余货已被其他同行认领或撤回！');
+
+  const totalVal = (parseFloat(item.transfer_price || 0) * parseInt(item.qty || 1)).toFixed(2);
+  if (
+    !confirm(
+      `确认认领同城余货调剂？\n\n` +
+        `• 调出门店：${item.from_store_name}\n` +
+        `• 调剂货品：${item.product_name} (${item.spec || '整装'}) x ${item.qty}${item.measure_unit || '件'}\n` +
+        `• 调剂总值：¥${totalVal}\n\n` +
+        `确认后将通知送货师傅顺路从【${item.from_store_name}】取货送达本店！`
+    )
+  ) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from('local_inventory_pool')
+    .update({
+      to_store_id: currentStore.id,
+      to_store_name: currentStore.name || '厚德便民门店',
+      status: 'claimed',
+      claimed_at: new Date().toISOString()
+    })
+    .eq('id', poolId)
+    .eq('status', 'open');
+
+  if (error) return alert('认领失败：' + error.message);
+
+  // 同步生成一条随车顺路调剂指令单，方便调度台与师傅端直接可见
+  await supabase.from('store_order').insert([
+    {
+      order_no: `SWAP-${Date.now().toString().slice(-6)}`,
+      tenant_id: currentAgent,
+      store_id: currentStore.id,
+      store_name: currentStore.name || '厚德便民门店',
+      driver_name: currentStore.driver_name || item.driver_name || '老张师傅',
+      settlement_type: 'credit',
+      settlement_note: `同城余缺互调平账（调出方：${item.from_store_name}）`,
+      items: [
+        {
+          id: item.product_id || 0,
+          name: `[同城调剂] ${item.product_name}`,
+          spec: item.spec || '整装',
+          measure_unit: item.measure_unit || '件',
+          price: parseFloat(item.transfer_price || 0),
+          qty: parseInt(item.qty || 1)
+        }
+      ],
+      items_return: [],
+      items_exchange: [],
+      total_amount: parseFloat(totalVal),
+      return_amount: 0,
+      net_settle_amount: parseFloat(totalVal),
+      order_status: 'confirmed',
+      delivery_status: 'pending',
+      note: `【同城余缺互调】从【${item.from_store_name}】顺路取货送至【${currentStore.name}】`,
+      driver_action_instruction: `顺路先去【${item.from_store_name}】取调剂货 ${item.product_name}x${item.qty}，再送至【${currentStore.name}】`
+    }
+  ]);
+
+  await notifyVendorWebhook(
+    currentAgent,
+    `🤝【同城余缺互调已成单】\n调出门店：${item.from_store_name}\n调入门店：${currentStore.name}\n货品：${item.product_name} x ${item.qty}件（¥${totalVal}）\n已生成随车顺路捎带单，请安排送货师傅取送！`
+  );
+
+  alert('🎉 认领成功！已生成随车顺路调剂单并通知供货中枢与送货师傅。');
+  await loadLocalPoolList();
+};
+
+window.cancelLocalPoolItem = async function (poolId) {
+  if (!confirm('确认撤回该笔余货挂单？')) return;
+  await supabase.from('local_inventory_pool').update({ status: 'cancelled' }).eq('id', poolId);
+  await loadLocalPoolList();
+};
+
+// ==========================================
+// 15. 真实用度计划单 (demand_forecast_plan)
+// ==========================================
+window.openDemandPlanModal = async function () {
+  window.openModal('demand-plan-modal');
+
+  const dateInput = document.getElementById('plan-expected-date');
+  if (dateInput && !dateInput.value) {
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    dateInput.value = tomorrow;
+  }
+
+  const rowsContainer = document.getElementById('demand-plan-rows');
+  if (rowsContainer && rowsContainer.children.length === 0) {
+    window.addDemandPlanRow();
+    window.addDemandPlanRow();
+  }
+
+  await loadMyDemandPlans();
+};
+
+window.addDemandPlanRow = function () {
+  const rowsContainer = document.getElementById('demand-plan-rows');
+  if (!rowsContainer) return;
+
+  const datalistId = 'plan-prod-datalist';
+  if (!document.getElementById(datalistId)) {
+    const dl = document.createElement('datalist');
+    dl.id = datalistId;
+    dl.innerHTML = allProducts.map((p) => `<option value="${p.name}">`).join('');
+    document.body.appendChild(dl);
+  }
+
+  const row = document.createElement('div');
+  row.className = 'flex items-center gap-1.5 demand-plan-item-row';
+  row.innerHTML = `
+    <input type="text" list="${datalistId}" placeholder="品名（选或填）" class="plan-item-name flex-1 bg-white border border-amber-200 rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-stone-800 outline-none">
+    <input type="number" min="1" value="10" placeholder="数量" class="plan-item-qty w-16 bg-white border border-amber-200 rounded-xl px-2 py-1.5 text-[11px] font-mono font-bold text-center outline-none">
+    <input type="text" value="件" placeholder="单位" class="plan-item-unit w-12 bg-white border border-amber-200 rounded-xl px-1.5 py-1.5 text-[11px] text-center outline-none">
+    <button type="button" onclick="this.parentElement.remove()" class="text-stone-400 hover:text-rose-600 px-1 text-xs">✕</button>
+  `;
+  rowsContainer.appendChild(row);
+};
+
+window.submitDemandPlan = async function (e) {
+  e.preventDefault();
+  if (!currentStore) return alert('当前供货方尚未绑定有效门店档案，无法提报真实用度计划！');
+
+  const planCycle = document.getElementById('plan-cycle-select')?.value || '未来3日用度';
+  const expectedDate = document.getElementById('plan-expected-date')?.value;
+  const note = document.getElementById('plan-note-input')?.value.trim() || '';
+
+  const rowEls = document.querySelectorAll('.demand-plan-item-row');
+  const items = [];
+  rowEls.forEach((row) => {
+    const name = row.querySelector('.plan-item-name')?.value.trim();
+    const qty = parseInt(row.querySelector('.plan-item-qty')?.value) || 0;
+    const unit = row.querySelector('.plan-item-unit')?.value.trim() || '件';
+    if (name && qty > 0) {
+      items.push({ name, qty, unit });
+    }
+  });
+
+  if (items.length === 0) {
+    return alert('请至少填写一项有效的计划用度货品与预估数量！');
+  }
+
+  const { error } = await supabase.from('demand_forecast_plan').insert([
+    {
+      tenant_id: currentAgent,
+      store_id: currentStore.id,
+      store_name: currentStore.name || '厚德便民门店',
+      plan_cycle: planCycle,
+      expected_date: expectedDate || null,
+      items,
+      note,
+      status: 'submitted'
+    }
+  ]);
+
+  if (error) return alert('提报用度计划失败：' + error.message);
+
+  const summaryStr = items.map((i) => `${i.name} x${i.qty}${i.unit}`).join('、');
+  await notifyVendorWebhook(
+    currentAgent,
+    `📅【门店真实用度计划单】\n提报门店：${currentStore.name}\n用度周期：${planCycle}（期望到店：${expectedDate || '近期'}）\n用度明细：${summaryStr}\n${note ? `叮咛：${note}\n` : ''}请合作社/工坊纳入按需采收排产备货！`
+  );
+
+  alert('🎉 真实用度计划单已提报！已直达村社合作社与源头工坊调度台按需排产。');
+  document.getElementById('plan-note-input').value = '';
+  const rowsContainer = document.getElementById('demand-plan-rows');
+  if (rowsContainer) {
+    rowsContainer.innerHTML = '';
+    window.addDemandPlanRow();
+  }
+  await loadMyDemandPlans();
+};
+
+async function loadMyDemandPlans() {
+  const listEl = document.getElementById('my-demand-plans-list');
+  if (!listEl || !currentStore) return;
+
+  const { data } = await supabase
+    .from('demand_forecast_plan')
+    .select('*')
+    .eq('tenant_id', currentAgent)
+    .eq('store_id', currentStore.id)
+    .order('id', { ascending: false })
+    .limit(10);
+
+  const rows = data || [];
+  if (rows.length === 0) {
+    listEl.innerHTML = '<div class="text-center py-3 text-stone-400">暂无历史用度计划记录</div>';
+    return;
+  }
+
+  listEl.innerHTML = rows
+    .map((p) => {
+      const items = Array.isArray(p.items) ? p.items : [];
+      const itemStr = items.map((i) => `${i.name}x${i.qty}${i.unit || '件'}`).join('、');
+      const statusMap = {
+        submitted: '<span class="bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-bold">⏳ 已提报待排产</span>',
+        scheduled: '<span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">✅ 产区已纳入排产</span>',
+        fulfilled: '<span class="bg-stone-200 text-stone-700 px-1.5 py-0.2 rounded">📦 已履约配发</span>'
+      };
+      return `
+        <div class="p-2.5 bg-stone-50 border border-stone-200 rounded-xl space-y-1 text-[11px]">
+          <div class="flex justify-between items-center">
+            <b class="text-stone-800">${p.plan_cycle} · 期望 ${p.expected_date || '近期'}</b>
+            ${statusMap[p.status] || statusMap.submitted}
+          </div>
+          <div class="text-stone-600">用度：${itemStr}</div>
+          ${p.note ? `<div class="text-[10px] text-stone-400">备注：${p.note}</div>` : ''}
+        </div>
+      `;
+    })
+    .join('');
+}
+
 initTerminal();
