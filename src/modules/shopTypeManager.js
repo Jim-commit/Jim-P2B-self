@@ -15,6 +15,30 @@ export const ShopTypeManager = {
     '文体劳保': '📚'
   },
 
+  // 预设百工百业常见行当清单（供门店端与巡街拓客端统一调用）
+  presets: [
+    { key: '社区便利', label: '社区便利 / 烟酒百货', icon: '🏪', desc: '整箱快走 · 邻里常顾' },
+    { key: '餐饮饭庄', label: '餐饮饭庄 / 食堂后厨', icon: '🍳', desc: '良材优选 · 大宗特价' },
+    { key: '精品商超', label: '精品商超 / 综合卖场', icon: '🏬', desc: '名品保真 · 丰俭由人' },
+    { key: '五金机电', label: '五金机电 / 建材水暖', icon: '🛠️', desc: '规格齐全 · 工地急配' },
+    { key: '汽修配件', label: '汽修保养 / 配件工坊', icon: '🚗', desc: '原厂适配 · 随叫随到' },
+    { key: '农资农具', label: '农资农具 / 种子化肥', icon: '🌾', desc: '不误农时 · 整车直达' },
+    { key: '医药日化', label: '医药保健 / 日化洗护', icon: '💊', desc: '批号可溯 · 效期严格' },
+    { key: '文体劳保', label: '文体办公 / 劳保用品', icon: '📚', desc: '常备库存 · 整件批发' }
+  ],
+
+  // 获取指定行当的完整展示信息（含自定义行当兜底）
+  getPresetInfo(shopType) {
+    const found = this.presets.find(p => p.key === shopType);
+    if (found) return found;
+    return {
+      key: shopType || '社区便利',
+      label: shopType || '社区便利',
+      icon: this.icons[shopType] || '🏷️',
+      desc: '百工百业 · 诚信采销'
+    };
+  },
+
   // 根据店招名称自动识别所属行当
   autoDetect(storeName) {
     if (!storeName) return '社区便利';
@@ -53,6 +77,7 @@ export const ShopTypeManager = {
     if (shopType === '社区便利' || shopType === '社区超市' || shopType === '便利小铺') {
       return ['送货避开早高峰', '帮忙抬进地库', '备点零钱找零', '随车带6个空筐'];
     }
+    // 自定义业态通用百业实用口信
     return ['送前提前电联', '按清单逐件点验', '包装完好勿挤压', '备好随车交接单'];
   },
 
