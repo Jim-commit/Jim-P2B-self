@@ -283,7 +283,20 @@ window.addCustomAttrRow = function (keyVal = '', valStr = '') {
   `;
   box.appendChild(row);
 };
-
+window.applyIndustryAttrTemplate = function (type) {
+  const templates = {
+    food: [['保质期', '12个月'], ['贮存方式', '阴凉干燥'], ['执行标准', 'GB标准']],
+    hardware: [['材质工艺', '304不锈钢'], ['规格型号', '国标通用'], ['表面处理', '防锈镀锌']],
+    auto: [['适配车型', '全系通用'], ['原厂件号', 'OEM标准'], ['质保期限', '12个月/2万公里']],
+    agri: [['有效成分', '高纯度配方'], ['净含量', '25kg/袋'], ['登记证号', '正规备案']],
+    daily: [['香型/款式', '经典款'], ['安全标准', '国标合格'], ['箱规包装', '整件批发']]
+  };
+  const rows = templates[type] || [];
+  const container = document.getElementById('custom-attrs-container');
+  if (!container) return;
+  container.innerHTML = '';
+  rows.forEach(([k, v]) => window.addCustomAttrRow(k, v));
+};
 function collectCustomAttrs() {
   const attrs = {};
   document.querySelectorAll('#custom-attrs-container .custom-attr-row').forEach((row) => {
