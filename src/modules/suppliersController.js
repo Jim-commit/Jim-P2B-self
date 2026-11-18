@@ -60,7 +60,7 @@ function renderSuppliers(list) {
       const samplesHtml =
         s.products.length > 0
           ? `<div class="mt-3.5 pt-3 border-t border-stone-100">
-              <div class="text-[11px] font-bold text-stone-400 mb-2">主营招牌货品预览（签约后享专属批发底价）：</div>
+              <div class="text-[11px] font-bold text-stone-400 mb-2">主营招牌良品预览（建立合作后享专属阳光直供底价）：</div>
               <div class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
                 ${s.products.map(renderSampleCard).join('')}
               </div>
@@ -77,7 +77,7 @@ function renderSuppliers(list) {
                   ✓ 营业执照已核验
                 </span>
                 <span class="px-2 py-0.5 rounded-lg text-[11px] bg-stone-100 text-stone-700 font-mono font-bold">商号：${s.tenant_id}</span>
-                ${s.media_url ? `<a href="${s.media_url}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded-lg text-[11px] bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold transition">🎥 车间实拍</a>` : ''}
+                ${s.media_url ? `<a href="${s.media_url}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded-lg text-[11px] bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold transition">🎥 田间/车间实拍</a>` : ''}
               </div>
 
               <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500 mt-1.5">
@@ -95,10 +95,10 @@ function renderSuppliers(list) {
                 onclick="window.openInquiryModal('${escapeAttr(s.tenant_id)}', '${escapeAttr(s.name)}')"
                 class="flex-1 sm:flex-initial w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143628] text-white text-xs font-bold shadow transition cursor-pointer active:scale-95"
               >
-                预约送样 / 申请供货
+                预约送样 / 建立合作
               </button>
               <div class="flex items-center gap-1.5">
-                ${s.hasCounter && !s.tenant_id.startsWith('DEMO-') ? `<a href="mall.html?t=${encodeURIComponent(s.tenant_id)}" class="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 text-[11px] font-bold transition">🏛️ 数字专柜</a>` : ''}
+                ${s.hasCounter && !s.tenant_id.startsWith('DEMO-') ? `<a href="mall.html?t=${encodeURIComponent(s.tenant_id)}" class="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 text-[11px] font-bold transition">🏛️ 产区专柜</a>` : ''}
                 <button
                   onclick="window.shareSupplierCard('${escapeAttr(s.tenant_id)}', '${escapeAttr(s.name)}')"
                   class="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-bold transition cursor-pointer"
@@ -123,15 +123,15 @@ window.clearDirectFilter = () => {
 
 window.shareSupplierCard = (tenantId, tenantName) => {
   const shareUrl = `${window.location.origin}/suppliers.html?t=${encodeURIComponent(tenantId)}`;
-  const msg = `推荐源头供货商【${tenantName}】（商号：${tenantId}），营业执照已核验，支持免费预约送样到店：${shareUrl}`;
+  const msg = `推荐源头供货方【${tenantName}】（商号：${tenantId}），营业执照已核验，支持免费预约送样到店、先验货后合作：${shareUrl}`;
   navigator.clipboard.writeText(msg).then(() => {
-    alert(`✅ 已复制【${tenantName}】专属招商名片链接，可直接转发微信好友或门店群！`);
+    alert(`✅ 已复制【${tenantName}】专属合作名片链接，可直接转发微信好友或同业群！`);
   });
 };
 
 window.openInquiryModal = (tenantId, tenantName) => {
   document.getElementById('modal-tenant-id').value = tenantId;
-  document.getElementById('modal-supplier-name').textContent = `目标厂商：${tenantName} (${tenantId})`;
+  document.getElementById('modal-supplier-name').textContent = `目标供货方：${tenantName} (${tenantId})`;
   document.getElementById('inquiry-modal')?.classList.remove('hidden');
 };
 
@@ -186,11 +186,11 @@ function bindEvents() {
         webhookUrl: targetSupplier?.webhook_url || ''
       });
 
-      alert('✅ 合作意向已直达厂商调度中枢！厂商业务员或供货师傅将尽快电话联系您安排上门送样。');
+      alert('✅ 合作意向已直达供货方调度中枢！当值执事或送货师傅将尽快电话联系您安排上门送样。');
       window.closeInquiryModal();
     } catch (err) {
       console.error('提交线索失败:', err);
-      alert('提交遇到网络波动，请稍后重试或直接联系厂商：' + (err.message || ''));
+      alert('提交遇到网络波动，请稍后重试或直接联系供货方：' + (err.message || ''));
     } finally {
       btn.disabled = false;
       btn.textContent = '确认提交合作意向';
@@ -224,7 +224,7 @@ export async function initSuppliersController() {
 
     renderSuppliers(allSuppliers);
   } catch (err) {
-    console.error('加载供货商名录失败:', err);
+    console.error('加载供需合作名录失败:', err);
     allSuppliers = DEMO_SUPPLIERS;
     renderSuppliers(allSuppliers);
   } finally {
