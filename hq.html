@@ -71,6 +71,9 @@
           <button onclick="window.openPushOrderModal()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-xs active:scale-95 transition flex items-center gap-1.5">
             <span>📦</span> 主动配货
           </button>
+          <button onclick="window.openPlanAggregateModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/40 active:scale-95 transition flex items-center gap-1">
+            <span>🌾</span> 产销排产总单
+          </button>
           <button onclick="window.openPromoQrModal()" class="bg-emerald-700/60 hover:bg-emerald-600/70 text-white text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/30 active:scale-95 transition flex items-center gap-1">
             <span>📲</span> 合作名片码
           </button>
@@ -168,7 +171,7 @@
         </div>
         <div class="grid grid-cols-3 gap-2 pt-1 border-t border-stone-100 text-center">
           <div>
-            <span class="text-[10px] text-stone-400 block">新单与求购榜</span>
+            <span class="text-[10px] text-stone-400 block">新单与计划榜</span>
             <b id="flow-info-orders" class="font-mono text-sm font-bold text-stone-900">0 笔</b>
           </div>
           <div>
@@ -205,8 +208,8 @@
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-4">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
-            <h2 class="text-sm font-bold text-stone-900">🤖 平准均输参谋（自动扫描供需缺口、余缺调剂与诚信履约）</h2>
-            <p class="text-[11px] text-stone-400">实时监测库存安全线、门店授信健康度、载具回收与天街求购需求，点击按钮一键落地协同</p>
+            <h2 class="text-sm font-bold text-stone-900">🤖 平准均输参谋（自动扫描供需缺口、用度排产、余缺调剂与诚信履约）</h2>
+            <p class="text-[11px] text-stone-400">实时监测库存安全线、门店真实用度计划、授信健康度与载具回收，点击按钮一键落地协同</p>
           </div>
           <span class="text-[11px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-3 py-1 rounded-xl font-bold">
             合作门店: <b id="stat-active-stores">0 家</b> · 在外载具: <b id="stat-baskets">0 件</b>
@@ -302,11 +305,16 @@
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
             <h2 class="text-sm font-bold text-stone-800">🚚 货畅其流 · 配货制单与统一装车发运（受单 + 主动配货合流）</h2>
-            <p class="text-[11px] text-stone-400">第一步：审核「受单配货」或发起「主动配货」 ➔ 第二步：一键生成「本车装车总拣货单」统一发运</p>
+            <p class="text-[11px] text-stone-400">第一步：审核「受单配货」或按「真实用度计划」排产配发 ➔ 第二步：一键生成「本车装车总拣货单」统一发运</p>
           </div>
-          <button onclick="window.exportOrdersToCSV()" class="bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 flex items-center gap-1">
-            <span>📥</span> 导出往来对账单 (CSV)
-          </button>
+          <div class="flex flex-wrap gap-1.5">
+            <button onclick="window.openPlanAggregateModal()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 flex items-center gap-1">
+              <span>🌾</span> 产销排产汇总单
+            </button>
+            <button onclick="window.exportOrdersToCSV()" class="bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 flex items-center gap-1">
+              <span>📥</span> 导出往来对账单 (CSV)
+            </button>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center bg-stone-50/90 p-3 rounded-2xl border border-stone-200/80 text-xs">
@@ -355,7 +363,7 @@
               全部往来单据
             </button>
           </div>
-          <span class="text-[10px] text-stone-400">受单与主动配货审定后自动扣库并汇入「本车装车总拣货单」</span>
+          <span class="text-[10px] text-stone-400">支持将门店用度计划一键转为「主动配货单」并汇入装车总单</span>
         </div>
 
         <div id="order-fulfillment-list" class="space-y-3 text-xs max-h-[520px] overflow-y-auto no-scrollbar"></div>
@@ -403,6 +411,40 @@
       </div>
     </section>
 
+  </div>
+
+  <!-- =========================================================================
+       新增：产销排产与集采汇总总单弹窗 (按品名聚合各门店真实用度需求)
+       ========================================================================= -->
+  <div id="modal-plan-aggregate" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🌾 源头采收 / 工坊排产汇总总单</h3>
+          <p class="text-[10px] text-stone-400">自动聚合各合作门店提报的「待排产 / 已排产」真实用度计划总量</p>
+        </div>
+        <button onclick="window.closeModal('modal-plan-aggregate')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div class="bg-emerald-50/80 p-3 rounded-2xl border border-emerald-200 flex justify-between items-center">
+        <div>
+          <b class="text-emerald-950 block" id="plan-agg-tenant-name">产销排产汇总单</b>
+          <span class="text-[10px] text-emerald-800 font-mono" id="plan-agg-summary-meta">--</span>
+        </div>
+        <span class="bg-[#1b4332] text-amber-300 px-2.5 py-1 rounded-xl font-mono font-bold" id="plan-agg-count">0 份计划</span>
+      </div>
+
+      <div id="plan-agg-items-container" class="divide-y divide-stone-100 border border-stone-200 rounded-2xl px-3 py-1 bg-white max-h-72 overflow-y-auto no-scrollbar"></div>
+
+      <div class="flex gap-2 pt-2 border-t border-stone-100">
+        <button onclick="window.copyPlanAggregateText()" class="flex-1 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold py-2.5 rounded-xl shadow transition">
+          📋 复制总单发产区/工坊群
+        </button>
+        <button onclick="window.exportPlanAggregateCSV()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">
+          📥 导出排产表 (CSV)
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- 产区工艺与车间实拍配置弹窗 -->
@@ -842,7 +884,7 @@
   <div id="push-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <b class="text-sm font-bold text-stone-900">📦 发起主动配货（代客报单 / 新品铺底）</b>
+        <b class="text-sm font-bold text-stone-900">📦 发起主动配货（代客报单 / 计划转化配发）</b>
         <button onclick="window.closeModal('push-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="space-y-2.5">
