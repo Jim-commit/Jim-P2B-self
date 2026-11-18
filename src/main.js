@@ -1174,7 +1174,7 @@ window.callDriver = () => {
 };
 
 // ==========================================
-// 11. 货品列表渲染（一客一价专属徽章 + 百业自定义属性）
+// 11. 货品列表渲染（兼容百业通用标签 + 历史食品标签）
 // ==========================================
 function renderCategoryTabs() {
   const categories = ['全部', ...new Set(allProducts.map(p => p.category_main).filter(Boolean))];
@@ -1193,10 +1193,18 @@ window.filterCategory = (cat) => {
   renderProductList();
 };
 
+const TAG_ALIAS_MAP = {
+  '🔥 畅销常备': ['🔥 畅销常备', '🔥 街坊抢手'],
+  '💎 高毛利': ['💎 高毛利', '💎 丰厚毛利'],
+  '📦 整件特惠': ['📦 整件特惠'],
+  '🛡️ 质保/效期优': ['🛡️ 质保/效期优', '⏳ 临期捡漏', '❄️ 需冷藏']
+};
+
 window.filterBySpecialTag = (tag) => {
   currentTagFilter = tag;
   document.querySelectorAll('.tag-filter-chip').forEach(b => {
-    b.className = (b.innerText === tag)
+    const isMatched = (tag === '全部' && b.innerText === '全选品类') || b.innerText.startsWith(tag.slice(0, 4));
+    b.className = isMatched
       ? 'tag-filter-chip bg-stone-900 text-white px-2.5 py-0.5 rounded-lg whitespace-nowrap font-bold shadow-sm'
       : 'tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap';
   });
@@ -1206,7 +1214,8 @@ window.filterBySpecialTag = (tag) => {
 function renderProductList() {
   let filtered = (currentCategory === '全部') ? allProducts : allProducts.filter(p => p.category_main === currentCategory);
   if (currentTagFilter !== '全部') {
-    filtered = filtered.filter(p => Array.isArray(p.tags) && p.tags.includes(currentTagFilter));
+    const acceptTags = TAG_ALIAS_MAP[currentTagFilter] || [currentTagFilter];
+    filtered = filtered.filter(p => Array.isArray(p.tags) && p.tags.some(t => acceptTags.includes(t)));
   }
 
   const container = document.getElementById('product-container');
