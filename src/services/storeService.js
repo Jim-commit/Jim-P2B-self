@@ -34,7 +34,7 @@ export const StoreService = {
     }
   },
 
-  // 3. 拉取当前总代的在售货品
+  // 3. 拉取当前总代的在售货品（仅限「实体店」及「实体与电商双轨」货品，恪守各守本分）
   async getProducts(tenantId, visibleIds = null) {
     try {
       const cleanTenant = (tenantId || '').trim().toUpperCase();
@@ -46,7 +46,11 @@ export const StoreService = {
         .order('id', { ascending: false });
 
       if (error) throw error;
-      const list = data || [];
+      let list = (data || []).filter((p) => {
+        if (p.channel_brick_and_mortar !== undefined) return !!p.channel_brick_and_mortar;
+        return ['实体店', '实体与电商双轨', '双轨', 'offline', 'both'].includes(p.sales_channel_type) || !p.sales_channel_type;
+      });
+
       if (visibleIds && Array.isArray(visibleIds) && visibleIds.length > 0) {
         return list.filter(p => visibleIds.includes(p.id));
       }
@@ -93,6 +97,7 @@ export const StoreService = {
         .select('id, order_no, items, items_return, items_exchange, created_at')
         .eq('store_id', storeId)
         .eq('tenant_id', cleanTenant)
+        .neq('order_source', 'online_mall')
         .neq('order_status', 'cancelled');
 
       if (error || !orders) return { maxReturnable: 0, totalOrdered: 0, totalReturned: 0, lastPrice: 0, lastOrderNo: '' };
@@ -210,10 +215,14 @@ export const StoreService = {
     }
   },
 
-  // 7. 查验历史报单记录
+  // 7. 查验本店进货历史报单记录（不含散客自提单）
   async getMyOrders(storeId, tenantId) {
     try {
-      let query = supabase.from('store_order').select('*').eq('store_id', storeId);
+      let query = supabase
+        .from('store_order')
+        .select('*')
+        .eq('store_id', storeId)
+        .neq('order_source', 'online_mall');
       if (tenantId) {
         query = query.eq('tenant_id', tenantId.trim().toUpperCase());
       }
@@ -222,6 +231,25 @@ export const StoreService = {
       return data || [];
     } catch (err) {
       console.error('[StoreService] getMyOrders 失败:', err);
+      return [];
+    }
+  },
+
+  // 7.5 查验街坊在百工天街下单并指定「到本店自提」的结缘订单
+  async getStoreMallPickupOrders(storeId) {
+    try {
+      if (!storeId) return [];
+      const { data, error } = await supabase
+        .from('store_order')
+        .select('*')
+        .eq('store_id', storeId)
+        .eq('order_source', 'online_mall')
+        .order('id', { ascending: false })
+        .limit(15);
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('[StoreService] getStoreMallPickupOrders 失败:', err);
       return [];
     }
   },
