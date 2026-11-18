@@ -149,13 +149,23 @@ function setupBrandStoreMode(tenantId) {
   document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '源头工坊 · 匠心正品 · 支持大宗与定制接单';
   document.getElementById('hero-tenant-id').innerText = tenant ? tenant.tenant_id : tenantId;
 
-  // 填充可折叠「产区与匠心工艺档案」
   document.getElementById('craft-type-text').innerText =
     tenant?.business_type === 'factory' ? '源头生产制造工坊' : '区域授权总代专柜';
   document.getElementById('craft-contact-text').innerText = tenant?.contact_person || '工坊当值执事';
   document.getElementById('craft-story-text').innerText =
     tenant?.brand_origin_desc ||
     '恪守“物勒工名、以考其诚”古训，全系直供货品实行全网统一零售正价，优先通过结缘实体门店惠及邻里。';
+
+  const mediaBtn = document.getElementById('craft-media-link');
+  const mediaUrl = tenant?.video_url || tenant?.media_url || '';
+  if (mediaBtn) {
+    if (mediaUrl) {
+      mediaBtn.href = mediaUrl;
+      mediaBtn.classList.remove('hidden');
+    } else {
+      mediaBtn.classList.add('hidden');
+    }
+  }
 
   document.getElementById('brand-hero-section')?.classList.remove('hidden');
 }
@@ -168,9 +178,6 @@ window.toggleCraftArchive = function () {
   if (arrow) arrow.innerText = isHidden ? '▼' : '▲';
 };
 
-// =========================================================================
-// 数字专柜大厅
-// =========================================================================
 window.onSearchCounterKeyword = function (val) {
   counterSearchKeyword = (val || '').trim().toLowerCase();
   renderDigitalCountersGrid();
@@ -541,9 +548,6 @@ window.openProductDetail = function (prodId) {
   window.openModal('modal-product-detail');
 };
 
-// =========================================================================
-// 街坊验真口碑晒单墙（公平公开透明的真实收货口碑）
-// =========================================================================
 function renderVerifiedReviewsWall() {
   const section = document.getElementById('verified-reviews-section');
   const listEl = document.getElementById('verified-reviews-list');
@@ -619,9 +623,6 @@ window.submitOrderReview = async function () {
   }
 };
 
-// =========================================================================
-// C2B 需求发榜、跟单凑量、认可报价与撤销闭环
-// =========================================================================
 async function loadAndRenderC2BDemands() {
   const listEl = document.getElementById('c2b-demands-list');
   if (!listEl) return;
@@ -650,7 +651,6 @@ function renderC2BDemandsList() {
   const listEl = document.getElementById('c2b-demands-list');
   if (!listEl) return;
 
-  // 消除重复按钮：空状态只做纯净文字引导，发榜动作统一由底部悬浮主按钮触发
   if (allDemands.length === 0) {
     listEl.innerHTML = `
       <div class="py-12 text-center bg-white rounded-3xl border border-stone-200 p-6 space-y-1.5">
@@ -868,9 +868,6 @@ window.cancelMyC2BDemand = async function (demandId) {
   await window.searchConsumerOrders();
 };
 
-// =========================================================================
-// 购物车与一键按原单复购
-// =========================================================================
 function persistCart() {
   try {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
@@ -1024,9 +1021,6 @@ window.clearCart = function () {
   renderCartDrawer();
 };
 
-// =========================================================================
-// 结账中心：护店润利归属透明公示 + 邻里拼单随车直达进度
-// =========================================================================
 async function updateCheckoutProfitAndGroupNotice() {
   const noticeEl = document.getElementById('checkout-profit-notice');
   const groupBar = document.getElementById('checkout-group-buy-bar');
@@ -1044,7 +1038,6 @@ async function updateCheckoutProfitAndGroupNotice() {
     noticeEl.innerText = '📜 商道公示：全网统一零售正价，不破价、不挤兑周边实体小店';
   }
 
-  // 邻里拼单满发随车直达进度条
   if (groupBar && mode === 'pickup' && activeStoreId) {
     const existingQty = await MallService.fetchStoreGroupBuyCount(activeStoreId);
     const { totalQty } = calcCartSummary();
@@ -1258,9 +1251,6 @@ window.submitConsumerOrder = async function () {
   }
 };
 
-// =========================================================================
-// 统一查询中心：支持「一键再来一单」与「验真晒单」
-// =========================================================================
 window.openMyOrdersModal = function () {
   try {
     const saved = JSON.parse(localStorage.getItem(LAST_CUST_KEY) || 'null');
