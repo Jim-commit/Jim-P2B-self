@@ -32,6 +32,7 @@ export const MallService = {
   },
 
   async submitOnlineOrder(orderPayload) {
-    return await supabase.from('store_order').insert([orderPayload]);
+    const rows = Array.isArray(orderPayload) ? orderPayload : [orderPayload];
+    return await supabase.from('store_order').insert(rows);
   }
 };
