@@ -85,7 +85,34 @@ async function notifyVendorWebhook(tenantId, messageText) {
 }
 
 // ==========================================
-// 运营工具 2：老客户带新客户裂变弹窗
+// 运营工具 2：本店云端扩充货架码（百工天街结缘润利）
+// ==========================================
+window.openCloudShelfModal = function () {
+  window.closeAllMenus();
+  const storeName = currentStore?.name || (document.getElementById('store-title')?.innerText || '').trim() || '厚德便民老店';
+  const storeIdParam = currentStore?.id ? `?ref=${encodeURIComponent(currentStore.id)}` : '';
+  const cloudShelfUrl = `${window.location.origin}/mall.html${storeIdParam}`;
+
+  safeSetText('cloud-shelf-store-title', `${storeName} · 云端扩充货架`);
+  safeSetText('cloud-shelf-link-text', cloudShelfUrl);
+  const qrImg = document.getElementById('cloud-shelf-qr-img');
+  if (qrImg) {
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(cloudShelfUrl)}`;
+  }
+  window.openModal('cloud-shelf-modal');
+};
+
+window.copyCloudShelfLink = function () {
+  const storeName = currentStore?.name || (document.getElementById('store-title')?.innerText || '').trim() || '厚德便民老店';
+  const link = document.getElementById('cloud-shelf-link-text')?.innerText || `${window.location.origin}/mall.html`;
+  const shareText = `【${storeName} · 云端扩充货架】店里摆不下的源头整箱礼盒、特产与按需定制品，扫码直达源头工坊选货，支持送到本店自提验货或工坊直发：${link}`;
+  navigator.clipboard.writeText(shareText).then(() => {
+    alert('✅ 本店云端扩充货架分享文案与链接已复制！街坊扫码下单，零售润利全额归属本店。');
+  });
+};
+
+// ==========================================
+// 运营工具 3：老客户带新客户裂变弹窗
 // ==========================================
 window.openReferralModal = function() {
   window.closeAllMenus();
@@ -1254,13 +1281,46 @@ function renderProductList() {
 }
 
 // ==========================================
-// 12. 单据存根与收据查验
+// 12. 单据存根、街坊到店自提待核销单与收据查验
 // ==========================================
 window.openReceiptsModal = async () => {
   if (!currentStore) return alert('当前供货商未绑定有效小店档案！');
   window.openModal('receipts-modal');
 
-  const myOrders = await StoreService.getMyOrders(currentStore.id, currentAgent);
+  const [myOrders, myReceipts, pickupOrders] = await Promise.all([
+    StoreService.getMyOrders(currentStore.id, currentAgent),
+    StoreService.getMyReceipts(currentStore.id, currentAgent),
+    StoreService.getStoreMallPickupOrders(currentStore.id)
+  ]);
+
+  const pickupBox = document.getElementById('mall-pickup-orders-box');
+  const pickupListEl = document.getElementById('mall-pickup-orders-list');
+  if (pickupBox && pickupListEl) {
+    if (pickupOrders.length > 0) {
+      pickupBox.classList.remove('hidden');
+      pickupListEl.innerHTML = pickupOrders.map(po => {
+        const items = Array.isArray(po.items) ? po.items : [];
+        const itemsStr = items.map(it => `${it.name} x${it.qty}${it.measure_unit || '件'}`).join('、');
+        const isDelivered = po.delivery_status === 'delivered';
+        return `
+          <div class="p-2.5 bg-amber-50/80 border border-amber-300 rounded-xl space-y-1 text-xs">
+            <div class="flex justify-between items-center font-bold">
+              <span class="font-mono text-stone-900">#${po.order_no || po.id}</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded ${isDelivered ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-200 text-amber-950'}">
+                ${isDelivered ? '✅ 随车已到店/已自提' : '🚚 待随车捎带到店'}
+              </span>
+            </div>
+            <div class="text-[11px] text-stone-800 font-bold">货品：${itemsStr}</div>
+            <div class="text-[10px] text-stone-600">${po.note || ''}</div>
+            <div class="text-[10px] text-emerald-900 font-bold">🤝 结缘润利归属本店 · 实付 ¥${parseFloat(po.total_amount || 0).toFixed(2)}</div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      pickupBox.classList.add('hidden');
+    }
+  }
+
   const ordersListEl = document.getElementById('my-orders-list');
   if (ordersListEl) {
     ordersListEl.innerHTML = myOrders.map(o => {
@@ -1314,7 +1374,6 @@ window.openReceiptsModal = async () => {
     }).join('') || '<div class="text-stone-400 text-center py-4">暂无单据存根</div>';
   }
 
-  const myReceipts = await StoreService.getMyReceipts(currentStore.id, currentAgent);
   const receiptsListEl = document.getElementById('my-receipts-list');
   if (receiptsListEl) {
     receiptsListEl.innerHTML = myReceipts.map(r => `
