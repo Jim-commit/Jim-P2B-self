@@ -48,6 +48,27 @@ export const MallService = {
     return data || [];
   },
 
+  // 统计指定合作实体门店当前的待配送拼单聚量（邻里拼单随车直达进度）
+  async fetchStoreGroupBuyCount(storeId) {
+    if (!storeId) return 0;
+    const { data } = await supabase
+      .from('store_order')
+      .select('items')
+      .eq('store_id', parseInt(storeId))
+      .eq('order_source', 'online_mall')
+      .neq('delivery_status', 'delivered')
+      .limit(50);
+
+    let totalQty = 0;
+    (data || []).forEach((row) => {
+      const items = Array.isArray(row.items) ? row.items : [];
+      items.forEach((it) => {
+        totalQty += parseInt(it.qty || 1);
+      });
+    });
+    return totalQty;
+  },
+
   async submitOnlineOrder(orderPayloads, cartItems) {
     const rows = Array.isArray(orderPayloads) ? orderPayloads : [orderPayloads];
     const { error } = await supabase.from('store_order').insert(rows);
@@ -99,6 +120,26 @@ export const MallService = {
       .eq('id', demandId);
   },
 
+  // 读取全网/指定工坊的街坊验真晒单口碑
+  async fetchVerifiedReviews(tenantId = null) {
+    let query = supabase
+      .from('platform_suggestion_board')
+      .select('*')
+      .eq('proposer_type', 'mall_review')
+      .order('id', { ascending: false })
+      .limit(30);
+
+    if (tenantId) {
+      query = query.ilike('category', `%${tenantId}%`);
+    }
+    const { data } = await query;
+    return data || [];
+  },
+
+  async submitVerifiedReview(payload) {
+    return await supabase.from('platform_suggestion_board').insert([payload]);
+  },
+
   async queryOrdersByPhone(phone) {
     const cleanPhone = (phone || '').trim();
     if (!cleanPhone) return { orders: [], demands: [] };
@@ -124,9 +165,5 @@ export const MallService = {
       orders: ordersRes.data || [],
       demands: demandsRes.data || []
     };
-  },
-
-  async submitMallSuggestion(payload) {
-    return await supabase.from('platform_suggestion_board').insert([payload]);
   }
 };
