@@ -65,8 +65,36 @@
     </div>
   </header>
 
+  <!-- 生态快捷入口导航条（门店进货 / 招商名录 / 厂家入驻 / 客服建言） -->
+  <nav class="px-3 pt-2.5 grid grid-cols-4 gap-1.5 text-[11px] font-bold text-center">
+    <a href="store.html" class="bg-white border border-stone-200/90 py-2 rounded-2xl text-stone-700 hover:border-emerald-700 shadow-2xs transition">
+      🏪 门店进货
+    </a>
+    <a href="suppliers.html" class="bg-white border border-stone-200/90 py-2 rounded-2xl text-stone-700 hover:border-emerald-700 shadow-2xs transition">
+      🏭 招商名录
+    </a>
+    <a href="join.html" class="bg-white border border-stone-200/90 py-2 rounded-2xl text-stone-700 hover:border-emerald-700 shadow-2xs transition">
+      📜 厂家入驻
+    </a>
+    <button onclick="window.openMallFeedbackModal()" class="bg-white border border-stone-200/90 py-2 rounded-2xl text-emerald-900 hover:border-emerald-700 shadow-2xs transition">
+      💬 咨询建言
+    </button>
+  </nav>
+
+  <!-- 天街公域促销横幅 -->
+  <section id="promo-banner-section" class="px-3 pt-2.5">
+    <div class="bg-gradient-to-r from-[#1b4332] via-emerald-900 to-stone-900 text-white p-3.5 rounded-3xl shadow-sm flex items-center justify-between gap-2">
+      <div>
+        <span class="text-[9px] bg-amber-400 text-stone-950 font-bold px-2 py-0.5 rounded-full font-mono">百工特惠 · 源头直供</span>
+        <h2 class="text-xs font-bold text-amber-300 mt-1">一件代发全国包邮 · 满5件自动享阶梯批价</h2>
+        <p class="text-[10px] text-emerald-100/80 mt-0.5">支持快递到家或就近合作实体门店自提验货</p>
+      </div>
+      <span class="text-2xl">🎁</span>
+    </div>
+  </section>
+
   <!-- 态型 A：厂商私域专卖店品牌门面 -->
-  <section id="brand-hero-section" class="hidden px-4 pt-4">
+  <section id="brand-hero-section" class="hidden px-3 pt-3">
     <div class="bg-gradient-to-br from-stone-900 to-[#1b4332] text-white p-4 rounded-3xl shadow-md border border-stone-800 space-y-2">
       <div class="flex justify-between items-start">
         <div>
@@ -86,7 +114,7 @@
   </section>
 
   <!-- 态型 B：天街公域厂商快捷滑轨 -->
-  <section id="tianjie-brand-bar" class="px-3 pt-3 overflow-x-auto no-scrollbar flex gap-1.5 items-center">
+  <section id="tianjie-brand-bar" class="px-3 pt-2.5 overflow-x-auto no-scrollbar flex gap-1.5 items-center">
     <button data-brand="all" onclick="window.filterMallBrand('all')" class="mall-brand-chip bg-[#1b4332] text-white border border-[#1b4332] px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition">
       全部工坊
     </button>
@@ -143,6 +171,7 @@
         </div>
         <b id="detail-prod-price" class="text-lg font-bold font-mono text-emerald-900">¥0.00</b>
       </div>
+      <div id="detail-tier-prices" class="hidden bg-amber-50/80 border border-amber-200 p-2.5 rounded-2xl text-[11px]"></div>
       <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200 space-y-1 text-[11px]">
         <div class="flex justify-between"><span class="text-stone-400">出品工坊：</span><b id="detail-prod-tenant">--</b></div>
         <div class="flex justify-between"><span class="text-stone-400">源头产地：</span><b id="detail-prod-origin">--</b></div>
@@ -253,15 +282,23 @@
     </div>
   </div>
 
-  <!-- 终端消费者下单结算弹窗 (一件代发) -->
+  <!-- 终端消费者下单结算弹窗 (一件代发 / 门店自提) -->
   <div id="modal-checkout" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">📦 一件代发 · 结算下单</h3>
+        <h3 class="font-bold text-sm text-stone-900">📦 结缘下单 · 结算中心</h3>
         <button onclick="window.closeModal('modal-checkout')" class="text-stone-400 text-lg">✕</button>
       </div>
 
       <div class="space-y-2.5">
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">履约收货方式：</label>
+          <select id="order-delivery-mode" onchange="window.onDeliveryModeChange(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold text-emerald-950">
+            <option value="express">🚚 厂家直发快递包邮（一件代发）</option>
+            <option value="pickup">🏪 就近合作实体门店自提（免邮验货）</option>
+          </select>
+        </div>
+
         <div>
           <label class="block text-stone-600 font-bold mb-1">收件人姓名 *：</label>
           <input type="text" id="order-cust-name" placeholder="如：张先生" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold">
@@ -270,18 +307,28 @@
           <label class="block text-stone-600 font-bold mb-1">收件人手机号码 *：</label>
           <input type="tel" id="order-cust-phone" maxlength="11" placeholder="11位手机号" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono outline-none font-bold">
         </div>
-        <div>
+
+        <div id="checkout-express-box">
           <label class="block text-stone-600 font-bold mb-1">快递配送详细地址 *：</label>
           <textarea id="order-cust-addr" rows="2" placeholder="详细收件街道地址" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none"></textarea>
         </div>
+
+        <div id="checkout-pickup-box" class="hidden">
+          <label class="block text-stone-600 font-bold mb-1">选择自提实体门店 *：</label>
+          <select id="order-pickup-store" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold"></select>
+        </div>
+
         <div>
           <label class="block text-stone-600 font-bold mb-1">备注叮咛 (可选)：</label>
           <input type="text" id="order-cust-note" placeholder="如：送前电话联系" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
         </div>
 
-        <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200 flex justify-between items-center font-mono">
-          <span class="text-stone-500">应付金银净款：</span>
-          <b id="checkout-amount-display" class="text-base font-bold text-emerald-950">¥0.00</b>
+        <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200 space-y-1 font-mono">
+          <div class="flex justify-between items-center">
+            <span class="text-stone-500">应付金银净款：</span>
+            <b id="checkout-amount-display" class="text-base font-bold text-emerald-950">¥0.00</b>
+          </div>
+          <div id="checkout-saved-tip" class="hidden text-right text-[10px] text-amber-700 font-bold"></div>
         </div>
       </div>
 
@@ -309,6 +356,21 @@
       <div id="my-orders-result-list" class="space-y-2">
         <div class="py-6 text-center text-stone-400">输入收件人手机号查询发货与出库状态</div>
       </div>
+    </div>
+  </div>
+
+  <!-- 咨询与商道建言弹窗 -->
+  <div id="modal-mall-feedback" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">💬 集市商品咨询与商道建言</h3>
+        <button onclick="window.closeModal('modal-mall-feedback')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <input type="text" id="mall-feedback-contact" placeholder="您的称呼或联系方式（选填）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+      <textarea id="mall-feedback-text" rows="3" placeholder="写下您想咨询的商品问题、大宗团购需求或改善建议..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none"></textarea>
+      <button onclick="window.submitMallFeedback()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+        呈递执事回复
+      </button>
     </div>
   </div>
 
