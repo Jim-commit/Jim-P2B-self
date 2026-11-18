@@ -1,92 +1,116 @@
 export const ShopTypeManager = {
-  // 兼容历史命名与百工百业全行业图标映射
-  icons: {
-    '社区便利': '🏪',
-    '社区超市': '🏪',
-    '便利小铺': '🏮',
-    '餐饮饭庄': '🍳',
-    '餐饮饭店': '🍳',
-    '精品商超': '🏬',
-    '批发副食': '📦',
-    '五金机电': '🛠️',
-    '汽修配件': '🚗',
-    '农资农具': '🌾',
-    '医药日化': '💊',
-    '文体劳保': '📚'
+  presets: {
+    '社区便利': {
+      icon: '🏪',
+      label: '社区便利 / 烟酒百货',
+      desc: '日常周转频次高，整箱按需直配，周转筐随车循环',
+      voice_prompts: [
+        '矿泉水和常备饮料各补 10 件，周转筐空箱已理好随车带回',
+        '生鲜牛奶和面包按本周日常用度配货，临期品请顺路调剂',
+        '米面粮油和日化纸品各来 5 件，按协议工价记账'
+      ],
+      highlight_tags: ['🔥 门店常备', '🌾 合作社直供', '🔄 余缺平价调剂']
+    },
+    '餐饮饭庄': {
+      icon: '🍳',
+      label: '餐饮饭庄 / 食堂后厨',
+      desc: '大桶粮油调味、冻品干货按需直供，破损包退包换',
+      voice_prompts: [
+        '20升大桶压榨油和酱油陈醋各补 5 桶，明日上午餐前送到',
+        '合作社直供大米 10 袋、杂粮 5 袋，按月度期结签收',
+        '后厨清洗剂和一次性餐盒各补 3 箱，破损包退包换'
+      ],
+      highlight_tags: ['🌾 合作社直供', '💎 阳光工价·诚意价', '🔥 门店常备']
+    },
+    '精品商超': {
+      icon: '🏬',
+      label: '精品商超 / 综合卖场',
+      desc: '全品类陈列，支持云端扩充货架与产区特产专区直供',
+      voice_prompts: [
+        '当季礼盒装山野特产和奶制品各配 20 件，准备周末便民展销',
+        '洗护日化系列按抱团集采惠价补货 15 箱',
+        '本周到货有 2 件包装挤压，已拍照留证申请退换冲抵'
+      ],
+      highlight_tags: ['🌾 合作社直供', '🤝 抱团集采惠', '💎 阳光工价·诚意价']
+    },
+    '五金机电': {
+      icon: '🛠️',
+      label: '五金机电 / 建材水暖',
+      desc: '按包/盒/米/卷精细计量，规格严格对应，余缺可同城互调',
+      voice_prompts: [
+        '304不锈钢膨胀螺丝和电工胶带各补 20 盒，按国标规格配货',
+        'PPR水管配件和角阀按工地用度单补齐，送货师傅直接送工地',
+        '有一批多余规格的开关面板，挂入同城余缺互调池转给同行'
+      ],
+      highlight_tags: ['💎 阳光工价·诚意价', '🔄 余缺平价调剂', '🤝 抱团集采惠']
+    },
+    '汽修配件': {
+      icon: '🚗',
+      label: '汽修保养 / 配件工坊',
+      desc: '原厂件号严格溯源，常用机油滤芯按需快配，急件优先调度',
+      voice_prompts: [
+        '全合成机油 4L 装补 6 箱，常用机滤空滤按单配齐',
+        '防冻液和玻璃水按入冬用度计划各配 10 件',
+        '有 2 桶未拆封错发型号机油，随车带回对调标准型号'
+      ],
+      highlight_tags: ['💎 阳光工价·诚意价', '🔥 门店常备', '🔄 余缺平价调剂']
+    },
+    '农资农具': {
+      icon: '🌾',
+      label: '农资农具 / 种子化肥',
+      desc: '不误农时、整车直达田头，支持村社合作社统购与秋收对冲',
+      voice_prompts: [
+        '复合肥和有机肥按春耕统购计划配 2 吨，直接送到村社仓库',
+        '喷雾器配件和农用地膜各补 10 件，不误农时请优先排车',
+        '本批农资款按协议用合作社当季杂粮货款直接对冲平账'
+      ],
+      highlight_tags: ['🌾 合作社直供', '🤝 抱团集采惠', '💎 阳光工价·诚意价']
+    },
+    '医药日化': {
+      icon: '💊',
+      label: '医药保健 / 日化洗护',
+      desc: '批次效期严格溯源，阴凉干燥规范储运，临期提前预警调剂',
+      voice_prompts: [
+        '常备消杀用品和医用护理包各补 10 箱，请附带出厂质检批次单',
+        '家庭洗护和母婴纸品按本周门店预订量配齐',
+        '近期效期较近的 3 箱洗护品申请平价调剂或退回总仓'
+      ],
+      highlight_tags: ['💎 阳光工价·诚意价', '❄️ 需冷藏保鲜', '🔄 余缺平价调剂']
+    },
+    '文体劳保': {
+      icon: '📚',
+      label: '文体办公 / 劳保用品',
+      desc: '工厂劳保集采、学校文具常备，按箱按套清晰核算',
+      voice_prompts: [
+        '加厚棉纱手套、安全帽和劳保鞋按工厂集采单配齐 20 套',
+        'A4打印纸和日常办公耗材各补 10 箱，按月结签回单',
+        '开学季常备文具套装补货 15 箱，直接送到校门口合作门店'
+      ],
+      highlight_tags: ['🤝 抱团集采惠', '🔥 门店常备', '💎 阳光工价·诚意价']
+    }
   },
 
-  // 预设百工百业常见行当清单（供门店端与巡街拓客端统一调用）
-  presets: [
-    { key: '社区便利', label: '社区便利 / 烟酒百货', icon: '🏪', desc: '整箱快走 · 邻里常顾' },
-    { key: '餐饮饭庄', label: '餐饮饭庄 / 食堂后厨', icon: '🍳', desc: '良材优选 · 大宗特价' },
-    { key: '精品商超', label: '精品商超 / 综合卖场', icon: '🏬', desc: '名品保真 · 丰俭由人' },
-    { key: '五金机电', label: '五金机电 / 建材水暖', icon: '🛠️', desc: '规格齐全 · 工地急配' },
-    { key: '汽修配件', label: '汽修保养 / 配件工坊', icon: '🚗', desc: '原厂适配 · 随叫随到' },
-    { key: '农资农具', label: '农资农具 / 种子化肥', icon: '🌾', desc: '不误农时 · 整车直达' },
-    { key: '医药日化', label: '医药保健 / 日化洗护', icon: '💊', desc: '批号可溯 · 效期严格' },
-    { key: '文体劳保', label: '文体办公 / 劳保用品', icon: '📚', desc: '常备库存 · 整件批发' }
-  ],
-
-  // 获取指定行当的完整展示信息（含自定义行当兜底）
-  getPresetInfo(shopType) {
-    const found = this.presets.find(p => p.key === shopType);
-    if (found) return found;
+  getPreset(categoryName) {
+    if (!categoryName) return this.presets['社区便利'];
+    if (this.presets[categoryName]) return this.presets[categoryName];
+    const matchedKey = Object.keys(this.presets).find(
+      (k) => categoryName.includes(k) || k.includes(categoryName)
+    );
+    if (matchedKey) return this.presets[matchedKey];
     return {
-      key: shopType || '社区便利',
-      label: shopType || '社区便利',
-      icon: this.icons[shopType] || '🏷️',
-      desc: '百工百业 · 诚信采销'
+      icon: '🏷️',
+      label: categoryName,
+      desc: '百工百业平等互联，按需直配，诚信履约',
+      voice_prompts: [
+        '按本周真实用度清单配货，请核对好数量与规格',
+        '有富余库存可挂入同城余缺互调池，物尽其用',
+        '货到验收无误后电子签名确认，账目清白可查'
+      ],
+      highlight_tags: ['🌾 合作社直供', '💎 阳光工价·诚意价', '🔄 余缺平价调剂']
     };
   },
 
-  // 根据店招名称自动识别所属行当
-  autoDetect(storeName) {
-    if (!storeName) return '社区便利';
-    const name = storeName.toLowerCase();
-    if (/五金|机电|建材|水暖|电料|管业|涂料|门窗|灯饰/.test(name)) return '五金机电';
-    if (/汽修|汽配|保养|轮胎|机油|车行|维修|洗车/.test(name)) return '汽修配件';
-    if (/农资|种子|化肥|农药|农机|饲料|兽药|果蔬基地/.test(name)) return '农资农具';
-    if (/药店|医药|保健|日化|洗护|美妆|母婴|养生/.test(name)) return '医药日化';
-    if (/文体|办公|文具|劳保|印刷|包装|耗材/.test(name)) return '文体劳保';
-    if (/饭店|酒店|酒家|菜馆|大排档|烧烤|火锅|餐厅|后厨|食府|小吃|面馆|食堂/.test(name)) return '餐饮饭庄';
-    if (/精品|生鲜商超|百货大楼|购物中心|生活超市|大卖场/.test(name)) return '精品商超';
-    if (/批发|副食|商行|粮油门市/.test(name)) return '批发副食';
-    return '社区便利';
-  },
-
-  // 智能匹配各行当最实用的随车捎话口信
-  getDynamicNotes(shopType) {
-    if (shopType === '餐饮饭庄' || shopType === '餐饮饭店') {
-      return ['赶午市早点送', '直接抬进后厨', '货交大厨验收', '随车带好收条'];
-    }
-    if (shopType === '五金机电') {
-      return ['卸到卷帘门内', '急用件优先装车', '带齐随货明细单', '注意防潮勿淋雨'];
-    }
-    if (shopType === '汽修配件') {
-      return ['急修件请优先送', '有旧件/空油桶带回', '核对型号与规格', '放维修工位旁'];
-    }
-    if (shopType === '农资农具') {
-      return ['直接送到田头/仓库', '农忙急用请准点', '核对批次与数量', '大件需帮搭把手'];
-    }
-    if (shopType === '医药日化') {
-      return ['查验生产批号效期', '外箱勿挤压变形', '防晒阴凉处交接', '随货附质检单据'];
-    }
-    if (shopType === '文体劳保') {
-      return ['整件码放库房', '按清单逐箱点验', '需开具正规凭证', '送前提前10分钟电联'];
-    }
-    if (shopType === '社区便利' || shopType === '社区超市' || shopType === '便利小铺') {
-      return ['送货避开早高峰', '帮忙抬进地库', '备点零钱找零', '随车带6个空筐'];
-    }
-    // 自定义业态通用百业实用口信
-    return ['送前提前电联', '按清单逐件点验', '包装完好勿挤压', '备好随车交接单'];
-  },
-
-  // 自动适配大宗/协议批发价与标准供货价
-  getEffectivePrice(prod, shopType) {
-    const bulkTypes = ['餐饮饭庄', '餐饮饭店', '精品商超', '批发副食', '五金机电', '农资农具'];
-    if (bulkTypes.includes(shopType) && prod.tier_2_price && parseFloat(prod.tier_2_price) > 0) {
-      return parseFloat(prod.tier_2_price);
-    }
-    return parseFloat(prod.tier_1_price || 0);
+  getAllPresetKeys() {
+    return Object.keys(this.presets);
   }
 };
