@@ -176,8 +176,9 @@
       <div id="query-result-container" class="space-y-3"></div>
     </section>
 
-    <div class="text-center pt-2 border-t border-stone-800">
-      <a href="platform.html" class="text-stone-500 hover:text-stone-300 text-[11px] underline">返回平台运营总控中枢</a>
+    <div class="text-center pt-2 border-t border-stone-800 flex justify-center gap-4 text-[11px]">
+      <a href="hq.html" class="text-amber-400 hover:text-amber-300 font-bold underline">前往厂商调度中枢登录</a>
+      <a href="mall.html" class="text-stone-400 hover:text-stone-200 underline">逛逛百工天街集市</a>
     </div>
 
   </div>
@@ -555,7 +556,7 @@
             contact_person: contactPerson,
             contact_phone: contactPhone,
             business_type: businessType,
-            service_mode: 'both',
+            service_mode: '实体与电商双轨',
             application_status: appStatus,
             ai_audit_score: auditScore,
             review_note: verifiedAuditSummary,
@@ -574,7 +575,7 @@
             company_name: companyName,
             credit_code: creditCode,
             business_type: businessType,
-            service_mode: 'both',
+            service_mode: '实体与电商双轨',
             contact_person: contactPerson,
             contact_name: contactPerson,
             phone: contactPhone,
@@ -685,6 +686,15 @@
               <p class="text-[11px] text-emerald-200/80">
                 🎉 核验成功！您可凭商号代号【<b>${app.tenant_id}</b>】与安家密钥【<b>${codeLast6}</b>】登录厂家调度台；下游门店直接输入您的商号代号【<b>${app.tenant_id}</b>】即可绑定供货。
               </p>
+
+              <div class="pt-1 flex justify-end gap-2">
+                <a href="mall.html?t=${encodeURIComponent(app.tenant_id)}" class="bg-stone-800 hover:bg-stone-700 text-amber-300 font-bold px-3.5 py-2 rounded-xl transition">
+                  🏛️ 查看我的数字专柜
+                </a>
+                <a href="hq.html" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-4 py-2 rounded-xl shadow transition">
+                  🚀 立即登录厂家调度台 ➔
+                </a>
+              </div>
             </div>
           `;
         } else if (isRejected) {
