@@ -8,7 +8,8 @@ function isDirectoryLead(o) {
     o?.order_source === 'b2b_directory_lead' ||
     String(o?.order_no || '').startsWith('LEAD-') ||
     String(o?.note || '').includes('[新店招商线索]') ||
-    String(o?.note || '').includes('[新店招商線索]')
+    String(o?.note || '').includes('[新店招商線索]') ||
+    String(o?.note || '').includes('[新店合作意向]')
   );
 }
 
@@ -26,8 +27,8 @@ function isBrickMortarAllowed(p) {
 
 let currentAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
 let currentRoleCode = sessionStorage.getItem('hq_sub_role_' + currentAgent) || 'owner';
-let currentOperatorName = sessionStorage.getItem('hq_sub_name_' + currentAgent) || '大當家主賬號';
-let carrierLabel = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周轉載具';
+let currentOperatorName = sessionStorage.getItem('hq_sub_name_' + currentAgent) || '大当家主账号';
+let carrierLabel = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周转载具';
 let currentStoreForVis = null;
 let currentTenantData = null;
 let allProducts = [];
@@ -50,7 +51,7 @@ window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
 
 // =========================================================================
-// 0. 專櫃門面與車間實拍配置（打通百工天街「產區工藝檔案 + 實拍視頻」）
+// 0. 产区工艺档案与车间实拍配置（打通百工天街「产区工艺档案 + 实拍视频」）
 // =========================================================================
 window.openCounterProfileModal = function () {
   document.getElementById('counter-origin-desc-input').value = currentTenantData?.brand_origin_desc || '';
@@ -68,18 +69,18 @@ window.saveCounterProfile = async function () {
       currentTenantData.brand_origin_desc = brand_origin_desc;
       currentTenantData.media_url = media_url;
     }
-    alert('✅ 數字專櫃工藝檔案與車間實拍鏈接已同步至百工天街！');
+    alert('✅ 产区水土与车间实拍档案已同步至百工天街！');
     window.closeModal('modal-counter-profile');
   } catch (err) {
     alert(
-      '⚠️ 儲存失敗（若提示缺少 media_url 字段，請先在 Supabase SQL 執行：ALTER TABLE platform_tenant ADD COLUMN IF NOT EXISTS media_url TEXT;）：' +
+      '⚠️ 储存失败（若提示缺少 media_url 字段，请先在 Supabase SQL 執行：ALTER TABLE platform_tenant ADD COLUMN IF NOT EXISTS media_url TEXT;）：' +
         err.message
     );
   }
 };
 
 // =========================================================================
-// 1. 群機器人 Webhook 自動報單提醒配置
+// 1. 群机器人 Webhook 自动报单提醒配置
 // =========================================================================
 window.openWebhookModal = function () {
   document.getElementById('webhook-url-input').value = currentTenantData?.webhook_url || '';
@@ -92,22 +93,22 @@ window.saveWebhookUrl = async function () {
     await HQService.updateTenantWithVerify(currentAgent, { webhook_url: url });
     if (currentTenantData) currentTenantData.webhook_url = url;
     updateWebhookStatusBadge(url);
-    alert(url ? '✅ 報單群機器人已真正寫入雲端並啟用！' : '已關閉報單群機器人通知。');
+    alert(url ? '✅ 报单群机器人已写入云端并启用！' : '已关闭报单群机器人通知。');
     window.closeModal('modal-webhook-setup');
   } catch (err) {
-    alert('⚠️ 儲存失敗：' + err.message);
+    alert('⚠️ 储存失败：' + err.message);
   }
 };
 
 window.testWebhookPing = async function () {
   const url = document.getElementById('webhook-url-input').value.trim();
-  if (!url) return alert('請先粘貼群機器人 Webhook 地址！');
-  const msg = `🔔【${currentTenantData?.company_name || currentAgent}】報單提醒測試成功！後續合作門店下新單或新店預約送樣，本群將第一時間收到通知。`;
+  if (!url) return alert('请先粘贴群机器人 Webhook 地址！');
+  const msg = `🔔【${currentTenantData?.company_name || currentAgent}】报单提醒测试成功！后续合作门店下新单或新店预约送样，本群将第一时间收到通知。`;
   try {
     await HQService.sendWebhookMessage(url, msg);
-    alert('📡 測試消息已發出！請打開您的企業微信 / 釘釘 / 飛書群查看是否收到提醒。');
+    alert('📡 测试消息已发出！请打开您的企业微信 / 钉钉 / 飞书群查看是否收到提醒。');
   } catch (err) {
-    alert('發送失敗，請檢查網址格式是否正確：' + err.message);
+    alert('发送失败，请检查网址格式是否正确：' + err.message);
   }
 };
 
@@ -115,10 +116,10 @@ function updateWebhookStatusBadge(url) {
   const btn = document.getElementById('btn-webhook-status');
   if (!btn) return;
   if (url && url.startsWith('http')) {
-    btn.innerHTML = '<span>🔔</span> 群通知已開';
+    btn.innerHTML = '<span>🔔</span> 群通知已开';
     btn.className = 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/50 active:scale-95 transition flex items-center gap-1';
   } else {
-    btn.innerHTML = '<span>🔔</span> 報單群通知';
+    btn.innerHTML = '<span>🔔</span> 报单群通知';
     btn.className = 'bg-[#143628]/80 hover:bg-[#0e271d] text-emerald-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-500/30 active:scale-95 transition flex items-center gap-1';
   }
 }
@@ -127,10 +128,10 @@ function updateTotpStatusBadge(isEnabled) {
   const totpBtn = document.getElementById('btn-top-totp');
   if (!totpBtn) return;
   if (isEnabled) {
-    totpBtn.innerHTML = '✅ 驗證器已綁';
+    totpBtn.innerHTML = '✅ 验证器已绑';
     totpBtn.className = 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs px-2.5 py-1.5 rounded-xl font-bold border border-emerald-400/50 active:scale-95 transition';
   } else {
-    totpBtn.innerHTML = '🛡️ 驗證器';
+    totpBtn.innerHTML = '🛡️ 验证器';
     totpBtn.className = 'bg-white/5 hover:bg-white/15 text-emerald-200 text-xs px-2.5 py-1.5 rounded-xl font-medium border border-emerald-600/40 active:scale-95 transition';
   }
 }
@@ -138,11 +139,11 @@ function updateTotpStatusBadge(isEnabled) {
 function applyRoleViewExperience(roleCode, operatorName) {
   const displayEl = document.getElementById('hq-operator-role-display');
   const roleLabels = {
-    owner: '大當家主賬號 (全盤權限)',
-    warehouse: `倉儲調度 · ${operatorName}`,
-    finance: `賬房財務 · ${operatorName}`,
-    driver: `供貨師傅 · ${operatorName}`,
-    auditor: `獨立稽核 · ${operatorName}`
+    owner: '大当家主账号 (全盘权限)',
+    warehouse: `仓储调度 · ${operatorName}`,
+    finance: `账房财务 · ${operatorName}`,
+    driver: `送货师傅 · ${operatorName}`,
+    auditor: `独立稽核 · ${operatorName}`
   };
   if (displayEl) displayEl.innerText = roleLabels[roleCode] || operatorName;
 
@@ -156,7 +157,7 @@ function applyRoleViewExperience(roleCode, operatorName) {
 }
 
 window.customizeCarrierName = function () {
-  const val = prompt('自定義本商號周轉載具稱呼（如：周轉筐 / 托盤 / 氣瓶 / 料箱）：', carrierLabel);
+  const val = prompt('自定义本商号周转载具称呼（如：周转筐 / 托盘 / 气瓶 / 料箱）：', carrierLabel);
   if (val && val.trim()) {
     carrierLabel = val.trim();
     localStorage.setItem('hq_carrier_label_' + currentAgent, carrierLabel);
@@ -166,7 +167,7 @@ window.customizeCarrierName = function () {
 };
 
 // =========================================================================
-// 2. 倉庫出入庫與實地盤點校準引擎
+// 2. 仓库出入库与实地盘点校准引擎
 // =========================================================================
 window.openStockOpsModal = function (prodId) {
   const p = allProducts.find((x) => x.id === prodId);
@@ -177,7 +178,7 @@ window.openStockOpsModal = function (prodId) {
   document.getElementById('stock-ops-prod-id').value = p.id;
   document.getElementById('stock-ops-cur-stock').value = curStock;
   document.getElementById('stock-ops-title').innerText = `📦 ${p.name}`;
-  document.getElementById('stock-ops-subtitle').innerText = `當前賬面庫存：${curStock} ${unit}`;
+  document.getElementById('stock-ops-subtitle').innerText = `当前账面库存：${curStock} ${unit}`;
   document.getElementById('stock-ops-qty-input').value = '';
   document.getElementById('stock-ops-operator').value = currentOperatorName;
   document.getElementById('stock-ops-remark').value = '';
@@ -198,9 +199,9 @@ window.setStockOpsMode = function (mode) {
   });
 
   const label = document.getElementById('stock-ops-qty-label');
-  if (mode === 'in_purchase') label.innerText = '本次採購 / 生產完工入庫數量 (+) *：';
-  else if (mode === 'out_loss') label.innerText = '本次報損 / 領用 / 樣品出庫數量 (-) *：';
-  else label.innerText = '倉庫實地清點後的實際庫存總數 (=) *：';
+  if (mode === 'in_purchase') label.innerText = '本次采收 / 完工入库数量 (+) *：';
+  else if (mode === 'out_loss') label.innerText = '本次损耗 / 领用 / 样品出库数量 (-) *：';
+  else label.innerText = '仓库实地清点后的实际库存总数 (=) *：';
 };
 
 window.submitStockOperation = async function () {
@@ -210,7 +211,7 @@ window.submitStockOperation = async function () {
   const operator = document.getElementById('stock-ops-operator').value.trim() || currentOperatorName;
   const remark = document.getElementById('stock-ops-remark').value.trim();
 
-  if (isNaN(inputVal) || inputVal < 0) return alert('請輸入有效的正整數數量！');
+  if (isNaN(inputVal) || inputVal < 0) return alert('请输入有效的正整数量！');
 
   const p = allProducts.find((x) => x.id === prodId);
   if (!p) return;
@@ -219,11 +220,11 @@ window.submitStockOperation = async function () {
   let deltaQty = 0;
 
   if (currentStockOpsMode === 'in_purchase') {
-    if (inputVal === 0) return alert('入庫數量需大於 0！');
+    if (inputVal === 0) return alert('入库数量需大于 0！');
     deltaQty = inputVal;
     afterStock = curStock + inputVal;
   } else if (currentStockOpsMode === 'out_loss') {
-    if (inputVal === 0) return alert('出庫數量需大於 0！');
+    if (inputVal === 0) return alert('出库数量需大於 0！');
     deltaQty = -inputVal;
     afterStock = Math.max(0, curStock - inputVal);
   } else {
@@ -232,7 +233,7 @@ window.submitStockOperation = async function () {
   }
 
   const { error: uErr } = await supabase.from('product').update({ stock: afterStock }).eq('id', prodId);
-  if (uErr) return alert('更新庫存失敗：' + uErr.message);
+  if (uErr) return alert('更新库存失败：' + uErr.message);
 
   await HQService.recordInventoryChange(currentAgent, {
     tenant_id: currentAgent,
@@ -243,22 +244,22 @@ window.submitStockOperation = async function () {
     before_stock: curStock,
     after_stock: afterStock,
     operator_name: operator,
-    remark: remark || (currentStockOpsMode === 'audit_adjust' ? `實盤校準(${deltaQty >= 0 ? '盤盈+' + deltaQty : '盤虧' + deltaQty})` : ''),
+    remark: remark || (currentStockOpsMode === 'audit_adjust' ? `实盘校准(${deltaQty >= 0 ? '盘盈+' + deltaQty : '盘亏' + deltaQty})` : ''),
     created_at: new Date().toISOString()
   });
 
-  alert(`✅ 庫存更新成功！【${p.name}】由 ${curStock} 變更為 ${afterStock} ${p.measure_unit || '件'}。`);
+  alert(`✅ 库存更新成功！【${p.name}】由 ${curStock} 变更为 ${afterStock} ${p.measure_unit || '件'}。`);
   window.closeModal('modal-stock-ops');
   window.loadHQData();
 };
 
 window.exportInventorySheetCSV = function () {
-  if (allProducts.length === 0) return alert('暫無貨品可導出盤點表！');
-  const headers = ['貨品ID', '貨品全稱', '規格', '計量單位', '基礎底價(元)', '當前賬面庫存', '實地清點數(手填)', '盤盈/盤虧差異', '備註'];
+  if (allProducts.length === 0) return alert('暂无货品可导出盘点表！');
+  const headers = ['货品ID', '货品全称', '规格', '计量单位', '平准供货底价(元)', '当前账面库存', '实地清点数(手填)', '盘盈/盘亏差异', '备注'];
   const rows = allProducts.map((p) => [
     p.id,
     p.name,
-    p.spec || '整裝',
+    p.spec || '整装',
     p.measure_unit || '件',
     parseFloat(p.tier_1_price || 0).toFixed(2),
     p.stock ?? 0,
@@ -266,19 +267,19 @@ window.exportInventorySheetCSV = function () {
     '',
     p.remark || ''
   ]);
-  downloadCSV(`${currentAgent}_倉庫實地盤點表_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  downloadCSV(`${currentAgent}_仓库实地盘点表_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
 };
 
 // =========================================================================
-// 3. 百業自定義屬性 & 一客一價規則行
+// 3. 百业自定义属性 & 一店一约规则行
 // =========================================================================
 window.addCustomAttrRow = function (keyVal = '', valStr = '') {
   const box = document.getElementById('custom-attrs-container');
   const row = document.createElement('div');
   row.className = 'flex items-center gap-1.5 custom-attr-row';
   row.innerHTML = `
-    <input type="text" placeholder="屬性名(如:材質/保質期)" value="${keyVal}" class="attr-key w-1/3 bg-white border border-amber-300 rounded-xl px-2.5 py-1 text-xs outline-none font-bold">
-    <input type="text" placeholder="屬性值(如:304鋼/12個月)" value="${valStr}" class="attr-val flex-1 bg-white border border-amber-300 rounded-xl px-2.5 py-1 text-xs outline-none">
+    <input type="text" placeholder="属性名(如:材质/保质期)" value="${keyVal}" class="attr-key w-1/3 bg-white border border-amber-300 rounded-xl px-2.5 py-1 text-xs outline-none font-bold">
+    <input type="text" placeholder="属性值(如:304钢/12个月)" value="${valStr}" class="attr-val flex-1 bg-white border border-amber-300 rounded-xl px-2.5 py-1 text-xs outline-none">
     <button type="button" onclick="this.parentElement.remove()" class="text-rose-600 font-bold px-1.5 hover:bg-rose-50 rounded">✕</button>
   `;
   box.appendChild(row);
@@ -286,11 +287,11 @@ window.addCustomAttrRow = function (keyVal = '', valStr = '') {
 
 window.applyIndustryAttrTemplate = function (type) {
   const templates = {
-    food: [['保質期', '12個月'], ['貯存方式', '陰涼乾燥'], ['執行標準', 'GB標準']],
-    hardware: [['材質工藝', '304不鏽鋼'], ['規格型號', '國標通用'], ['表面處理', '防鏽鍍鋅']],
-    auto: [['適配車型', '全系通用'], ['原廠件號', 'OEM標準'], ['質保期限', '12個月/2萬公里']],
-    agri: [['有效成分', '高純度配方'], ['淨含量', '25kg/袋'], ['登記證號', '正規備案']],
-    daily: [['香型/款式', '經典款'], ['安全標準', '國標合格'], ['箱規包裝', '整件批發']]
+    food: [['保质期', '12个月'], ['贮存方式', '阴凉干燥'], ['执行标准', 'GB标准']],
+    hardware: [['材质工艺', '304不锈钢'], ['规格型号', '国标通用'], ['表面处理', '防锈镀锌']],
+    auto: [['适配车型', '全系通用'], ['原厂件号', 'OEM标准'], ['质保期限', '12个月/2万公里']],
+    agri: [['有效成分', '高纯度配方'], ['净含量', '25kg/袋'], ['登记证号', '正规备案']],
+    daily: [['香型/款式', '经典款'], ['安全标准', '国标合格'], ['箱规包装', '整件批发']]
   };
   const rows = templates[type] || [];
   const container = document.getElementById('custom-attrs-container');
@@ -318,14 +319,14 @@ window.addCustomPriceRuleRow = function (prodId = '', specialPrice = '') {
     .join('');
   row.innerHTML = `
     <select class="rule-prod-id flex-1 bg-white border border-emerald-300 rounded-lg px-2 py-1 text-[11px] outline-none">${optionsHtml}</select>
-    <input type="number" step="0.01" placeholder="協議特價" value="${specialPrice}" class="rule-price w-24 bg-white border border-emerald-300 rounded-lg px-2 py-1 font-mono font-bold text-[11px] outline-none">
+    <input type="number" step="0.01" placeholder="协议工价" value="${specialPrice}" class="rule-price w-24 bg-white border border-emerald-300 rounded-lg px-2 py-1 font-mono font-bold text-[11px] outline-none">
     <button type="button" onclick="this.parentElement.remove()" class="text-rose-600 font-bold px-1">✕</button>
   `;
   box.appendChild(row);
 };
 
 // =========================================================================
-// 4. 三流晴雨表 & AI 經營參謀渲染
+// 4. 三流晴雨表 & 平准参谋渲染
 // =========================================================================
 function renderThreeFlowsAndAIAdvisor() {
   const goodsValue = allProducts.reduce((sum, p) => sum + parseFloat(p.tier_1_price || 0) * parseInt(p.stock ?? 0), 0);
@@ -335,7 +336,7 @@ function renderThreeFlowsAndAIAdvisor() {
   const lowStockProds = allProducts.filter((p) => parseInt(p.stock ?? 0) <= parseInt(p.custom_specs?.min_stock ?? 10));
 
   document.getElementById('flow-goods-value').innerText = `¥${goodsValue.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}`;
-  document.getElementById('flow-goods-toship').innerText = `${toShipOrders.length} 單`;
+  document.getElementById('flow-goods-toship').innerText = `${toShipOrders.length} 单`;
   document.getElementById('flow-goods-lowstock').innerText = `${lowStockProds.length} 款`;
 
   const receivable = allStores.reduce((sum, s) => sum + parseFloat(s.current_debt || 0), 0);
@@ -349,17 +350,17 @@ function renderThreeFlowsAndAIAdvisor() {
   const leadsList = allOrders.filter((o) => isDirectoryLead(o) && o.order_status === 'pending_confirm');
   const openDemands = allC2BDemands.filter((d) => !d.official_reply);
 
-  document.getElementById('flow-info-orders').innerText = `${pendingOrders.length + openDemands.length} 筆`;
-  document.getElementById('flow-info-leads').innerText = `${leadsList.length} 條`;
+  document.getElementById('flow-info-orders').innerText = `${pendingOrders.length + openDemands.length} 笔`;
+  document.getElementById('flow-info-leads').innerText = `${leadsList.length} 条`;
 
   const aiTips = [];
   if (openDemands.length > 0) {
     aiTips.push({
       level: 'amber',
       icon: '📢',
-      title: `天街新商機：有 ${openDemands.length} 條街坊/團購求購榜待報價`,
-      desc: `百工天街買家已發起求購或定制聚量需求，搶先給出出廠階梯報價即可鎖定批量訂單。`,
-      btnText: '立即報價接單 ➔',
+      title: `天街新需求：有 ${openDemands.length} 条门店/抱团求购榜待回应`,
+      desc: `百工天街买家与门店已发起真实用度求购或定制聚量需求，按阳光工价给出直供报价即可锁定产销计划。`,
+      btnText: '立即报工价接单 ➔',
       action: `window.switchTab('settle'); window.filterOrderStatus('c2b_demands');`
     });
   }
@@ -368,9 +369,9 @@ function renderThreeFlowsAndAIAdvisor() {
     aiTips.push({
       level: 'rose',
       icon: '📦',
-      title: `庫存緊缺預警：【${p.name}】僅剩 ${p.stock ?? 0}${p.measure_unit || '件'}`,
-      desc: `已低於安全預警線，建議立即安排採購進貨或車間生產入庫，避免客戶下單無貨可發。`,
-      btnText: '+ 立即入庫補貨',
+      title: `库存紧缺预警：【${p.name}】仅剩 ${p.stock ?? 0}${p.measure_unit || '件'}`,
+      desc: `已低于安全预警线，建议立即安排采收备货或工坊排产入库，保障门店日常不断供。`,
+      btnText: '+ 立即入库补备',
       action: `window.openStockOpsModal(${p.id})`
     });
   });
@@ -383,9 +384,9 @@ function renderThreeFlowsAndAIAdvisor() {
       aiTips.push({
         level: 'amber',
         icon: '💰',
-        title: `賬款風控提醒：【${s.name}】在賬 ¥${debt.toFixed(2)}（接近授信上限 ¥${limit}）`,
-        desc: `建議下次供貨師傅上門時順帶對賬收款，或調整該客戶的結算方式為當面現結。`,
-        btnText: '⚙️ 調整客戶策略',
+        title: `信用账款提醒：【${s.name}】在账 ¥${debt.toFixed(2)}（接近周转额度 ¥${limit}）`,
+        desc: `建议下次送货师傅上门时顺带核对平账，或按需调整该门店的交割约定。`,
+        btnText: '⚙️ 调整协议策略',
         action: `window.switchTab('stores'); window.openStorePolicyModal(${s.id});`
       });
     }
@@ -393,9 +394,9 @@ function renderThreeFlowsAndAIAdvisor() {
       aiTips.push({
         level: 'amber',
         icon: '🔄',
-        title: `${carrierLabel}積壓提醒：【${s.name}】借欠 ${baskets} 件未歸還`,
-        desc: `在外周轉資產較多，建議提醒送貨師傅本趟回程時重點清點迎回。`,
-        btnText: '🏪 查看客戶檔案',
+        title: `${carrierLabel}循环提醒：【${s.name}】借用 ${baskets} 件未归还`,
+        desc: `在外周转载具较多，建议提醒送货师傅本趟回程顺路清点带回，物尽其用。`,
+        btnText: '🏪 查看门店档案',
         action: `window.switchTab('stores');`
       });
     }
@@ -405,9 +406,9 @@ function renderThreeFlowsAndAIAdvisor() {
     aiTips.push({
       level: 'emerald',
       icon: '🤝',
-      title: `拓客商機：有 ${leadsList.length} 家意向新客戶申請上門送樣洽談`,
-      desc: `潛在客戶已通過供貨商名錄提交聯繫方式，及時聯繫送樣並一鍵建檔可快速擴充銷路。`,
-      btnText: '立即承接建檔 ➔',
+      title: `新店合作意向：有 ${leadsList.length} 家意向门店申请上门送样洽谈`,
+      desc: `意向门店已提交联系方式，及时联系送样并一键立户可共同完善城乡供需网络。`,
+      btnText: '立即承接立户 ➔',
       action: `window.switchTab('settle'); window.filterOrderStatus('directory_leads');`
     });
   }
@@ -416,14 +417,14 @@ function renderThreeFlowsAndAIAdvisor() {
     aiTips.push({
       level: 'emerald',
       icon: '🌿',
-      title: '三流運轉健康：庫存充足、賬款平穩、無積壓異常',
-      desc: '當前所有在售貨品庫存均在安全線以上，合作客戶授信健康。可點擊上方「📲 招商二維碼」持續拓展新客源。',
-      btnText: '📲 分享招商名片',
+      title: '三流运转平稳：供需平衡、账目清白、货畅其流',
+      desc: '当前所有在供良品库存充足，合作门店往来健康。可点击上方「📲 合作名片码」与更多门店和合作社建立直供联系。',
+      btnText: '📲 分享合作名片',
       action: `window.openPromoQrModal()`
     });
   }
 
-  document.getElementById('flow-info-ai').innerText = `${aiTips.length} 條`;
+  document.getElementById('flow-info-ai').innerText = `${aiTips.length} 条`;
 
   document.getElementById('ai-advisor-cards').innerHTML = aiTips
     .map((t) => {
@@ -452,19 +453,19 @@ function renderInventoryLogs() {
   const box = document.getElementById('inventory-log-list');
   if (!box) return;
   if (allInventoryLogs.length === 0) {
-    box.innerHTML = '<div class="py-6 text-center text-stone-400">暫無倉庫出入庫流水（在「貨品發布 & 倉庫盤點」點擊庫存數字或接單發運時將自動記錄）。</div>';
+    box.innerHTML = '<div class="py-6 text-center text-stone-400">暂无仓库出入库流水（在「良品发布 & 仓库盘点」点击库存数字或接单发运时将自动记录）。</div>';
     return;
   }
   box.innerHTML = allInventoryLogs
     .map((l) => {
       const isPlus = parseInt(l.delta_qty) >= 0;
       const typeMap = {
-        in_purchase: '採購/生產入庫',
-        out_loss: '報損/領用出庫',
-        audit_adjust: '實地盤點校準',
-        order_ship: '配貨發運出庫'
+        in_purchase: '采收/完工入库',
+        out_loss: '损耗/领用出库',
+        audit_adjust: '实地盘点校准',
+        order_ship: '配货发运出库'
       };
-      const typeLabel = typeMap[l.action_type] || '庫存變動';
+      const typeLabel = typeMap[l.action_type] || '库存变动';
       return `
         <div class="py-2.5 flex justify-between items-center gap-2">
           <div>
@@ -475,7 +476,7 @@ function renderInventoryLogs() {
           <div class="text-right font-mono shrink-0">
             <b class="${isPlus ? 'text-emerald-700' : 'text-rose-700'} font-bold">${isPlus ? '+' + l.delta_qty : l.delta_qty}</b>
             <span class="text-stone-400 text-[10px] ml-1">(${l.before_stock} ➔ ${l.after_stock})</span>
-            <span class="text-[10px] text-stone-400 block">${l.operator_name || '倉管'} · ${new Date(l.created_at).toLocaleString()}</span>
+            <span class="text-[10px] text-stone-400 block">${l.operator_name || '仓管'} · ${new Date(l.created_at).toLocaleString()}</span>
           </div>
         </div>
       `;
@@ -484,19 +485,19 @@ function renderInventoryLogs() {
 }
 
 // =========================================================================
-// 5. 裝車總揀貨單、對賬單導出 & 招商二維碼
+// 5. 装车总拣货单、对账单导出 & 合作名片码
 // =========================================================================
 window.openBatchPickListModal = function () {
   const toShipOrders = allOrders.filter(
     (o) => (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') && o.delivery_status !== 'delivered' && !isDirectoryLead(o)
   );
-  document.getElementById('picklist-tenant-name').innerText = `${currentTenantData?.company_name || currentAgent} · 裝車總揀貨單`;
-  document.getElementById('picklist-time-label').innerText = `生成時間：${new Date().toLocaleString()}`;
-  document.getElementById('picklist-order-count').innerText = `${toShipOrders.length} 單待發`;
+  document.getElementById('picklist-tenant-name').innerText = `${currentTenantData?.company_name || currentAgent} · 装车总拣货单`;
+  document.getElementById('picklist-time-label').innerText = `生成时间：${new Date().toLocaleString()}`;
+  document.getElementById('picklist-order-count').innerText = `${toShipOrders.length} 单待发`;
 
   const container = document.getElementById('picklist-items-container');
   if (toShipOrders.length === 0) {
-    container.innerHTML = '<div class="py-8 text-center text-stone-400">當前暫無「已排單發運」的待送訂單。</div>';
+    container.innerHTML = '<div class="py-8 text-center text-stone-400">当前暂无「已排单发运」的待送货品。</div>';
     window.openModal('modal-batch-picklist');
     return;
   }
@@ -504,10 +505,10 @@ window.openBatchPickListModal = function () {
   const itemSummaryMap = {};
   toShipOrders.forEach((o) => {
     (Array.isArray(o.items) ? o.items : []).forEach((it) => {
-      const key = `${it.name}|${it.spec || '整裝'}|${it.measure_unit || '件'}`;
-      if (!itemSummaryMap[key]) itemSummaryMap[key] = { name: it.name, spec: it.spec || '整裝', unit: it.measure_unit || '件', totalQty: 0, stores: [] };
+      const key = `${it.name}|${it.spec || '整装'}|${it.measure_unit || '件'}`;
+      if (!itemSummaryMap[key]) itemSummaryMap[key] = { name: it.name, spec: it.spec || '整装', unit: it.measure_unit || '件', totalQty: 0, stores: [] };
       itemSummaryMap[key].totalQty += parseInt(it.qty || 0);
-      itemSummaryMap[key].stores.push(`${o.store_name || '天街自提單'}(${it.qty})`);
+      itemSummaryMap[key].stores.push(`${o.store_name || '天街自提单'}(${it.qty})`);
     });
   });
 
@@ -517,7 +518,7 @@ window.openBatchPickListModal = function () {
       <div class="py-2.5 flex justify-between items-start gap-2">
         <div>
           <div class="font-bold text-stone-900 text-xs">${idx + 1}. ${row.name} <span class="text-stone-400 font-normal">(${row.spec})</span></div>
-          <div class="text-[10px] text-stone-500 mt-0.5">分店明細：${row.stores.join('、')}</div>
+          <div class="text-[10px] text-stone-500 mt-0.5">分门店明细：${row.stores.join('、')}</div>
         </div>
         <span class="bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-0.5 rounded-lg font-mono font-bold text-sm shrink-0">${row.totalQty} ${row.unit}</span>
       </div>
@@ -532,65 +533,65 @@ window.copyPickListText = function () {
   const toShipOrders = allOrders.filter(
     (o) => (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') && o.delivery_status !== 'delivered' && !isDirectoryLead(o)
   );
-  if (toShipOrders.length === 0) return alert('暫無待發貨單據！');
+  if (toShipOrders.length === 0) return alert('暂无待发货单据！');
   const map = {};
   toShipOrders.forEach((o) =>
     (Array.isArray(o.items) ? o.items : []).forEach((it) => {
-      const k = `${it.name} (${it.spec || '整裝'})`;
+      const k = `${it.name} (${it.spec || '整装'})`;
       map[k] = (map[k] || 0) + parseInt(it.qty || 0);
     })
   );
   const lines = [
-    `【${currentTenantData?.company_name || currentAgent} 裝車總揀貨單】`,
-    `時間：${new Date().toLocaleString()} | 共 ${toShipOrders.length} 家客戶`,
+    `【${currentTenantData?.company_name || currentAgent} 装车总拣货单】`,
+    `时间：${new Date().toLocaleString()} | 共 ${toShipOrders.length} 家门店`,
     `------------------------`,
     ...Object.entries(map).map(([k, q], i) => `${i + 1}. ${k} × ${q}`),
     `------------------------`,
-    `配送客戶：${toShipOrders.map((o) => o.store_name || '天街自提單').join('、')}`
+    `配送门店：${toShipOrders.map((o) => o.store_name || '天街自提单').join('、')}`
   ];
-  navigator.clipboard.writeText(lines.join('\n')).then(() => alert('✅ 裝車總揀貨單已複製！'));
+  navigator.clipboard.writeText(lines.join('\n')).then(() => alert('✅ 装车总拣货单已复制！'));
 };
 
 window.exportOrdersToCSV = function () {
   const validOrders = allOrders.filter((o) => !isDirectoryLead(o));
-  if (validOrders.length === 0) return alert('當前暫無可導出的業務往來單據！');
-  const headers = ['單據編號', '下單時間', '合作客戶', '結算方式', '新貨金額(元)', '退貨抵扣(元)', '應結淨額(元)', '單據狀態', '履約交割狀態', '貨品明細', '備註'];
+  if (validOrders.length === 0) return alert('当前暂无可导出的业务往来单据！');
+  const headers = ['单据编号', '下单时间', '合作门店', '交割方式', '新配金额(元)', '调退抵扣(元)', '应结净额(元)', '单据状态', '履约交割状态', '货品明细', '备注'];
   const rows = validOrders.map((o) => [
     o.order_no || o.id,
     o.created_at ? new Date(o.created_at).toLocaleString() : '',
-    o.store_name || '天街客戶',
+    o.store_name || '天街买家',
     o.settlement_type || '',
     parseFloat(o.total_amount || 0).toFixed(2),
     parseFloat(o.return_amount || 0).toFixed(2),
     parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2),
     o.order_status || '',
-    o.delivery_status === 'delivered' ? '已交割簽收' : '待配送/處理中',
+    o.delivery_status === 'delivered' ? '已交割签收' : '待配送/处理中',
     (Array.isArray(o.items) ? o.items : []).map((i) => `${i.name}x${i.qty}`).join('; '),
     (o.note || '').replace(/[\r\n,]+/g, ' ')
   ]);
-  downloadCSV(`${currentAgent}_往來對賬單_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  downloadCSV(`${currentAgent}_往来对账单_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
 };
 
 window.openPromoQrModal = function () {
   const promoUrl = `${window.location.origin}/suppliers.html?t=${encodeURIComponent(currentAgent)}`;
   document.getElementById('promo-qr-company').innerText = currentTenantData?.company_name || currentAgent;
-  document.getElementById('promo-qr-code-text').innerText = `唯一商號代號：${currentAgent}`;
+  document.getElementById('promo-qr-code-text').innerText = `唯一商号代号：${currentAgent}`;
   document.getElementById('promo-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(promoUrl)}`;
   window.openModal('modal-promo-qr');
 };
 
 window.copyPromoLink = function () {
   const promoUrl = `${window.location.origin}/suppliers.html?t=${encodeURIComponent(currentAgent)}`;
-  const shareText = `【${currentTenantData?.company_name || currentAgent}】源頭正規供貨商直供，營業執照已核驗，支持預約業務員上門送樣、先驗貨後合作！點擊預約：${promoUrl}`;
-  navigator.clipboard.writeText(shareText).then(() => alert('✅ 專屬招商文案與鏈接已複製！'));
+  const shareText = `【${currentTenantData?.company_name || currentAgent}】源头合作社与匠心工坊直供，营业执照已核验，支持预约送货师傅上门送样、先验货后合作！点击预约：${promoUrl}`;
+  navigator.clipboard.writeText(shareText).then(() => alert('✅ 专属合作文案与链接已复制！'));
 };
 
 // =========================================================================
-// 6. TOTP 2FA 綁定、自助改密與雙模登入門禁
+// 6. TOTP 2FA 绑定、自助改密与双模登录门禁
 // =========================================================================
 window.openTotpSetupModal = async function () {
   const { data: tenant, error } = await HQService.fetchTenant(currentAgent);
-  if (error) return alert('讀取商號信息失敗：' + error.message);
+  if (error) return alert('读取商号信息失败：' + error.message);
 
   let secret = (tenant?.totp_secret || '').trim();
   if (!secret) {
@@ -598,7 +599,7 @@ window.openTotpSetupModal = async function () {
     try {
       await HQService.updateTenantWithVerify(currentAgent, { totp_secret: secret, totp_enabled: true });
     } catch (upErr) {
-      return alert('⚠️ 雲端數據庫寫入秘鑰被攔截：' + upErr.message);
+      return alert('⚠️ 云端数据库写入秘钥被拦截：' + upErr.message);
     }
   }
 
@@ -609,17 +610,17 @@ window.openTotpSetupModal = async function () {
 };
 
 window.copyTotpSecret = function () {
-  navigator.clipboard.writeText(document.getElementById('totp-secret-display').innerText).then(() => alert('TOTP 金鑰已複製！'));
+  navigator.clipboard.writeText(document.getElementById('totp-secret-display').innerText).then(() => alert('TOTP 金钥已复制！'));
 };
 
 window.verifyAndSaveTotp = async function () {
   const code = document.getElementById('totp-test-code').value.trim();
   const secret = document.getElementById('totp-secret-display').innerText.trim();
-  if (!code || code.length !== 6) return alert('請輸入驗證器中顯示的 6 位動態口令！');
+  if (!code || code.length !== 6) return alert('请输入验证器中显示的 6 位动态口令！');
 
   const isValid = await TOTP.verifyTOTP(secret, code, 2);
   if (!isValid) {
-    return alert('⚠️ 動態口令驗證未通過！\n1. 請確認手機「自動設置時間」已開啟；\n2. 若掃碼異常，請點擊「複製密鑰」，在手機驗證器選擇「手動輸入密鑰」添加（時間基準）。');
+    return alert('⚠️ 动态口令验证未通过！\n1. 请确认手机「自动设置时间」已开启；\n2. 若扫码异常，请点击「复制密钥」，在手机验证器选择「手动输入密钥」添加（时间基准）。');
   }
 
   try {
@@ -629,10 +630,10 @@ window.verifyAndSaveTotp = async function () {
       currentTenantData.totp_enabled = true;
     }
     updateTotpStatusBadge(true);
-    alert('🎉 身份驗證器已真正寫入雲端並綁定成功！');
+    alert('🎉 身份验证器已写入云端并绑定成功！');
     window.closeModal('modal-totp-setup');
   } catch (err) {
-    alert('⚠️ 數據庫寫入被攔截：' + err.message);
+    alert('⚠️ 数据库写入被拦截：' + err.message);
   }
 };
 
@@ -646,27 +647,27 @@ window.submitChangePassword = async function () {
   const newKey = document.getElementById('chg-new-key').value.trim();
   const confirmKey = document.getElementById('chg-confirm-key').value.trim();
   const totpCode = document.getElementById('chg-totp-code').value.trim();
-  if (!oldKey || !newKey) return alert('請填全原密碼與新密碼！');
-  if (newKey !== confirmKey) return alert('兩次輸入的新密碼不一致！');
-  if (!totpCode || totpCode.length !== 6) return alert('請輸入手機驗證器 6 位動態碼！');
+  if (!oldKey || !newKey) return alert('请填全原密码与新密码！');
+  if (newKey !== confirmKey) return alert('两次输入的新密码不一致！');
+  if (!totpCode || totpCode.length !== 6) return alert('请输入手机验证器 6 位动态码！');
 
   const { data: tenant } = await HQService.fetchTenant(currentAgent);
   if (!tenant) return;
   const isOldKeyMatch = oldKey === tenant.access_key || oldKey.toUpperCase() === (tenant.access_key || '').toUpperCase();
   const isTokenMatch = tenant.reset_claim_token && oldKey.toUpperCase() === tenant.reset_claim_token.toUpperCase();
-  if (!isOldKeyMatch && !isTokenMatch) return alert('⚠️ 原訪問密鑰不正確！');
+  if (!isOldKeyMatch && !isTokenMatch) return alert('⚠️ 原访问密钥不正确！');
 
   const isTotpValid = await TOTP.verifyTOTP(tenant.totp_secret || 'JBSWY3DPEHPK3PXP', totpCode, 2);
-  if (!isTotpValid) return alert('⚠️ 驗證器 6 位動態碼錯誤！');
+  if (!isTotpValid) return alert('⚠️ 验证器 6 位动态码错误！');
 
   try {
     await HQService.updateTenantWithVerify(currentAgent, { access_key: newKey, reset_claim_token: null });
     sessionStorage.setItem('hq_tenant_session_' + currentAgent, newKey);
     document.getElementById('hq-default-pwd-banner')?.classList.add('hidden');
-    alert('🎉 新密鑰已真正寫入雲端並生效存盤！');
+    alert('🎉 新密钥已写入云端并生效存盘！');
     window.closeModal('modal-change-password');
   } catch (err) {
-    alert('⚠️ 修改密碼寫入雲端被攔截：' + err.message);
+    alert('⚠️ 修改密码写入云端被拦截：' + err.message);
   }
 };
 
@@ -685,10 +686,10 @@ window.close2FAModal = function () {
 
 window.submit2FAVerification = async function () {
   const code = document.getElementById('input-2fa-code').value.trim();
-  if (!code || code.length !== 6) return alert('⚠️ 請輸入 6 位動態碼！');
+  if (!code || code.length !== 6) return alert('⚠️ 请输入 6 位动态码！');
   const { data: tenant } = await HQService.fetchTenant(currentAgent);
   const isValid = await TOTP.verifyTOTP(tenant?.totp_secret || 'JBSWY3DPEHPK3PXP', code, 2);
-  if (!isValid) return alert('⚠️ 動態口令驗證失敗！');
+  if (!isValid) return alert('⚠️ 动态口令验证失败！');
   window.close2FAModal();
   if (typeof pending2FACallback === 'function') pending2FACallback();
 };
@@ -701,7 +702,7 @@ window.verifyHQAuthPwd = async function (e) {
   const btn = document.getElementById('btn-hq-pwd');
 
   btn.disabled = true;
-  btn.innerText = '核對中...';
+  btn.innerText = '核对中...';
   errBox.classList.add('hidden');
 
   if (rawKey.includes(':') || rawKey.includes('：')) {
@@ -709,8 +710,8 @@ window.verifyHQAuthPwd = async function (e) {
     const { data: tenantList } = await supabase.from('platform_tenant').select('*').eq('tenant_id', tenantId).eq('is_active', true).limit(1);
     if (!tenantList || tenantList.length === 0) {
       btn.disabled = false;
-      btn.innerText = '核驗密鑰 · 登入調度台';
-      errBox.innerText = '⚠️ 商號代號不存在或已暫歇！';
+      btn.innerText = '核验密钥 · 登录调度台';
+      errBox.innerText = '⚠️ 商号代号不存在或已暂歇！';
       errBox.classList.remove('hidden');
       return;
     }
@@ -725,8 +726,8 @@ window.verifyHQAuthPwd = async function (e) {
 
     if (!subList || subList.length === 0) {
       btn.disabled = false;
-      btn.innerText = '核驗密鑰 · 登入調度台';
-      errBox.innerText = '⚠️ 屬員子賬號或密碼不正確！';
+      btn.innerText = '核验密钥 · 登录调度台';
+      errBox.innerText = '⚠️ 属员子账号或密码不正确！';
       errBox.classList.remove('hidden');
       return;
     }
@@ -754,15 +755,15 @@ window.verifyHQAuthPwd = async function (e) {
 
   if (error || !data || data.length === 0) {
     btn.disabled = false;
-    btn.innerText = '核驗密鑰 · 登入調度台';
-    errBox.innerText = '⚠️ 商號代號不存在或安家訪問密鑰不符！';
+    btn.innerText = '核验密钥 · 登录调度台';
+    errBox.innerText = '⚠️ 商号代号不存在或安家访问密钥不符！';
     errBox.classList.remove('hidden');
     return;
   }
   if (!data[0].is_active) {
     btn.disabled = false;
-    btn.innerText = '核驗密鑰 · 登入調度台';
-    errBox.innerText = '🚫 該商號已被平台設案暫歇！';
+    btn.innerText = '核验密钥 · 登录调度台';
+    errBox.innerText = '🚫 该商号已被平台设案暂歇！';
     errBox.classList.remove('hidden');
     return;
   }
@@ -773,10 +774,10 @@ window.verifyHQAuthPwd = async function (e) {
   sessionStorage.removeItem('hq_sub_name_' + tenantId);
   currentAgent = tenantId;
   currentRoleCode = 'owner';
-  currentOperatorName = '大當家主賬號';
-  carrierLabel = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周轉載具';
+  currentOperatorName = '大当家主账号';
+  carrierLabel = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周转载具';
   document.getElementById('hq-auth-gate').classList.add('hidden');
-  applyRoleViewExperience('owner', '大當家主賬號');
+  applyRoleViewExperience('owner', '大当家主账号');
   window.loadHQData();
 };
 
@@ -803,8 +804,8 @@ async function checkHQAuthStatus() {
   if (data && data.length > 0) {
     currentAgent = authedTenant;
     currentRoleCode = sessionStorage.getItem('hq_sub_role_' + currentAgent) || 'owner';
-    currentOperatorName = sessionStorage.getItem('hq_sub_name_' + currentAgent) || '大當家主賬號';
-    carrierLabel = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周轉載具';
+    currentOperatorName = sessionStorage.getItem('hq_sub_name_' + currentAgent) || '大当家主账号';
+    carrierLabel = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周转载具';
     document.getElementById('hq-auth-gate').classList.add('hidden');
     applyRoleViewExperience(currentRoleCode, currentOperatorName);
     return true;
@@ -825,9 +826,10 @@ window.logoutHQ = function () {
 window.switchEntityType = function (type) {
   localStorage.setItem('hq_entity_type', type);
   const titles = {
-    factory: '品牌製造工坊 · 生產出入庫與直供調度中樞',
-    service: '工料配件商行 · 倉儲配發與工程對賬中樞',
-    dealer: '源頭直供與總銷調度中樞'
+    coop: '村社合作社 · 产区直供与城乡平准调度中枢',
+    factory: '源头工坊 · 生产制造与按需直配中枢',
+    service: '工料配件商 · 仓储配发与工程对账中枢',
+    dealer: '区域平准仓 · 集散调度与供需平衡中枢'
   };
   document.getElementById('hq-title').innerText = titles[type] || titles.dealer;
 };
@@ -845,7 +847,7 @@ window.switchTab = function (tabName) {
 };
 
 // =========================================================================
-// 7. 全盤數據加載與工作台渲染
+// 7. 全盘数据加载与工作台渲染
 // =========================================================================
 window.loadHQData = async function () {
   const { data: curTenant, error: tErr } = await HQService.fetchTenant(currentAgent);
@@ -855,7 +857,6 @@ window.loadHQData = async function () {
   }
 
   currentTenantData = curTenant;
-  // 頂欄招牌主標題直接顯示公司全稱（商號代號已在下方狀態條單獨展示，不再重複括號）
   document.getElementById('hq-company-badge').innerText = curTenant.company_name || curTenant.tenant_id;
   document.getElementById('hq-tenant-id').innerText = curTenant.tenant_id;
   document.getElementById('carrier-label-btn').innerText = `${carrierLabel} ✎`;
@@ -908,7 +909,7 @@ window.loadHQData = async function () {
   const badge = document.getElementById('unsettled-badge');
   if (totalTodos > 0) {
     badge.classList.remove('hidden');
-    badge.innerText = `${totalTodos}待辦`;
+    badge.innerText = `${totalTodos}待办`;
   } else {
     badge.classList.add('hidden');
   }
@@ -938,11 +939,11 @@ window.onMainCategoryChange = function (mainCatName) {
 function renderProductFilterBar() {
   const bar = document.getElementById('product-tags-filter');
   if (!bar) return;
-  const dynamicTags = new Set(['🔥 街坊搶手', '🏪 掌柜严选', '⏳ 臨期撿漏', '💎 高毛利']);
+  const dynamicTags = new Set(['🔥 门店常备', '🌾 合作社直供', '🔄 余缺平价调剂', '💎 阳光工价·诚意价']);
   allProducts.forEach((p) => (Array.isArray(p.tags) ? p.tags : []).forEach((t) => dynamicTags.add(t)));
   const allTagList = ['全部', ...Array.from(dynamicTags)];
   bar.innerHTML =
-    `<span class="text-stone-400 text-[11px] self-center mr-1">標籤快篩:</span>` +
+    `<span class="text-stone-400 text-[11px] self-center mr-1">商道快筛:</span>` +
     allTagList
       .map(
         (t) => `
@@ -964,8 +965,8 @@ function renderProductTable() {
       const isBM = isBrickMortarAllowed(p);
       const isEC = isEcommerceAllowed(p);
       let channelBadges = '';
-      if (isBM) channelBadges += '<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">🏬 實體店專供</span>';
-      if (isEC) channelBadges += '<span class="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] px-1.5 py-0.5 rounded font-bold">🌐 電子商務</span>';
+      if (isBM) channelBadges += '<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">🏬 合作门店专供</span>';
+      if (isEC) channelBadges += '<span class="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] px-1.5 py-0.5 rounded font-bold">🌐 云端扩充货架</span>';
 
       const customAttrs = p.custom_specs && typeof p.custom_specs === 'object' && p.custom_specs.attrs ? p.custom_specs.attrs : {};
       const attrBadges = Object.entries(customAttrs)
@@ -978,18 +979,18 @@ function renderProductTable() {
 
       return `
         <tr class="hover:bg-stone-50 transition">
-          <td class="p-2.5">${p.image_url ? `<img src="${p.image_url}" class="w-10 h-10 rounded-xl object-cover border border-stone-200">` : `<div class="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-[9px] text-stone-400">無圖</div>`}</td>
+          <td class="p-2.5">${p.image_url ? `<img src="${p.image_url}" class="w-10 h-10 rounded-xl object-cover border border-stone-200">` : `<div class="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-[9px] text-stone-400">无图</div>`}</td>
           <td class="p-2.5 font-bold">${channelBadges || '<span class="text-stone-300 text-[10px]">未投放</span>'}</td>
           <td class="p-2.5 text-stone-600 font-sans whitespace-normal max-w-[200px]">
-            <div class="text-[11px]">${p.category_main || '常規'} ➔ ${p.category_sub || '通用'} ${p.category_tertiary ? `<b class="text-amber-800">(${p.category_tertiary})</b>` : ''}</div>
+            <div class="text-[11px]">${p.category_main || '常规'} ➔ ${p.category_sub || '通用'} ${p.category_tertiary ? `<b class="text-amber-800">(${p.category_tertiary})</b>` : ''}</div>
             <div>${attrBadges}</div>
           </td>
           <td class="p-2.5 font-sans">
             <b class="text-stone-900 block">${p.name}</b>
-            <span class="font-mono text-[10px] text-emerald-800">${p.trace_code_prefix || 'QC-'}${p.id} ${p.barcode ? '· 碼:' + p.barcode : ''}</span>
+            <span class="font-mono text-[10px] text-emerald-800">${p.trace_code_prefix || 'QC-'}${p.id} ${p.barcode ? '· 码:' + p.barcode : ''}</span>
           </td>
           <td class="p-2.5">${tagBadges || '-'}</td>
-          <td class="p-2.5 font-mono">${p.spec || '整裝'} / ${p.measure_unit || '件'}</td>
+          <td class="p-2.5 font-mono">${p.spec || '整装'} / ${p.measure_unit || '件'}</td>
           <td class="p-2.5 font-mono font-bold text-emerald-800">
             <span class="cursor-pointer hover:bg-emerald-50 px-1.5 py-0.5 rounded border border-transparent hover:border-emerald-200" onclick="window.quickEditPrice(${p.id}, ${p.tier_1_price})">¥${p.tier_1_price} ✏️</span>
           </td>
@@ -997,11 +998,11 @@ function renderProductTable() {
           <td class="p-2.5 font-mono">
             <button onclick="window.openStockOpsModal(${p.id})" class="px-2.5 py-1 rounded-xl font-bold border transition active:scale-95 ${
         isLow ? 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse' : 'bg-emerald-50 text-emerald-950 border-emerald-200 hover:bg-emerald-100'
-      }" title="點擊進行採購入庫、報損出庫或實地盤點">${curStock} ${p.measure_unit || '件'} ⚙️</button>
+      }" title="点击进行采收入库、损耗出库或实地盘点">${curStock} ${p.measure_unit || '件'} ⚙️</button>
           </td>
           <td class="p-2.5 text-right space-x-1.5">
-            <button onclick="window.openEditProductModal(${p.id})" class="text-[11px] text-emerald-800 font-bold hover:underline">編輯</button>
-            <button onclick="window.deleteProduct(${p.id}, '${p.name}')" class="text-[11px] text-rose-600 font-bold hover:underline">刪除</button>
+            <button onclick="window.openEditProductModal(${p.id})" class="text-[11px] text-emerald-800 font-bold hover:underline">编辑</button>
+            <button onclick="window.deleteProduct(${p.id}, '${p.name}')" class="text-[11px] text-rose-600 font-bold hover:underline">删除</button>
           </td>
         </tr>
       `;
@@ -1012,11 +1013,11 @@ function renderProductTable() {
 function renderStoreFilterBar() {
   const bar = document.getElementById('store-tags-filter');
   if (!bar) return;
-  const dynamicTags = new Set(['#飯店大客', '#社區便利', '#工程客戶', '#VIP現結']);
+  const dynamicTags = new Set(['#社区便民店', '#餐饮食堂', '#工程工料', '#村社自提点']);
   allStores.forEach((s) => (Array.isArray(s.tags) ? s.tags : []).forEach((t) => dynamicTags.add(t)));
   const list = ['全部', ...Array.from(dynamicTags)];
   bar.innerHTML =
-    `<span class="text-stone-400 text-[11px] self-center mr-1">客戶分類標籤:</span>` +
+    `<span class="text-stone-400 text-[11px] self-center mr-1">同业圈子标签:</span>` +
     list
       .map(
         (t) => `
@@ -1033,7 +1034,7 @@ function renderStoreTable() {
 
   document.getElementById('store-list').innerHTML =
     filtered.length === 0
-      ? '<div class="py-8 text-center text-stone-400">暫無該分類下的客戶，點擊右上角「+ 快速建檔開戶」或給現有客戶貼上對應標籤即可。</div>'
+      ? '<div class="py-8 text-center text-stone-400">暂无该圈子下的合作门店，点击右上角「+ 快速建档立户」或给现有门店贴上对应圈子标签即可。</div>'
       : filtered
           .map((s) => {
             const tags = Array.isArray(s.tags) ? s.tags : [];
@@ -1050,24 +1051,24 @@ function renderStoreTable() {
                   <span class="text-[10px] px-1.5 py-0.2 rounded font-mono bg-stone-100 text-stone-600 border border-stone-200">📱 ${s.phone}</span>
                   <span class="text-[10px] px-1.5 py-0.2 rounded font-medium ${
                     s.current_debt > s.credit_limit * 0.8 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                  }">在賬: ¥${s.current_debt || 0} / 授信: ¥${s.credit_limit || 2000}</span>
-                  <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded font-mono font-bold">${carrierLabel}借欠: ${
+                  }">在账: ¥${s.current_debt || 0} / 信用额度: ¥${s.credit_limit || 2000}</span>
+                  <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded font-mono font-bold">${carrierLabel}借用: ${
               s.carrier_hold_count || s.basket_count || 0
             } 件</span>
-                  ${discountRate !== 1 ? `<span class="text-[10px] bg-indigo-50 text-indigo-800 border border-indigo-200 px-1.5 py-0.2 rounded font-bold">協議 ${(discountRate * 10).toFixed(1)} 折</span>` : ''}
-                  ${customRuleCount > 0 ? `<span class="text-[10px] bg-purple-50 text-purple-800 border border-purple-200 px-1.5 py-0.2 rounded font-bold">${customRuleCount}款單品協議價</span>` : ''}
+                  ${discountRate !== 1 ? `<span class="text-[10px] bg-indigo-50 text-indigo-800 border border-indigo-200 px-1.5 py-0.2 rounded font-bold">协议 ${(discountRate * 10).toFixed(1)} 折</span>` : ''}
+                  ${customRuleCount > 0 ? `<span class="text-[10px] bg-purple-50 text-purple-800 border border-purple-200 px-1.5 py-0.2 rounded font-bold">${customRuleCount}款单品协议工价</span>` : ''}
                 </div>
                 <div class="text-[11px] text-stone-400 mt-1 flex flex-wrap gap-3 font-mono">
-                  <span>分類標籤: ${tagBadges || '<span class="text-stone-300">未分類</span>'}</span>
-                  <span>送貨師傅: <b class="text-emerald-900">${s.driver_name || '張師傅'}</b></span>
-                  <span>專供品道: <b class="text-amber-800">${s.visible_product_ids ? `${s.visible_product_ids.length} 種專享` : '全品類開放'}</b></span>
+                  <span>同业圈子: ${tagBadges || '<span class="text-stone-300">未归圈</span>'}</span>
+                  <span>送货师傅: <b class="text-emerald-900">${s.driver_name || '张师傅'}</b></span>
+                  <span>专供品道: <b class="text-amber-800">${s.visible_product_ids ? `${s.visible_product_ids.length} 种专享` : '全品类开放'}</b></span>
                 </div>
               </div>
               <div class="flex flex-wrap items-center gap-1.5">
-                <button onclick="window.editStoreTagsPrompt(${s.id}, '${JSON.stringify(s.tags || []).replace(/"/g, '"')}')" class="text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 px-2.5 py-1 rounded-xl font-bold">🏷️ 貼分類標籤</button>
-                <button onclick="window.openStorePolicyModal(${s.id})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-1 rounded-xl font-bold">💎 專屬價格 & 授信</button>
-                <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '"')}')" class="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-xl font-bold">🎯 專供品道</button>
-                <button onclick="window.reassignDriverPrompt(${s.id}, '${s.driver_name || '送貨師傅'}')" class="text-[11px] bg-stone-50 text-stone-700 border border-stone-200 px-2.5 py-1 rounded-xl font-bold">🚚 指派師傅</button>
+                <button onclick="window.editStoreTagsPrompt(${s.id}, '${JSON.stringify(s.tags || []).replace(/"/g, '"')}')" class="text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 px-2.5 py-1 rounded-xl font-bold">🏷️ 贴圈子标签</button>
+                <button onclick="window.openStorePolicyModal(${s.id})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-1 rounded-xl font-bold">💎 协议工价 & 授信</button>
+                <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '"')}')" class="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-xl font-bold">🎯 专供品道</button>
+                <button onclick="window.reassignDriverPrompt(${s.id}, '${s.driver_name || '送货师傅'}')" class="text-[11px] bg-stone-50 text-stone-700 border border-stone-200 px-2.5 py-1 rounded-xl font-bold">🚚 指派师傅</button>
               </div>
             </div>
           `;
@@ -1077,7 +1078,7 @@ function renderStoreTable() {
 
 window.editStoreTagsPrompt = async function (storeId, currentTagsJson) {
   const tags = JSON.parse(currentTagsJson || '[]');
-  const newTagStr = prompt('為該客戶設定分類/脾性標籤（逗號隔開，如：#餐飲大客, #VIP現結, #五金工程）：', tags.join(', '));
+  const newTagStr = prompt('为该合作门店设定同业圈子标签（逗号隔开，如：#餐饮食堂, #社区便民店, #村社自提点）：', tags.join(', '));
   if (newTagStr !== null) {
     const cleanTags = newTagStr
       .split(/[,，]/)
@@ -1094,7 +1095,7 @@ window.openStorePolicyModal = function (storeId) {
   if (!s) return;
 
   document.getElementById('policy-store-id').value = s.id;
-  document.getElementById('policy-store-name').innerText = `${s.name} (聯繫人: ${s.contact || '掌櫃'})`;
+  document.getElementById('policy-store-name').innerText = `${s.name} (联系人: ${s.contact || '掌柜'})`;
   document.getElementById('policy-credit-limit').value = s.credit_limit || 2000;
   document.getElementById('policy-return-quota').value = s.monthly_return_quota || 500;
   document.getElementById('policy-default-settlement').value = s.default_settlement || 'credit';
@@ -1155,7 +1156,7 @@ window.saveStorePolicySettings = async function () {
     await supabase.from('store').update(updatePayload).eq('id', storeId);
   }
 
-  alert('✅ 客戶專屬價格與商約策略已儲存！');
+  alert('✅ 合作门店协议工价与信用策略已储存！');
   window.closeModal('store-policy-modal');
   window.loadHQData();
 };
@@ -1179,11 +1180,11 @@ function applyChannelPermissions(tenant, prod = null) {
 }
 
 window.openAddProductModal = function () {
-  document.getElementById('prod-modal-title').innerText = '📦 物勒工名 · 發布新貨品';
+  document.getElementById('prod-modal-title').innerText = '📦 物勒工名 · 发布新良品';
   document.getElementById('editing-prod-id').value = '';
   uploadedImageBase64 = '';
   selectedTags = [];
-  document.getElementById('image-preview-box').innerHTML = '無圖';
+  document.getElementById('image-preview-box').innerHTML = '无图';
   document.getElementById('prod-name').value = '';
   document.getElementById('prod-barcode').value = '';
   document.getElementById('prod-price').value = '';
@@ -1191,10 +1192,10 @@ window.openAddProductModal = function () {
   document.getElementById('prod-stock').value = '100';
   document.getElementById('prod-min-stock').value = '10';
   document.getElementById('prod-cat-tertiary').value = '';
-  document.getElementById('prod-spec').value = '整裝';
+  document.getElementById('prod-spec').value = '整装';
   document.getElementById('prod-measure-unit').value = '箱';
   document.getElementById('prod-trace-prefix').value = `${currentAgent}-QC-`;
-  document.getElementById('prod-origin-place').value = '源頭工坊原產';
+  document.getElementById('prod-origin-place').value = '源头合作社/工坊原产';
   document.getElementById('prod-remark').value = '';
   document.getElementById('custom-attrs-container').innerHTML = '';
   renderTagChips();
@@ -1205,7 +1206,7 @@ window.openAddProductModal = function () {
 window.openEditProductModal = function (id) {
   const p = allProducts.find((x) => x.id === id);
   if (!p) return;
-  document.getElementById('prod-modal-title').innerText = '✏️ 潤飾貨品細節與自定義屬性';
+  document.getElementById('prod-modal-title').innerText = '✏️ 润饰良品细节与自定义属性';
   document.getElementById('editing-prod-id').value = p.id;
   applyChannelPermissions(currentTenantData, p);
 
@@ -1220,10 +1221,10 @@ window.openEditProductModal = function (id) {
   document.getElementById('prod-price-tier2').value = p.tier_2_price || p.tier_1_price;
   document.getElementById('prod-stock').value = p.stock ?? 100;
   document.getElementById('prod-min-stock').value = p.custom_specs?.min_stock ?? 10;
-  document.getElementById('prod-spec').value = p.spec || '整裝';
+  document.getElementById('prod-spec').value = p.spec || '整装';
   document.getElementById('prod-measure-unit').value = p.measure_unit || '箱';
   document.getElementById('prod-trace-prefix').value = p.trace_code_prefix || 'QC-';
-  document.getElementById('prod-origin-place').value = p.origin_place || '源頭工坊原產';
+  document.getElementById('prod-origin-place').value = p.origin_place || '源头合作社/工坊原产';
   document.getElementById('prod-remark').value = p.remark || '';
 
   const attrBox = document.getElementById('custom-attrs-container');
@@ -1232,7 +1233,7 @@ window.openEditProductModal = function (id) {
   Object.entries(attrs).forEach(([k, v]) => window.addCustomAttrRow(k, v));
 
   uploadedImageBase64 = p.image_url || '';
-  document.getElementById('image-preview-box').innerHTML = uploadedImageBase64 ? `<img src="${uploadedImageBase64}" class="w-full h-full object-cover">` : '無圖';
+  document.getElementById('image-preview-box').innerHTML = uploadedImageBase64 ? `<img src="${uploadedImageBase64}" class="w-full h-full object-cover">` : '无图';
   selectedTags = Array.isArray(p.tags) ? [...p.tags] : [];
   renderTagChips();
   window.openModal('product-modal');
@@ -1241,21 +1242,21 @@ window.openEditProductModal = function (id) {
 window.closeAddProductModal = () => window.closeModal('product-modal');
 
 window.submitProductForm = async function () {
-  if (isUploadingImage) return alert('⏳ 實拍照正在上傳圖床，請稍候 1 秒！');
+  if (isUploadingImage) return alert('⏳ 实拍照正在上传图床，请稍候 1 秒！');
   const editId = document.getElementById('editing-prod-id').value;
   const isBM = document.getElementById('chk-channel-bm').checked;
   const isEC = document.getElementById('chk-channel-ec').checked;
-  if (!isBM && !isEC) return alert('⚠️ 請至少勾選一個貨品投放渠道！');
+  if (!isBM && !isEC) return alert('⚠️ 请至少勾选一个货品投放渠道！');
 
   const name = document.getElementById('prod-name').value.trim();
   const price = parseFloat(document.getElementById('prod-price').value);
-  if (!name) return alert('請寫明貨品全稱！');
-  if (isNaN(price) || price <= 0) return alert('請輸入有效的基礎批發底價！');
+  if (!name) return alert('请写明货品全称！');
+  if (isNaN(price) || price <= 0) return alert('请输入有效的平准供货底价！');
 
   const customAttrs = collectCustomAttrs();
   const minStock = parseInt(document.getElementById('prod-min-stock').value) || 10;
 
-  // 統一使用商道中文渠道標識
+  // 统一使用商道中文渠道标识
   const channelLabel = isBM && !isEC ? '实体店' : !isBM && isEC ? '电子商务' : '实体与电商双轨';
 
   const payload = {
@@ -1268,13 +1269,13 @@ window.submitProductForm = async function () {
     category_tertiary: document.getElementById('prod-cat-tertiary').value.trim(),
     name,
     barcode: document.getElementById('prod-barcode').value.trim(),
-    spec: document.getElementById('prod-spec').value.trim() || '整裝',
+    spec: document.getElementById('prod-spec').value.trim() || '整装',
     measure_unit: document.getElementById('prod-measure-unit').value.trim() || '箱',
     stock: parseInt(document.getElementById('prod-stock').value) || 0,
     tier_1_price: price,
     tier_2_price: parseFloat(document.getElementById('prod-price-tier2').value) || price,
     trace_code_prefix: document.getElementById('prod-trace-prefix').value.trim() || 'QC-',
-    origin_place: document.getElementById('prod-origin-place').value.trim() || '源頭工坊原產',
+    origin_place: document.getElementById('prod-origin-place').value.trim() || '源头合作社/工坊原产',
     image_url: uploadedImageBase64,
     remark: document.getElementById('prod-remark').value.trim(),
     tags: selectedTags,
@@ -1289,9 +1290,9 @@ window.submitProductForm = async function () {
     res = editId ? await supabase.from('product').update(payload).eq('id', parseInt(editId)) : await supabase.from('product').insert([payload]);
   }
 
-  if (res.error) alert('儲存失敗: ' + res.error.message);
+  if (res.error) alert('储存失败: ' + res.error.message);
   else {
-    alert(`🎉 貨品【${name}】已發布生效（投放渠道：${channelLabel}）！`);
+    alert(`🎉 良品【${name}】已发布生效（投放渠道：${channelLabel}）！`);
     window.closeAddProductModal();
     window.loadHQData();
   }
@@ -1306,12 +1307,12 @@ window.handleImageUpload = async function (event) {
 
     isUploadingImage = true;
     const submitBtn = document.getElementById('btn-submit-product');
-    if (submitBtn) submitBtn.innerText = '⏳ 上傳圖床中...';
+    if (submitBtn) submitBtn.innerText = '⏳ 上传图床中...';
 
     uploadedImageBase64 = await uploadBlobToStorage(compressedBase64, currentAgent, 'products');
 
     isUploadingImage = false;
-    if (submitBtn) submitBtn.innerText = '儲存並發布貨品';
+    if (submitBtn) submitBtn.innerText = '储存并发布良品';
     document.getElementById('image-preview-box').innerHTML = `<img src="${uploadedImageBase64}" class="w-full h-full object-cover">`;
   } catch (e) {
     isUploadingImage = false;
@@ -1320,7 +1321,7 @@ window.handleImageUpload = async function (event) {
 
 window.clearProductImage = () => {
   uploadedImageBase64 = '';
-  document.getElementById('image-preview-box').innerHTML = '無圖';
+  document.getElementById('image-preview-box').innerHTML = '无图';
 };
 
 window.toggleTag = function (tagStr) {
@@ -1329,7 +1330,7 @@ window.toggleTag = function (tagStr) {
 };
 
 window.promptAddTag = function () {
-  const customTag = prompt('輸入特色營銷標籤（如：🏪 掌柜严选、#滿十贈一、#新品試銷）：');
+  const customTag = prompt('输入商道属性标签（如：🌾 合作社直供、🔄 余缺平价调剂、🤝 抱团集采惠）：');
   if (customTag && customTag.trim()) {
     const clean = customTag.trim();
     if (!selectedTags.includes(clean)) selectedTags.push(clean);
@@ -1339,7 +1340,7 @@ window.promptAddTag = function () {
 
 function renderTagChips() {
   const box = document.getElementById('quick-tags-box');
-  const defaultChips = ['🏪 掌柜严选', '🔥 街坊搶手', '⏳ 臨期撿漏', '💎 高毛利', '❄️ 需冷藏', '🎁 買十送一'];
+  const defaultChips = ['🌾 合作社直供', '🔥 门店常备', '🔄 余缺平价调剂', '💎 阳光工价·诚意价', '❄️ 需冷藏保鲜', '🤝 抱团集采惠'];
   const allUnique = Array.from(new Set([...defaultChips, ...selectedTags]));
   box.innerHTML = allUnique
     .map((t) => {
@@ -1352,11 +1353,11 @@ function renderTagChips() {
 }
 
 window.quickEditPrice = function (id, oldPrice) {
-  const newPrice = prompt(`【潤色批發底價】原價 ¥${oldPrice}，輸入新底價：`, oldPrice);
+  const newPrice = prompt(`【润色平准供货底价】原底价 ¥${oldPrice}，输入新底价：`, oldPrice);
   if (newPrice !== null && !isNaN(newPrice) && parseFloat(newPrice) > 0) {
     const p = parseFloat(newPrice);
     if (p < oldPrice * 0.85) {
-      window.trigger2FAAction(`底價降幅超 15% (從 ¥${oldPrice} 調至 ¥${p})，請輸入驗證器 6 位動態碼授權：`, async () => {
+      window.trigger2FAAction(`底价调幅超 15% (从 ¥${oldPrice} 调至 ¥${p})，请输入验证器 6 位动态码授权：`, async () => {
         await supabase.from('product').update({ tier_1_price: p }).eq('id', id);
         window.loadHQData();
       });
@@ -1371,14 +1372,14 @@ window.quickEditPrice = function (id, oldPrice) {
 };
 
 window.deleteProduct = function (id, name) {
-  window.trigger2FAAction(`確認永久刪除貨品【${name}】？請輸入手機驗證器 6 位動態碼：`, async () => {
+  window.trigger2FAAction(`确认永久删除良品【${name}】？请输入手机验证器 6 位动态码：`, async () => {
     await supabase.from('product').delete().eq('id', id);
     window.loadHQData();
   });
 };
 
 // =========================================================================
-// 8. 訂單履約、天街求購需求報價接單 & 財務點款
+// 8. 订单履约、天街求购需求报价接单 & 财务点款
 // =========================================================================
 function parseDemandPayload(rawContent) {
   try {
@@ -1388,23 +1389,23 @@ function parseDemandPayload(rawContent) {
   return {
     title: rawContent,
     qty: '若干',
-    budget: '面議',
-    delivery: '靈活協商',
+    budget: '面议',
+    delivery: '灵活协商',
     coBuyers: 1
   };
 }
 
 window.replyToC2BDemand = async function (demandId, demandTitle) {
   const quote = prompt(
-    `【百工天街求購報價】針對「${demandTitle}」，請輸入您的出廠階梯報價、起訂量與交付時間（買家將立即在手機端收到）：`,
-    '出廠批價 ¥62/件，滿20件包配送至合作門店自提，3天內安排發車！'
+    `【百工天街求购回应】针对「${demandTitle}」，请输入您的平准直供工价、起订量与交付时间（需求方将立即在手机端收到）：`,
+    '合作社直供工价 ¥62/件，满20件包配送至合作门店自提，3天内安排发车！'
   );
   if (!quote || !quote.trim()) return;
   const senderLabel = `${currentTenantData?.company_name || currentAgent}（${currentOperatorName}）`;
   const { error } = await HQService.replyC2BDemand(demandId, `【${senderLabel}】${quote.trim()}`);
-  if (error) alert('報價提交失敗：' + error.message);
+  if (error) alert('回应提交失败：' + error.message);
   else {
-    alert('🎉 報價回執已發送至百工天街！買家確認鎖定後平台將第一時間通知您排產。');
+    alert('🎉 直供回应已发送至百工天街！对方确认锁定后系统将第一时间通知您排产备货。');
     window.loadHQData();
   }
 };
@@ -1415,7 +1416,7 @@ function renderOrderFulfillmentList() {
 
   if (activeOrderFilter === 'c2b_demands') {
     if (allC2BDemands.length === 0) {
-      container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">暫無天街求購或定制需求帖。</div>';
+      container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">暂无天街求购或定制用度需求帖。</div>';
       return;
     }
     container.innerHTML = allC2BDemands
@@ -1426,31 +1427,31 @@ function renderOrderFulfillmentList() {
           <div class="p-4 bg-amber-50/60 border border-amber-300 rounded-3xl space-y-2.5">
             <div class="flex justify-between items-start gap-2">
               <div>
-                <span class="bg-amber-500 text-stone-950 text-[10px] font-bold px-2 py-0.5 rounded-lg mr-1.5">📢 天街求購需求</span>
+                <span class="bg-amber-500 text-stone-950 text-[10px] font-bold px-2 py-0.5 rounded-lg mr-1.5">📢 天街求购榜</span>
                 <b class="text-sm text-stone-900">${info.title}</b>
-                <span class="text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded-full font-bold ml-1">🔥 ${info.coBuyers || 1} 人湊單</span>
+                <span class="text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded-full font-bold ml-1">🔥 ${info.coBuyers || 1} 人抱团凑单</span>
               </div>
               <span class="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
                 info.acceptedByBuyer ? 'bg-emerald-600 text-white' : hasReplied ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-200 text-amber-950'
               }">
-                ${info.acceptedByBuyer ? '🤝 買家已鎖定意向' : hasReplied ? '✅ 已報價待確認' : '⏳ 待工坊報價'}
+                ${info.acceptedByBuyer ? '🤝 需求方已锁定意向' : hasReplied ? '✅ 已回应待确认' : '⏳ 待源头直供回应'}
               </span>
             </div>
             <div class="grid grid-cols-3 gap-2 bg-white p-2.5 rounded-2xl border border-amber-200/80 text-[11px] font-mono">
-              <div>需求數量: <b>${info.qty}</b></div>
-              <div>目標預算: <b class="text-emerald-900">${info.budget}</b></div>
+              <div>需求数量: <b>${info.qty}</b></div>
+              <div>期望工价: <b class="text-emerald-900">${info.budget}</b></div>
               <div>交付要求: <b class="font-sans">${info.delivery}</b></div>
             </div>
-            ${info.note ? `<div class="text-[11px] text-stone-600">💬 定制規格細節：${info.note}</div>` : ''}
+            ${info.note ? `<div class="text-[11px] text-stone-600">💬 定制规格细节：${info.note}</div>` : ''}
             ${
               hasReplied
-                ? `<div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-2xl text-[11px] text-emerald-950"><b>已發報價回執：</b>${d.official_reply}</div>`
+                ? `<div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-2xl text-[11px] text-emerald-950"><b>已发直供回应：</b>${d.official_reply}</div>`
                 : ''
             }
             <div class="flex justify-between items-center pt-1 text-[11px]">
-              <span class="text-stone-400">發榜人：${d.proposer_name || '天街買家'} · ${new Date(d.created_at).toLocaleDateString()}</span>
+              <span class="text-stone-400">发起人：${d.proposer_name || '天街买家'} · ${new Date(d.created_at).toLocaleDateString()}</span>
               <button onclick="window.replyToC2BDemand(${d.id}, '${info.title.replace(/'/g, '')}')" class="bg-[#1b4332] hover:bg-[#143628] text-white px-4 py-1.5 rounded-xl font-bold shadow active:scale-95 transition">
-                ${hasReplied ? '✏️ 修改報價' : '💰 填寫報價接單'}
+                ${hasReplied ? '✏️ 修改回应' : '💰 填报工价直供'}
               </button>
             </div>
           </div>
@@ -1468,7 +1469,7 @@ function renderOrderFulfillmentList() {
   else if (activeOrderFilter === 'delivered') filtered = allOrders.filter((o) => o.delivery_status === 'delivered');
 
   if (filtered.length === 0) {
-    container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">當前分類下暫無單據。</div>';
+    container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">当前分类下暂无单据。</div>';
     return;
   }
 
@@ -1480,21 +1481,21 @@ function renderOrderFulfillmentList() {
           <div class="p-4 bg-amber-50/60 border border-amber-300 rounded-3xl space-y-2.5">
             <div class="flex justify-between items-start">
               <div>
-                <span class="bg-amber-500 text-stone-950 text-[10px] font-bold px-2 py-0.5 rounded-lg mr-1.5">🤝 供貨商名錄招商線索</span>
+                <span class="bg-amber-500 text-stone-950 text-[10px] font-bold px-2 py-0.5 rounded-lg mr-1.5">🤝 供需名录合作意向</span>
                 <b class="text-sm text-stone-900">${o.store_name}</b>
                 <span class="text-[10px] font-mono bg-stone-200 text-stone-700 px-1.5 rounded ml-1">#${o.order_no || o.id}</span>
               </div>
               <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${isConverted ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-200 text-amber-950 animate-pulse'}">
-                ${isConverted ? '✓ 已建檔開戶' : '待聯繫送樣'}
+                ${isConverted ? '✓ 已立户建档' : '待联系送样'}
               </span>
             </div>
-            <div class="bg-white p-3 rounded-2xl border border-amber-200/80 text-xs text-stone-700 leading-relaxed">${o.note || '潛在客戶申請上門送樣洽談'}</div>
+            <div class="bg-white p-3 rounded-2xl border border-amber-200/80 text-xs text-stone-700 leading-relaxed">${o.note || '意向门店申请上门送样洽谈'}</div>
             <div class="flex justify-between items-center pt-1 text-xs">
-              <span class="text-[10px] text-stone-400 font-mono">提交時間: ${o.created_at ? new Date(o.created_at).toLocaleString() : '剛剛'}</span>
+              <span class="text-[10px] text-stone-400 font-mono">提交时间: ${o.created_at ? new Date(o.created_at).toLocaleString() : '刚刚'}</span>
               ${
                 isConverted
-                  ? '<span class="text-emerald-800 font-bold text-xs">已錄入合作客戶名冊</span>'
-                  : `<button onclick="window.convertLeadToStore(${o.id})" class="bg-[#1b4332] hover:bg-[#143628] text-white px-4 py-1.5 rounded-xl font-bold shadow active:scale-95 transition">🏪 一鍵建檔轉為合作客戶</button>`
+                  ? '<span class="text-emerald-800 font-bold text-xs">已录入合作门店名册</span>'
+                  : `<button onclick="window.convertLeadToStore(${o.id})" class="bg-[#1b4332] hover:bg-[#143628] text-white px-4 py-1.5 rounded-xl font-bold shadow active:scale-95 transition">🏪 一键立户转为合作门店</button>`
               }
             </div>
           </div>
@@ -1514,20 +1515,20 @@ function renderOrderFulfillmentList() {
         <div class="p-4 bg-stone-50 border ${isOverCredit ? 'border-rose-400 bg-rose-50/30' : isPending ? 'border-amber-300' : 'border-stone-200'} rounded-3xl space-y-2.5">
           <div class="flex justify-between items-start">
             <div>
-              <b class="text-sm text-stone-900">${o.store_name || '百工天街結緣單'}</b>
+              <b class="text-sm text-stone-900">${o.store_name || '百工天街直供单'}</b>
               <span class="text-[10px] font-mono bg-stone-200 text-stone-700 px-1.5 rounded ml-1">#${o.order_no || o.id}</span>
               <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ml-1 ${
                 isDelivered ? 'bg-emerald-100 text-emerald-800' : isOverCredit ? 'bg-rose-600 text-white' : isPending ? 'bg-amber-100 text-amber-900' : 'bg-blue-100 text-blue-900'
               }">
-                ${isDelivered ? '已核銷交割' : isOverCredit ? '🚨 授信超額待特批' : isPending ? '待確認接單' : '已排單發運'}
+                ${isDelivered ? '已核销交割' : isOverCredit ? '🚨 授信超额待特批' : isPending ? '待确认接单' : '已排单发运'}
               </span>
             </div>
             <span class="font-bold text-xs bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-lg">${o.settlement_type}</span>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-white p-2.5 rounded-2xl border border-stone-100 text-[11px]">
-            <div>新配: ${orderItems.map((i) => `${i.name}x${i.qty}`).join('、') || '無'}</div>
-            <div class="text-rose-700">退驗: ${returnItems.map((i) => `${i.name}x${i.qty}`).join('、') || '無'}</div>
-            <div class="text-amber-800">對調: ${exchangeItems.map((i) => `${i.name}x${i.qty}`).join('、') || '無'}</div>
+            <div>新配: ${orderItems.map((i) => `${i.name}x${i.qty}`).join('、') || '无'}</div>
+            <div class="text-rose-700">退验: ${returnItems.map((i) => `${i.name}x${i.qty}`).join('、') || '無'}</div>
+            <div class="text-amber-800">对调: ${exchangeItems.map((i) => `${i.name}x${i.qty}`).join('、') || '无'}</div>
           </div>
           ${
             o.note || proofs.length > 0 || o.sign_image_url
@@ -1543,23 +1544,23 @@ function renderOrderFulfillmentList() {
               : ''
           }
           <div class="flex justify-between items-center pt-2 border-t border-stone-200/60 text-xs">
-            <span class="font-mono text-stone-800 font-bold">淨結: ¥${netTotal.toFixed(2)}</span>
+            <span class="font-mono text-stone-800 font-bold">净结: ¥${netTotal.toFixed(2)}</span>
             ${
               isOverCredit
                 ? `
               <div class="flex gap-2">
-                <button onclick="window.hqRejectOverCredit(${o.id})" class="bg-rose-50 text-rose-700 px-3 py-1.5 rounded-xl border border-rose-200 font-bold">拒絕賒銷</button>
+                <button onclick="window.hqRejectOverCredit(${o.id})" class="bg-rose-50 text-rose-700 px-3 py-1.5 rounded-xl border border-rose-200 font-bold">拒绝赊销</button>
                 <button onclick="window.hqApproveOverCredit(${o.id}, ${o.store_id}, ${o.over_credit_amount || 0})" class="bg-emerald-800 text-white px-4 py-1.5 rounded-xl font-bold shadow">🛡️ 2FA特信放行</button>
               </div>
             `
                 : isPending
                 ? `
               <div class="flex gap-2">
-                <button onclick="window.hqRejectWithProposal(${o.id})" class="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-xl font-bold">建議微調</button>
-                <button onclick="window.hqApproveOrder(${o.id})" class="bg-[#1b4332] text-white px-4 py-1.5 rounded-xl font-bold shadow">✅ 應允接單並扣庫</button>
+                <button onclick="window.hqRejectWithProposal(${o.id})" class="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-xl font-bold">建议微调</button>
+                <button onclick="window.hqApproveOrder(${o.id})" class="bg-[#1b4332] text-white px-4 py-1.5 rounded-xl font-bold shadow">✅ 应允接单并扣库</button>
               </div>
             `
-                : `<span class="text-stone-400 font-mono">${o.driver_action_instruction || '正常辦理'}</span>`
+                : `<span class="text-stone-400 font-mono">${o.driver_action_instruction || '正常办理'}</span>`
             }
           </div>
         </div>
@@ -1572,11 +1573,11 @@ window.convertLeadToStore = async function (orderId) {
   const leadOrder = allOrders.find((o) => o.id === orderId);
   if (!leadOrder) return;
   const parts = (leadOrder.settlement_note || '').split('|');
-  const contactName = parts[0] || '掌櫃';
+  const contactName = parts[0] || '掌柜';
   const phone = parts[1] || '';
   const address = parts[2] || '';
-  const storeName = leadOrder.store_name || '新簽約客戶';
-  if (!confirm(`確認將意向客戶【${storeName}】（${contactName} ${phone}）建檔開戶？`)) return;
+  const storeName = leadOrder.store_name || '新合作门店';
+  if (!confirm(`确认将意向门店【${storeName}】（${contactName} ${phone}）建档立户？`)) return;
 
   const { error: storeErr } = await supabase.from('store').insert([
     {
@@ -1585,51 +1586,51 @@ window.convertLeadToStore = async function (orderId) {
       contact: contactName,
       phone,
       address,
-      tags: ['#新簽約'],
+      tags: ['#新合作门店'],
       credit_limit: 2000,
       monthly_return_quota: 500,
       current_debt: 0,
-      driver_name: '張師傅'
+      driver_name: '张师傅'
     }
   ]);
-  if (storeErr) return alert('建檔開戶失敗：' + storeErr.message);
+  if (storeErr) return alert('建档立户失败：' + storeErr.message);
 
-  await supabase.from('store_order').update({ order_status: 'lead_converted', delivery_status: 'delivered', driver_action_instruction: '【已轉為正式合作客戶】' }).eq('id', orderId);
-  alert(`🎉 客戶【${storeName}】已建檔開戶！`);
+  await supabase.from('store_order').update({ order_status: 'lead_converted', delivery_status: 'delivered', driver_action_instruction: '【已转为正式合作门店】' }).eq('id', orderId);
+  alert(`🎉 门店【${storeName}】已建档立户！`);
   window.loadHQData();
   window.switchTab('stores');
 };
 
 window.hqApproveOverCredit = function (orderId, storeId, overAmount) {
-  window.trigger2FAAction(`特批放行【超額賒銷 ¥${overAmount}】訂單，請輸入驗證器 6 位動態口令：`, async () => {
-    await supabase.from('store_order').update({ order_status: 'over_credit_approved', driver_action_instruction: '【主管 2FA 已特批】允許掛賬交割' }).eq('id', orderId);
+  window.trigger2FAAction(`特批放行【超额周转 ¥${overAmount}】单据，请输入验证器 6 位动态口令：`, async () => {
+    await supabase.from('store_order').update({ order_status: 'over_credit_approved', driver_action_instruction: '【主管 2FA 已特批】允许记账交割' }).eq('id', orderId);
     window.loadHQData();
   });
 };
 
 window.hqRejectOverCredit = async function (orderId) {
-  const reason = prompt('輸入拒絕掛賬指令：', '超額授信，請當場收現！');
+  const reason = prompt('输入拒绝记账指令：', '超额授信，请当场收现！');
   if (!reason) return;
-  await supabase.from('store_order').update({ order_status: 'over_credit_rejected', driver_action_instruction: `【拒絕掛賬】${reason}` }).eq('id', orderId);
+  await supabase.from('store_order').update({ order_status: 'over_credit_rejected', driver_action_instruction: `【拒绝记账】${reason}` }).eq('id', orderId);
   window.loadHQData();
 };
 
 window.hqApproveOrder = async function (orderId) {
   const order = allOrders.find((o) => o.id === orderId);
-  let driverCmd = `【發運指令】配發貨品 ${order?.items?.length || 0}項；`;
-  if (order?.settlement_type === 'cash') driverCmd += `當面點收現款；`;
-  else driverCmd += `按${order?.settlement_type}簽收！`;
+  let driverCmd = `【发运指令】配发货品 ${order?.items?.length || 0}项；`;
+  if (order?.settlement_type === 'cash') driverCmd += `当面点收现款；`;
+  else driverCmd += `按${order?.settlement_type}签收！`;
 
   await supabase.from('store_order').update({ order_status: 'confirmed', driver_action_instruction: driverCmd }).eq('id', orderId);
   if (order?.items) {
     await HQService.deductStockForItems(currentAgent, allProducts, order.items, order.order_no || order.id, currentOperatorName);
   }
-  alert('✅ 已確認接單並自動扣減對應庫存，已匯入「本車裝車總揀貨單」！');
+  alert('✅ 已确认接单并自动扣减对应库存，已汇入「本车装车总拣货单」！');
   window.loadHQData();
 };
 
 window.hqRejectWithProposal = async function (orderId) {
-  const feedback = prompt('輸入給客戶的修潤建議：');
+  const feedback = prompt('输入给门店掌柜的修润建议：');
   if (!feedback || !feedback.trim()) return;
   await supabase.from('store_order').update({ order_status: 'counter_proposal', vendor_feedback: feedback.trim() }).eq('id', orderId);
   window.loadHQData();
@@ -1638,22 +1639,22 @@ window.hqRejectWithProposal = async function (orderId) {
 function renderDriverSettleList(logs) {
   document.getElementById('driver-settle-list').innerHTML =
     logs.length === 0
-      ? '<div class="p-6 text-center text-stone-400 text-xs">隨車師傅所收款項已清點入庫，無待交錢款。</div>'
+      ? '<div class="p-6 text-center text-stone-400 text-xs">随车师傅所收款项已清点入库，无待交钱款。</div>'
       : logs
           .map(
             (l) => `
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl flex justify-between items-center">
             <div>
               <div class="flex items-center gap-1.5 font-bold text-stone-800">
-                <span>師傅: ${l.driver_name}</span>
+                <span>师傅: ${l.driver_name}</span>
                 <span class="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-mono">${l.pay_method}</span>
-                <span class="text-xs text-stone-600">從【${l.store_name}】收回</span>
+                <span class="text-xs text-stone-600">从【${l.store_name}】收回</span>
               </div>
-              <div class="text-[10px] text-stone-400 mt-0.5 font-mono">交賬時間: ${new Date(l.created_at).toLocaleString()}</div>
+              <div class="text-[10px] text-stone-400 mt-0.5 font-mono">交账时间: ${new Date(l.created_at).toLocaleString()}</div>
             </div>
             <div class="text-right">
               <b class="text-base font-mono text-emerald-900 font-bold block">¥${l.amount}</b>
-              <button onclick="window.confirmLogSettled(${l.id}, ${l.amount})" class="text-[10px] bg-[#1b4332] text-white font-bold px-2.5 py-1 rounded-lg active:scale-95 shadow">財務點清入庫</button>
+              <button onclick="window.confirmLogSettled(${l.id}, ${l.amount})" class="text-[10px] bg-[#1b4332] text-white font-bold px-2.5 py-1 rounded-lg active:scale-95 shadow">财务点清入库</button>
             </div>
           </div>
         `
@@ -1664,12 +1665,12 @@ function renderDriverSettleList(logs) {
 window.confirmLogSettled = function (logId, amount) {
   const amt = parseFloat(amount || 0);
   if (amt >= 3000) {
-    window.trigger2FAAction(`大額現金平賬 ¥${amt.toFixed(2)}，請輸入驗證器 6 位動態碼授權：`, async () => {
+    window.trigger2FAAction(`大额现金平账 ¥${amt.toFixed(2)}，请输入验证器 6 位动态码授权：`, async () => {
       await supabase.from('driver_collection_log').update({ settled_to_hq: true }).eq('id', logId);
       window.loadHQData();
     });
   } else {
-    if (!confirm('確認已點清該筆隨車錢款入庫？')) return;
+    if (!confirm('确认已点清该笔随车钱款入库？')) return;
     supabase
       .from('driver_collection_log')
       .update({ settled_to_hq: true })
@@ -1679,16 +1680,16 @@ window.confirmLogSettled = function (logId, amount) {
 };
 
 // =========================================================================
-// 9. 屬員四權分立、專供通道與主動配貨
+// 9. 属员四权分立、专供通道与主动配货
 // =========================================================================
 function renderSubUsersTable() {
   document.getElementById('subuser-table-body').innerHTML = allSubUsers
     .map((u) => {
       const roles = {
-        finance: '賬房財務 (管賬審單 · 不過手現金)',
-        warehouse: '倉儲調度 (出入庫盤點發貨 · 不碰錢賬)',
-        driver: '送貨師傅 (隨車收款簽收 · 不管總賬)',
-        auditor: '廠商獨立稽核 (只讀查看流水)'
+        finance: '账房财务 (管账审单 · 不过手现金)',
+        warehouse: '仓储调度 (出入库盘点发货 · 不碰钱账)',
+        driver: '送货师傅 (随车收款签收 · 不管总账)',
+        auditor: '独立稽核 (只读查看流水)'
       };
       return `
         <tr class="hover:bg-stone-50 transition">
@@ -1696,8 +1697,8 @@ function renderSubUsersTable() {
           <td class="p-2.5 font-bold">${u.real_name}</td>
           <td class="p-2.5 font-medium text-emerald-950">${roles[u.role_code] || u.role_code}</td>
           <td class="p-2.5 font-mono text-stone-500">${u.phone || '-'}</td>
-          <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${u.is_active ? '在冊當值' : '停用'}</span></td>
-          <td class="p-2.5 text-right"><button onclick="window.toggleSubUserActive(${u.id}, ${u.is_active})" class="text-[11px] font-bold text-stone-600 hover:underline">${u.is_active ? '停職' : '復職'}</button></td>
+          <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${u.is_active ? '在册当值' : '停用'}</span></td>
+          <td class="p-2.5 text-right"><button onclick="window.toggleSubUserActive(${u.id}, ${u.is_active})" class="text-[11px] font-bold text-stone-600 hover:underline">${u.is_active ? '停职' : '复职'}</button></td>
         </tr>
       `;
     })
@@ -1717,9 +1718,9 @@ window.saveSubUser = async function () {
   const role_code = document.getElementById('sub-role-select').value;
   const pwd = document.getElementById('sub-pwd-input').value.trim();
   const phone = document.getElementById('sub-phone-input').value.trim();
-  if (!account_name || !real_name || !pwd) return alert('請填全賬號、姓名與密碼！');
+  if (!account_name || !real_name || !pwd) return alert('请填全账号、姓名与密码！');
   const { error } = await supabase.from('tenant_sub_user').insert([{ tenant_id: currentAgent, account_name, real_name, role_code, password_hash: pwd, phone, is_active: true }]);
-  if (error) alert('授任失敗: ' + error.message);
+  if (error) alert('授任失败: ' + error.message);
   else {
     window.closeModal('modal-add-subuser');
     window.loadHQData();
@@ -1733,7 +1734,7 @@ window.toggleSubUserActive = async function (id, curState) {
 
 window.openVisibilityModal = function (storeId, storeName, currentJson) {
   currentStoreForVis = storeId;
-  document.getElementById('vis-store-title').innerText = `${storeName} (專享通道)`;
+  document.getElementById('vis-store-title').innerText = `${storeName} (专享通道)`;
   const selected = JSON.parse(currentJson || '[]');
   document.getElementById('vis-checkbox-group').innerHTML = allProducts
     .filter((p) => p.status !== 'inactive')
@@ -1762,7 +1763,7 @@ window.saveVisibilitySettings = async function () {
 };
 
 window.reassignDriverPrompt = async function (storeId, currentDriver) {
-  const newDriver = prompt(`當前送貨師傅為【${currentDriver}】，輸入新師傅姓名：`, '張師傅');
+  const newDriver = prompt(`当前送货师傅为【${currentDriver}】，输入新师傅姓名：`, '张师傅');
   if (newDriver && newDriver.trim()) {
     await supabase.from('store').update({ driver_name: newDriver.trim() }).eq('id', storeId);
     window.loadHQData();
@@ -1770,17 +1771,17 @@ window.reassignDriverPrompt = async function (storeId, currentDriver) {
 };
 
 window.registerNewStore = async function () {
-  const shopName = prompt('輸入客戶/門店全稱：');
+  const shopName = prompt('输入合作门店全称：');
   if (!shopName || !shopName.trim()) return;
-  const phone = prompt('輸入聯繫人 11 位手機號：');
-  if (!phone || phone.trim().length < 11) return alert('請輸入有效 11 位手機號！');
-  await supabase.from('store').insert([{ tenant_id: currentAgent, name: shopName.trim(), contact: '掌櫃', phone: phone.trim(), credit_limit: 2000, monthly_return_quota: 500, current_debt: 0, driver_name: '張師傅' }]);
+  const phone = prompt('输入联系人 11 位手机号：');
+  if (!phone || phone.trim().length < 11) return alert('请输入有效 11 位手机号！');
+  await supabase.from('store').insert([{ tenant_id: currentAgent, name: shopName.trim(), contact: '掌柜', phone: phone.trim(), credit_limit: 2000, monthly_return_quota: 500, current_debt: 0, driver_name: '张师傅' }]);
   window.loadHQData();
 };
 
 window.openPushOrderModal = function () {
   const storeSelect = document.getElementById('push-store-select');
-  storeSelect.innerHTML = allStores.map((s) => `<option value="${s.id}">${s.name} (授信餘 ¥${(s.credit_limit || 2000) - (s.current_debt || 0)})</option>`).join('');
+  storeSelect.innerHTML = allStores.map((s) => `<option value="${s.id}">${s.name} (信用余 ¥${(s.credit_limit || 2000) - (s.current_debt || 0)})</option>`).join('');
   if (allStores.length > 0) window.onPushStoreChange(allStores[0].id);
   document.getElementById('push-products-list').innerHTML = allProducts
     .filter((p) => p.status !== 'inactive')
@@ -1799,7 +1800,7 @@ window.openPushOrderModal = function () {
 window.onPushStoreChange = function (storeId) {
   const s = allStores.find((x) => x.id === parseInt(storeId));
   if (s) {
-    document.getElementById('push-driver-name').value = s.driver_name || '張師傅';
+    document.getElementById('push-driver-name').value = s.driver_name || '张师傅';
     if (s.default_settlement) document.getElementById('push-settlement-select').value = s.default_settlement;
   }
 };
@@ -1808,7 +1809,7 @@ window.submitVendorPushOrder = async function () {
   const storeId = parseInt(document.getElementById('push-store-select').value);
   const store = allStores.find((s) => s.id === storeId);
   const settlement = document.getElementById('push-settlement-select').value;
-  const driver = document.getElementById('push-driver-name').value.trim() || '張師傅';
+  const driver = document.getElementById('push-driver-name').value.trim() || '张师傅';
   const note = document.getElementById('push-note-input').value.trim();
 
   const items = [];
@@ -1820,7 +1821,7 @@ window.submitVendorPushOrder = async function () {
       totalAmount += p.tier_1_price * qty;
     }
   }
-  if (items.length === 0) return alert('請至少挑選 1 樣貨品！');
+  if (items.length === 0) return alert('请至少挑选 1 样货品！');
 
   const orderNo = `PS-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
   const { error } = await supabase.from('store_order').insert([
@@ -1841,14 +1842,14 @@ window.submitVendorPushOrder = async function () {
       net_settle_amount: totalAmount,
       order_status: 'confirmed',
       delivery_status: 'ordered',
-      note: `[廠家主動配貨] ${note}`,
-      driver_action_instruction: `【主動配貨】核驗交付 ${items.length}項`
+      note: `[源头主动配货] ${note}`,
+      driver_action_instruction: `【主动配货】核验交付 ${items.length}项`
     }
   ]);
-  if (error) alert('配發失敗: ' + error.message);
+  if (error) alert('配发失败: ' + error.message);
   else {
     await HQService.deductStockForItems(currentAgent, allProducts, items, orderNo, currentOperatorName);
-    alert('✅ 主動配貨單已生成並自動扣庫，已匯入「本車裝車總揀貨單」！');
+    alert('✅ 主动配货单已生成并自动扣库，已汇入「本车装车总拣货单」！');
     window.closeModal('push-modal');
     window.loadHQData();
   }
@@ -1884,7 +1885,7 @@ window.filterOrderStatus = function (status) {
 };
 
 window.triggerBarcodeScan = async function () {
-  const code = prompt('請用掃碼槍掃入或鍵入商品/物料條碼：');
+  const code = prompt('请用扫码枪扫入或键入商品/物料条码：');
   if (code && code.trim()) document.getElementById('prod-barcode').value = code.trim();
 };
 window.stopBarcodeScan = () => window.closeModal('scanner-modal');
