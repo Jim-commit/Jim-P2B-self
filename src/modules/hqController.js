@@ -12,6 +12,18 @@ function isDirectoryLead(o) {
   );
 }
 
+function isEcommerceAllowed(p) {
+  if (!p) return false;
+  if (p.channel_ecommerce !== undefined) return !!p.channel_ecommerce;
+  return ['电子商务', '电商直供', '双轨', '实体与电商双轨', 'online', 'both'].includes(p.sales_channel_type);
+}
+
+function isBrickMortarAllowed(p) {
+  if (!p) return true;
+  if (p.channel_brick_and_mortar !== undefined) return !!p.channel_brick_and_mortar;
+  return ['实体店', '实体与电商双轨', '双轨', 'offline', 'both'].includes(p.sales_channel_type) || !p.sales_channel_type;
+}
+
 let currentAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
 let currentRoleCode = sessionStorage.getItem('hq_sub_role_' + currentAgent) || 'owner';
 let currentOperatorName = sessionStorage.getItem('hq_sub_name_' + currentAgent) || '大當家主賬號';
@@ -21,6 +33,7 @@ let currentTenantData = null;
 let allProducts = [];
 let allStores = [];
 let allOrders = [];
+let allC2BDemands = [];
 let allSubUsers = [];
 let allPlatformCats = [];
 let allInventoryLogs = [];
@@ -35,6 +48,35 @@ let pending2FACallback = null;
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
+
+// =========================================================================
+// 0. 專櫃門面與車間實拍配置（打通百工天街「產區工藝檔案 + 實拍視頻」）
+// =========================================================================
+window.openCounterProfileModal = function () {
+  document.getElementById('counter-origin-desc-input').value = currentTenantData?.brand_origin_desc || '';
+  document.getElementById('counter-media-url-input').value = currentTenantData?.media_url || '';
+  window.openModal('modal-counter-profile');
+};
+
+window.saveCounterProfile = async function () {
+  const brand_origin_desc = document.getElementById('counter-origin-desc-input').value.trim();
+  const media_url = document.getElementById('counter-media-url-input').value.trim();
+
+  try {
+    await HQService.updateTenantWithVerify(currentAgent, { brand_origin_desc, media_url });
+    if (currentTenantData) {
+      currentTenantData.brand_origin_desc = brand_origin_desc;
+      currentTenantData.media_url = media_url;
+    }
+    alert('✅ 數字專櫃工藝檔案與車間實拍鏈接已同步至百工天街！');
+    window.closeModal('modal-counter-profile');
+  } catch (err) {
+    alert(
+      '⚠️ 儲存失敗（若提示缺少 media_url 字段，請先在 Supabase SQL 執行：ALTER TABLE platform_tenant ADD COLUMN IF NOT EXISTS media_url TEXT;）：' +
+        err.message
+    );
+  }
+};
 
 // =========================================================================
 // 1. 群機器人 Webhook 自動報單提醒配置
@@ -53,7 +95,7 @@ window.saveWebhookUrl = async function () {
     alert(url ? '✅ 報單群機器人已真正寫入雲端並啟用！' : '已關閉報單群機器人通知。');
     window.closeModal('modal-webhook-setup');
   } catch (err) {
-    alert('⚠️ 儲存失敗（請檢查 Supabase 數據庫是否已執行 RLS 放行策略與 webhook_url 字段）：' + err.message);
+    alert('⚠️ 儲存失敗：' + err.message);
   }
 };
 
@@ -290,10 +332,23 @@ function renderThreeFlowsAndAIAdvisor() {
 
   const pendingOrders = allOrders.filter((o) => o.order_status === 'pending_confirm' && !isDirectoryLead(o));
   const leadsList = allOrders.filter((o) => isDirectoryLead(o) && o.order_status === 'pending_confirm');
-  document.getElementById('flow-info-orders').innerText = `${pendingOrders.length} 筆`;
+  const openDemands = allC2BDemands.filter((d) => !d.official_reply);
+
+  document.getElementById('flow-info-orders').innerText = `${pendingOrders.length + openDemands.length} 筆`;
   document.getElementById('flow-info-leads').innerText = `${leadsList.length} 條`;
 
   const aiTips = [];
+  if (openDemands.length > 0) {
+    aiTips.push({
+      level: 'amber',
+      icon: '📢',
+      title: `天街新商機：有 ${openDemands.length} 條街坊/團購求購榜待報價`,
+      desc: `百工天街買家已發起求購或定制聚量需求，搶先給出出廠階梯報價即可鎖定批量訂單。`,
+      btnText: '立即報價接單 ➔',
+      action: `window.switchTab('settle'); window.filterOrderStatus('c2b_demands');`
+    });
+  }
+
   lowStockProds.forEach((p) => {
     aiTips.push({
       level: 'rose',
@@ -437,7 +492,7 @@ window.openBatchPickListModal = function () {
       const key = `${it.name}|${it.spec || '整裝'}|${it.measure_unit || '件'}`;
       if (!itemSummaryMap[key]) itemSummaryMap[key] = { name: it.name, spec: it.spec || '整裝', unit: it.measure_unit || '件', totalQty: 0, stores: [] };
       itemSummaryMap[key].totalQty += parseInt(it.qty || 0);
-      itemSummaryMap[key].stores.push(`${o.store_name}(${it.qty})`);
+      itemSummaryMap[key].stores.push(`${o.store_name || '天街自提單'}(${it.qty})`);
     });
   });
 
@@ -476,7 +531,7 @@ window.copyPickListText = function () {
     `------------------------`,
     ...Object.entries(map).map(([k, q], i) => `${i + 1}. ${k} × ${q}`),
     `------------------------`,
-    `配送客戶：${toShipOrders.map((o) => o.store_name).join('、')}`
+    `配送客戶：${toShipOrders.map((o) => o.store_name || '天街自提單').join('、')}`
   ];
   navigator.clipboard.writeText(lines.join('\n')).then(() => alert('✅ 裝車總揀貨單已複製！'));
 };
@@ -488,7 +543,7 @@ window.exportOrdersToCSV = function () {
   const rows = validOrders.map((o) => [
     o.order_no || o.id,
     o.created_at ? new Date(o.created_at).toLocaleString() : '',
-    o.store_name || '',
+    o.store_name || '天街客戶',
     o.settlement_type || '',
     parseFloat(o.total_amount || 0).toFixed(2),
     parseFloat(o.return_amount || 0).toFixed(2),
@@ -528,7 +583,7 @@ window.openTotpSetupModal = async function () {
     try {
       await HQService.updateTenantWithVerify(currentAgent, { totp_secret: secret, totp_enabled: true });
     } catch (upErr) {
-      return alert('⚠️ 雲端數據庫寫入秘鑰被攔截，請先在 Supabase SQL Editor 執行 RLS 更新放行策略：' + upErr.message);
+      return alert('⚠️ 雲端數據庫寫入秘鑰被攔截：' + upErr.message);
     }
   }
 
@@ -562,7 +617,7 @@ window.verifyAndSaveTotp = async function () {
     alert('🎉 身份驗證器已真正寫入雲端並綁定成功！');
     window.closeModal('modal-totp-setup');
   } catch (err) {
-    alert('⚠️ 數據庫寫入被攔截（請檢查 Supabase RLS 更新權限）：' + err.message);
+    alert('⚠️ 數據庫寫入被攔截：' + err.message);
   }
 };
 
@@ -596,7 +651,7 @@ window.submitChangePassword = async function () {
     alert('🎉 新密鑰已真正寫入雲端並生效存盤！');
     window.closeModal('modal-change-password');
   } catch (err) {
-    alert('⚠️ 修改密碼寫入雲端被攔截（請檢查 Supabase RLS 更新權限）：' + err.message);
+    alert('⚠️ 修改密碼寫入雲端被攔截：' + err.message);
   }
 };
 
@@ -803,6 +858,7 @@ window.loadHQData = async function () {
   allProducts = dashData.products;
   allStores = dashData.stores;
   allOrders = dashData.orders;
+  allC2BDemands = dashData.c2bDemands || [];
   allInventoryLogs = dashData.inventoryLogs;
   allSubUsers = dashData.subUsers;
   const logs = dashData.pendingCashLogs;
@@ -824,13 +880,15 @@ window.loadHQData = async function () {
   const leadsList = allOrders.filter((o) => isDirectoryLead(o) && o.order_status === 'pending_confirm');
   const normalPendingList = allOrders.filter((o) => o.order_status === 'pending_confirm' && !isDirectoryLead(o));
   const overCreditList = allOrders.filter((o) => o.order_status === 'over_credit_pending');
+  const openDemandsList = allC2BDemands.filter((d) => !d.official_reply);
 
   document.getElementById('count-pending-confirm').innerText = normalPendingList.length;
   document.getElementById('count-directory-leads').innerText = leadsList.length;
+  document.getElementById('count-c2b-demands').innerText = openDemandsList.length;
   document.getElementById('stores-tab-lead-count').innerText = leadsList.length;
   document.getElementById('count-over-credit').innerText = overCreditList.length;
 
-  const totalTodos = logs.length + normalPendingList.length + leadsList.length + overCreditList.length;
+  const totalTodos = logs.length + normalPendingList.length + leadsList.length + overCreditList.length + openDemandsList.length;
   const badge = document.getElementById('unsettled-badge');
   if (totalTodos > 0) {
     badge.classList.remove('hidden');
@@ -864,7 +922,7 @@ window.onMainCategoryChange = function (mainCatName) {
 function renderProductFilterBar() {
   const bar = document.getElementById('product-tags-filter');
   if (!bar) return;
-  const dynamicTags = new Set(['🔥 街坊搶手', '⏳ 臨期撿漏', '💎 高毛利']);
+  const dynamicTags = new Set(['🔥 街坊搶手', '🏪 掌柜严选', '⏳ 臨期撿漏', '💎 高毛利']);
   allProducts.forEach((p) => (Array.isArray(p.tags) ? p.tags : []).forEach((t) => dynamicTags.add(t)));
   const allTagList = ['全部', ...Array.from(dynamicTags)];
   bar.innerHTML =
@@ -887,11 +945,11 @@ function renderProductTable() {
     .map((p) => {
       const tags = Array.isArray(p.tags) ? p.tags : [];
       const tagBadges = tags.map((t) => `<span class="bg-emerald-50 text-emerald-900 border border-emerald-200 px-1.5 py-0.2 rounded text-[10px] mr-1">${t}</span>`).join('');
-      const isBM = p.channel_brick_and_mortar !== undefined ? p.channel_brick_and_mortar : p.sales_channel_type !== 'online';
-      const isEC = p.channel_ecommerce !== undefined ? p.channel_ecommerce : p.sales_channel_type !== 'offline';
+      const isBM = isBrickMortarAllowed(p);
+      const isEC = isEcommerceAllowed(p);
       let channelBadges = '';
-      if (isBM) channelBadges += '<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">🏬 實體批發</span>';
-      if (isEC) channelBadges += '<span class="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] px-1.5 py-0.5 rounded font-bold">🌐 線上零售</span>';
+      if (isBM) channelBadges += '<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">🏬 實體店專供</span>';
+      if (isEC) channelBadges += '<span class="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] px-1.5 py-0.5 rounded font-bold">🌐 電子商務</span>';
 
       const customAttrs = p.custom_specs && typeof p.custom_specs === 'object' && p.custom_specs.attrs ? p.custom_specs.attrs : {};
       const attrBadges = Object.entries(customAttrs)
@@ -1092,28 +1150,16 @@ function applyChannelPermissions(tenant, prod = null) {
   const bmLock = document.getElementById('lock-channel-bm');
   const ecLock = document.getElementById('lock-channel-ec');
 
-  const permitBM = tenant?.permit_brick_and_mortar !== false && tenant?.service_mode !== 'online';
-  const permitEC = tenant?.permit_ecommerce !== false && tenant?.service_mode !== 'offline';
+  const permitBM = tenant?.permit_brick_and_mortar !== false && tenant?.service_mode !== '电子商务';
+  const permitEC = tenant?.permit_ecommerce !== false && tenant?.service_mode !== '实体店';
 
   bmChk.disabled = !permitBM;
   bmLock.classList.toggle('hidden', permitBM);
-  bmChk.checked = permitBM
-    ? prod
-      ? prod.channel_brick_and_mortar !== undefined
-        ? !!prod.channel_brick_and_mortar
-        : prod.sales_channel_type !== 'online'
-      : true
-    : false;
+  bmChk.checked = permitBM ? (prod ? isBrickMortarAllowed(prod) : true) : false;
 
   ecChk.disabled = !permitEC;
   ecLock.classList.toggle('hidden', permitEC);
-  ecChk.checked = permitEC
-    ? prod
-      ? prod.channel_ecommerce !== undefined
-        ? !!prod.channel_ecommerce
-        : prod.sales_channel_type !== 'offline'
-      : true
-    : false;
+  ecChk.checked = permitEC ? (prod ? isEcommerceAllowed(prod) : true) : false;
 }
 
 window.openAddProductModal = function () {
@@ -1193,11 +1239,14 @@ window.submitProductForm = async function () {
   const customAttrs = collectCustomAttrs();
   const minStock = parseInt(document.getElementById('prod-min-stock').value) || 10;
 
+  // 統一使用商道中文渠道標識
+  const channelLabel = isBM && !isEC ? '实体店' : !isBM && isEC ? '电子商务' : '实体与电商双轨';
+
   const payload = {
     tenant_id: currentAgent,
     channel_brick_and_mortar: isBM,
     channel_ecommerce: isEC,
-    sales_channel_type: isBM && !isEC ? 'offline' : !isBM && isEC ? 'online' : 'both',
+    sales_channel_type: channelLabel,
     category_main: document.getElementById('prod-cat-main').value,
     category_sub: document.getElementById('prod-cat-sub').value,
     category_tertiary: document.getElementById('prod-cat-tertiary').value.trim(),
@@ -1226,7 +1275,7 @@ window.submitProductForm = async function () {
 
   if (res.error) alert('儲存失敗: ' + res.error.message);
   else {
-    alert(`🎉 貨品【${name}】已發布生效！`);
+    alert(`🎉 貨品【${name}】已發布生效（投放渠道：${channelLabel}）！`);
     window.closeAddProductModal();
     window.loadHQData();
   }
@@ -1264,7 +1313,7 @@ window.toggleTag = function (tagStr) {
 };
 
 window.promptAddTag = function () {
-  const customTag = prompt('輸入特色營銷標籤（如：#滿十贈一、#新品試銷、#工地專供）：');
+  const customTag = prompt('輸入特色營銷標籤（如：🏪 掌柜严选、#滿十贈一、#新品試銷）：');
   if (customTag && customTag.trim()) {
     const clean = customTag.trim();
     if (!selectedTags.includes(clean)) selectedTags.push(clean);
@@ -1274,7 +1323,7 @@ window.promptAddTag = function () {
 
 function renderTagChips() {
   const box = document.getElementById('quick-tags-box');
-  const defaultChips = ['🔥 街坊搶手', '⏳ 臨期撿漏', '💎 高毛利', '❄️ 需冷藏', '🎁 買十送一'];
+  const defaultChips = ['🏪 掌柜严选', '🔥 街坊搶手', '⏳ 臨期撿漏', '💎 高毛利', '❄️ 需冷藏', '🎁 買十送一'];
   const allUnique = Array.from(new Set([...defaultChips, ...selectedTags]));
   box.innerHTML = allUnique
     .map((t) => {
@@ -1313,9 +1362,88 @@ window.deleteProduct = function (id, name) {
 };
 
 // =========================================================================
-// 8. 訂單履約、接單自動扣庫與財務點款
+// 8. 訂單履約、天街求購需求報價接單 & 財務點款
 // =========================================================================
+function parseDemandPayload(rawContent) {
+  try {
+    const parsed = JSON.parse(rawContent);
+    if (parsed && parsed.title) return parsed;
+  } catch (e) {}
+  return {
+    title: rawContent,
+    qty: '若干',
+    budget: '面議',
+    delivery: '靈活協商',
+    coBuyers: 1
+  };
+}
+
+window.replyToC2BDemand = async function (demandId, demandTitle) {
+  const quote = prompt(
+    `【百工天街求購報價】針對「${demandTitle}」，請輸入您的出廠階梯報價、起訂量與交付時間（買家將立即在手機端收到）：`,
+    '出廠批價 ¥62/件，滿20件包配送至合作門店自提，3天內安排發車！'
+  );
+  if (!quote || !quote.trim()) return;
+  const senderLabel = `${currentTenantData?.company_name || currentAgent}（${currentOperatorName}）`;
+  const { error } = await HQService.replyC2BDemand(demandId, `【${senderLabel}】${quote.trim()}`);
+  if (error) alert('報價提交失敗：' + error.message);
+  else {
+    alert('🎉 報價回執已發送至百工天街！買家確認鎖定後平台將第一時間通知您排產。');
+    window.loadHQData();
+  }
+};
+
 function renderOrderFulfillmentList() {
+  const container = document.getElementById('order-fulfillment-list');
+  if (!container) return;
+
+  if (activeOrderFilter === 'c2b_demands') {
+    if (allC2BDemands.length === 0) {
+      container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">暫無天街求購或定制需求帖。</div>';
+      return;
+    }
+    container.innerHTML = allC2BDemands
+      .map((d) => {
+        const info = parseDemandPayload(d.content);
+        const hasReplied = !!d.official_reply;
+        return `
+          <div class="p-4 bg-amber-50/60 border border-amber-300 rounded-3xl space-y-2.5">
+            <div class="flex justify-between items-start gap-2">
+              <div>
+                <span class="bg-amber-500 text-stone-950 text-[10px] font-bold px-2 py-0.5 rounded-lg mr-1.5">📢 天街求購需求</span>
+                <b class="text-sm text-stone-900">${info.title}</b>
+                <span class="text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded-full font-bold ml-1">🔥 ${info.coBuyers || 1} 人湊單</span>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                info.acceptedByBuyer ? 'bg-emerald-600 text-white' : hasReplied ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-200 text-amber-950'
+              }">
+                ${info.acceptedByBuyer ? '🤝 買家已鎖定意向' : hasReplied ? '✅ 已報價待確認' : '⏳ 待工坊報價'}
+              </span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 bg-white p-2.5 rounded-2xl border border-amber-200/80 text-[11px] font-mono">
+              <div>需求數量: <b>${info.qty}</b></div>
+              <div>目標預算: <b class="text-emerald-900">${info.budget}</b></div>
+              <div>交付要求: <b class="font-sans">${info.delivery}</b></div>
+            </div>
+            ${info.note ? `<div class="text-[11px] text-stone-600">💬 定制規格細節：${info.note}</div>` : ''}
+            ${
+              hasReplied
+                ? `<div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-2xl text-[11px] text-emerald-950"><b>已發報價回執：</b>${d.official_reply}</div>`
+                : ''
+            }
+            <div class="flex justify-between items-center pt-1 text-[11px]">
+              <span class="text-stone-400">發榜人：${d.proposer_name || '天街買家'} · ${new Date(d.created_at).toLocaleDateString()}</span>
+              <button onclick="window.replyToC2BDemand(${d.id}, '${info.title.replace(/'/g, '')}')" class="bg-[#1b4332] hover:bg-[#143628] text-white px-4 py-1.5 rounded-xl font-bold shadow active:scale-95 transition">
+                ${hasReplied ? '✏️ 修改報價' : '💰 填寫報價接單'}
+              </button>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+    return;
+  }
+
   let filtered = allOrders;
   if (activeOrderFilter === 'pending_confirm') filtered = allOrders.filter((o) => (o.order_status === 'pending_confirm' || o.order_status === 'counter_proposal') && !isDirectoryLead(o));
   else if (activeOrderFilter === 'directory_leads') filtered = allOrders.filter((o) => isDirectoryLead(o));
@@ -1323,7 +1451,6 @@ function renderOrderFulfillmentList() {
   else if (activeOrderFilter === 'confirmed') filtered = allOrders.filter((o) => o.order_status === 'confirmed' && o.delivery_status !== 'delivered');
   else if (activeOrderFilter === 'delivered') filtered = allOrders.filter((o) => o.delivery_status === 'delivered');
 
-  const container = document.getElementById('order-fulfillment-list');
   if (filtered.length === 0) {
     container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">當前分類下暫無單據。</div>';
     return;
@@ -1371,7 +1498,7 @@ function renderOrderFulfillmentList() {
         <div class="p-4 bg-stone-50 border ${isOverCredit ? 'border-rose-400 bg-rose-50/30' : isPending ? 'border-amber-300' : 'border-stone-200'} rounded-3xl space-y-2.5">
           <div class="flex justify-between items-start">
             <div>
-              <b class="text-sm text-stone-900">${o.store_name}</b>
+              <b class="text-sm text-stone-900">${o.store_name || '百工天街結緣單'}</b>
               <span class="text-[10px] font-mono bg-stone-200 text-stone-700 px-1.5 rounded ml-1">#${o.order_no || o.id}</span>
               <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ml-1 ${
                 isDelivered ? 'bg-emerald-100 text-emerald-800' : isOverCredit ? 'bg-rose-600 text-white' : isPending ? 'bg-amber-100 text-amber-900' : 'bg-blue-100 text-blue-900'
@@ -1545,7 +1672,7 @@ function renderSubUsersTable() {
         finance: '賬房財務 (管賬審單 · 不過手現金)',
         warehouse: '倉儲調度 (出入庫盤點發貨 · 不碰錢賬)',
         driver: '供貨師傅 (隨車收款簽收 · 不管總賬)',
-        auditor: '獨立稽核 (只讀查看流水)'
+        auditor: '廠商獨立稽核 (只讀查看流水)'
       };
       return `
         <tr class="hover:bg-stone-50 transition">
@@ -1725,12 +1852,13 @@ window.filterStoreByTag = function (tag) {
 
 window.filterOrderStatus = function (status) {
   activeOrderFilter = status;
-  ['pending', 'leads', 'over-credit', 'confirmed', 'delivered', 'all'].forEach((k) => {
+  ['pending', 'c2b-demands', 'leads', 'over-credit', 'confirmed', 'delivered', 'all'].forEach((k) => {
     const btn = document.getElementById(`order-filter-${k}`);
     if (btn) {
       const isMatch =
         k === status ||
         (status === 'pending_confirm' && k === 'pending') ||
+        (status === 'c2b_demands' && k === 'c2b-demands') ||
         (status === 'directory_leads' && k === 'leads') ||
         (status === 'over_credit_pending' && k === 'over-credit');
       btn.className = isMatch ? 'px-3 py-1.5 rounded-xl bg-[#1b4332] text-white font-bold transition' : 'px-3 py-1.5 rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 font-bold transition';
