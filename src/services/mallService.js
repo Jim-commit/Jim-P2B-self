@@ -33,7 +33,7 @@ export const MallService = {
     return data || [];
   },
 
-// 严格恪守「各守本分」渠道隔离：仅展示允许进入天街与云端专柜的货品（排除实体店专供常备货）
+  // 严格恪守「各守本分」渠道隔离：仅展示允许进入天街与产区专柜的货品（排除合作门店专供常备货）
   async fetchMallProducts(tenantId = null) {
     let query = supabase
       .from('product')
@@ -48,7 +48,7 @@ export const MallService = {
     return data || [];
   },
 
-  // 统计指定合作实体门店当前的待配送拼单聚量（邻里拼单随车直达进度）
+  // 统计指定合作门店当前的待配送拼单聚量（邻里拼单随车直达进度）
   async fetchStoreGroupBuyCount(storeId) {
     if (!storeId) return 0;
     const { data } = await supabase
@@ -76,10 +76,10 @@ export const MallService = {
 
     for (const item of cartItems) {
       try {
-        const curStock = parseInt(item.prod.stock_qty ?? item.prod.stock ?? -1);
+        const curStock = parseInt(item.prod.stock ?? item.prod.stock_qty ?? -1);
         if (curStock >= 0) {
           const nextStock = Math.max(0, curStock - item.qty);
-          await supabase.from('product').update({ stock_qty: nextStock }).eq('id', item.prod.id);
+          await supabase.from('product').update({ stock: nextStock }).eq('id', item.prod.id);
         }
       } catch (e) {}
     }
