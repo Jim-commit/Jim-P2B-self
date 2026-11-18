@@ -1,7 +1,7 @@
 {
-  "name": "商道相通 · B2B 实体供应链中枢",
+  "name": "商道相通 · 百工实体供应链中枢",
   "short_name": "商道采销",
-  "description": "源头厂商直供 · 随车交割核销 · 门店极速补货",
+  "description": "实体店与电子商务双轨 · 源头工坊直供 · 随车交割核销",
   "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#f7f5f0",
@@ -16,6 +16,28 @@
       "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='108' fill='%231b4332'/%3E%3Ctext x='256' y='330' font-size='256' font-weight='bold' text-anchor='middle' fill='%23fcd34d' font-family='sans-serif'%3E%E5%95%86%3C/text%3E%3C/svg%3E",
       "sizes": "512x512",
       "type": "image/svg+xml"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "门店订货台",
+      "short_name": "门店补货",
+      "url": "/index.html"
+    },
+    {
+      "name": "百工天街集市",
+      "short_name": "百工天街",
+      "url": "/mall.html"
+    },
+    {
+      "name": "随车配送核销",
+      "short_name": "随车配送",
+      "url": "/driver.html"
+    },
+    {
+      "name": "厂商调度中枢",
+      "short_name": "厂商中枢",
+      "url": "/hq.html"
     }
   ]
 }
