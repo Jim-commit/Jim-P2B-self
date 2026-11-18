@@ -67,18 +67,24 @@ export const DriverService = {
   },
 
   async executeSettlement(record) {
-    const logPayload = { ...record.logPayload };
-    let { error: logErr } = await supabase.from('driver_collection_log').insert([logPayload]);
+    const isOnlinePickup = !!record.isOnlinePickup;
+    const hasBasketReturn = (record.logPayload?.basket_return || 0) > 0;
 
-    if (logErr && logErr.message && logErr.message.includes('basket_deduct_amount')) {
-      delete logPayload.basket_deduct_amount;
-      delete logPayload.discount_amount;
-      delete logPayload.basket_return;
-      const retry = await supabase.from('driver_collection_log').insert([logPayload]);
-      logErr = retry.error;
+    // 天街自提包裹线上已付清：仅在有实际收款或退还周转筐时记录钱箱流水，避免虚增现金流水
+    if (record.amount > 0 || hasBasketReturn || !isOnlinePickup) {
+      const logPayload = { ...record.logPayload };
+      let { error: logErr } = await supabase.from('driver_collection_log').insert([logPayload]);
+
+      if (logErr && logErr.message && logErr.message.includes('basket_deduct_amount')) {
+        delete logPayload.basket_deduct_amount;
+        delete logPayload.discount_amount;
+        delete logPayload.basket_return;
+        const retry = await supabase.from('driver_collection_log').insert([logPayload]);
+        logErr = retry.error;
+      }
+
+      if (logErr) throw logErr;
     }
-
-    if (logErr) throw logErr;
 
     await supabase
       .from('store')
@@ -93,7 +99,13 @@ export const DriverService = {
       const orderUpdate = {
         delivery_status: 'delivered',
         order_status: 'delivered',
-        pay_status: record.amount > 0 ? 'paid' : record.method === '現金' ? 'cash_zero_cleared' : 'credit_logged',
+        pay_status: isOnlinePickup
+          ? 'online_paid'
+          : record.amount > 0
+          ? 'paid'
+          : record.method === '現金'
+          ? 'cash_zero_cleared'
+          : 'credit_logged',
         sign_image_url: record.signBase64
       };
       if (Array.isArray(record.proofImages) && record.proofImages.length > 0) {
