@@ -31,8 +31,38 @@ export const MallService = {
     return data || [];
   },
 
-  async submitOnlineOrder(orderPayload) {
-    const rows = Array.isArray(orderPayload) ? orderPayload : [orderPayload];
-    return await supabase.from('store_order').insert(rows);
+  async submitOnlineOrder(orderPayloads, cartItems) {
+    const rows = Array.isArray(orderPayloads) ? orderPayloads : [orderPayloads];
+    const { error } = await supabase.from('store_order').insert(rows);
+    if (error) return { error };
+
+    // 同步扣减对应商品库存并写入库存流水（若商品表启用库存管理）
+    for (const item of cartItems) {
+      try {
+        const curStock = parseInt(item.prod.stock_qty ?? item.prod.stock ?? -1);
+        if (curStock >= 0) {
+          const nextStock = Math.max(0, curStock - item.qty);
+          await supabase
+            .from('product')
+            .update({ stock_qty: nextStock })
+            .eq('id', item.prod.id);
+        }
+      } catch (e) {}
+    }
+
+    return { error: null };
+  },
+
+  async queryOrdersByPhone(phone) {
+    const cleanPhone = (phone || '').trim();
+    if (!cleanPhone) return [];
+    const { data } = await supabase
+      .from('store_order')
+      .select('*')
+      .eq('order_source', 'online_mall')
+      .ilike('note', `%${cleanPhone}%`)
+      .order('id', { ascending: false })
+      .limit(20);
+    return data || [];
   }
 };
