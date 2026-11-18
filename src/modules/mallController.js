@@ -5,12 +5,18 @@ const rawTenantParam = urlParams.get('t');
 let currentTenantParam = rawTenantParam ? rawTenantParam.trim().toUpperCase() : null;
 const refStoreParam = urlParams.get('ref');
 
+const CART_STORAGE_KEY = 'baigong_mall_cart_v1';
+
 let allProducts = [];
 let allTenants = [];
 let allCategories = [];
 let currentCategoryFilter = 'all';
-let cart = [];
+let currentKeywordFilter = '';
+let cart = []; // [{ prod, qty }]
 
+// =========================================================================
+// 基礎彈窗與頁面導航綁定
+// =========================================================================
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
 
@@ -40,13 +46,14 @@ window.openCartModal = function () {
 
 window.openCheckoutModal = function () {
   if (cart.length === 0) return alert('購物籃尚無好物，請先挑選良品！');
-  const total = cart.reduce((sum, item) => sum + item.prod.tier_1_price * item.qty, 0);
-  document.getElementById('checkout-amount-display').innerText = `¥${total.toFixed(2)}`;
+  const total = cart.reduce((sum, item) => sum + parseFloat(item.prod.tier_1_price || 0) * item.qty, 0);
+  const el = document.getElementById('checkout-amount-display');
+  if (el) el.innerText = `¥${total.toFixed(2)}`;
   window.openModal('modal-checkout');
 };
 
 // =========================================================================
-// 1. 雙形態門面初始化（生態公域天街 vs 廠商私域專櫃）
+// 雙形態門面渲染（態型 A：廠商私域專賣店 / 態型 B：百工天街大集市）
 // =========================================================================
 function setupTianJieMode() {
   document.getElementById('mall-header-title').innerText = '百工天街 · 正品大集市';
@@ -74,7 +81,9 @@ function setupBrandStoreMode(tenantId) {
 
 function renderCategoryChips() {
   const l1Cats = allCategories.filter((c) => c.level === 1);
-  document.getElementById('dynamic-cat-chips').innerHTML = l1Cats
+  const container = document.getElementById('dynamic-cat-chips');
+  if (!container) return;
+  container.innerHTML = l1Cats
     .map(
       (c) => `
       <button onclick="window.filterMallCategory('${c.name}')" class="mall-cat-chip bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-xl transition">
@@ -96,9 +105,32 @@ window.filterMallCategory = function (catName) {
   renderGoodsGrid();
 };
 
+window.onSearchMallKeyword = function (val) {
+  currentKeywordFilter = (val || '').trim().toLowerCase();
+  renderGoodsGrid();
+};
+
 function renderGoodsGrid() {
   const container = document.getElementById('mall-goods-grid');
-  const filtered = currentCategoryFilter === 'all' ? allProducts : allProducts.filter((p) => p.category_main === currentCategoryFilter);
+  if (!container) return;
+
+  let filtered =
+    currentCategoryFilter === 'all'
+      ? allProducts
+      : allProducts.filter((p) => p.category_main === currentCategoryFilter);
+
+  if (currentKeywordFilter) {
+    filtered = filtered.filter((p) => {
+      const tenant = allTenants.find((t) => t.tenant_id === p.tenant_id);
+      const tName = tenant ? tenant.company_name : p.tenant_id;
+      return (
+        (p.name || '').toLowerCase().includes(currentKeywordFilter) ||
+        (p.spec || '').toLowerCase().includes(currentKeywordFilter) ||
+        (p.origin_place || '').toLowerCase().includes(currentKeywordFilter) ||
+        (tName || '').toLowerCase().includes(currentKeywordFilter)
+      );
+    });
+  }
 
   if (filtered.length === 0) {
     container.innerHTML = '<div class="col-span-full py-16 text-center text-stone-400 text-xs">當前行當尚無上架良品。</div>';
@@ -115,6 +147,7 @@ function renderGoodsGrid() {
       return `
         <div class="bg-white rounded-3xl p-3 border border-stone-200/80 shadow-sm flex flex-col justify-between space-y-2 hover:shadow-md transition">
           <div class="space-y-1.5">
+            <!-- 商品圖片 -->
             <div class="relative w-full h-32 rounded-2xl bg-stone-100 overflow-hidden flex items-center justify-center">
               ${p.image_url ? `<img src="${p.image_url}" class="w-full h-full object-cover">` : `<span class="text-stone-300 text-xs">正品封裝</span>`}
               <span class="absolute top-1.5 left-1.5 bg-[#1b4332]/80 backdrop-blur-sm text-white text-[9px] px-2 py-0.5 rounded-full font-mono">
@@ -125,9 +158,10 @@ function renderGoodsGrid() {
               </button>
             </div>
 
+            <!-- 標題、出品工坊與標籤 -->
             <div>
               <b class="text-xs text-stone-900 font-bold block line-clamp-1">${p.name}</b>
-              <span class="text-[10px] text-stone-400 font-mono block">${p.spec || '標配'} · ${p.category_main}</span>
+              <span class="text-[10px] text-stone-400 font-mono block">${p.spec || '標配'} · ${p.category_main || '常規'}</span>
               ${!isSingleShop ? `<span class="text-[9px] text-emerald-800/80 block truncate mt-0.5">🏭 ${tenantName}</span>` : ''}
               ${
                 tags.length
@@ -139,6 +173,7 @@ function renderGoodsGrid() {
             </div>
           </div>
 
+          <!-- 底欄價格與加購 -->
           <div class="pt-2 border-t border-stone-100 flex justify-between items-center">
             <div>
               <span class="text-[9px] text-stone-400 block font-mono">零售正價</span>
@@ -165,8 +200,23 @@ function renderGoodsGrid() {
 }
 
 // =========================================================================
-// 2. 購物車與一件代發訂購邏輯
+// 購物車與一件代發訂購邏輯（支持跨專櫃本地持久與自動拆單）
 // =========================================================================
+function persistCart() {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+  } catch (e) {}
+}
+
+function restoreCart() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '[]');
+    if (Array.isArray(saved)) cart = saved;
+  } catch (e) {
+    cart = [];
+  }
+}
+
 window.addToCart = function (prodId) {
   const p = allProducts.find((x) => x.id === prodId);
   if (!p) return;
@@ -175,27 +225,33 @@ window.addToCart = function (prodId) {
   if (item) item.qty += 1;
   else cart.push({ prod: p, qty: 1 });
 
+  persistCart();
   updateCartBadge();
 };
 
 function updateCartBadge() {
   const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
-  const totalAmt = cart.reduce((sum, item) => sum + item.prod.tier_1_price * item.qty, 0);
+  const totalAmt = cart.reduce((sum, item) => sum + parseFloat(item.prod.tier_1_price || 0) * item.qty, 0);
 
   const badge = document.getElementById('cart-badge-count');
-  if (totalQty > 0) {
-    badge.innerText = totalQty;
-    badge.classList.remove('hidden');
-  } else {
-    badge.classList.add('hidden');
+  if (badge) {
+    if (totalQty > 0) {
+      badge.innerText = totalQty;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
   }
 
-  document.getElementById('cart-total-price').innerText = `¥${totalAmt.toFixed(2)}`;
-  document.getElementById('cart-drawer-total').innerText = `¥${totalAmt.toFixed(2)}`;
+  const totalEl = document.getElementById('cart-total-price');
+  const drawerTotalEl = document.getElementById('cart-drawer-total');
+  if (totalEl) totalEl.innerText = `¥${totalAmt.toFixed(2)}`;
+  if (drawerTotalEl) drawerTotalEl.innerText = `¥${totalAmt.toFixed(2)}`;
 }
 
 function renderCartDrawer() {
   const list = document.getElementById('cart-items-list');
+  if (!list) return;
   if (cart.length === 0) {
     list.innerHTML = '<div class="py-8 text-center text-stone-400 text-xs">購物籃尚無品項。</div>';
     return;
@@ -207,7 +263,7 @@ function renderCartDrawer() {
       <div class="py-2 flex justify-between items-center text-xs">
         <div>
           <b class="text-stone-900 block">${item.prod.name}</b>
-          <span class="font-mono text-[10px] text-stone-400">單價: ¥${item.prod.tier_1_price} · 小計: ¥${(item.prod.tier_1_price * item.qty).toFixed(2)}</span>
+          <span class="font-mono text-[10px] text-stone-400">單價: ¥${item.prod.tier_1_price} · 小計: ¥${(parseFloat(item.prod.tier_1_price || 0) * item.qty).toFixed(2)}</span>
         </div>
         <div class="flex items-center gap-2">
           <button onclick="window.changeCartQty(${item.prod.id}, -1)" class="w-6 h-6 bg-stone-100 rounded-lg font-bold font-mono">-</button>
@@ -228,12 +284,14 @@ window.changeCartQty = function (prodId, delta) {
   if (item.qty <= 0) {
     cart = cart.filter((x) => x.prod.id !== prodId);
   }
+  persistCart();
   updateCartBadge();
   renderCartDrawer();
 };
 
 window.clearCart = function () {
   cart = [];
+  persistCart();
   updateCartBadge();
   renderCartDrawer();
 };
@@ -248,45 +306,74 @@ window.submitConsumerOrder = async function () {
     return alert('請填全收件人姓名、11位手機號與配送詳細地址！');
   }
 
-  const totalAmt = cart.reduce((sum, item) => sum + item.prod.tier_1_price * item.qty, 0);
-  const itemsPayload = cart.map((item) => ({
-    id: item.prod.id,
-    name: item.prod.name,
-    price: item.prod.tier_1_price,
-    qty: item.qty,
-    measure_unit: item.prod.measure_unit || '件'
-  }));
+  if (cart.length === 0) {
+    return alert('購物籃尚無好物！');
+  }
 
-  const targetTenant = currentTenantParam || cart[0].prod.tenant_id;
-  const orderNo = `ON-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-  const { error } = await MallService.submitOnlineOrder({
-    order_no: orderNo,
-    tenant_id: targetTenant,
-    order_source: 'online_mall',
-    settlement_type: 'online_paid',
-    items: itemsPayload,
-    items_return: [],
-    items_exchange: [],
-    total_amount: totalAmt,
-    return_amount: 0,
-    net_settle_amount: totalAmt,
-    order_status: 'confirmed',
-    delivery_status: 'ordered',
-    note: `[線上代發] 收件人: ${name} (${phone}) 地址: ${addr} ${note ? `叮嚀: ${note}` : ''} ${refStoreParam ? `[推客門店ID: ${refStoreParam}]` : ''}`,
-    driver_action_instruction: `【網銷一件代發】由庫管打單發快遞。收件人: ${name} ${phone}`
+  // 按所屬商號分組拆單（單店專櫃下只有 1 組；天街公域多廠混合下單自動按廠家拆分，確保各廠獨立接單發貨）
+  const groupedByTenant = {};
+  cart.forEach((item) => {
+    const tid = currentTenantParam || item.prod.tenant_id || 'PLATFORM';
+    if (!groupedByTenant[tid]) groupedByTenant[tid] = [];
+    groupedByTenant[tid].push(item);
   });
 
-  if (error) alert('下單失敗: ' + error.message);
-  else {
-    alert(`🎉 訂單提交成功！\n\n• 單據標識: ${orderNo}\n• 總額: ¥${totalAmt.toFixed(2)}\n• 配送: 廠家庫管已接單打包，將由順豐/京東快遞發出！`);
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const orderPayloads = [];
+  const createdOrderNos = [];
+  let grandTotal = 0;
+
+  Object.entries(groupedByTenant).forEach(([tenantId, tenantItems]) => {
+    const subTotal = tenantItems.reduce((sum, item) => sum + parseFloat(item.prod.tier_1_price || 0) * item.qty, 0);
+    grandTotal += subTotal;
+
+    const orderNo = `ON-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
+    createdOrderNos.push(orderNo);
+
+    const itemsPayload = tenantItems.map((item) => ({
+      id: item.prod.id,
+      name: item.prod.name,
+      price: item.prod.tier_1_price,
+      qty: item.qty,
+      measure_unit: item.prod.measure_unit || '件'
+    }));
+
+    orderPayloads.push({
+      order_no: orderNo,
+      tenant_id: tenantId,
+      order_source: 'online_mall',
+      settlement_type: 'online_paid',
+      items: itemsPayload,
+      items_return: [],
+      items_exchange: [],
+      total_amount: subTotal,
+      return_amount: 0,
+      net_settle_amount: subTotal,
+      order_status: 'confirmed',
+      delivery_status: 'ordered',
+      note: `[線上代發] 收件人: ${name} (${phone}) 地址: ${addr} ${note ? `叮嚀: ${note}` : ''} ${refStoreParam ? `[推客門店ID: ${refStoreParam}]` : ''}`,
+      driver_action_instruction: `【網銷一件代發】由庫管打單發快遞。收件人: ${name} ${phone}`
+    });
+  });
+
+  const { error } = await MallService.submitOnlineOrder(orderPayloads);
+
+  if (error) {
+    alert('下單失敗: ' + error.message);
+  } else {
+    alert(
+      `🎉 訂單提交成功！\n\n` +
+        `• 單據標識: ${createdOrderNos.join('、')}\n` +
+        `• 總額: ¥${grandTotal.toFixed(2)}\n` +
+        `• 配送: 廠家庫管已接單打包，將由順豐/京東快遞發出！`
+    );
     window.clearCart();
     window.closeModal('modal-checkout');
   }
 };
 
 // =========================================================================
-// 3. 物勒工名正品溯源與社交分潤二維碼
+// 物勒工名 · 正品溯源驗真彈窗
 // =========================================================================
 window.viewProductTrace = function (prodId) {
   const p = allProducts.find((x) => x.id === prodId);
@@ -303,6 +390,9 @@ window.viewProductTrace = function (prodId) {
   window.openModal('modal-trace');
 };
 
+// =========================================================================
+// 社交分潤與推客二維碼
+// =========================================================================
 window.openShareModal = function () {
   const currentUrl = new URL(window.location.href);
   if (currentTenantParam) currentUrl.searchParams.set('t', currentTenantParam);
@@ -319,8 +409,17 @@ window.copyShareLink = function () {
   navigator.clipboard.writeText(link).then(() => alert('專屬分潤推客連結已複製到剪貼簿！'));
 };
 
+// =========================================================================
+// 啟動入口
+// =========================================================================
 export async function initMallController() {
-  const [tenants, cats] = await Promise.all([MallService.fetchActiveTenants(), MallService.fetchActiveCategories()]);
+  restoreCart();
+  updateCartBadge();
+
+  const [tenants, cats] = await Promise.all([
+    MallService.fetchActiveTenants(),
+    MallService.fetchActiveCategories()
+  ]);
   allTenants = tenants;
   allCategories = cats;
   renderCategoryChips();
