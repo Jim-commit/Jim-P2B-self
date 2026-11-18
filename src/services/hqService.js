@@ -18,14 +18,21 @@ export const HQService = {
   },
 
   async fetchFullDashboardData(tenantId) {
-    const [catsRes, prodsRes, storesRes, logsRes, ordersRes, invRes, subRes] = await Promise.all([
+    const [catsRes, prodsRes, storesRes, logsRes, ordersRes, invRes, subRes, demandsRes] = await Promise.all([
       supabase.from('platform_category').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
       supabase.from('product').select('*').eq('tenant_id', tenantId).order('id', { ascending: false }),
       supabase.from('store').select('*').eq('tenant_id', tenantId),
       supabase.from('driver_collection_log').select('*').eq('tenant_id', tenantId).eq('settled_to_hq', false).order('id', { ascending: false }),
       supabase.from('store_order').select('*').eq('tenant_id', tenantId).order('id', { ascending: false }).limit(100),
       supabase.from('inventory_log').select('*').eq('tenant_id', tenantId).order('id', { ascending: false }).limit(50),
-      supabase.from('tenant_sub_user').select('*').eq('tenant_id', tenantId).order('id', { ascending: true })
+      supabase.from('tenant_sub_user').select('*').eq('tenant_id', tenantId).order('id', { ascending: true }),
+      supabase
+        .from('platform_suggestion_board')
+        .select('*')
+        .eq('proposer_type', 'c2b_demand')
+        .or(`category.ilike.%${tenantId}%,category.ilike.%全网公域%`)
+        .order('id', { ascending: false })
+        .limit(30)
     ]);
 
     return {
@@ -34,11 +41,19 @@ export const HQService = {
       stores: storesRes.data || [],
       pendingCashLogs: logsRes.data || [],
       orders: ordersRes.data || [],
+      c2bDemands: demandsRes.data || [],
       inventoryLogs: !invRes.error && Array.isArray(invRes.data)
         ? invRes.data
         : JSON.parse(localStorage.getItem('hq_local_inv_logs_' + tenantId) || '[]'),
       subUsers: subRes.data || []
     };
+  },
+
+  async replyC2BDemand(demandId, replyText) {
+    return await supabase
+      .from('platform_suggestion_board')
+      .update({ official_reply: replyText })
+      .eq('id', demandId);
   },
 
   async recordInventoryChange(tenantId, logRow) {
