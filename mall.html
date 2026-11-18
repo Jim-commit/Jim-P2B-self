@@ -14,6 +14,7 @@
 
   <!-- 頂部導航與模式切換標頭 -->
   <header class="bg-[#1b4332] text-white sticky top-0 z-40 shadow-lg">
+    <!-- 頂層狀態欄 -->
     <div class="px-4 py-3 flex justify-between items-center border-b border-emerald-800/50">
       <div class="flex items-center gap-2">
         <span class="w-8 h-8 rounded-xl bg-amber-400 text-stone-900 font-bold flex items-center justify-center text-sm shadow">
@@ -30,6 +31,7 @@
         </div>
       </div>
 
+      <!-- 右側動作：直達專櫃、返回天街與分享分潤 -->
       <div class="flex items-center gap-1.5 text-xs">
         <button id="btn-find-brand" onclick="window.promptEnterBrandStore()" class="bg-white/10 hover:bg-white/20 text-emerald-200 px-2.5 py-1.5 rounded-xl border border-emerald-400/30 text-[11px] font-bold transition active:scale-95">
           🔍 進專櫃
@@ -43,7 +45,7 @@
       </div>
     </div>
 
-    <!-- 掌櫃推客血緣宣告條 -->
+    <!-- 掌櫃推客血緣宣告條 (有推客參數時彈性呈現) -->
     <div id="referrer-banner" class="hidden bg-amber-500 text-stone-950 px-4 py-1.5 flex justify-between items-center text-[11px] font-bold shadow-inner">
       <div class="flex items-center gap-1.5">
         <span>🏪</span>
@@ -61,7 +63,7 @@
     </div>
   </header>
 
-  <!-- 態型 A：廠商私域專賣店品牌門面 -->
+  <!-- 態型 A：廠商私域專賣店品牌門面 (僅特定商號時呈現) -->
   <section id="brand-hero-section" class="hidden px-4 pt-4">
     <div class="bg-gradient-to-br from-stone-900 to-[#1b4332] text-white p-4 rounded-3xl shadow-md border border-stone-800 space-y-2">
       <div class="flex justify-between items-start">
@@ -80,6 +82,11 @@
       </div>
     </div>
   </section>
+
+  <!-- 貨架檢索條 -->
+  <div class="px-3 pt-3">
+    <input type="search" oninput="window.onSearchMallKeyword(this.value)" placeholder="🔍 搜尋良品名稱、規格、產地或出品工坊..." class="w-full bg-white border border-stone-200 rounded-2xl px-3.5 py-2 text-xs outline-none focus:border-emerald-700 shadow-2xs">
+  </div>
 
   <!-- 商品網格貨架 -->
   <main class="p-3">
@@ -209,7 +216,7 @@
     </div>
   </div>
 
-  <!-- 終端消費者下單結算彈窗 -->
+  <!-- 終端消費者下單結算彈窗 (一件代發) -->
   <div id="modal-checkout" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
