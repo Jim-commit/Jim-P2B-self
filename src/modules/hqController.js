@@ -16,13 +16,13 @@ function isDirectoryLead(o) {
 function isEcommerceAllowed(p) {
   if (!p) return false;
   if (p.channel_ecommerce !== undefined) return !!p.channel_ecommerce;
-  return ['电子商务', '电商直供', '双轨', '实体与电商双轨', 'online', 'both'].includes(p.sales_channel_type);
+  return ['电子商务', '实体与电商双轨'].includes(p.sales_channel_type);
 }
 
 function isBrickMortarAllowed(p) {
   if (!p) return true;
   if (p.channel_brick_and_mortar !== undefined) return !!p.channel_brick_and_mortar;
-  return ['实体店', '实体与电商双轨', '双轨', 'offline', 'both'].includes(p.sales_channel_type) || !p.sales_channel_type;
+  return ['实体店', '实体与电商双轨'].includes(p.sales_channel_type) || !p.sales_channel_type;
 }
 
 let currentAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
@@ -35,6 +35,8 @@ let allProducts = [];
 let allStores = [];
 let allOrders = [];
 let allC2BDemands = [];
+let allDemandPlans = [];
+let allLocalPoolItems = [];
 let allSubUsers = [];
 let allPlatformCats = [];
 let allInventoryLogs = [];
@@ -73,7 +75,7 @@ window.saveCounterProfile = async function () {
     window.closeModal('modal-counter-profile');
   } catch (err) {
     alert(
-      '⚠️ 储存失败（若提示缺少 media_url 字段，请先在 Supabase SQL 執行：ALTER TABLE platform_tenant ADD COLUMN IF NOT EXISTS media_url TEXT;）：' +
+      '⚠️ 储存失败（若提示缺少 media_url 字段，请先在 Supabase SQL 执行：ALTER TABLE platform_tenant ADD COLUMN IF NOT EXISTS media_url TEXT;）：' +
         err.message
     );
   }
@@ -224,7 +226,7 @@ window.submitStockOperation = async function () {
     deltaQty = inputVal;
     afterStock = curStock + inputVal;
   } else if (currentStockOpsMode === 'out_loss') {
-    if (inputVal === 0) return alert('出库数量需大於 0！');
+    if (inputVal === 0) return alert('出库数量需大于 0！');
     deltaQty = -inputVal;
     afterStock = Math.max(0, curStock - inputVal);
   } else {
@@ -349,11 +351,35 @@ function renderThreeFlowsAndAIAdvisor() {
   const pendingOrders = allOrders.filter((o) => o.order_status === 'pending_confirm' && !isDirectoryLead(o));
   const leadsList = allOrders.filter((o) => isDirectoryLead(o) && o.order_status === 'pending_confirm');
   const openDemands = allC2BDemands.filter((d) => !d.official_reply);
+  const pendingPlans = allDemandPlans.filter((p) => p.status === 'submitted');
+  const activePoolItems = allLocalPoolItems.filter((i) => i.status === 'open' || i.status === 'claimed');
 
-  document.getElementById('flow-info-orders').innerText = `${pendingOrders.length + openDemands.length} 笔`;
+  document.getElementById('flow-info-orders').innerText = `${pendingOrders.length + openDemands.length + pendingPlans.length} 笔`;
   document.getElementById('flow-info-leads').innerText = `${leadsList.length} 条`;
 
   const aiTips = [];
+  if (pendingPlans.length > 0) {
+    aiTips.push({
+      level: 'emerald',
+      icon: '📅',
+      title: `真实用度计划：有 ${pendingPlans.length} 份合作门店用度计划待纳入排产`,
+      desc: `门店已提前提报未来周期真实用度预估量，及时确认纳入产区采收/工坊排产，以销定产零损耗。`,
+      btnText: '查看并纳入排产 ➔',
+      action: `window.switchTab('settle'); window.filterOrderStatus('demand_plans');`
+    });
+  }
+
+  if (activePoolItems.length > 0) {
+    aiTips.push({
+      level: 'amber',
+      icon: '🔄',
+      title: `同城余缺互调池：当前有 ${activePoolItems.length} 笔门店余货正在互调流通`,
+      desc: `合作门店挂出的富余货品正进行同城平价调剂，可安排送货师傅顺路捎带交割，减少终端损耗。`,
+      btnText: '查看互调动态 ➔',
+      action: `window.switchTab('settle'); window.filterOrderStatus('local_pool');`
+    });
+  }
+
   if (openDemands.length > 0) {
     aiTips.push({
       level: 'amber',
@@ -870,12 +896,19 @@ window.loadHQData = async function () {
     else defaultBanner?.classList.add('hidden');
   }
 
-  const dashData = await HQService.fetchFullDashboardData(currentAgent);
+  const [dashData, plansRes, poolRes] = await Promise.all([
+    HQService.fetchFullDashboardData(currentAgent),
+    supabase.from('demand_forecast_plan').select('*').eq('tenant_id', currentAgent).order('id', { ascending: false }).limit(40),
+    supabase.from('local_inventory_pool').select('*').eq('tenant_id', currentAgent).order('id', { ascending: false }).limit(40)
+  ]);
+
   allPlatformCats = dashData.categories;
   allProducts = dashData.products;
   allStores = dashData.stores;
   allOrders = dashData.orders;
   allC2BDemands = dashData.c2bDemands || [];
+  allDemandPlans = plansRes.data || [];
+  allLocalPoolItems = poolRes.data || [];
   allInventoryLogs = dashData.inventoryLogs;
   allSubUsers = dashData.subUsers;
   const logs = dashData.pendingCashLogs;
@@ -898,6 +931,8 @@ window.loadHQData = async function () {
   const normalPendingList = allOrders.filter((o) => o.order_status === 'pending_confirm' && !isDirectoryLead(o));
   const overCreditList = allOrders.filter((o) => o.order_status === 'over_credit_pending');
   const openDemandsList = allC2BDemands.filter((d) => !d.official_reply);
+  const submittedPlansList = allDemandPlans.filter((p) => p.status === 'submitted');
+  const activePoolList = allLocalPoolItems.filter((i) => i.status === 'open' || i.status === 'claimed');
 
   document.getElementById('count-pending-confirm').innerText = normalPendingList.length;
   document.getElementById('count-directory-leads').innerText = leadsList.length;
@@ -905,7 +940,12 @@ window.loadHQData = async function () {
   document.getElementById('stores-tab-lead-count').innerText = leadsList.length;
   document.getElementById('count-over-credit').innerText = overCreditList.length;
 
-  const totalTodos = logs.length + normalPendingList.length + leadsList.length + overCreditList.length + openDemandsList.length;
+  const planCountEl = document.getElementById('count-demand-plans');
+  if (planCountEl) planCountEl.innerText = submittedPlansList.length;
+  const poolCountEl = document.getElementById('count-local-pool');
+  if (poolCountEl) poolCountEl.innerText = activePoolList.length;
+
+  const totalTodos = logs.length + normalPendingList.length + leadsList.length + overCreditList.length + openDemandsList.length + submittedPlansList.length;
   const badge = document.getElementById('unsettled-badge');
   if (totalTodos > 0) {
     badge.classList.remove('hidden');
@@ -1256,7 +1296,6 @@ window.submitProductForm = async function () {
   const customAttrs = collectCustomAttrs();
   const minStock = parseInt(document.getElementById('prod-min-stock').value) || 10;
 
-  // 统一使用商道中文渠道标识
   const channelLabel = isBM && !isEC ? '实体店' : !isBM && isEC ? '电子商务' : '实体与电商双轨';
 
   const payload = {
@@ -1379,8 +1418,27 @@ window.deleteProduct = function (id, name) {
 };
 
 // =========================================================================
-// 8. 订单履约、天街求购需求报价接单 & 财务点款
+// 8. 订单履约、真实用度计划排产、同城余缺互调、天街求购 & 财务点款
 // =========================================================================
+window.updateDemandPlanStatus = async function (planId, nextStatus) {
+  const label = nextStatus === 'scheduled' ? '已纳入产区排产' : '已履约配发';
+  const { error } = await supabase.from('demand_forecast_plan').update({ status: nextStatus }).eq('id', planId);
+  if (error) return alert('更新用度计划状态失败：' + error.message);
+  alert(`✅ 该份用度计划单已标记为【${label}】，合作门店端将同步收到回执！`);
+  window.loadHQData();
+};
+
+window.completeLocalPoolItem = async function (poolId) {
+  if (!confirm('确认该笔同城余缺调剂货物已由送货师傅顺路交割并完成平账？')) return;
+  const { error } = await supabase
+    .from('local_inventory_pool')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', poolId);
+  if (error) return alert('更新互调状态失败：' + error.message);
+  alert('✅ 同城余缺互调单已标记交割平账！');
+  window.loadHQData();
+};
+
 function parseDemandPayload(rawContent) {
   try {
     const parsed = JSON.parse(rawContent);
@@ -1414,6 +1472,112 @@ function renderOrderFulfillmentList() {
   const container = document.getElementById('order-fulfillment-list');
   if (!container) return;
 
+  // 视角 A：门店提报的真实用度计划单
+  if (activeOrderFilter === 'demand_plans') {
+    if (allDemandPlans.length === 0) {
+      container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">暂无合作门店提报的真实用度计划单。</div>';
+      return;
+    }
+    container.innerHTML = allDemandPlans
+      .map((p) => {
+        const items = Array.isArray(p.items) ? p.items : [];
+        const itemsHtml = items
+          .map((it) => `<span class="inline-block bg-white border border-emerald-200 text-stone-800 px-2 py-0.5 rounded-lg mr-1.5 mb-1 font-bold">${it.name} × <b class="text-emerald-800 font-mono">${it.qty}${it.unit || '件'}</b></span>`)
+          .join('');
+        const isSubmitted = p.status === 'submitted';
+        const isScheduled = p.status === 'scheduled';
+        return `
+          <div class="p-4 bg-emerald-50/50 border border-emerald-200 rounded-3xl space-y-2.5">
+            <div class="flex justify-between items-start gap-2">
+              <div>
+                <span class="bg-[#1b4332] text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-lg mr-1.5">📅 真实用度计划单</span>
+                <b class="text-sm text-stone-900">${p.store_name}</b>
+                <span class="text-[11px] text-emerald-900 font-bold ml-2">· ${p.plan_cycle}</span>
+              </div>
+              <span class="text-[10px] px-2.5 py-0.5 rounded-full font-bold shrink-0 ${
+                isSubmitted ? 'bg-amber-200 text-amber-950 animate-pulse' : isScheduled ? 'bg-emerald-600 text-white' : 'bg-stone-200 text-stone-700'
+              }">
+                ${isSubmitted ? '⏳ 待纳入排产' : isScheduled ? '✅ 已纳入产区排产' : '📦 已履约配发'}
+              </span>
+            </div>
+
+            <div class="bg-stone-50 p-2.5 rounded-2xl border border-emerald-200/70">
+              <div class="text-[10px] text-stone-400 mb-1">预估真实用度明细（期望到店日期：<b class="text-stone-800 font-mono">${p.expected_date || '近期'}</b>）：</div>
+              <div>${itemsHtml || '无明细'}</div>
+            </div>
+
+            ${p.note ? `<div class="text-[11px] text-stone-600">💬 门店叮咛：${p.note}</div>` : ''}
+
+            <div class="flex justify-between items-center pt-1 border-t border-emerald-200/50 text-[11px]">
+              <span class="text-stone-400 font-mono">提报时间：${new Date(p.created_at).toLocaleString()}</span>
+              <div class="flex gap-2">
+                ${
+                  isSubmitted
+                    ? `<button onclick="window.updateDemandPlanStatus(${p.id}, 'scheduled')" class="bg-[#1b4332] hover:bg-[#143628] text-white px-3.5 py-1.5 rounded-xl font-bold shadow active:scale-95 transition">✅ 纳入产区采收/排产</button>`
+                    : isScheduled
+                    ? `<button onclick="window.updateDemandPlanStatus(${p.id}, 'fulfilled')" class="bg-amber-400 hover:bg-amber-300 text-stone-950 px-3.5 py-1.5 rounded-xl font-bold shadow active:scale-95 transition">📦 标记已按计划配发</button>`
+                    : '<span class="text-stone-400 font-bold">已完成履约闭环</span>'
+                }
+              </div>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+    return;
+  }
+
+  // 视角 B：同城余缺互调池动态
+  if (activeOrderFilter === 'local_pool') {
+    if (allLocalPoolItems.length === 0) {
+      container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">当前暂无合作门店挂出的同城余缺互调记录。</div>';
+      return;
+    }
+    container.innerHTML = allLocalPoolItems
+      .map((item) => {
+        const isOpen = item.status === 'open';
+        const isClaimed = item.status === 'claimed';
+        const isCompleted = item.status === 'completed';
+        const totalVal = (parseFloat(item.transfer_price || 0) * parseInt(item.qty || 1)).toFixed(2);
+        return `
+          <div class="p-4 bg-cyan-50/40 border border-cyan-200 rounded-3xl space-y-2.5">
+            <div class="flex justify-between items-start gap-2">
+              <div>
+                <span class="bg-cyan-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg mr-1.5">🔄 同城余缺互调</span>
+                <b class="text-sm text-stone-900">${item.product_name}</b>
+                <span class="text-[11px] font-mono text-stone-500 ml-1">(${item.spec || '整装'} × ${item.qty}${item.measure_unit || '件'})</span>
+              </div>
+              <span class="text-[10px] px-2.5 py-0.5 rounded-full font-bold shrink-0 ${
+                isOpen ? 'bg-emerald-100 text-emerald-900' : isClaimed ? 'bg-amber-200 text-amber-950 animate-pulse' : isCompleted ? 'bg-stone-200 text-stone-700' : 'bg-rose-100 text-rose-700'
+              }">
+                ${isOpen ? '🟢 挂池待认领' : isClaimed ? '🚚 已认领待顺路捎带' : isCompleted ? '✅ 已交割平账' : '已撤回'}
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-white p-2.5 rounded-2xl border border-cyan-100 text-[11px]">
+              <div>调出门店：<b>${item.from_store_name}</b></div>
+              <div>调入门店：<b class="text-emerald-900">${item.to_store_name || '等待同行认领'}</b></div>
+              <div class="font-mono">调剂让利总值：<b class="text-rose-700">¥${totalVal}</b> (¥${parseFloat(item.transfer_price || 0).toFixed(2)}/件)</div>
+            </div>
+
+            ${item.reason ? `<div class="text-[11px] text-stone-600">💬 调剂缘由：${item.reason}</div>` : ''}
+
+            <div class="flex justify-between items-center pt-1 border-t border-cyan-200/50 text-[11px]">
+              <span class="text-stone-400 font-mono">挂池时间：${new Date(item.created_at).toLocaleString()}</span>
+              ${
+                isClaimed
+                  ? `<button onclick="window.completeLocalPoolItem(${item.id})" class="bg-[#1b4332] hover:bg-[#143628] text-white px-3.5 py-1.5 rounded-xl font-bold shadow active:scale-95 transition">✅ 确认已顺路交割平账</button>`
+                  : ''
+              }
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+    return;
+  }
+
+  // 视角 C：百工天街求购榜
   if (activeOrderFilter === 'c2b_demands') {
     if (allC2BDemands.length === 0) {
       container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">暂无天街求购或定制用度需求帖。</div>';
@@ -1527,7 +1691,7 @@ function renderOrderFulfillmentList() {
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-white p-2.5 rounded-2xl border border-stone-100 text-[11px]">
             <div>新配: ${orderItems.map((i) => `${i.name}x${i.qty}`).join('、') || '无'}</div>
-            <div class="text-rose-700">退验: ${returnItems.map((i) => `${i.name}x${i.qty}`).join('、') || '無'}</div>
+            <div class="text-rose-700">退验: ${returnItems.map((i) => `${i.name}x${i.qty}`).join('、') || '无'}</div>
             <div class="text-amber-800">对调: ${exchangeItems.map((i) => `${i.name}x${i.qty}`).join('、') || '无'}</div>
           </div>
           ${
@@ -1869,12 +2033,14 @@ window.filterStoreByTag = function (tag) {
 
 window.filterOrderStatus = function (status) {
   activeOrderFilter = status;
-  ['pending', 'c2b-demands', 'leads', 'over-credit', 'confirmed', 'delivered', 'all'].forEach((k) => {
+  ['pending', 'demand-plans', 'local-pool', 'c2b-demands', 'leads', 'over-credit', 'confirmed', 'delivered', 'all'].forEach((k) => {
     const btn = document.getElementById(`order-filter-${k}`);
     if (btn) {
       const isMatch =
         k === status ||
         (status === 'pending_confirm' && k === 'pending') ||
+        (status === 'demand_plans' && k === 'demand-plans') ||
+        (status === 'local_pool' && k === 'local-pool') ||
         (status === 'c2b_demands' && k === 'c2b-demands') ||
         (status === 'directory_leads' && k === 'leads') ||
         (status === 'over_credit_pending' && k === 'over-credit');
