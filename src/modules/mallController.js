@@ -28,12 +28,16 @@ window.exitToTianJie = function () {
 };
 
 window.promptEnterBrandStore = function () {
-  const code = prompt('请输入厂商的商号代号（如 NY-FUNIU）：');
+  const code = prompt('请输入厂商名称关键词或商号代号（如 顺达 或 NY-FUNIU）：');
   if (!code || !code.trim()) return;
   const clean = code.trim().toUpperCase();
-  const found = allTenants.find((t) => (t.tenant_id || '').toUpperCase() === clean);
+  const found = allTenants.find(
+    (t) =>
+      (t.tenant_id || '').toUpperCase() === clean ||
+      (t.company_name || '').toUpperCase().includes(clean)
+  );
   if (!found) {
-    return alert(`未找到商号代号为【${clean}】的在册专柜！`);
+    return alert(`未找到匹配【${code.trim()}】的在册专柜！`);
   }
   window.location.href = `mall.html?t=${found.tenant_id}`;
 };
@@ -123,7 +127,9 @@ function setupBrandStoreMode(tenantId) {
 function renderBrandShowcaseAndFilter() {
   const showcase = document.getElementById('brand-showcase-cards');
   if (showcase) {
+    // 最多展示前 12 家活跃工坊，避免厂家增多后横向无限膨胀，其余通过搜索秒达
     showcase.innerHTML = allTenants
+      .slice(0, 12)
       .map(
         (t) => `
         <div onclick="window.goToBrandStore('${t.tenant_id}')" class="shrink-0 w-44 bg-white border border-stone-200 hover:border-emerald-700 p-3 rounded-2xl shadow-2xs cursor-pointer transition space-y-1.5">
@@ -144,6 +150,7 @@ function renderBrandShowcaseAndFilter() {
   const bar = document.getElementById('dynamic-brand-chips');
   if (bar) {
     bar.innerHTML = allTenants
+      .slice(0, 15)
       .map(
         (t) => `
         <button onclick="window.filterMallBrand('${t.tenant_id}')" class="mall-brand-chip bg-white border border-stone-200 text-stone-700 hover:border-emerald-700 px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition">
@@ -368,6 +375,9 @@ window.openProductDetail = function (prodId) {
   window.openModal('modal-product-detail');
 };
 
+// =========================================================================
+// 弹性 C2B 需求发榜（情境自动识别 + 自由输入匹配，不锁死下拉框）
+// =========================================================================
 async function loadAndRenderC2BDemands() {
   const listEl = document.getElementById('c2b-demands-list');
   if (!listEl) return;
@@ -386,7 +396,7 @@ function parseDemandPayload(rawContent) {
     title: rawContent,
     qty: '若干',
     budget: '面议',
-    delivery: '快递或门店自提',
+    delivery: '灵活协商',
     coBuyers: 1
   };
 }
@@ -417,7 +427,7 @@ function renderC2BDemandsList() {
       const info = parseDemandPayload(d.content);
       const isJoined = joinedIds.includes(d.id);
       const hasFactoryReply = !!d.official_reply;
-      const targetTag = (d.category || '').includes('专柜:') ? d.category : '全网公域发榜';
+      const targetTag = d.category || '全网公域发榜';
 
       return `
         <div class="bg-white border border-stone-200 rounded-3xl p-4 shadow-2xs space-y-2.5 text-xs">
@@ -443,7 +453,7 @@ function renderC2BDemandsList() {
           <div class="grid grid-cols-3 gap-1.5 bg-stone-50 p-2 rounded-2xl border border-stone-100 text-[11px] font-mono">
             <div><span class="text-stone-400 block text-[9px]">求购规模</span><b class="text-stone-800">${info.qty}</b></div>
             <div><span class="text-stone-400 block text-[9px]">期望预算</span><b class="text-emerald-900">${info.budget}</b></div>
-            <div><span class="text-stone-400 block text-[9px]">交付方式</span><b class="text-stone-700 font-sans">${info.delivery}</b></div>
+            <div><span class="text-stone-400 block text-[9px]">交付要求</span><b class="text-stone-700 font-sans">${info.delivery}</b></div>
           </div>
 
           ${info.note ? `<p class="text-[11px] text-stone-500">💬 规格/定制说明：${info.note}</p>` : ''}
@@ -476,19 +486,25 @@ window.openC2BDemandModal = function (presetTitle = '', presetTenantId = '') {
   document.getElementById('c2b-title-input').value = presetTitle || '';
   document.getElementById('c2b-qty-input').value = '';
   document.getElementById('c2b-budget-input').value = '';
+  document.getElementById('c2b-delivery-input').value = '';
   document.getElementById('c2b-note-input').value = '';
 
-  const targetSelect = document.getElementById('c2b-target-tenant');
-  if (targetSelect) {
-    const defaultTarget = presetTenantId || currentTenantParam || 'all';
-    targetSelect.innerHTML =
-      `<option value="all">🌐 发布至百工天街公域（全网工坊竞价接单）</option>` +
-      allTenants
-        .map(
-          (t) =>
-            `<option value="${t.tenant_id}" ${defaultTarget === t.tenant_id ? 'selected' : ''}>🏭 定向发往【${t.company_name}】数字专柜</option>`
-        )
-        .join('');
+  // 情境感知：如果在某家专柜内，自动带入该厂名称，但允许用户随时清空改成全网公开招标或输入任意行当/工坊名
+  const activeTid = presetTenantId || currentTenantParam || '';
+  const matchedTenant = activeTid
+    ? allTenants.find((t) => (t.tenant_id || '').toUpperCase() === activeTid.toUpperCase())
+    : null;
+
+  const targetInput = document.getElementById('c2b-target-input');
+  const scopeHint = document.getElementById('c2b-scope-hint');
+  if (targetInput) {
+    targetInput.value = matchedTenant ? matchedTenant.company_name : '';
+    targetInput.dataset.lockedTenantId = matchedTenant ? matchedTenant.tenant_id : '';
+  }
+  if (scopeHint) {
+    scopeHint.innerText = matchedTenant
+      ? `当前已关联【${matchedTenant.company_name}】，清空即可发往全网工坊公开竞价`
+      : '留空则面向全网对应行当工坊公开招标，也可自由输入指定工坊或产区';
   }
 
   try {
@@ -502,12 +518,23 @@ window.openC2BDemandModal = function (presetTitle = '', presetTenantId = '') {
   window.openModal('modal-c2b-demand');
 };
 
+window.appendC2BDeliveryChip = function (chipText) {
+  const input = document.getElementById('c2b-delivery-input');
+  if (!input) return;
+  const cur = input.value.trim();
+  if (!cur) {
+    input.value = chipText;
+  } else if (!cur.includes(chipText)) {
+    input.value = `${cur} / ${chipText}`;
+  }
+};
+
 window.submitC2BDemand = async function () {
   const title = document.getElementById('c2b-title-input').value.trim();
   const qty = document.getElementById('c2b-qty-input').value.trim();
   const budget = document.getElementById('c2b-budget-input').value.trim() || '按阶梯批价面议';
-  const delivery = document.getElementById('c2b-delivery-input').value;
-  const targetTenant = document.getElementById('c2b-target-tenant').value;
+  const delivery = document.getElementById('c2b-delivery-input').value.trim() || '灵活协商（快递/自提/专车）';
+  const targetText = document.getElementById('c2b-target-input').value.trim();
   const note = document.getElementById('c2b-note-input').value.trim();
   const name = document.getElementById('c2b-name-input').value.trim();
   const phone = document.getElementById('c2b-phone-input').value.trim();
@@ -515,6 +542,22 @@ window.submitC2BDemand = async function () {
   if (!title || !qty || !phone || phone.length < 11) {
     return alert('请完整填写求购/定制品名、需求数量以及 11 位联系手机号！');
   }
+
+  // 智能匹配用户手输的意向工坊（若命中在册商号则附带商号标识以便对方后台优先看到）
+  const matchedTenant = targetText
+    ? allTenants.find(
+        (t) =>
+          (t.company_name || '').includes(targetText) ||
+          targetText.includes(t.company_name || '') ||
+          (t.tenant_id || '').toUpperCase() === targetText.toUpperCase()
+      )
+    : null;
+
+  const categoryTag = matchedTenant
+    ? `C2B专柜:${matchedTenant.tenant_id}(${matchedTenant.company_name})`
+    : targetText
+    ? `C2B意向:${targetText}`
+    : 'C2B全网公域发榜';
 
   const structuredContent = JSON.stringify({
     title,
@@ -524,8 +567,6 @@ window.submitC2BDemand = async function () {
     note,
     coBuyers: 1
   });
-
-  const categoryTag = targetTenant === 'all' ? 'C2B全网公域发榜' : `C2B定向专柜:${targetTenant}`;
 
   const { error } = await MallService.publishC2BDemand({
     proposer_type: 'c2b_demand',
