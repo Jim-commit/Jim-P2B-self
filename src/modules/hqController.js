@@ -411,9 +411,9 @@ function renderThreeFlowsAndAIAdvisor() {
         level: 'amber',
         icon: '💰',
         title: `信用账款提醒：【${s.name}】在账 ¥${debt.toFixed(2)}（接近周转额度 ¥${limit}）`,
-        desc: `建议下次送货师傅上门时顺带核对平账，或按需调整该门店的交割约定。`,
-        btnText: '⚙️ 调整协议策略',
-        action: `window.switchTab('stores'); window.openStorePolicyModal(${s.id});`
+        desc: `建议生成周期电子对账单发给掌柜核对回款平账，或按需调整该门店的交割约定。`,
+        btnText: '🧾 账期对账销账',
+        action: `window.openStoreStatementModal(${s.id});`
       });
     }
     if (baskets >= 15) {
@@ -511,7 +511,201 @@ function renderInventoryLogs() {
 }
 
 // =========================================================================
-// 5. 产销排产汇总总单、装车总拣货单、对账单导出 & 合作名片码
+// 5. 合作门店周期电子对账单与回款销账清算中心
+// =========================================================================
+window.openStoreStatementModal = function (preselectStoreId = null) {
+  if (allStores.length === 0) return alert('当前名册下暂无合作门店！');
+  const selectEl = document.getElementById('stmt-store-select');
+  selectEl.innerHTML = allStores
+    .map((s) => `<option value="${s.id}">${s.name} (在账 ¥${parseFloat(s.current_debt || 0).toFixed(2)})</option>`)
+    .join('');
+
+  if (preselectStoreId) {
+    selectEl.value = preselectStoreId;
+  }
+
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const today = now.toISOString().slice(0, 10);
+
+  const startEl = document.getElementById('stmt-start-date');
+  const endEl = document.getElementById('stmt-end-date');
+  if (startEl && !startEl.value) startEl.value = firstDay;
+  if (endEl && !endEl.value) endEl.value = today;
+
+  window.renderStoreStatementDetail();
+  window.openModal('modal-store-statement');
+};
+
+function getFilteredStatementData() {
+  const storeId = parseInt(document.getElementById('stmt-store-select')?.value || 0);
+  const store = allStores.find((s) => s.id === storeId);
+  const startDate = document.getElementById('stmt-start-date')?.value || '2000-01-01';
+  const endDate = document.getElementById('stmt-end-date')?.value || '2099-12-31';
+
+  const startTs = new Date(`${startDate}T00:00:00`).getTime();
+  const endTs = new Date(`${endDate}T23:59:59`).getTime();
+
+  const orders = allOrders.filter((o) => {
+    if (isDirectoryLead(o)) return false;
+    if (Number(o.store_id) !== storeId) return false;
+    if (o.order_status === 'cancelled') return false;
+    const t = o.created_at ? new Date(o.created_at).getTime() : 0;
+    return t >= startTs && t <= endTs;
+  });
+
+  const orderSum = orders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+  const returnSum = orders.reduce((sum, o) => sum + parseFloat(o.return_amount || 0), 0);
+  const netSum = orders.reduce((sum, o) => sum + parseFloat(o.net_settle_amount || o.total_amount || 0), 0);
+
+  return { store, startDate, endDate, orders, orderSum, returnSum, netSum };
+}
+
+window.renderStoreStatementDetail = function () {
+  const { store, orders, orderSum, returnSum, netSum } = getFilteredStatementData();
+  if (!store) return;
+
+  const curDebt = parseFloat(store.current_debt || 0);
+  const baskets = parseInt(store.carrier_hold_count || store.basket_count || 0);
+
+  document.getElementById('stmt-order-sum').innerText = `¥${orderSum.toFixed(2)}`;
+  document.getElementById('stmt-return-sum').innerText = `-¥${returnSum.toFixed(2)}`;
+  document.getElementById('stmt-net-sum').innerText = `¥${netSum.toFixed(2)}`;
+  document.getElementById('stmt-current-debt').innerText = `¥${curDebt.toFixed(2)}`;
+  document.getElementById('stmt-basket-info').innerText = `${carrierLabel}借存：${baskets} 件`;
+  document.getElementById('stmt-settle-amount').value = curDebt > 0 ? curDebt.toFixed(2) : '';
+
+  const listEl = document.getElementById('stmt-orders-list');
+  if (!listEl) return;
+  if (orders.length === 0) {
+    listEl.innerHTML = '<div class="py-6 text-center text-stone-400">所选日期区间内暂无往来交割单据。</div>';
+    return;
+  }
+
+  listEl.innerHTML = orders
+    .map((o) => {
+      const items = Array.isArray(o.items) ? o.items : [];
+      const itemSummary = items.map((i) => `${i.name}x${i.qty}`).join('、') || '调退单';
+      const net = parseFloat(o.net_settle_amount || o.total_amount || 0);
+      return `
+        <div class="py-2 flex justify-between items-start gap-2">
+          <div>
+            <b class="text-stone-900 font-mono">#${o.order_no || o.id}</b>
+            <span class="text-[10px] text-stone-400 ml-1">${new Date(o.created_at).toLocaleDateString()} · ${o.settlement_type}</span>
+            <div class="text-[10px] text-stone-600 mt-0.5">${itemSummary}</div>
+          </div>
+          <div class="text-right font-mono shrink-0">
+            <b class="text-stone-900 font-bold">¥${net.toFixed(2)}</b>
+            <span class="block text-[9px] ${o.delivery_status === 'delivered' ? 'text-emerald-700' : 'text-amber-700'}">
+              ${o.delivery_status === 'delivered' ? '已签收' : '配送/排单中'}
+            </span>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+};
+
+window.copyStoreStatementText = function () {
+  const { store, startDate, endDate, orders, orderSum, returnSum, netSum } = getFilteredStatementData();
+  if (!store) return;
+  const curDebt = parseFloat(store.current_debt || 0);
+  const baskets = parseInt(store.carrier_hold_count || store.basket_count || 0);
+
+  const lines = [
+    `【${currentTenantData?.company_name || currentAgent} · 往来电子对账单】`,
+    `合作门店：${store.name}（${store.contact || '掌柜'}）`,
+    `对账周期：${startDate} 至 ${endDate}`,
+    `------------------------`,
+    `• 区间新配货品总额：¥${orderSum.toFixed(2)}`,
+    `• 区间验退冲抵金额：-¥${returnSum.toFixed(2)}`,
+    `• 区间发生净额合计：¥${netSum.toFixed(2)}（共 ${orders.length} 笔）`,
+    `• 当前累计在账应结：¥${curDebt.toFixed(2)}`,
+    `• ${carrierLabel}借存结余：${baskets} 件`,
+    `------------------------`,
+    `明细清单：`,
+    ...(orders.length > 0
+      ? orders.map((o, idx) => {
+          const d = new Date(o.created_at).toLocaleDateString();
+          const net = parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2);
+          const itemStr = (Array.isArray(o.items) ? o.items : []).map((i) => `${i.name}x${i.qty}`).join('、');
+          return `${idx + 1}. [${d}] #${o.order_no || o.id} ¥${net} (${itemStr || '调退'})`;
+        })
+      : ['（本期无新增往来单据）']),
+    `------------------------`,
+    `诚信相照，清白对账！请掌柜核验，如有疑问随时联系我们。`
+  ];
+
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    alert(`✅ 【${store.name}】电子对账单已复制到剪贴板，可直接发送微信给掌柜核对！`);
+  });
+};
+
+window.exportStoreStatementCSV = function () {
+  const { store, startDate, endDate, orders } = getFilteredStatementData();
+  if (!store) return;
+  const headers = ['单据号', '日期', '门店名称', '交割方式', '新配金额(元)', '退验冲抵(元)', '净额(元)', '状态', '货品明细'];
+  const rows = orders.map((o) => [
+    o.order_no || o.id,
+    new Date(o.created_at).toLocaleString(),
+    store.name,
+    o.settlement_type || '',
+    parseFloat(o.total_amount || 0).toFixed(2),
+    parseFloat(o.return_amount || 0).toFixed(2),
+    parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2),
+    o.delivery_status === 'delivered' ? '已签收' : '配送/排单中',
+    (Array.isArray(o.items) ? o.items : []).map((i) => `${i.name}x${i.qty}`).join('; ')
+  ]);
+  downloadCSV(`${store.name}_往来对账单_${startDate}_${endDate}.csv`, headers, rows);
+};
+
+window.submitStoreStatementSettle = async function () {
+  const storeId = parseInt(document.getElementById('stmt-store-select')?.value || 0);
+  const store = allStores.find((s) => s.id === storeId);
+  if (!store) return;
+
+  const payAmt = parseFloat(document.getElementById('stmt-settle-amount')?.value || 0);
+  const payMethod = document.getElementById('stmt-pay-method')?.value || '银行公户/微信转账';
+  if (isNaN(payAmt) || payAmt <= 0) return alert('请输入有效的实收平账金额！');
+
+  const curDebt = parseFloat(store.current_debt || 0);
+  const nextDebt = Math.max(0, Number((curDebt - payAmt).toFixed(2)));
+
+  const doSettle = async () => {
+    const { error: sErr } = await supabase.from('store').update({ current_debt: nextDebt }).eq('id', store.id);
+    if (sErr) return alert('冲减欠款失败：' + sErr.message);
+
+    await supabase.from('driver_collection_log').insert([
+      {
+        tenant_id: currentAgent,
+        store_id: store.id,
+        store_name: store.name,
+        driver_name: currentOperatorName,
+        collect_type: 'period_settlement',
+        amount: payAmt,
+        discount_amount: 0,
+        basket_return: 0,
+        basket_deduct_amount: 0,
+        pay_method: payMethod,
+        settled_to_hq: true
+      }
+    ]);
+
+    alert(`🎉 平账销账成功！\n已核销【${store.name}】回款 ¥${payAmt.toFixed(2)}（${payMethod}）\n门店剩余在账余额：¥${nextDebt.toFixed(2)}`);
+    await window.loadHQData();
+    window.renderStoreStatementDetail();
+  };
+
+  if (payAmt >= 3000) {
+    window.trigger2FAAction(`大额账期平账 ¥${payAmt.toFixed(2)}，请输入手机验证器 6 位动态码授权：`, doSettle);
+  } else {
+    if (!confirm(`确认收到【${store.name}】回款 ¥${payAmt.toFixed(2)}（${payMethod}）并冲减在账欠款？`)) return;
+    await doSettle();
+  }
+};
+
+// =========================================================================
+// 5.5 产销排产汇总总单、装车总拣货单、对账单导出 & 合作名片码
 // =========================================================================
 function buildAggregatedPlanItems() {
   const activePlans = allDemandPlans.filter((p) => p.status === 'submitted' || p.status === 'scheduled');
@@ -1200,6 +1394,7 @@ function renderStoreTable() {
                 </div>
               </div>
               <div class="flex flex-wrap items-center gap-1.5">
+                <button onclick="window.openStoreStatementModal(${s.id})" class="text-[11px] bg-emerald-800 hover:bg-emerald-900 text-white px-2.5 py-1 rounded-xl font-bold shadow-xs">🧾 账期对账</button>
                 <button onclick="window.editStoreTagsPrompt(${s.id}, '${JSON.stringify(s.tags || []).replace(/"/g, '"')}')" class="text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 px-2.5 py-1 rounded-xl font-bold">🏷️ 贴圈子标签</button>
                 <button onclick="window.openStorePolicyModal(${s.id})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-1 rounded-xl font-bold">💎 协议工价 & 授信</button>
                 <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '"')}')" class="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-xl font-bold">🎯 专供品道</button>
