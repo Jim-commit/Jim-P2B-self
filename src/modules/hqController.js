@@ -25,10 +25,29 @@ function isBrickMortarAllowed(p) {
   return ['实体店', '实体与电商双轨'].includes(p.sales_channel_type) || !p.sales_channel_type;
 }
 
+const DEFAULT_GLOBAL_POLICY = {
+  storeTiers: [
+    { name: 'LV1 核心战略店', creditLimit: 5000, discountRate: 0.95, returnQuota: 1000 },
+    { name: 'LV2 长期伙计店', creditLimit: 3000, discountRate: 0.98, returnQuota: 600 },
+    { name: 'LV3 临街便民店', creditLimit: 2000, discountRate: 1.0, returnQuota: 500 }
+  ],
+  carriers: [{ name: '周转筐', deposit: 15 }],
+  tier1Name: '平准供货底价',
+  tier2Name: '集采惠价',
+  twoFaThreshold: 3000,
+  defaultMinStock: 10,
+  expiryWarnDays: 30,
+  allowStoreReturn: true,
+  slipHeaderSub: '源头平准直供 · 诚信相照 · 货畅其流',
+  slipFooterNote: '请当面点清数量与效期，签字后即作为往来对账依据。',
+  slipStampText: '调度专用章'
+};
+
 let currentAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
 let currentRoleCode = sessionStorage.getItem('hq_sub_role_' + currentAgent) || 'owner';
 let currentOperatorName = sessionStorage.getItem('hq_sub_name_' + currentAgent) || '大当家主账号';
-let carrierLabel = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周转载具';
+let globalPolicy = JSON.parse(JSON.stringify(DEFAULT_GLOBAL_POLICY));
+let carrierLabel = '周转筐';
 let currentStoreForVis = null;
 let currentTenantData = null;
 let allProducts = [];
@@ -60,7 +79,267 @@ window.dismissOnboardingGuide = function () {
 };
 
 // =========================================================================
-// 0. 产区工艺档案与车间实拍配置
+// 0. 商号全局自定义策略中心（Global Policy Studio）
+// =========================================================================
+function loadGlobalPolicyFromTenant(tenant) {
+  let savedLocal = {};
+  try {
+    savedLocal = JSON.parse(localStorage.getItem('hq_global_policy_' + currentAgent) || '{}');
+  } catch (e) {}
+
+  const cloudPolicy = tenant?.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
+  globalPolicy = {
+    ...JSON.parse(JSON.stringify(DEFAULT_GLOBAL_POLICY)),
+    ...savedLocal,
+    ...cloudPolicy
+  };
+
+  if (!Array.isArray(globalPolicy.storeTiers) || globalPolicy.storeTiers.length === 0) {
+    globalPolicy.storeTiers = JSON.parse(JSON.stringify(DEFAULT_GLOBAL_POLICY.storeTiers));
+  }
+  if (!Array.isArray(globalPolicy.carriers) || globalPolicy.carriers.length === 0) {
+    globalPolicy.carriers = JSON.parse(JSON.stringify(DEFAULT_GLOBAL_POLICY.carriers));
+  }
+
+  localStorage.setItem('hq_global_policy_' + currentAgent, JSON.stringify(globalPolicy));
+
+  const mainCarrier = globalPolicy.carriers[0] || { name: '周转筐', deposit: 15 };
+  carrierLabel = mainCarrier.name;
+  localStorage.setItem('hq_carrier_label_' + currentAgent, carrierLabel);
+
+  const carrierBtn = document.getElementById('carrier-label-btn');
+  if (carrierBtn) carrierBtn.innerText = `${mainCarrier.name} (¥${mainCarrier.deposit}/件) ✎`;
+
+  const pillEl = document.getElementById('policy-summary-pill');
+  if (pillEl) {
+    pillEl.innerText = `2FA ≥ ¥${globalPolicy.twoFaThreshold} · 效期${globalPolicy.expiryWarnDays}天 ⚙️`;
+  }
+
+  const th1 = document.getElementById('th-tier1-label');
+  const th2 = document.getElementById('th-tier2-label');
+  if (th1) th1.innerText = globalPolicy.tier1Name || '平准供货底价';
+  if (th2) th2.innerText = globalPolicy.tier2Name || '集采惠价';
+
+  const lbl1 = document.getElementById('lbl-prod-tier1');
+  const lbl2 = document.getElementById('lbl-prod-tier2');
+  if (lbl1) lbl1.innerText = `${globalPolicy.tier1Name || '平准供货底价'} (元) *：`;
+  if (lbl2) lbl2.innerText = `${globalPolicy.tier2Name || '集采惠价'} (元)：`;
+
+  const opt1 = document.getElementById('opt-policy-t1');
+  const opt2 = document.getElementById('opt-policy-t2');
+  if (opt1) opt1.innerText = globalPolicy.tier1Name || '平准供货底价';
+  if (opt2) opt2.innerText = globalPolicy.tier2Name || '集采惠价';
+}
+
+window.openGlobalPolicyModal = function (defaultTab = 'tiers') {
+  renderPolicyTiersEditor();
+  renderPolicyCarriersEditor();
+
+  document.getElementById('gp-tier1-name').value = globalPolicy.tier1Name || '平准供货底价';
+  document.getElementById('gp-tier2-name').value = globalPolicy.tier2Name || '集采惠价';
+  document.getElementById('gp-2fa-threshold').value = globalPolicy.twoFaThreshold ?? 3000;
+  document.getElementById('gp-default-min-stock').value = globalPolicy.defaultMinStock ?? 10;
+  document.getElementById('gp-expiry-warn-days').value = globalPolicy.expiryWarnDays ?? 30;
+  document.getElementById('gp-allow-store-return').checked = globalPolicy.allowStoreReturn !== false;
+
+  document.getElementById('gp-slip-header-sub').value = globalPolicy.slipHeaderSub || '';
+  document.getElementById('gp-slip-footer-note').value = globalPolicy.slipFooterNote || '';
+  document.getElementById('gp-slip-stamp-text').value = globalPolicy.slipStampText || '调度专用章';
+
+  window.switchPolicyTab(defaultTab);
+  window.openModal('modal-global-policy');
+};
+
+window.switchPolicyTab = function (tab) {
+  ['tiers', 'carriers', 'risk', 'slip'].forEach((t) => {
+    document.getElementById(`gp-pane-${t}`)?.classList.toggle('hidden', t !== tab);
+    const btn = document.getElementById(`gp-tab-${t}`);
+    if (btn) {
+      btn.className = t === tab ? 'py-2 rounded-xl bg-[#1b4332] text-white transition' : 'py-2 rounded-xl text-stone-600 transition';
+    }
+  });
+};
+
+function renderPolicyTiersEditor() {
+  const box = document.getElementById('gp-tiers-container');
+  if (!box) return;
+  box.innerHTML = '';
+  globalPolicy.storeTiers.forEach((tier) => window.addPolicyTierRow(tier.name, tier.creditLimit, tier.discountRate, tier.returnQuota));
+}
+
+window.addPolicyTierRow = function (name = '', credit = 2000, rate = 1.0, retQuota = 500) {
+  const box = document.getElementById('gp-tiers-container');
+  if (!box) return;
+  const row = document.createElement('div');
+  row.className = 'grid grid-cols-12 gap-1.5 items-center bg-stone-50 p-2 rounded-xl border border-stone-200 gp-tier-row';
+  row.innerHTML = `
+    <input type="text" placeholder="分级名称(如LV1核心店)" value="${name}" class="gp-t-name col-span-4 bg-white border border-stone-200 rounded-lg px-2 py-1 font-bold outline-none">
+    <input type="number" placeholder="信用额度" value="${credit}" title="默认信用额度(元)" class="gp-t-credit col-span-3 bg-white border border-stone-200 rounded-lg px-2 py-1 font-mono outline-none">
+    <input type="number" step="0.01" placeholder="折扣系数" value="${rate}" title="协议折扣系数(0.95=95折)" class="gp-t-rate col-span-2 bg-white border border-stone-200 rounded-lg px-2 py-1 font-mono outline-none">
+    <input type="number" placeholder="免批退货额" value="${retQuota}" title="月度免批退货额度(元)" class="gp-t-ret col-span-2 bg-white border border-stone-200 rounded-lg px-2 py-1 font-mono outline-none">
+    <button type="button" onclick="this.parentElement.remove()" class="col-span-1 text-rose-600 font-bold text-center">✕</button>
+  `;
+  box.appendChild(row);
+};
+
+function renderPolicyCarriersEditor() {
+  const box = document.getElementById('gp-carriers-container');
+  if (!box) return;
+  box.innerHTML = '';
+  globalPolicy.carriers.forEach((c) => window.addPolicyCarrierRow(c.name, c.deposit));
+}
+
+window.addPolicyCarrierRow = function (name = '', deposit = 15) {
+  const box = document.getElementById('gp-carriers-container');
+  if (!box) return;
+  const row = document.createElement('div');
+  row.className = 'flex items-center gap-2 bg-stone-50 p-2 rounded-xl border border-stone-200 gp-carrier-row';
+  row.innerHTML = `
+    <input type="text" placeholder="载具名称(如:塑料周转筐/木托盘/气瓶)" value="${name}" class="gp-c-name flex-1 bg-white border border-stone-200 rounded-lg px-2.5 py-1 font-bold outline-none">
+    <span class="text-stone-500">押金单价 ¥</span>
+    <input type="number" step="1" placeholder="15" value="${deposit}" class="gp-c-deposit w-20 bg-white border border-stone-200 rounded-lg px-2 py-1 font-mono font-bold outline-none">
+    <button type="button" onclick="this.parentElement.remove()" class="text-rose-600 font-bold px-1.5">✕</button>
+  `;
+  box.appendChild(row);
+};
+
+window.applyGlobalPreset = function (presetKey) {
+  const presets = {
+    coop: {
+      storeTiers: [
+        { name: 'LV1 核心连锁生鲜店', creditLimit: 5000, discountRate: 0.95, returnQuota: 1000 },
+        { name: 'LV2 社区便民店', creditLimit: 2000, discountRate: 1.0, returnQuota: 500 },
+        { name: 'LV3 村社自提服务点', creditLimit: 3000, discountRate: 0.96, returnQuota: 800 }
+      ],
+      carriers: [{ name: '塑料周转筐', deposit: 15 }],
+      tier1Name: '合作社直供底价',
+      tier2Name: '抱团集采惠价',
+      twoFaThreshold: 3000,
+      defaultMinStock: 15,
+      expiryWarnDays: 7,
+      allowStoreReturn: true,
+      slipHeaderSub: '村社合作社源头直供 · 新鲜直达 · 诚信相照',
+      slipFooterNote: '生鲜农产请当面验货签收，周转筐随车清点回收。',
+      slipStampText: '合作社调度专用章'
+    },
+    factory: {
+      storeTiers: [
+        { name: '一级区域总代', creditLimit: 20000, discountRate: 0.9, returnQuota: 2000 },
+        { name: '二级签约经销商', creditLimit: 8000, discountRate: 0.95, returnQuota: 800 },
+        { name: '直供终端门店', creditLimit: 3000, discountRate: 1.0, returnQuota: 300 }
+      ],
+      carriers: [{ name: '标准木托盘', deposit: 80 }],
+      tier1Name: '出厂直供底价',
+      tier2Name: '整托集采惠价',
+      twoFaThreshold: 5000,
+      defaultMinStock: 30,
+      expiryWarnDays: 45,
+      allowStoreReturn: true,
+      slipHeaderSub: '源头工坊直发 · 物勒工名 · 品质溯源',
+      slipFooterNote: '整托发运请核对封签批号，标准木托盘循环计账。',
+      slipStampText: '工坊出库核验章'
+    },
+    hardware: {
+      storeTiers: [
+        { name: '工程项目战略户', creditLimit: 30000, discountRate: 0.92, returnQuota: 3000 },
+        { name: '五金机电合作店', creditLimit: 5000, discountRate: 0.96, returnQuota: 500 },
+        { name: '零星维修工坊', creditLimit: 1000, discountRate: 1.0, returnQuota: 200 }
+      ],
+      carriers: [{ name: '周转铁料箱', deposit: 50 }],
+      tier1Name: '工料平准批发价',
+      tier2Name: '工程整件特惠价',
+      twoFaThreshold: 5000,
+      defaultMinStock: 20,
+      expiryWarnDays: 0,
+      allowStoreReturn: true,
+      slipHeaderSub: '工料配件直供中心 · 规格齐全 · 按需配送',
+      slipFooterNote: '非质量问题定制件不退不换，标准件完整包装支持调换。',
+      slipStampText: '仓储配发专用章'
+    },
+    cylinder: {
+      storeTiers: [
+        { name: '大型餐饮食堂户', creditLimit: 5000, discountRate: 0.94, returnQuota: 500 },
+        { name: '配送分销网点', creditLimit: 3000, discountRate: 0.96, returnQuota: 300 }
+      ],
+      carriers: [
+        { name: '18.9L PC周转水桶', deposit: 30 },
+        { name: '标准钢瓶容器', deposit: 120 }
+      ],
+      tier1Name: '标准配送单价',
+      tier2Name: '签约批量惠价',
+      twoFaThreshold: 2000,
+      defaultMinStock: 50,
+      expiryWarnDays: 15,
+      allowStoreReturn: false,
+      slipHeaderSub: '安全循环配送 · 空桶/空瓶随车清点抵账',
+      slipFooterNote: '送一收一，缺失容器按押金标准计入往来账目。',
+      slipStampText: '配送调度核验章'
+    }
+  };
+
+  const chosen = presets[presetKey];
+  if (!chosen) return;
+  globalPolicy = JSON.parse(JSON.stringify(chosen));
+  window.openGlobalPolicyModal('tiers');
+  alert('✅ 已套用行业预设模板！您可继续微调各项数字后点击底部「保存全局自定义策略」。');
+};
+
+window.saveGlobalPolicySettings = async function () {
+  const tiers = [];
+  document.querySelectorAll('#gp-tiers-container .gp-tier-row').forEach((row) => {
+    const name = row.querySelector('.gp-t-name')?.value.trim();
+    if (!name) return;
+    tiers.push({
+      name,
+      creditLimit: parseFloat(row.querySelector('.gp-t-credit')?.value) || 2000,
+      discountRate: parseFloat(row.querySelector('.gp-t-rate')?.value) || 1.0,
+      returnQuota: parseFloat(row.querySelector('.gp-t-ret')?.value) || 500
+    });
+  });
+
+  const carriers = [];
+  document.querySelectorAll('#gp-carriers-container .gp-carrier-row').forEach((row) => {
+    const name = row.querySelector('.gp-c-name')?.value.trim();
+    if (!name) return;
+    carriers.push({
+      name,
+      deposit: parseFloat(row.querySelector('.gp-c-deposit')?.value) || 15
+    });
+  });
+
+  const nextPolicy = {
+    storeTiers: tiers.length > 0 ? tiers : DEFAULT_GLOBAL_POLICY.storeTiers,
+    carriers: carriers.length > 0 ? carriers : DEFAULT_GLOBAL_POLICY.carriers,
+    tier1Name: document.getElementById('gp-tier1-name').value.trim() || '平准供货底价',
+    tier2Name: document.getElementById('gp-tier2-name').value.trim() || '集采惠价',
+    twoFaThreshold: parseFloat(document.getElementById('gp-2fa-threshold').value) || 3000,
+    defaultMinStock: parseInt(document.getElementById('gp-default-min-stock').value) || 10,
+    expiryWarnDays: parseInt(document.getElementById('gp-expiry-warn-days').value) ?? 30,
+    allowStoreReturn: document.getElementById('gp-allow-store-return').checked,
+    slipHeaderSub: document.getElementById('gp-slip-header-sub').value.trim(),
+    slipFooterNote: document.getElementById('gp-slip-footer-note').value.trim(),
+    slipStampText: document.getElementById('gp-slip-stamp-text').value.trim() || '调度专用章'
+  };
+
+  localStorage.setItem('hq_global_policy_' + currentAgent, JSON.stringify(nextPolicy));
+  globalPolicy = nextPolicy;
+
+  try {
+    await HQService.updateTenantWithVerify(currentAgent, { custom_settings: nextPolicy });
+    if (currentTenantData) currentTenantData.custom_settings = nextPolicy;
+  } catch (err) {
+    console.warn('云端 custom_settings 同步提示（本地已生效）:', err.message);
+  }
+
+  loadGlobalPolicyFromTenant(currentTenantData);
+  renderStoreTable();
+  renderThreeFlowsAndAIAdvisor();
+  alert('🎉 商号全局自定义策略已保存生效！门店分级、载具押金、风控门槛与打印落款已全面同步。');
+  window.closeModal('modal-global-policy');
+};
+
+// =========================================================================
+// 0.5 产区工艺档案与车间实拍配置
 // =========================================================================
 window.openCounterProfileModal = function () {
   document.getElementById('counter-origin-desc-input').value = currentTenantData?.brand_origin_desc || '';
@@ -81,10 +360,7 @@ window.saveCounterProfile = async function () {
     alert('✅ 产区水土与车间实拍档案已同步至百工天街！');
     window.closeModal('modal-counter-profile');
   } catch (err) {
-    alert(
-      '⚠️ 储存失败（若提示缺少 media_url 字段，请先在 Supabase SQL 执行：ALTER TABLE platform_tenant ADD COLUMN IF NOT EXISTS media_url TEXT;）：' +
-        err.message
-    );
+    alert('⚠️ 储存失败：' + err.message);
   }
 };
 
@@ -159,27 +435,18 @@ function applyRoleViewExperience(roleCode, operatorName) {
   if (roleCode !== 'owner') {
     document.getElementById('btn-top-chg-pwd')?.classList.add('hidden');
     document.getElementById('btn-top-totp')?.classList.add('hidden');
+    document.getElementById('btn-global-policy')?.classList.add('hidden');
     document.getElementById('rbac-card-box')?.classList.add('hidden');
     if (roleCode === 'warehouse') window.switchTab('products');
     else if (roleCode === 'finance') window.switchTab('settle');
   }
 }
 
-window.customizeCarrierName = function () {
-  const val = prompt('自定义本商号周转载具称呼（如：周转筐 / 托盘 / 气瓶 / 料箱）：', carrierLabel);
-  if (val && val.trim()) {
-    carrierLabel = val.trim();
-    localStorage.setItem('hq_carrier_label_' + currentAgent, carrierLabel);
-    document.getElementById('carrier-label-btn').innerText = `${carrierLabel} ✎`;
-    renderStoreTable();
-  }
-};
-
 // =========================================================================
 // 2. 仓库出入库、批量导入与实地盘点校准引擎
 // =========================================================================
 window.downloadBulkProductTemplate = function () {
-  const headers = ['货品全称', '平准供货底价', '集采惠价', '包装规格', '计量单位', '初始库存', '条码', '产地'];
+  const headers = ['货品全称', globalPolicy.tier1Name || '平准供货底价', globalPolicy.tier2Name || '集采惠价', '包装规格', '计量单位', '初始库存', '条码', '产地'];
   const sampleRows = [
     ['伏牛山有机五常大米 10kg', '68.00', '62.00', '10kg/袋', '袋', '200', '690123456001', '伏牛山生态合作社'],
     ['农家古法压榨菜籽油 5L', '85.00', '79.00', '4桶/箱', '箱', '120', '690123456002', '源头榨油工坊']
@@ -360,7 +627,7 @@ window.submitStockOperation = async function () {
 
 window.exportInventorySheetCSV = function () {
   if (allProducts.length === 0) return alert('暂无货品可导出盘点表！');
-  const headers = ['货品ID', '货品全称', '规格', '计量单位', '平准供货底价(元)', '当前账面库存', '实地清点数(手填)', '盘盈/盘亏差异', '备注'];
+  const headers = ['货品ID', '货品全称', '规格', '计量单位', `${globalPolicy.tier1Name}(元)`, '当前账面库存', '实地清点数(手填)', '盘盈/盘亏差异', '备注'];
   const rows = allProducts.map((p) => [
     p.id,
     p.name,
@@ -453,14 +720,15 @@ window.addCustomPriceRuleRow = function (prodId = '', specialPrice = '') {
 };
 
 // =========================================================================
-// 4. 三流晴雨表 & 平准参谋渲染
+// 4. 三流晴雨表 & 平准参谋渲染（动态读取全局预警阈值）
 // =========================================================================
 function renderThreeFlowsAndAIAdvisor() {
+  const defaultMin = parseInt(globalPolicy.defaultMinStock ?? 10);
   const goodsValue = allProducts.reduce((sum, p) => sum + parseFloat(p.tier_1_price || 0) * parseInt(p.stock ?? 0), 0);
   const toShipOrders = allOrders.filter(
     (o) => (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') && o.delivery_status !== 'delivered' && !isDirectoryLead(o)
   );
-  const lowStockProds = allProducts.filter((p) => parseInt(p.stock ?? 0) <= parseInt(p.custom_specs?.min_stock ?? 10));
+  const lowStockProds = allProducts.filter((p) => parseInt(p.stock ?? 0) <= parseInt(p.custom_specs?.min_stock ?? defaultMin));
 
   document.getElementById('flow-goods-value').innerText = `¥${goodsValue.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}`;
   document.getElementById('flow-goods-toship').innerText = `${toShipOrders.length} 单`;
@@ -527,24 +795,27 @@ function renderThreeFlowsAndAIAdvisor() {
     });
   });
 
-  const nowTs = Date.now();
-  const thirtyDaysMs = 30 * 24 * 3600 * 1000;
-  allProducts.forEach((p) => {
-    const expStr = p.custom_specs?.expiry_date;
-    if (!expStr || parseInt(p.stock ?? 0) <= 0) return;
-    const expTs = new Date(`${expStr}T23:59:59`).getTime();
-    const diffDays = Math.ceil((expTs - nowTs) / (24 * 3600 * 1000));
-    if (expTs - nowTs <= thirtyDaysMs) {
-      aiTips.push({
-        level: diffDays <= 7 ? 'rose' : 'amber',
-        icon: '⏳',
-        title: `${diffDays <= 0 ? '批次已到期提醒' : `临期预警（余 ${diffDays} 天）`}：【${p.name}】在库 ${p.stock}${p.measure_unit || '件'}`,
-        desc: `到期日为 ${expStr}，建议优先通过「主动配货」或标注「🔄 余缺平价调剂」加快周转，减少损耗。`,
-        btnText: '📦 安排优先配发',
-        action: `window.openPushOrderModal()`
-      });
-    }
-  });
+  const warnDays = parseInt(globalPolicy.expiryWarnDays ?? 30);
+  if (warnDays > 0) {
+    const nowTs = Date.now();
+    const warnMs = warnDays * 24 * 3600 * 1000;
+    allProducts.forEach((p) => {
+      const expStr = p.custom_specs?.expiry_date;
+      if (!expStr || parseInt(p.stock ?? 0) <= 0) return;
+      const expTs = new Date(`${expStr}T23:59:59`).getTime();
+      const diffDays = Math.ceil((expTs - nowTs) / (24 * 3600 * 1000));
+      if (expTs - nowTs <= warnMs) {
+        aiTips.push({
+          level: diffDays <= 7 ? 'rose' : 'amber',
+          icon: '⏳',
+          title: `${diffDays <= 0 ? '批次已到期提醒' : `临期预警（余 ${diffDays} 天）`}：【${p.name}】在库 ${p.stock}${p.measure_unit || '件'}`,
+          desc: `到期日为 ${expStr}（已进入设定的 ${warnDays} 天预警窗），建议优先安排配发或标注余缺调剂。`,
+          btnText: '📦 安排优先配发',
+          action: `window.openPushOrderModal()`
+        });
+      }
+    });
+  }
 
   allStores.forEach((s) => {
     const debt = parseFloat(s.current_debt || 0);
@@ -712,6 +983,8 @@ window.openSingleDeliverySlipPrint = function (orderId) {
   const companyTitle = currentTenantData?.company_name || currentAgent;
 
   document.getElementById('print-slip-company-title').innerText = `${companyTitle} · 随车送货交割凭单`;
+  const subEl = document.getElementById('print-slip-custom-sub');
+  if (subEl) subEl.innerText = globalPolicy.slipHeaderSub || '';
   document.getElementById('print-slip-meta-line').innerText = `单号：#${o.order_no || o.id} | 制单日期：${
     o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
   }`;
@@ -757,7 +1030,8 @@ window.openSingleDeliverySlipPrint = function (orderId) {
     notesArr.push(`• 交接附言：${o.note}`);
   }
   const baskets = parseInt(store?.carrier_hold_count || store?.basket_count || 0);
-  notesArr.push(`• 该门店累计借存${carrierLabel}：${baskets} 件（本次归还数量：_____ 件）`);
+  const mainCarrier = globalPolicy.carriers[0] || { name: carrierLabel, deposit: 15 };
+  notesArr.push(`• 该门店累计借存${mainCarrier.name}：${baskets} 件（押金标准 ¥${mainCarrier.deposit}/件，本次归还：_____ 件）`);
 
   document.getElementById('print-slip-special-notes').innerHTML = notesArr.map((n) => `<div>${n}</div>`).join('');
 
@@ -768,6 +1042,11 @@ window.openSingleDeliverySlipPrint = function (orderId) {
   document.getElementById('print-slip-total-amt').innerText = `¥${totalAmt.toFixed(2)}`;
   document.getElementById('print-slip-return-amt').innerText = `-¥${returnAmt.toFixed(2)}`;
   document.getElementById('print-slip-net-amt').innerText = `¥${netAmt.toFixed(2)}`;
+
+  const footerTermsEl = document.getElementById('print-slip-footer-terms');
+  if (footerTermsEl) footerTermsEl.innerText = globalPolicy.slipFooterNote || '';
+  const stampEl = document.getElementById('print-slip-stamp-label');
+  if (stampEl) stampEl.innerText = globalPolicy.slipStampText || '调度专用章';
 
   window.openModal('modal-delivery-note-print');
 };
@@ -966,8 +1245,9 @@ window.submitStoreStatementSettle = async function () {
     window.renderStoreStatementDetail();
   };
 
-  if (payAmt >= 3000) {
-    window.trigger2FAAction(`大额账期平账 ¥${payAmt.toFixed(2)}，请输入手机验证器 6 位动态码授权：`, doSettle);
+  const threshold = parseFloat(globalPolicy.twoFaThreshold ?? 3000);
+  if (payAmt >= threshold) {
+    window.trigger2FAAction(`大额账期平账 ¥${payAmt.toFixed(2)}（已达全局风控门槛 ¥${threshold}），请输入手机验证器 6 位动态码授权：`, doSettle);
   } else {
     if (!confirm(`确认收到【${store.name}】回款 ¥${payAmt.toFixed(2)}（${payMethod}）并冲减在账欠款？`)) return;
     await doSettle();
@@ -1360,7 +1640,6 @@ window.verifyHQAuthPwd = async function (e) {
   currentAgent = tenantId;
   currentRoleCode = 'owner';
   currentOperatorName = '大当家主账号';
-  carrierLabel = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周转载具';
   document.getElementById('hq-auth-gate').classList.add('hidden');
   applyRoleViewExperience('owner', '大当家主账号');
   window.loadHQData();
@@ -1390,7 +1669,6 @@ async function checkHQAuthStatus() {
     currentAgent = authedTenant;
     currentRoleCode = sessionStorage.getItem('hq_sub_role_' + currentAgent) || 'owner';
     currentOperatorName = sessionStorage.getItem('hq_sub_name_' + currentAgent) || '大当家主账号';
-    carrierLabel = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周转载具';
     document.getElementById('hq-auth-gate').classList.add('hidden');
     applyRoleViewExperience(currentRoleCode, currentOperatorName);
     return true;
@@ -1444,7 +1722,7 @@ window.loadHQData = async function () {
   currentTenantData = curTenant;
   document.getElementById('hq-company-badge').innerText = curTenant.company_name || curTenant.tenant_id;
   document.getElementById('hq-tenant-id').innerText = curTenant.tenant_id;
-  document.getElementById('carrier-label-btn').innerText = `${carrierLabel} ✎`;
+  loadGlobalPolicyFromTenant(curTenant);
   updateWebhookStatusBadge(curTenant.webhook_url || '');
   updateTotpStatusBadge(!!(curTenant.totp_enabled && curTenant.totp_secret));
 
@@ -1586,6 +1864,7 @@ function renderProductFilterBar() {
 }
 
 function renderProductTable() {
+  const defaultMin = parseInt(globalPolicy.defaultMinStock ?? 10);
   let filtered = activeProdFilter === '全部' ? allProducts : allProducts.filter((p) => Array.isArray(p.tags) && p.tags.includes(activeProdFilter));
   if (activeProdSearch) {
     filtered = filtered.filter(
@@ -1619,7 +1898,7 @@ function renderProductTable() {
             const expBadge = expDate ? `<span class="block text-[10px] font-mono text-amber-800 mt-0.5">效期至: ${expDate}</span>` : '';
 
             const curStock = parseInt(p.stock ?? 0);
-            const minLine = parseInt(p.custom_specs?.min_stock ?? 10);
+            const minLine = parseInt(p.custom_specs?.min_stock ?? defaultMin);
             const isLow = curStock <= minLine;
 
             return `
@@ -1659,10 +1938,11 @@ function renderStoreFilterBar() {
   const bar = document.getElementById('store-tags-filter');
   if (!bar) return;
   const dynamicTags = new Set(['#社区便民店', '#餐饮食堂', '#工程工料', '#村社自提点']);
+  globalPolicy.storeTiers.forEach((t) => dynamicTags.add(`#${t.name}`));
   allStores.forEach((s) => (Array.isArray(s.tags) ? s.tags : []).forEach((t) => dynamicTags.add(t)));
   const list = ['全部', ...Array.from(dynamicTags)];
   bar.innerHTML =
-    `<span class="text-stone-400 text-[11px] self-center mr-1">同业圈子标签:</span>` +
+    `<span class="text-stone-400 text-[11px] self-center mr-1">分级与圈子快筛:</span>` +
     list
       .map(
         (t) => `
@@ -1679,7 +1959,7 @@ function renderStoreTable() {
 
   document.getElementById('store-list').innerHTML =
     filtered.length === 0
-      ? '<div class="py-8 text-center text-stone-400">暂无该圈子下的合作门店，点击右上角「+ 快速建档立户」或给现有门店贴上对应圈子标签即可。</div>'
+      ? '<div class="py-8 text-center text-stone-400">暂无该分级/圈子下的合作门店，点击右上角「+ 快速建档立户」或给现有门店贴上对应标签即可。</div>'
       : filtered
           .map((s) => {
             const tags = Array.isArray(s.tags) ? s.tags : [];
@@ -1704,7 +1984,7 @@ function renderStoreTable() {
                   ${customRuleCount > 0 ? `<span class="text-[10px] bg-purple-50 text-purple-800 border border-purple-200 px-1.5 py-0.2 rounded font-bold">${customRuleCount}款单品协议工价</span>` : ''}
                 </div>
                 <div class="text-[11px] text-stone-400 mt-1 flex flex-wrap gap-3 font-mono">
-                  <span>同业圈子: ${tagBadges || '<span class="text-stone-300">未归圈</span>'}</span>
+                  <span>分级/圈子: ${tagBadges || '<span class="text-stone-300">未归圈</span>'}</span>
                   <span>送货师傅: <b class="text-emerald-900">${s.driver_name || '张师傅'}</b></span>
                   <span>专供品道: <b class="text-amber-800">${s.visible_product_ids ? `${s.visible_product_ids.length} 种专享` : '全品类开放'}</b></span>
                 </div>
@@ -1740,6 +2020,18 @@ window.openStorePolicyModal = function (storeId) {
   const s = allStores.find((x) => x.id === storeId);
   if (!s) return;
 
+  const tierSelect = document.getElementById('policy-tier-preset-select');
+  if (tierSelect) {
+    tierSelect.innerHTML =
+      '<option value="">-- 选择全局分级模板一键套用 --</option>' +
+      globalPolicy.storeTiers
+        .map(
+          (t, idx) =>
+            `<option value="${idx}">${t.name} (授信¥${t.creditLimit} · ${(t.discountRate * 10).toFixed(1)}折 · 免批退货¥${t.returnQuota})</option>`
+        )
+        .join('');
+  }
+
   document.getElementById('policy-store-id').value = s.id;
   document.getElementById('policy-store-name').innerText = `${s.name} (联系人: ${s.contact || '掌柜'})`;
   document.getElementById('policy-credit-limit').value = s.credit_limit || 2000;
@@ -1764,6 +2056,15 @@ window.openStorePolicyModal = function (storeId) {
   });
 
   window.openModal('store-policy-modal');
+};
+
+window.applyStoreTierPreset = function (idxStr) {
+  if (idxStr === '') return;
+  const tier = globalPolicy.storeTiers[parseInt(idxStr)];
+  if (!tier) return;
+  document.getElementById('policy-credit-limit').value = tier.creditLimit;
+  document.getElementById('policy-discount-rate').value = tier.discountRate;
+  document.getElementById('policy-return-quota').value = tier.returnQuota;
 };
 
 window.saveStorePolicySettings = async function () {
@@ -1795,6 +2096,19 @@ window.saveStorePolicySettings = async function () {
     custom_settlement_terms,
     custom_pricing: { price_tier, discount_rate, item_prices }
   };
+
+  const chosenTierIdx = document.getElementById('policy-tier-preset-select')?.value;
+  if (chosenTierIdx !== '' && chosenTierIdx !== undefined) {
+    const tierObj = globalPolicy.storeTiers[parseInt(chosenTierIdx)];
+    const storeObj = allStores.find((x) => x.id === storeId);
+    if (tierObj && storeObj) {
+      const tierTag = `#${tierObj.name}`;
+      const existingTags = Array.isArray(storeObj.tags) ? storeObj.tags : [];
+      if (!existingTags.includes(tierTag)) {
+        updatePayload.tags = [...existingTags, tierTag];
+      }
+    }
+  }
 
   let { error } = await supabase.from('store').update(updatePayload).eq('id', storeId);
   if (error && (error.message || '').includes('custom_pricing')) {
@@ -1836,7 +2150,7 @@ window.openAddProductModal = function () {
   document.getElementById('prod-price').value = '';
   document.getElementById('prod-price-tier2').value = '';
   document.getElementById('prod-stock').value = '100';
-  document.getElementById('prod-min-stock').value = '10';
+  document.getElementById('prod-min-stock').value = String(globalPolicy.defaultMinStock ?? 10);
   document.getElementById('prod-cat-tertiary').value = '';
   document.getElementById('prod-spec').value = '整装';
   document.getElementById('prod-measure-unit').value = '箱';
@@ -1867,7 +2181,7 @@ window.openEditProductModal = function (id) {
   document.getElementById('prod-price').value = p.tier_1_price;
   document.getElementById('prod-price-tier2').value = p.tier_2_price || p.tier_1_price;
   document.getElementById('prod-stock').value = p.stock ?? 100;
-  document.getElementById('prod-min-stock').value = p.custom_specs?.min_stock ?? 10;
+  document.getElementById('prod-min-stock').value = p.custom_specs?.min_stock ?? (globalPolicy.defaultMinStock ?? 10);
   document.getElementById('prod-spec').value = p.spec || '整装';
   document.getElementById('prod-measure-unit').value = p.measure_unit || '箱';
   document.getElementById('prod-trace-prefix').value = p.trace_code_prefix || 'QC-';
@@ -1899,10 +2213,10 @@ window.submitProductForm = async function () {
   const name = document.getElementById('prod-name').value.trim();
   const price = parseFloat(document.getElementById('prod-price').value);
   if (!name) return alert('请写明货品全称！');
-  if (isNaN(price) || price <= 0) return alert('请输入有效的平准供货底价！');
+  if (isNaN(price) || price <= 0) return alert(`请输入有效的${globalPolicy.tier1Name}！`);
 
   const customAttrs = collectCustomAttrs();
-  const minStock = parseInt(document.getElementById('prod-min-stock').value) || 10;
+  const minStock = parseInt(document.getElementById('prod-min-stock').value) || (globalPolicy.defaultMinStock ?? 10);
   const expiryDate = document.getElementById('prod-expiry-date')?.value || '';
 
   const channelLabel = isBM && !isEC ? '实体店' : !isBM && isEC ? '电子商务' : '实体与电商双轨';
@@ -2001,7 +2315,7 @@ function renderTagChips() {
 }
 
 window.quickEditPrice = function (id, oldPrice) {
-  const newPrice = prompt(`【润色平准供货底价】原底价 ¥${oldPrice}，输入新底价：`, oldPrice);
+  const newPrice = prompt(`【润色${globalPolicy.tier1Name}】原价 ¥${oldPrice}，输入新价格：`, oldPrice);
   if (newPrice !== null && !isNaN(newPrice) && parseFloat(newPrice) > 0) {
     const p = parseFloat(newPrice);
     if (p < oldPrice * 0.85) {
@@ -2391,7 +2705,9 @@ window.convertLeadToStore = async function (orderId) {
   const phone = parts[1] || '';
   const address = parts[2] || '';
   const storeName = leadOrder.store_name || '新合作门店';
-  if (!confirm(`确认将意向门店【${storeName}】（${contactName} ${phone}）建档立户？`)) return;
+  const defaultTier = globalPolicy.storeTiers[globalPolicy.storeTiers.length - 1] || { name: '新合作门店', creditLimit: 2000, returnQuota: 500, discountRate: 1.0 };
+
+  if (!confirm(`确认将意向门店【${storeName}】（${contactName} ${phone}）建档立户？\n将自动套用分级【${defaultTier.name}】（授信 ¥${defaultTier.creditLimit}）。`)) return;
 
   const { error: storeErr } = await supabase.from('store').insert([
     {
@@ -2400,9 +2716,9 @@ window.convertLeadToStore = async function (orderId) {
       contact: contactName,
       phone,
       address,
-      tags: ['#新合作门店'],
-      credit_limit: 2000,
-      monthly_return_quota: 500,
+      tags: [`#${defaultTier.name}`],
+      credit_limit: defaultTier.creditLimit,
+      monthly_return_quota: defaultTier.returnQuota,
       current_debt: 0,
       driver_name: '张师傅'
     }
@@ -2478,8 +2794,9 @@ function renderDriverSettleList(logs) {
 
 window.confirmLogSettled = function (logId, amount) {
   const amt = parseFloat(amount || 0);
-  if (amt >= 3000) {
-    window.trigger2FAAction(`大额现金平账 ¥${amt.toFixed(2)}，请输入验证器 6 位动态码授权：`, async () => {
+  const threshold = parseFloat(globalPolicy.twoFaThreshold ?? 3000);
+  if (amt >= threshold) {
+    window.trigger2FAAction(`大额现金平账 ¥${amt.toFixed(2)}（已达全局风控门槛 ¥${threshold}），请输入验证器 6 位动态码授权：`, async () => {
       await supabase.from('driver_collection_log').update({ settled_to_hq: true }).eq('id', logId);
       window.loadHQData();
     });
@@ -2589,7 +2906,21 @@ window.registerNewStore = async function () {
   if (!shopName || !shopName.trim()) return;
   const phone = prompt('输入联系人 11 位手机号：');
   if (!phone || phone.trim().length < 11) return alert('请输入有效 11 位手机号！');
-  await supabase.from('store').insert([{ tenant_id: currentAgent, name: shopName.trim(), contact: '掌柜', phone: phone.trim(), credit_limit: 2000, monthly_return_quota: 500, current_debt: 0, driver_name: '张师傅' }]);
+
+  const defaultTier = globalPolicy.storeTiers[globalPolicy.storeTiers.length - 1] || { name: '普通门店', creditLimit: 2000, returnQuota: 500, discountRate: 1.0 };
+  await supabase.from('store').insert([
+    {
+      tenant_id: currentAgent,
+      name: shopName.trim(),
+      contact: '掌柜',
+      phone: phone.trim(),
+      tags: [`#${defaultTier.name}`],
+      credit_limit: defaultTier.creditLimit,
+      monthly_return_quota: defaultTier.returnQuota,
+      current_debt: 0,
+      driver_name: '张师傅'
+    }
+  ]);
   window.loadHQData();
 };
 
