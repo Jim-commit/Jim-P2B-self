@@ -32,6 +32,7 @@ const DEFAULT_GLOBAL_POLICY = {
     { name: 'LV3 临街便民店', creditLimit: 2000, discountRate: 1.0, returnQuota: 500 }
   ],
   carriers: [{ name: '周转筐', deposit: 15 }],
+  storeExtFields: ['开票税号 / 营业执照号', '收货仓库 / 卸货点备注'],
   tier1Name: '平准供货底价',
   tier2Name: '集采惠价',
   twoFaThreshold: 3000,
@@ -59,6 +60,7 @@ let allLocalPoolItems = [];
 let allSubUsers = [];
 let allPlatformCats = [];
 let allInventoryLogs = [];
+let pendingCashLogsCache = [];
 let parsedBulkProducts = [];
 let uploadedImageBase64 = '';
 let isUploadingImage = false;
@@ -79,7 +81,158 @@ window.dismissOnboardingGuide = function () {
 };
 
 // =========================================================================
-// 0. 商号全局自定义策略中心（Global Policy Studio）
+// 0. 智能待办聚合中心 & 门店扩展档案管理
+// =========================================================================
+window.openHQMessageCenter = function () {
+  const listEl = document.getElementById('hq-message-center-list');
+  if (!listEl) return;
+
+  const msgs = [];
+  const normalPending = allOrders.filter((o) => o.order_status === 'pending_confirm' && !isDirectoryLead(o));
+  const overCredits = allOrders.filter((o) => o.order_status === 'over_credit_pending');
+  const leads = allOrders.filter((o) => isDirectoryLead(o) && o.order_status === 'pending_confirm');
+  const submittedPlans = allDemandPlans.filter((p) => p.status === 'submitted');
+  const openDemands = allC2BDemands.filter((d) => !d.official_reply);
+
+  overCredits.forEach((o) => {
+    msgs.push({
+      badge: '🚨 超信特批',
+      badgeCls: 'bg-rose-600 text-white',
+      title: `【${o.store_name}】申请超授信额度 ¥${o.over_credit_amount || 0} 放行`,
+      desc: `单号 #${o.order_no || o.id} · 净结 ¥${parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2)}`,
+      action: `window.closeModal('modal-hq-messages'); window.switchTab('settle'); window.filterOrderStatus('over_credit_pending');`
+    });
+  });
+
+  normalPending.forEach((o) => {
+    msgs.push({
+      badge: '📥 门店补货单',
+      badgeCls: 'bg-emerald-800 text-white',
+      title: `【${o.store_name}】发来新补货单（¥${parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2)}）`,
+      desc: `单号 #${o.order_no || o.id} · 交割方式：${o.settlement_type}`,
+      action: `window.closeModal('modal-hq-messages'); window.switchTab('settle'); window.filterOrderStatus('pending_confirm');`
+    });
+  });
+
+  submittedPlans.forEach((p) => {
+    msgs.push({
+      badge: '📅 真实用度计划',
+      badgeCls: 'bg-amber-500 text-stone-950',
+      title: `【${p.store_name}】提报 ${p.plan_cycle} 用度计划`,
+      desc: `期望到店：${p.expected_date || '近期'} · 共 ${(p.items || []).length} 项货品`,
+      action: `window.closeModal('modal-hq-messages'); window.switchTab('settle'); window.filterOrderStatus('demand_plans');`
+    });
+  });
+
+  leads.forEach((l) => {
+    msgs.push({
+      badge: '🤝 新店意向',
+      badgeCls: 'bg-amber-200 text-amber-950',
+      title: `意向门店【${l.store_name}】预约上门送样`,
+      desc: l.note || '申请合作洽谈',
+      action: `window.closeModal('modal-hq-messages'); window.switchTab('settle'); window.filterOrderStatus('directory_leads');`
+    });
+  });
+
+  openDemands.forEach((d) => {
+    msgs.push({
+      badge: '📢 天街求购',
+      badgeCls: 'bg-indigo-700 text-white',
+      title: `天街买家发布求购需求待回应`,
+      desc: `发起人：${d.proposer_name || '天街买家'}`,
+      action: `window.closeModal('modal-hq-messages'); window.switchTab('settle'); window.filterOrderStatus('c2b_demands');`
+    });
+  });
+
+  if (pendingCashLogsCache.length > 0) {
+    const sumCash = pendingCashLogsCache.reduce((s, x) => s + parseFloat(x.amount || 0), 0);
+    msgs.push({
+      badge: '💵 随车待点款',
+      badgeCls: 'bg-amber-700 text-white',
+      title: `有 ${pendingCashLogsCache.length} 笔随车收款待财务点清入库（合计 ¥${sumCash.toFixed(2)}）`,
+      desc: '请核对送货师傅回库缴款明细',
+      action: `window.closeModal('modal-hq-messages'); window.switchTab('settle');`
+    });
+  }
+
+  if (msgs.length === 0) {
+    listEl.innerHTML = '<div class="py-10 text-center text-stone-400">🌿 当前所有往来单据均已处理完毕，无待办提醒。</div>';
+  } else {
+    listEl.innerHTML = msgs
+      .map(
+        (m) => `
+        <div onclick="${m.action}" class="cursor-pointer p-3 bg-stone-50 hover:bg-emerald-50/60 border border-stone-200 rounded-2xl flex justify-between items-center gap-2 transition">
+          <div class="space-y-0.5">
+            <div class="flex items-center gap-1.5">
+              <span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${m.badgeCls}">${m.badge}</span>
+              <b class="text-stone-900">${m.title}</b>
+            </div>
+            <p class="text-[11px] text-stone-500">${m.desc}</p>
+          </div>
+          <span class="text-emerald-800 font-bold shrink-0">去处理 ➔</span>
+        </div>
+      `
+      )
+      .join('');
+  }
+
+  window.openModal('modal-hq-messages');
+};
+
+window.openStoreExtProfileModal = function (storeId) {
+  const s = allStores.find((x) => x.id === storeId);
+  if (!s) return;
+  document.getElementById('ext-profile-store-id').value = s.id;
+  document.getElementById('ext-profile-store-name').innerText = `${s.name} · 联系人：${s.contact || '掌柜'}`;
+
+  const fields = Array.isArray(globalPolicy.storeExtFields) && globalPolicy.storeExtFields.length > 0
+    ? globalPolicy.storeExtFields
+    : DEFAULT_GLOBAL_POLICY.storeExtFields;
+
+  const existingExt = s.custom_pricing?.ext_profile && typeof s.custom_pricing.ext_profile === 'object'
+    ? s.custom_pricing.ext_profile
+    : {};
+
+  const box = document.getElementById('ext-profile-fields-container');
+  box.innerHTML = fields
+    .map(
+      (fName) => `
+      <div>
+        <label class="block text-[11px] font-bold text-stone-700 mb-1">${fName}：</label>
+        <input type="text" data-ext-key="${fName}" value="${existingExt[fName] || ''}" placeholder="输入${fName}..." class="ext-profile-input w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none focus:border-emerald-700">
+      </div>
+    `
+    )
+    .join('');
+
+  window.openModal('modal-store-ext-profile');
+};
+
+window.saveStoreExtProfile = async function () {
+  const storeId = parseInt(document.getElementById('ext-profile-store-id').value);
+  const s = allStores.find((x) => x.id === storeId);
+  if (!s) return;
+
+  const ext_profile = {};
+  document.querySelectorAll('#ext-profile-fields-container .ext-profile-input').forEach((inp) => {
+    const k = inp.dataset.extKey;
+    const v = inp.value.trim();
+    if (k && v) ext_profile[k] = v;
+  });
+
+  const prevPricing = s.custom_pricing && typeof s.custom_pricing === 'object' ? s.custom_pricing : {};
+  const nextPricing = { ...prevPricing, ext_profile };
+
+  const { error } = await supabase.from('store').update({ custom_pricing: nextPricing }).eq('id', storeId);
+  if (error) return alert('保存门店扩展档案失败：' + error.message);
+
+  alert('✅ 合作门店扩展档案已保存！打印交割单时将自动带出展示。');
+  window.closeModal('modal-store-ext-profile');
+  window.loadHQData();
+};
+
+// =========================================================================
+// 1. 商号全局自定义策略中心（Global Policy Studio）
 // =========================================================================
 function loadGlobalPolicyFromTenant(tenant) {
   let savedLocal = {};
@@ -100,6 +253,9 @@ function loadGlobalPolicyFromTenant(tenant) {
   if (!Array.isArray(globalPolicy.carriers) || globalPolicy.carriers.length === 0) {
     globalPolicy.carriers = JSON.parse(JSON.stringify(DEFAULT_GLOBAL_POLICY.carriers));
   }
+  if (!Array.isArray(globalPolicy.storeExtFields) || globalPolicy.storeExtFields.length === 0) {
+    globalPolicy.storeExtFields = [...DEFAULT_GLOBAL_POLICY.storeExtFields];
+  }
 
   localStorage.setItem('hq_global_policy_' + currentAgent, JSON.stringify(globalPolicy));
 
@@ -108,7 +264,10 @@ function loadGlobalPolicyFromTenant(tenant) {
   localStorage.setItem('hq_carrier_label_' + currentAgent, carrierLabel);
 
   const carrierBtn = document.getElementById('carrier-label-btn');
-  if (carrierBtn) carrierBtn.innerText = `${mainCarrier.name} (¥${mainCarrier.deposit}/件) ✎`;
+  if (carrierBtn) {
+    const extraCount = globalPolicy.carriers.length > 1 ? ` 等${globalPolicy.carriers.length}种` : '';
+    carrierBtn.innerText = `${mainCarrier.name} (¥${mainCarrier.deposit}/件${extraCount}) ✎`;
+  }
 
   const pillEl = document.getElementById('policy-summary-pill');
   if (pillEl) {
@@ -134,6 +293,7 @@ function loadGlobalPolicyFromTenant(tenant) {
 window.openGlobalPolicyModal = function (defaultTab = 'tiers') {
   renderPolicyTiersEditor();
   renderPolicyCarriersEditor();
+  renderPolicyExtFieldsEditor();
 
   document.getElementById('gp-tier1-name').value = globalPolicy.tier1Name || '平准供货底价';
   document.getElementById('gp-tier2-name').value = globalPolicy.tier2Name || '集采惠价';
@@ -151,7 +311,7 @@ window.openGlobalPolicyModal = function (defaultTab = 'tiers') {
 };
 
 window.switchPolicyTab = function (tab) {
-  ['tiers', 'carriers', 'risk', 'slip'].forEach((t) => {
+  ['tiers', 'carriers', 'risk', 'slip', 'extfields'].forEach((t) => {
     document.getElementById(`gp-pane-${t}`)?.classList.toggle('hidden', t !== tab);
     const btn = document.getElementById(`gp-tab-${t}`);
     if (btn) {
@@ -203,6 +363,25 @@ window.addPolicyCarrierRow = function (name = '', deposit = 15) {
   box.appendChild(row);
 };
 
+function renderPolicyExtFieldsEditor() {
+  const box = document.getElementById('gp-extfields-container');
+  if (!box) return;
+  box.innerHTML = '';
+  (globalPolicy.storeExtFields || []).forEach((f) => window.addPolicyExtFieldRow(f));
+}
+
+window.addPolicyExtFieldRow = function (fieldName = '') {
+  const box = document.getElementById('gp-extfields-container');
+  if (!box) return;
+  const row = document.createElement('div');
+  row.className = 'flex items-center gap-2 bg-stone-50 p-2 rounded-xl border border-stone-200 gp-extfield-row';
+  row.innerHTML = `
+    <input type="text" placeholder="字段名称(如:开票税号 / 冷库容量 / 施工项目部)" value="${fieldName}" class="gp-ef-name flex-1 bg-white border border-stone-200 rounded-lg px-2.5 py-1 font-bold outline-none">
+    <button type="button" onclick="this.parentElement.remove()" class="text-rose-600 font-bold px-1.5">✕</button>
+  `;
+  box.appendChild(row);
+};
+
 window.applyGlobalPreset = function (presetKey) {
   const presets = {
     coop: {
@@ -212,6 +391,7 @@ window.applyGlobalPreset = function (presetKey) {
         { name: 'LV3 村社自提服务点', creditLimit: 3000, discountRate: 0.96, returnQuota: 800 }
       ],
       carriers: [{ name: '塑料周转筐', deposit: 15 }],
+      storeExtFields: ['冷库/保鲜柜容量', '食品经营许可证号'],
       tier1Name: '合作社直供底价',
       tier2Name: '抱团集采惠价',
       twoFaThreshold: 3000,
@@ -229,6 +409,7 @@ window.applyGlobalPreset = function (presetKey) {
         { name: '直供终端门店', creditLimit: 3000, discountRate: 1.0, returnQuota: 300 }
       ],
       carriers: [{ name: '标准木托盘', deposit: 80 }],
+      storeExtFields: ['企业开票税号', '指定物流专线/卸货仓'],
       tier1Name: '出厂直供底价',
       tier2Name: '整托集采惠价',
       twoFaThreshold: 5000,
@@ -246,6 +427,7 @@ window.applyGlobalPreset = function (presetKey) {
         { name: '零星维修工坊', creditLimit: 1000, discountRate: 1.0, returnQuota: 200 }
       ],
       carriers: [{ name: '周转铁料箱', deposit: 50 }],
+      storeExtFields: ['工程项目部名称', '工地收货负责人与税号'],
       tier1Name: '工料平准批发价',
       tier2Name: '工程整件特惠价',
       twoFaThreshold: 5000,
@@ -265,6 +447,7 @@ window.applyGlobalPreset = function (presetKey) {
         { name: '18.9L PC周转水桶', deposit: 30 },
         { name: '标准钢瓶容器', deposit: 120 }
       ],
+      storeExtFields: ['容器押金单编号', '配送楼层/电梯备注'],
       tier1Name: '标准配送单价',
       tier2Name: '签约批量惠价',
       twoFaThreshold: 2000,
@@ -307,9 +490,16 @@ window.saveGlobalPolicySettings = async function () {
     });
   });
 
+  const storeExtFields = [];
+  document.querySelectorAll('#gp-extfields-container .gp-extfield-row').forEach((row) => {
+    const f = row.querySelector('.gp-ef-name')?.value.trim();
+    if (f) storeExtFields.push(f);
+  });
+
   const nextPolicy = {
     storeTiers: tiers.length > 0 ? tiers : DEFAULT_GLOBAL_POLICY.storeTiers,
     carriers: carriers.length > 0 ? carriers : DEFAULT_GLOBAL_POLICY.carriers,
+    storeExtFields: storeExtFields.length > 0 ? storeExtFields : DEFAULT_GLOBAL_POLICY.storeExtFields,
     tier1Name: document.getElementById('gp-tier1-name').value.trim() || '平准供货底价',
     tier2Name: document.getElementById('gp-tier2-name').value.trim() || '集采惠价',
     twoFaThreshold: parseFloat(document.getElementById('gp-2fa-threshold').value) || 3000,
@@ -334,7 +524,7 @@ window.saveGlobalPolicySettings = async function () {
   loadGlobalPolicyFromTenant(currentTenantData);
   renderStoreTable();
   renderThreeFlowsAndAIAdvisor();
-  alert('🎉 商号全局自定义策略已保存生效！门店分级、载具押金、风控门槛与打印落款已全面同步。');
+  alert('🎉 商号全局自定义策略已保存生效！门店分级、多载具押金、风控门槛与扩展字段已全面同步。');
   window.closeModal('modal-global-policy');
 };
 
@@ -994,6 +1184,13 @@ window.openSingleDeliverySlipPrint = function (orderId) {
   document.getElementById('print-slip-settle-type').innerText = o.settlement_type || 'credit';
   document.getElementById('print-slip-driver').innerText = o.driver_name || store?.driver_name || '送货师傅';
 
+  const extObj = store?.custom_pricing?.ext_profile && typeof store.custom_pricing.ext_profile === 'object' ? store.custom_pricing.ext_profile : {};
+  const extEntries = Object.entries(extObj);
+  const extPrintEl = document.getElementById('print-slip-ext-fields');
+  if (extPrintEl) {
+    extPrintEl.innerText = extEntries.length > 0 ? `扩展档案：${extEntries.map(([k, v]) => `${k}【${v}】`).join(' · ')}` : '';
+  }
+
   const items = Array.isArray(o.items) ? o.items : [];
   const tbody = document.getElementById('print-slip-items-tbody');
   tbody.innerHTML =
@@ -1030,8 +1227,8 @@ window.openSingleDeliverySlipPrint = function (orderId) {
     notesArr.push(`• 交接附言：${o.note}`);
   }
   const baskets = parseInt(store?.carrier_hold_count || store?.basket_count || 0);
-  const mainCarrier = globalPolicy.carriers[0] || { name: carrierLabel, deposit: 15 };
-  notesArr.push(`• 该门店累计借存${mainCarrier.name}：${baskets} 件（押金标准 ¥${mainCarrier.deposit}/件，本次归还：_____ 件）`);
+  const carrierListStr = globalPolicy.carriers.map((c) => `${c.name}(¥${c.deposit}/件)`).join('、');
+  notesArr.push(`• 该门店累计借存周转载具：${baskets} 件（支持回收载具标准：${carrierListStr}，本次归还：_____ 件）`);
 
   document.getElementById('print-slip-special-notes').innerHTML = notesArr.map((n) => `<div>${n}</div>`).join('');
 
@@ -1754,6 +1951,7 @@ window.loadHQData = async function () {
   allLocalPoolItems = poolRes.data || [];
   allInventoryLogs = dashData.inventoryLogs;
   allSubUsers = dashData.subUsers;
+  pendingCashLogsCache = dashData.pendingCashLogs;
   const logs = dashData.pendingCashLogs;
 
   populateCategoryDropdowns();
@@ -1790,11 +1988,17 @@ window.loadHQData = async function () {
 
   const totalTodos = logs.length + normalPendingList.length + leadsList.length + overCreditList.length + openDemandsList.length + submittedPlansList.length;
   const badge = document.getElementById('unsettled-badge');
+  const topMsgBadge = document.getElementById('hq-msg-badge');
   if (totalTodos > 0) {
     badge.classList.remove('hidden');
     badge.innerText = `${totalTodos}待办`;
+    if (topMsgBadge) {
+      topMsgBadge.classList.remove('hidden');
+      topMsgBadge.innerText = totalTodos;
+    }
   } else {
     badge.classList.add('hidden');
+    topMsgBadge?.classList.add('hidden');
   }
 
   renderOrderFulfillmentList();
@@ -1967,6 +2171,10 @@ function renderStoreTable() {
             const pricing = s.custom_pricing && typeof s.custom_pricing === 'object' ? s.custom_pricing : {};
             const discountRate = parseFloat(pricing.discount_rate || 1);
             const customRuleCount = pricing.item_prices ? Object.keys(pricing.item_prices).length : 0;
+            const extProfile = pricing.ext_profile && typeof pricing.ext_profile === 'object' ? pricing.ext_profile : {};
+            const extBadges = Object.entries(extProfile)
+              .map(([k, v]) => `<span class="bg-stone-100 text-stone-700 border border-stone-200 px-1.5 py-0.2 rounded text-[10px]">${k}: <b>${v}</b></span>`)
+              .join(' ');
 
             return `
             <div class="py-3.5 flex flex-wrap justify-between items-center gap-3">
@@ -1988,10 +2196,12 @@ function renderStoreTable() {
                   <span>送货师傅: <b class="text-emerald-900">${s.driver_name || '张师傅'}</b></span>
                   <span>专供品道: <b class="text-amber-800">${s.visible_product_ids ? `${s.visible_product_ids.length} 种专享` : '全品类开放'}</b></span>
                 </div>
+                ${extBadges ? `<div class="mt-1 flex flex-wrap gap-1.5">${extBadges}</div>` : ''}
               </div>
               <div class="flex flex-wrap items-center gap-1.5">
                 <button onclick="window.openStoreStatementModal(${s.id})" class="text-[11px] bg-emerald-800 hover:bg-emerald-900 text-white px-2.5 py-1 rounded-xl font-bold shadow-xs">🧾 账期对账</button>
-                <button onclick="window.editStoreTagsPrompt(${s.id}, '${JSON.stringify(s.tags || []).replace(/"/g, '"')}')" class="text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 px-2.5 py-1 rounded-xl font-bold">🏷️ 贴圈子标签</button>
+                <button onclick="window.openStoreExtProfileModal(${s.id})" class="text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200 px-2.5 py-1 rounded-xl font-bold">📋 扩展档案</button>
+                <button onclick="window.editStoreTagsPrompt(${s.id}, '${JSON.stringify(s.tags || []).replace(/"/g, '"')}')" class="text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 px-2.5 py-1 rounded-xl font-bold">🏷️ 贴标签</button>
                 <button onclick="window.openStorePolicyModal(${s.id})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-1 rounded-xl font-bold">💎 协议工价 & 授信</button>
                 <button onclick="window.openVisibilityModal(${s.id}, '${s.name}', '${JSON.stringify(s.visible_product_ids || []).replace(/"/g, '"')}')" class="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-xl font-bold">🎯 专供品道</button>
                 <button onclick="window.reassignDriverPrompt(${s.id}, '${s.driver_name || '送货师傅'}')" class="text-[11px] bg-stone-50 text-stone-700 border border-stone-200 px-2.5 py-1 rounded-xl font-bold">🚚 指派师傅</button>
@@ -2069,6 +2279,9 @@ window.applyStoreTierPreset = function (idxStr) {
 
 window.saveStorePolicySettings = async function () {
   const storeId = parseInt(document.getElementById('policy-store-id').value);
+  const storeObj = allStores.find((x) => x.id === storeId);
+  const prevPricing = storeObj?.custom_pricing && typeof storeObj.custom_pricing === 'object' ? storeObj.custom_pricing : {};
+
   const credit_limit = parseFloat(document.getElementById('policy-credit-limit').value) || 2000;
   const monthly_return_quota = parseFloat(document.getElementById('policy-return-quota').value) || 500;
   const default_settlement = document.getElementById('policy-default-settlement').value;
@@ -2094,13 +2307,12 @@ window.saveStorePolicySettings = async function () {
     allowed_settlements,
     settle_workflow,
     custom_settlement_terms,
-    custom_pricing: { price_tier, discount_rate, item_prices }
+    custom_pricing: { ...prevPricing, price_tier, discount_rate, item_prices }
   };
 
   const chosenTierIdx = document.getElementById('policy-tier-preset-select')?.value;
   if (chosenTierIdx !== '' && chosenTierIdx !== undefined) {
     const tierObj = globalPolicy.storeTiers[parseInt(chosenTierIdx)];
-    const storeObj = allStores.find((x) => x.id === storeId);
     if (tierObj && storeObj) {
       const tierTag = `#${tierObj.name}`;
       const existingTags = Array.isArray(storeObj.tags) ? storeObj.tags : [];
