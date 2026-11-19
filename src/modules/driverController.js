@@ -10,6 +10,8 @@ if (urlTenant && urlTenant.trim()) {
 
 let currentAgent = (localStorage.getItem('active_agent') || 'BJ_SHUNDA').trim().toUpperCase();
 let currentDriver = localStorage.getItem('active_driver') || '老张师傅';
+let activeCarrierName = '周转筐';
+let activeCarrierDeposit = 15;
 let routeStores = [];
 let allPendingOrders = [];
 let unsettledLogsCache = [];
@@ -24,9 +26,24 @@ let signPadBound = false;
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
 
-// =========================================================================
-// 0. 一键唤起地图导航到店 & 今日已交割电子收条存根回看
-// =========================================================================
+async function loadTenantCarrierPolicy() {
+  const tenant = await DriverService.verifyTenant(currentAgent);
+  const customSettings = tenant?.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
+  const firstCarrier = Array.isArray(customSettings.carriers) && customSettings.carriers.length > 0 ? customSettings.carriers[0] : null;
+  if (firstCarrier) {
+    activeCarrierName = firstCarrier.name || '周转筐';
+    activeCarrierDeposit = parseFloat(firstCarrier.deposit) || 15;
+  } else {
+    activeCarrierName = localStorage.getItem('hq_carrier_label_' + currentAgent) || '周转筐';
+    activeCarrierDeposit = 15;
+  }
+
+  const labelEl = document.querySelector('#collect-modal .bg-amber-50\\/80 span.font-bold');
+  if (labelEl) {
+    labelEl.innerText = `带回收回${activeCarrierName} (${activeCarrierDeposit}元/件抵款):`;
+  }
+}
+
 window.openStoreMapNav = function (storeName, address) {
   const query = encodeURIComponent(`${address || ''} ${storeName || ''}`.trim());
   const url = `https://uri.amap.com/search?keyword=${query}`;
@@ -68,7 +85,7 @@ window.openReceiptHistoryModal = function () {
                   ? `<img src="${log.sign_image_url}" class="h-8 bg-white border border-stone-300 rounded px-1" alt="收货人签名">`
                   : '<span class="text-[10px] text-stone-400">已电子存信</span>'
               }
-              ${baskets > 0 ? `<span class="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold">退载具 ${baskets} 件</span>` : ''}
+              ${baskets > 0 ? `<span class="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold">退${activeCarrierName} ${baskets} 件</span>` : ''}
             </div>
             <button type="button" onclick="window.copyDriverReceiptText(${idx})" class="bg-[#1b4332] hover:bg-[#143628] text-white font-bold px-2.5 py-1 rounded-xl text-[10px] shadow-xs active:scale-95 transition">
               📋 复制电子收条
@@ -97,7 +114,7 @@ window.copyDriverReceiptText = function (idx) {
     `经手师傅：${currentDriver}`,
     `交割方式：${log.pay_method || '签收'}`,
     `本次实收：¥${amt}`,
-    ...(baskets > 0 ? [`退还载具：${baskets} 件（折抵 ¥${deduct}）`] : []),
+    ...(baskets > 0 ? [`退还${activeCarrierName}：${baskets} 件（折抵 ¥${deduct}）`] : []),
     `核销时间：${timeStr}`,
     `------------------------`,
     `钱货两清，诚信相照！感谢掌柜支持！`
@@ -108,9 +125,6 @@ window.copyDriverReceiptText = function (idx) {
   });
 };
 
-// =========================================================================
-// 1. 离线缓存队列同步
-// =========================================================================
 function refreshOfflineBanner() {
   const queue = DriverService.getOfflineQueue();
   const banner = document.getElementById('offline-sync-banner');
@@ -159,9 +173,6 @@ window.syncOfflineQueue = async function () {
   }
 };
 
-// =========================================================================
-// 2. 路线筛选、凭证拍照与工作模式切换
-// =========================================================================
 window.toggleOnlyOrdersFilter = function () {
   onlyShowWithOrders = !onlyShowWithOrders;
   const btn = document.getElementById('btn-toggle-only-orders');
@@ -252,9 +263,6 @@ window.switchDriverPrompt = function () {
   }
 };
 
-// =========================================================================
-// 3. 手写签名板（防重复绑定事件）
-// =========================================================================
 function initSignPad() {
   canvas = document.getElementById('sign-pad');
   if (!canvas) return;
@@ -310,9 +318,6 @@ window.clearSignature = function () {
   }
 };
 
-// =========================================================================
-// 4. 配送路线载入与渲染（含天街自提单 & 同城余缺顺路调剂单 & 一键导航）
-// =========================================================================
 window.loadDriverTasks = async function () {
   const container = document.getElementById('route-container');
   container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">路线合作门店调阅中...</div>';
@@ -460,9 +465,6 @@ function renderRouteStores() {
     .join('');
 }
 
-// =========================================================================
-// 5. 现场核销弹窗与动态算账引擎（支持同店多单合并汇总 + 天街自提单免收现签收）
-// =========================================================================
 window.openCollectModal = async function (storeId, storeName, debt, orderId, orderAmount, basketCount, creditLimit) {
   document.getElementById('modal-shop-title').innerText = storeName;
   document.getElementById('modal-store-id').value = storeId;
@@ -545,7 +547,7 @@ window.openCollectModal = async function (storeId, storeName, debt, orderId, ord
   document.getElementById('modal-net-amount-text').innerText = `¥${netAmount.toFixed(2)}`;
   document.getElementById('modal-debt-text').innerText = `¥${debt.toFixed(2)}`;
   document.getElementById('modal-limit-text').innerText = `¥${creditLimit || 2000}`;
-  document.getElementById('modal-basket-text').innerText = `${basketCount} 件`;
+  document.getElementById('modal-basket-text').innerText = `${basketCount} 件 (${activeCarrierName})`;
 
   document.getElementById('modal-items-order-list').innerHTML = itemsOrder.length
     ? itemsOrder.map((i) => `<div>• ${i.name} (${i.spec || '整装'}) x <b>${i.qty}${i.measure_unit || '件'}</b> <span class="text-[9px] text-emerald-800 font-mono">[物勒工名正品]</span></div>`).join('')
@@ -586,7 +588,7 @@ window.openCollectModal = async function (storeId, storeName, debt, orderId, ord
 
 window.calcBasketDeduct = function () {
   const returnCount = parseInt(document.getElementById('collect-basket-return').value) || 0;
-  const deductVal = returnCount * 15;
+  const deductVal = returnCount * activeCarrierDeposit;
   const netAmount = parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
   const method = document.getElementById('collect-method').value;
 
@@ -600,7 +602,7 @@ window.onCollectMethodChange = function () {
   const amountInput = document.getElementById('collect-amount');
   const netAmount = parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
   const basketReturn = parseInt(document.getElementById('collect-basket-return').value) || 0;
-  const basketDeduct = basketReturn * 15;
+  const basketDeduct = basketReturn * activeCarrierDeposit;
 
   if (method === '挂账签收' || method === '仅签收回单') {
     amountInput.value = '0';
@@ -625,7 +627,7 @@ window.updateDeliverBtnText = function () {
   const discount = isNaN(discountVal) ? 0 : discountVal;
 
   const basketReturn = parseInt(document.getElementById('collect-basket-return')?.value) || 0;
-  const basketDeduct = basketReturn * 15;
+  const basketDeduct = basketReturn * activeCarrierDeposit;
 
   const netAmount = parseFloat(document.getElementById('modal-net-amount-text')?.innerText.replace('¥', '')) || 0;
   const curDebt = parseFloat(document.getElementById('modal-current-debt')?.value) || 0;
@@ -721,7 +723,7 @@ window.submitCollection = async function () {
   const amount = parseFloat(document.getElementById('collect-amount').value) || 0;
   const discount = parseFloat(document.getElementById('collect-discount').value) || 0;
   const basketReturn = parseInt(document.getElementById('collect-basket-return').value) || 0;
-  const basketDeduct = basketReturn * 15;
+  const basketDeduct = basketReturn * activeCarrierDeposit;
   const method = document.getElementById('collect-method').value;
   const netAmount = isCurrentOrderOnlinePickup ? 0 : parseFloat(document.getElementById('modal-net-amount-text').innerText.replace('¥', '')) || 0;
 
@@ -799,7 +801,7 @@ window.submitCollection = async function () {
       alert(`✅ 天街自提包裹已送达并签收存信！\n掌柜可通知街坊到店自提，本单服务润利全额归属该合作门店。`);
     } else {
       const mergedTip = currentModalOrderIds.length > 1 ? `（已合并核销 ${currentModalOrderIds.length} 笔单据）` : '';
-      alert(`✅ 交割完好！${mergedTip}\n实收款项: ¥${amount.toFixed(2)} (${method})\n迎回周转载具: ${basketReturn} 件 (抵¥${basketDeduct})\n门店剩余在账: ¥${expectedNewDebt.toFixed(2)}。和合共生！`);
+      alert(`✅ 交割完好！${mergedTip}\n实收款项: ¥${amount.toFixed(2)} (${method})\n迎回${activeCarrierName}: ${basketReturn} 件 (抵¥${basketDeduct})\n门店剩余在账: ¥${expectedNewDebt.toFixed(2)}。和合共生！`);
     }
   } catch (err) {
     console.warn('网络信号较弱，已自动存入离线防丢单队列:', err);
@@ -813,9 +815,6 @@ window.submitCollection = async function () {
   await calculateTodayStats();
 };
 
-// =========================================================================
-// 6. 顺路新店合作登记、商道建言与回库平账清算
-// =========================================================================
 window.submitLeadByDriver = async function () {
   const name = document.getElementById('lead-name-input').value.trim();
   const cat = document.getElementById('lead-cat-input').value;
@@ -918,6 +917,7 @@ window.finalizeSettlement = async function () {
 export async function initDriverController() {
   document.getElementById('driver-name-display').innerText = currentDriver;
   document.getElementById('tenant-display').innerText = currentAgent;
+  await loadTenantCarrierPolicy();
   refreshOfflineBanner();
   initSignPad();
   await window.loadDriverTasks();
