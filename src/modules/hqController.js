@@ -40,6 +40,7 @@ let allLocalPoolItems = [];
 let allSubUsers = [];
 let allPlatformCats = [];
 let allInventoryLogs = [];
+let parsedBulkProducts = [];
 let uploadedImageBase64 = '';
 let isUploadingImage = false;
 let selectedTags = [];
@@ -170,8 +171,104 @@ window.customizeCarrierName = function () {
 };
 
 // =========================================================================
-// 2. 仓库出入库与实地盘点校准引擎
+// 2. 仓库出入库、批量导入与实地盘点校准引擎
 // =========================================================================
+window.downloadBulkProductTemplate = function () {
+  const headers = ['货品全称', '平准供货底价', '集采惠价', '包装规格', '计量单位', '初始库存', '条码', '产地'];
+  const sampleRows = [
+    ['伏牛山有机五常大米 10kg', '68.00', '62.00', '10kg/袋', '袋', '200', '690123456001', '伏牛山生态合作社'],
+    ['农家古法压榨菜籽油 5L', '85.00', '79.00', '4桶/箱', '箱', '120', '690123456002', '源头榨油工坊']
+  ];
+  downloadCSV('良品批量导入标准模板.csv', headers, sampleRows);
+};
+
+window.handleBulkCsvFile = function (event) {
+  const file = event.target.files[0];
+  const previewEl = document.getElementById('bulk-import-preview');
+  const btn = document.getElementById('btn-exec-bulk-import');
+  parsedBulkProducts = [];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const text = (e.target.result || '').replace(/^\uFEFF/, '');
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length <= 1) {
+      if (previewEl) previewEl.innerText = '⚠️ 文件内容为空或仅有表头！';
+      if (btn) btn.disabled = true;
+      return;
+    }
+
+    const l1Default = allPlatformCats.find((c) => c.level === 1)?.name || '粮油副食';
+    const l2Default = allPlatformCats.find((c) => c.level === 2)?.name || '常规良品';
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map((c) => c.replace(/^"|"$/g, '').trim());
+      const name = cols[0];
+      const price = parseFloat(cols[1]);
+      if (!name || isNaN(price) || price <= 0) continue;
+
+      const tier2 = parseFloat(cols[2]) || price;
+      const spec = cols[3] || '整装';
+      const unit = cols[4] || '件';
+      const stock = parseInt(cols[5]) || 100;
+      const barcode = cols[6] || '';
+      const origin = cols[7] || '源头合作社/工坊原产';
+
+      parsedBulkProducts.push({
+        tenant_id: currentAgent,
+        channel_brick_and_mortar: true,
+        channel_ecommerce: true,
+        sales_channel_type: '实体与电商双轨',
+        category_main: l1Default,
+        category_sub: l2Default,
+        name,
+        tier_1_price: price,
+        tier_2_price: tier2,
+        spec,
+        measure_unit: unit,
+        stock,
+        barcode,
+        origin_place: origin,
+        trace_code_prefix: `${currentAgent}-QC-`,
+        tags: ['🌾 合作社直供'],
+        status: 'active'
+      });
+    }
+
+    if (parsedBulkProducts.length === 0) {
+      if (previewEl) previewEl.innerText = '⚠️ 未解析到有效良品行，请检查价格是否为数字！';
+      if (btn) btn.disabled = true;
+    } else {
+      if (previewEl) previewEl.innerText = `✅ 已成功解析 ${parsedBulkProducts.length} 款待上架良品，点击下方按钮立即入库！`;
+      if (btn) btn.disabled = false;
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+};
+
+window.submitBulkProductImport = async function () {
+  if (parsedBulkProducts.length === 0) return;
+  const btn = document.getElementById('btn-exec-bulk-import');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = '批量入库中...';
+  }
+
+  const { error } = await supabase.from('product').insert(parsedBulkProducts);
+  if (btn) {
+    btn.disabled = false;
+    btn.innerText = '确认批量上架写入云端库';
+  }
+
+  if (error) return alert('批量导入失败：' + error.message);
+
+  alert(`🎉 成功批量上架 ${parsedBulkProducts.length} 款良品！`);
+  parsedBulkProducts = [];
+  window.closeModal('modal-bulk-import');
+  window.loadHQData();
+};
+
 window.openStockOpsModal = function (prodId) {
   const p = allProducts.find((x) => x.id === prodId);
   if (!p) return;
@@ -512,8 +609,55 @@ function renderInventoryLogs() {
 }
 
 // =========================================================================
-// 5. 正式《随车送货交割单》打印预览与执行
+// 5. 正式《随车送货交割单》打印预览与执行 & 退货质检验收入库
 // =========================================================================
+window.restockReturnedItems = async function (orderId) {
+  const o = allOrders.find((x) => Number(x.id) === Number(orderId));
+  if (!o) return;
+  const returns = Array.isArray(o.items_return) ? o.items_return : [];
+  if (returns.length === 0) return alert('该单据无验退货品明细！');
+
+  const summary = returns.map((r) => `${r.name} x${r.qty}`).join('、');
+  const isGoodCondition = confirm(
+    `【退货质检验收】退回货品：${summary}\n\n` +
+      `• 点击「确定」：质检完好，良品回库自动增加可用库存；\n` +
+      `• 点击「取消」：仅记入报损/销毁台账（不增加库存）。`
+  );
+
+  for (const r of returns) {
+    const prod = allProducts.find((p) => Number(p.id) === Number(r.id) || p.name === r.name);
+    if (!prod) continue;
+    const qty = parseInt(r.qty || 0);
+    if (qty <= 0) continue;
+
+    const beforeStock = parseInt(prod.stock ?? 0);
+    const afterStock = isGoodCondition ? beforeStock + qty : beforeStock;
+
+    if (isGoodCondition) {
+      await supabase.from('product').update({ stock: afterStock }).eq('id', prod.id);
+    }
+
+    await HQService.recordInventoryChange(currentAgent, {
+      tenant_id: currentAgent,
+      product_id: prod.id,
+      product_name: prod.name,
+      action_type: isGoodCondition ? 'in_purchase' : 'out_loss',
+      delta_qty: isGoodCondition ? qty : 0,
+      before_stock: beforeStock,
+      after_stock: afterStock,
+      operator_name: currentOperatorName,
+      remark: `${isGoodCondition ? '退货质检完好回库' : '退货报损销毁留痕'} (单号 #${o.order_no || o.id})`,
+      created_at: new Date().toISOString()
+    });
+  }
+
+  const nextNote = `${o.note || ''} [退货已质检入账]`.trim();
+  await supabase.from('store_order').update({ note: nextNote }).eq('id', o.id);
+
+  alert(isGoodCondition ? '✅ 退回良品已质检验收入库，可用库存已自动加回！' : '✅ 已登记退货报损台账，可用库存保持不变。');
+  window.loadHQData();
+};
+
 window.openSingleDeliverySlipPrint = function (orderId) {
   const o = allOrders.find((x) => Number(x.id) === Number(orderId));
   if (!o) return;
@@ -2115,6 +2259,7 @@ function renderOrderFulfillmentList() {
       const exchangeItems = Array.isArray(o.items_exchange) ? o.items_exchange : [];
       const proofs = Array.isArray(o.proof_images) ? o.proof_images : [];
       const netTotal = parseFloat(o.net_settle_amount || o.total_amount || 0);
+      const canRestockReturn = isDelivered && returnItems.length > 0 && !String(o.note || '').includes('[退货已质检入账]');
 
       return `
         <div class="p-4 bg-stone-50 border ${isOverCredit ? 'border-rose-400 bg-rose-50/30' : isPending ? 'border-amber-300' : 'border-stone-200'} rounded-3xl space-y-2.5">
@@ -2151,6 +2296,11 @@ function renderOrderFulfillmentList() {
           <div class="flex flex-wrap justify-between items-center gap-2 pt-2 border-t border-stone-200/60 text-xs">
             <span class="font-mono text-stone-800 font-bold">净结: ¥${netTotal.toFixed(2)}</span>
             <div class="flex flex-wrap items-center gap-2">
+              ${
+                canRestockReturn
+                  ? `<button onclick="window.restockReturnedItems(${o.id})" class="bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 px-3 py-1.5 rounded-xl font-bold shadow-xs transition">📥 退货质检回库</button>`
+                  : ''
+              }
               <button onclick="window.openSingleDeliverySlipPrint(${o.id})" class="bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 px-3 py-1.5 rounded-xl font-bold shadow-xs transition">
                 🖨️ 打印交割单
               </button>
