@@ -53,6 +53,14 @@
 
             <div class="px-2.5 py-1 text-[10px] font-bold text-stone-400 border-t border-stone-100 pt-1.5">掌柜经营锦囊</div>
 
+            <button type="button" onclick="window.openStoreSelfStatementModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-emerald-50/80 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
+              <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-900 flex items-center justify-center text-xs font-bold">🧾</span>
+              <div>
+                <div class="font-bold text-emerald-950 text-[11px]">本店周期电子对账单</div>
+                <div class="text-[9px] text-stone-400">按月核对流水 · 一键确认平账</div>
+              </div>
+            </button>
+
             <button type="button" onclick="window.openCloudShelfModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-amber-50/80 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
               <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center text-xs font-bold">🛍️</span>
               <div>
@@ -204,10 +212,10 @@
             <span id="dot-vendor-feedback" class="hidden absolute top-0.5 right-0.5 w-2 h-2 bg-amber-400 border-2 border-[#1b4332] rounded-full"></span>
           </button>
 
-          <div id="right-nav-menu" class="hidden absolute right-0 top-11 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all">
+          <div id="right-nav-menu" class="hidden absolute right-0 top-11 w-56 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all">
             <div class="px-2.5 py-1 text-[10px] font-semibold text-stone-400 flex justify-between items-center border-b border-stone-100 pb-1.5 mb-1">
               <span>合作供货方</span>
-              <span id="menu-current-agent-tag" class="text-emerald-800 font-mono font-bold truncate max-w-[90px]"></span>
+              <span id="menu-current-agent-tag" class="text-emerald-800 font-mono font-bold truncate max-w-[95px]"></span>
             </div>
             
             <button type="button" onclick="window.repeatLastOrder(); window.closeAllMenus();" class="w-full px-2.5 py-1.5 text-left hover:bg-stone-50 rounded-xl flex items-center gap-2.5 transition">
@@ -227,6 +235,14 @@
             </button>
             
             <div class="my-1 border-t border-stone-100"></div>
+
+            <button type="button" onclick="window.openStoreSelfStatementModal(); window.closeAllMenus();" class="w-full px-2.5 py-1.5 text-left hover:bg-emerald-50 rounded-xl flex items-center gap-2.5 transition">
+              <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-900 flex items-center justify-center text-xs">🧾</span>
+              <div>
+                <div class="font-bold text-emerald-950 text-[11px]">本店周期电子对账单</div>
+                <div class="text-[9px] text-stone-400">按月对账 · 掌柜确认签收</div>
+              </div>
+            </button>
 
             <button type="button" onclick="window.openReceiptsModal(); window.closeAllMenus();" class="w-full px-2.5 py-1.5 text-left hover:bg-stone-50 rounded-xl flex items-center justify-between transition">
               <div class="flex items-center gap-2.5">
@@ -279,8 +295,8 @@
         </button>
       </div>
 
-      <!-- 信用账本看板 -->
-      <div class="bg-[#143628]/80 p-2.5 rounded-2xl border border-emerald-600/30 space-y-1">
+      <!-- 信用账本看板（点击可直接打开周期电子对账单） -->
+      <div onclick="window.openStoreSelfStatementModal()" class="cursor-pointer bg-[#143628]/80 hover:bg-[#143628] p-2.5 rounded-2xl border border-emerald-600/30 space-y-1 transition">
         <div class="flex justify-between items-center text-xs">
           <div>
             <span class="text-emerald-200 text-[9px] block">🤝 互信授信可用余量</span>
@@ -297,7 +313,7 @@
         </div>
         <div class="text-[9px] text-emerald-200/80 pt-0.5 border-t border-emerald-700/50 flex justify-between items-center">
           <span>随车送货师傅: <b id="store-driver" class="text-white font-bold">老张师傅</b></span>
-          <span class="text-amber-200">诚信往来 · 账目清白</span>
+          <span class="text-amber-200 font-bold">🧾 点此查看周期电子对账单 ➔</span>
         </div>
       </div>
     </header>
@@ -348,8 +364,72 @@
   </div>
 
   <!-- =========================================================================
-       新增核心协同弹窗一：同城余缺互调池 (local_inventory_pool)
+       新增核心自助对账弹窗：本店周期电子对账单与掌柜核对确认
        ========================================================================= -->
+  <div id="store-self-statement-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('store-self-statement-modal')">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🧾 本店周期电子对账单</h3>
+          <p class="text-[10px] text-stone-400" id="self-stmt-agent-label">诚信往来 · 账目清白</p>
+        </div>
+        <button type="button" onclick="window.closeModal('store-self-statement-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <!-- 日期区间选择 -->
+      <div class="grid grid-cols-2 gap-2 bg-stone-50 p-2.5 rounded-2xl border border-stone-200">
+        <div>
+          <label class="block text-[10px] font-bold text-stone-600 mb-1">起始日期：</label>
+          <input type="date" id="self-stmt-start" onchange="window.renderStoreSelfStatement()" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 font-mono text-[11px] outline-none">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-stone-600 mb-1">截止日期：</label>
+          <input type="date" id="self-stmt-end" onchange="window.renderStoreSelfStatement()" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 font-mono text-[11px] outline-none">
+        </div>
+      </div>
+
+      <!-- 四项汇总晴雨格 -->
+      <div class="grid grid-cols-2 gap-2 text-center">
+        <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200">
+          <span class="text-[10px] text-stone-400 block">区间进货总额</span>
+          <b id="self-stmt-order-sum" class="font-mono text-sm font-bold text-stone-900">¥0.00</b>
+        </div>
+        <div class="bg-rose-50/60 p-2.5 rounded-2xl border border-rose-200">
+          <span class="text-[10px] text-rose-600 block">区间退验冲抵</span>
+          <b id="self-stmt-return-sum" class="font-mono text-sm font-bold text-rose-700">-¥0.00</b>
+        </div>
+        <div class="bg-emerald-50/70 p-2.5 rounded-2xl border border-emerald-200">
+          <span class="text-[10px] text-emerald-800 block">区间发生净额</span>
+          <b id="self-stmt-net-sum" class="font-mono text-sm font-bold text-emerald-900">¥0.00</b>
+        </div>
+        <div class="bg-amber-50 p-2.5 rounded-2xl border border-amber-300">
+          <span class="text-[10px] text-amber-900 block">当前在账应结余额</span>
+          <b id="self-stmt-debt-sum" class="font-mono text-sm font-bold text-rose-700">¥0.00</b>
+        </div>
+      </div>
+
+      <!-- 区间往来明细 -->
+      <div class="space-y-1">
+        <div class="flex justify-between items-center text-[11px] font-bold text-stone-700">
+          <span>📋 区间往来单据明细：</span>
+          <span id="self-stmt-basket-label" class="text-[10px] text-amber-800 font-mono">载具借存：0 件</span>
+        </div>
+        <div id="self-stmt-orders-list" class="divide-y divide-stone-100 border border-stone-200 rounded-2xl px-3 py-1 bg-white max-h-48 overflow-y-auto no-scrollbar text-[11px]"></div>
+      </div>
+
+      <!-- 掌柜确认对账与复制按钮 -->
+      <div class="space-y-2 pt-1 border-t border-stone-100">
+        <button type="button" onclick="window.confirmStoreSelfStatement()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+          ✅ 账目核对无误 · 确认本期对账单
+        </button>
+        <button type="button" onclick="window.copyStoreSelfStatementText()" class="w-full bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold py-2 rounded-xl shadow-xs active:scale-95 transition">
+          📋 复制电子对账单留底 / 发供货方
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 同城余缺互调池弹窗 -->
   <div id="local-pool-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('local-pool-modal')">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -360,7 +440,6 @@
         <button type="button" onclick="window.closeModal('local-pool-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
 
-      <!-- 双视角切换：认领同城余货 | 挂出本店余货 -->
       <div class="bg-stone-100 p-1 rounded-2xl flex gap-1 text-[11px] font-bold">
         <button type="button" id="pool-tab-browse" onclick="window.switchLocalPoolTab('browse')" class="flex-1 py-2 rounded-xl bg-[#1b4332] text-white shadow transition">
           🛒 逛同城可调余货
@@ -370,14 +449,12 @@
         </button>
       </div>
 
-      <!-- 视图 A：同城余货调剂大厅 -->
       <div id="pool-pane-browse" class="space-y-2.5">
         <div id="local-pool-list" class="space-y-2 max-h-80 overflow-y-auto no-scrollbar">
           <div class="py-8 text-center text-stone-400">正在查探同城同行互调余货...</div>
         </div>
       </div>
 
-      <!-- 视图 B：本店余货挂池调剂 -->
       <form id="pool-pane-publish" onsubmit="window.submitLocalPoolOffer(event)" class="hidden space-y-2.5">
         <div>
           <label class="block font-bold text-stone-700 mb-1">调剂品名 (可选本店在架货品或手填) *：</label>
@@ -414,9 +491,7 @@
     </div>
   </div>
 
-  <!-- =========================================================================
-       新增核心协同弹窗二：真实用度计划单 (demand_forecast_plan)
-       ========================================================================= -->
+  <!-- 真实用度计划单弹窗 -->
   <div id="demand-plan-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('demand-plan-modal')">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -463,7 +538,6 @@
         </button>
       </form>
 
-      <!-- 本店近期已提报计划记录 -->
       <div class="pt-2 border-t border-stone-100 space-y-1.5">
         <b class="text-[11px] text-stone-600 block">📜 本店近期用度计划回执：</b>
         <div id="my-demand-plans-list" class="space-y-1.5 max-h-36 overflow-y-auto no-scrollbar"></div>
@@ -727,7 +801,6 @@
         <button type="button" onclick="window.closeModal('receipts-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
 
-      <!-- 街坊在百工天街下单并选「到本店自提」的订单 -->
       <div id="mall-pickup-orders-box" class="hidden space-y-2 pb-2 border-b border-stone-100">
         <b class="text-xs text-amber-900 block">🏪 街坊到本店自提服务单（服务润利归属本店）</b>
         <div id="mall-pickup-orders-list" class="space-y-2 text-xs"></div>
