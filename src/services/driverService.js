@@ -94,7 +94,15 @@ export const DriverService = {
       })
       .eq('id', record.storeId);
 
-    if (record.orderId) {
+    // 支持单张订单或同一门店多张待交割订单合并一次性签收核销
+    const targetOrderIds =
+      Array.isArray(record.orderIds) && record.orderIds.length > 0
+        ? record.orderIds.map((id) => parseInt(id)).filter((n) => !isNaN(n))
+        : record.orderId
+        ? [parseInt(record.orderId)]
+        : [];
+
+    if (targetOrderIds.length > 0) {
       const orderUpdate = {
         delivery_status: 'delivered',
         order_status: 'delivered',
@@ -110,7 +118,7 @@ export const DriverService = {
       if (Array.isArray(record.proofImages) && record.proofImages.length > 0) {
         orderUpdate.proof_images = record.proofImages;
       }
-      await supabase.from('store_order').update(orderUpdate).eq('id', parseInt(record.orderId));
+      await supabase.from('store_order').update(orderUpdate).in('id', targetOrderIds);
     }
   },
 
