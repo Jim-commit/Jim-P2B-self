@@ -82,6 +82,7 @@ let currentFlyerProd = null;
 let currentFlyerStyle = 'neighborhood';
 let currentSettlementType = 'credit';
 let uploadedProofImages = [];
+let cachedSelfStatementOrders = [];
 
 function safeSetText(id, text) {
   const el = document.getElementById(id);
@@ -172,6 +173,159 @@ window.copyReferralShareText = function () {
   navigator.clipboard.writeText(shareText).then(() => {
     alert('✅ 专属同行推荐话术与链接已复制，可直接转发微信好友或同业群！');
   });
+};
+
+// ==========================================
+// 运营工具 4：本店周期电子对账单与掌柜核对确认
+// ==========================================
+window.openStoreSelfStatementModal = async function () {
+  window.closeAllMenus();
+  if (!currentStore) return alert('当前供货方尚未绑定有效门店档案，无法生成电子对账单！');
+
+  const curAgentObj = myAgents.find(a => a.id === currentAgent);
+  safeSetText('self-stmt-agent-label', `供货方：${curAgentObj?.name || currentAgent}`);
+
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const today = now.toISOString().slice(0, 10);
+
+  const startEl = document.getElementById('self-stmt-start');
+  const endEl = document.getElementById('self-stmt-end');
+  if (startEl && !startEl.value) startEl.value = firstDay;
+  if (endEl && !endEl.value) endEl.value = today;
+
+  const { data } = await supabase
+    .from('store_order')
+    .select('*')
+    .eq('store_id', currentStore.id)
+    .eq('tenant_id', currentAgent)
+    .neq('order_source', 'online_mall')
+    .neq('order_status', 'cancelled')
+    .order('id', { ascending: false })
+    .limit(100);
+
+  cachedSelfStatementOrders = data || [];
+  window.renderStoreSelfStatement();
+  window.openModal('store-self-statement-modal');
+};
+
+function getFilteredSelfStatement() {
+  const startDate = document.getElementById('self-stmt-start')?.value || '2000-01-01';
+  const endDate = document.getElementById('self-stmt-end')?.value || '2099-12-31';
+  const startTs = new Date(`${startDate}T00:00:00`).getTime();
+  const endTs = new Date(`${endDate}T23:59:59`).getTime();
+
+  const orders = cachedSelfStatementOrders.filter((o) => {
+    const t = o.created_at ? new Date(o.created_at).getTime() : 0;
+    return t >= startTs && t <= endTs;
+  });
+
+  const orderSum = orders.reduce((s, o) => s + parseFloat(o.total_amount || 0), 0);
+  const returnSum = orders.reduce((s, o) => s + parseFloat(o.return_amount || 0), 0);
+  const netSum = orders.reduce((s, o) => s + parseFloat(o.net_settle_amount || o.total_amount || 0), 0);
+
+  return { startDate, endDate, orders, orderSum, returnSum, netSum };
+}
+
+window.renderStoreSelfStatement = function () {
+  const { orders, orderSum, returnSum, netSum } = getFilteredSelfStatement();
+  const curDebt = parseFloat(currentStore?.current_debt || 0);
+  const baskets = parseInt(currentStore?.carrier_hold_count || currentStore?.basket_count || 0);
+
+  safeSetText('self-stmt-order-sum', `¥${orderSum.toFixed(2)}`);
+  safeSetText('self-stmt-return-sum', `-¥${returnSum.toFixed(2)}`);
+  safeSetText('self-stmt-net-sum', `¥${netSum.toFixed(2)}`);
+  safeSetText('self-stmt-debt-sum', `¥${curDebt.toFixed(2)}`);
+  safeSetText('self-stmt-basket-label', `载具借存：${baskets} 件`);
+
+  const listEl = document.getElementById('self-stmt-orders-list');
+  if (!listEl) return;
+
+  if (orders.length === 0) {
+    listEl.innerHTML = '<div class="py-6 text-center text-stone-400">所选日期区间内暂无往来单据。</div>';
+    return;
+  }
+
+  listEl.innerHTML = orders
+    .map((o) => {
+      const items = Array.isArray(o.items) ? o.items : [];
+      const itemSummary = items.map((i) => `${i.name}x${i.qty}`).join('、') || '调退冲抵单';
+      const net = parseFloat(o.net_settle_amount || o.total_amount || 0);
+      return `
+        <div class="py-2 flex justify-between items-start gap-2">
+          <div>
+            <b class="text-stone-900 font-mono">#${o.order_no || o.id}</b>
+            <span class="text-[10px] text-stone-400 ml-1">${new Date(o.created_at).toLocaleDateString()} · ${o.settlement_type}</span>
+            <div class="text-[10px] text-stone-600 mt-0.5">${itemSummary}</div>
+          </div>
+          <div class="text-right font-mono shrink-0">
+            <b class="text-stone-900 font-bold">¥${net.toFixed(2)}</b>
+            <span class="block text-[9px] ${o.delivery_status === 'delivered' ? 'text-emerald-700' : 'text-amber-700'}">
+              ${o.delivery_status === 'delivered' ? '已交割' : '排单/配送中'}
+            </span>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+};
+
+window.copyStoreSelfStatementText = function () {
+  const { startDate, endDate, orders, orderSum, returnSum, netSum } = getFilteredSelfStatement();
+  const curAgentObj = myAgents.find(a => a.id === currentAgent);
+  const storeName = currentStore?.name || '厚德便民门店';
+  const curDebt = parseFloat(currentStore?.current_debt || 0);
+  const baskets = parseInt(currentStore?.carrier_hold_count || currentStore?.basket_count || 0);
+
+  const lines = [
+    `【${storeName} · 往来核账明细单】`,
+    `合作供货方：${curAgentObj?.name || currentAgent}`,
+    `核对周期：${startDate} 至 ${endDate}`,
+    `------------------------`,
+    `• 区间进货总额：¥${orderSum.toFixed(2)}`,
+    `• 区间退验冲抵：-¥${returnSum.toFixed(2)}`,
+    `• 区间发生净额：¥${netSum.toFixed(2)}（共 ${orders.length} 笔）`,
+    `• 当前在账余额：¥${curDebt.toFixed(2)}`,
+    `• 周转载具借存：${baskets} 件`,
+    `------------------------`,
+    ...orders.map((o, idx) => {
+      const d = new Date(o.created_at).toLocaleDateString();
+      const net = parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2);
+      const itemStr = (Array.isArray(o.items) ? o.items : []).map((i) => `${i.name}x${i.qty}`).join('、');
+      return `${idx + 1}. [${d}] #${o.order_no || o.id} ¥${net} (${itemStr || '调退'})`;
+    })
+  ];
+
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    alert('✅ 本店电子对账单明细已复制到剪贴板！');
+  });
+};
+
+window.confirmStoreSelfStatement = async function () {
+  if (!currentStore) return;
+  const { startDate, endDate, netSum } = getFilteredSelfStatement();
+  const curDebt = parseFloat(currentStore.current_debt || 0);
+  const storeName = currentStore.name || '厚德便民门店';
+
+  if (
+    !confirm(
+      `确认核对无误？\n\n` +
+        `• 对账周期：${startDate} 至 ${endDate}\n` +
+        `• 区间发生净额：¥${netSum.toFixed(2)}\n` +
+        `• 当前在账应结余额：¥${curDebt.toFixed(2)}\n\n` +
+        `点击确定将向供货方调度台回传「掌柜已核对确认」回执。`
+    )
+  ) {
+    return;
+  }
+
+  await notifyVendorWebhook(
+    currentAgent,
+    `🧾【门店对账确认回执】\n合作门店：${storeName}\n对账周期：${startDate} 至 ${endDate}\n区间发生净额：¥${netSum.toFixed(2)} | 当前在账余额：¥${curDebt.toFixed(2)}\n门店掌柜已在手机端核对账目无误！`
+  );
+
+  alert(`🎉 已确认本期对账单无误！\n核对回执已同步传达供货方财务调度台，和合共生！`);
+  window.closeModal('store-self-statement-modal');
 };
 
 // ==========================================
@@ -1060,7 +1214,7 @@ window.openStoreOverview = function () {
     `• 本供货方待平账期存量：${debt}\n` +
     `• 互信授信可用余量：${avail}\n` +
     `• 周转筐 / 载具结存：${basket}\n\n` +
-    `可于右上角「···」菜单查验历次交接契单。`
+    `点击主页账本卡片或菜单「🧾 本店周期电子对账单」可查看详细流水。`
   );
 };
 
@@ -1717,7 +1871,6 @@ window.claimLocalPoolItem = async function (poolId) {
 
   if (error) return alert('认领失败：' + error.message);
 
-  // 同步生成随车顺路调剂单并带兼容字段重试与错误提示兜底
   const swapOrderPayload = {
     order_no: `SWAP-${Date.now().toString().slice(-6)}`,
     tenant_id: currentAgent,
