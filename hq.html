@@ -68,6 +68,10 @@
         </div>
 
         <div class="flex items-center gap-2 shrink-0">
+          <button onclick="window.openNotificationDrawer()" class="relative bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/40 transition active:scale-95 flex items-center gap-1">
+            <span>📬</span> 消息待办
+            <span id="hq-notif-badge" class="hidden bg-rose-600 text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full">0</span>
+          </button>
           <button onclick="window.loadHQData()" class="bg-white/95 hover:bg-white text-emerald-950 text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-xs transition active:scale-95">
             ↻ 刷新
           </button>
@@ -351,11 +355,11 @@
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
             <h2 class="text-sm font-bold text-stone-800">🏪 合作门店分级分类、协议工价与账期对账</h2>
-            <p class="text-[11px] text-stone-400">支持套用全局门店分级字典、自由贴圈子标签、设定一店一价与周期对账回款核销</p>
+            <p class="text-[11px] text-stone-400">支持套用全局门店分级字典、自定义扩展档案字段、设定一店一价与周期对账回款核销</p>
           </div>
           <div class="flex flex-wrap gap-2">
             <button onclick="window.openGlobalPolicyModal('tiers')" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 px-3 py-1.5 rounded-xl font-bold transition">
-              🎛️ 管理门店分级字典
+              🎛️ 管理分级与扩展字段
             </button>
             <button onclick="window.openStoreStatementModal()" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 px-3 py-1.5 rounded-xl font-bold transition">
               🧾 账期对账与回款销账
@@ -490,7 +494,28 @@
   </div>
 
   <!-- =========================================================================
-       新增：商号全局自定义策略中心（Global Policy Studio）
+       新增：调度中枢智能消息待办中心弹窗
+       ========================================================================= -->
+  <div id="modal-hq-notifications" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[88vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">📬 调度中枢 · 智能消息待办聚合</h3>
+          <p class="text-[10px] text-stone-400">实时汇总门店新单、用度计划、超信审批、天街求购与随车待交款</p>
+        </div>
+        <button onclick="window.closeModal('modal-hq-notifications')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div id="hq-notif-list" class="space-y-2 max-h-96 overflow-y-auto no-scrollbar"></div>
+
+      <button type="button" onclick="window.closeModal('modal-hq-notifications')" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-2xl">
+        关闭消息中心
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       商号全局自定义策略中心（Global Policy Studio）
        ========================================================================= -->
   <div id="modal-global-policy" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-3xl rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
@@ -515,32 +540,47 @@
 
       <!-- 四大策略分区导航 -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-stone-100 p-1 rounded-2xl font-bold text-center">
-        <button type="button" onclick="window.switchPolicyTab('tiers')" id="gp-tab-tiers" class="py-2 rounded-xl bg-[#1b4332] text-white transition">① 门店分级字典</button>
-        <button type="button" onclick="window.switchPolicyTab('carriers')" id="gp-tab-carriers" class="py-2 rounded-xl text-stone-600 transition">② 周转载具押金</button>
+        <button type="button" onclick="window.switchPolicyTab('tiers')" id="gp-tab-tiers" class="py-2 rounded-xl bg-[#1b4332] text-white transition">① 门店分级与扩展字段</button>
+        <button type="button" onclick="window.switchPolicyTab('carriers')" id="gp-tab-carriers" class="py-2 rounded-xl text-stone-600 transition">② 多载具与押金规则</button>
         <button type="button" onclick="window.switchPolicyTab('risk')" id="gp-tab-risk" class="py-2 rounded-xl text-stone-600 transition">③ 价盘与风控红线</button>
         <button type="button" onclick="window.switchPolicyTab('slip')" id="gp-tab-slip" class="py-2 rounded-xl text-stone-600 transition">④ 凭单落款与印章</button>
       </div>
 
-      <!-- 子面板 1：门店分级与一等一策字典 -->
-      <div id="gp-pane-tiers" class="space-y-3">
-        <div class="flex justify-between items-center">
-          <div>
-            <b class="text-stone-900">🏪 自定义合作门店分级与默认授信策略（一等一策）</b>
-            <p class="text-[10px] text-stone-400">新建门店或切换门店等级时，自动套用该分级的默认信用额度、全店协议折扣与月度免批退货额</p>
+      <!-- 子面板 1：门店分级与自定义门店建档扩展字段 -->
+      <div id="gp-pane-tiers" class="space-y-3.5">
+        <div class="space-y-2">
+          <div class="flex justify-between items-center">
+            <div>
+              <b class="text-stone-900">🏪 自定义合作门店分级与默认授信策略（一等一策）</b>
+              <p class="text-[10px] text-stone-400">新建门店或切换门店等级时，自动套用该分级的默认信用额度、全店协议折扣与月度免批退货额</p>
+            </div>
+            <button type="button" onclick="window.addPolicyTierRow()" class="bg-emerald-800 text-white font-bold px-3 py-1 rounded-xl text-[11px]">
+              + 新增门店分级
+            </button>
           </div>
-          <button type="button" onclick="window.addPolicyTierRow()" class="bg-emerald-800 text-white font-bold px-3 py-1 rounded-xl text-[11px]">
-            + 新增门店分级
-          </button>
+          <div id="gp-tiers-container" class="space-y-2 max-h-44 overflow-y-auto no-scrollbar"></div>
         </div>
-        <div id="gp-tiers-container" class="space-y-2 max-h-64 overflow-y-auto no-scrollbar"></div>
+
+        <div class="pt-2.5 border-t border-stone-200 space-y-2">
+          <div class="flex justify-between items-center">
+            <div>
+              <b class="text-stone-900">📋 合作门店建档自定义扩展字段（适配五金/冷链/工程专属信息）</b>
+              <p class="text-[10px] text-stone-400">如：施工工地名称、冷库容量、开票税号等；填写后在门店策略弹窗与打印交割单自动展示</p>
+            </div>
+            <button type="button" onclick="window.addPolicyStoreFieldRow()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-3 py-1 rounded-xl text-[11px]">
+              + 添加扩展字段
+            </button>
+          </div>
+          <div id="gp-store-fields-container" class="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar"></div>
+        </div>
       </div>
 
       <!-- 子面板 2：周转载具与回收押金单价 -->
       <div id="gp-pane-carriers" class="hidden space-y-3">
         <div class="flex justify-between items-center">
           <div>
-            <b class="text-stone-900">🔄 自定义周转载具与押金抵扣标准（联动送货师傅端）</b>
-            <p class="text-[10px] text-stone-400">第一行将作为主载具显示在调度台与送货师傅掌中宝，退回空载具按此押金单价自动冲抵货款</p>
+            <b class="text-stone-900">🔄 自定义多种周转载具与押金抵扣标准（联动送货师傅端分项回收）</b>
+            <p class="text-[10px] text-stone-400">送货师傅端现场签收时将列出此处配置的全部载具，支持分项录入退回数量并自动按各自押金单价合计冲抵货款</p>
           </div>
           <button type="button" onclick="window.addPolicyCarrierRow()" class="bg-emerald-800 text-white font-bold px-3 py-1 rounded-xl text-[11px]">
             + 添加载具规格
@@ -677,7 +717,7 @@
           <p class="text-[10px] text-stone-500 font-mono mt-0.5" id="print-slip-meta-line">单号：-- | 日期：--</p>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 text-[11px] bg-stone-50 p-2.5 rounded-lg border border-stone-200">
+        <div class="grid grid-cols-2 gap-2 text-[11px] bg-stone-50 p-2.5 rounded-lg border border-stone-200" id="print-slip-store-grid">
           <div>收货门店：<b id="print-slip-store-name">--</b></div>
           <div>联系方式：<b id="print-slip-store-phone" class="font-mono">--</b></div>
           <div>送货地址：<span id="print-slip-store-addr">--</span></div>
@@ -946,7 +986,7 @@
     </div>
   </div>
 
-  <!-- 弹窗 B：合作门店协议工价与信用授信弹窗（支持一键套用全局分级字典） -->
+  <!-- 弹窗 B：合作门店协议工价、信用授信与自定义扩展档案弹窗 -->
   <div id="store-policy-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -963,6 +1003,12 @@
       <div class="bg-amber-50 border border-amber-300 p-2.5 rounded-2xl flex items-center justify-between gap-2">
         <span class="font-bold text-amber-950 shrink-0">🏅 门店分级模板:</span>
         <select id="policy-tier-preset-select" onchange="window.applyStoreTierPreset(this.value)" class="flex-1 bg-white border border-amber-300 rounded-xl px-2 py-1 font-bold outline-none"></select>
+      </div>
+
+      <!-- 自定义门店扩展档案字段填写区 -->
+      <div id="policy-custom-store-fields-box" class="hidden bg-stone-50 border border-stone-200 p-3 rounded-2xl space-y-2">
+        <b class="text-stone-800 block">📋 本商号专属门店档案信息：</b>
+        <div id="policy-custom-store-fields-inputs" class="space-y-2"></div>
       </div>
 
       <div class="space-y-3">
