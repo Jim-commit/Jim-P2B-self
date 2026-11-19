@@ -4,6 +4,15 @@ import { ShopTypeManager } from './modules/shopTypeManager.js';
 import { MarketingCanvas } from './modules/marketingCanvas.js';
 import { SETTLEMENT_CONFIG, RETURN_REASONS, EXCHANGE_REASONS } from './constants/settlement.js';
 
+function computePickupPin(order) {
+  const seed = String(order?.order_no || order?.id || '1000');
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) % 9000;
+  }
+  return String(1000 + Math.abs(hash));
+}
+
 // ==========================================
 // 0. 双向兼容 ShopTypeManager 辅助适配器
 // ==========================================
@@ -1484,8 +1493,29 @@ function renderProductList() {
 }
 
 // ==========================================
-// 12. 单据存根、邻里到店自提待核销单与收据查验
+// 12. 单据存根、邻里到店自提4位核销码核销与收据查验
 // ==========================================
+window.verifyMallPickupPin = async function (orderId, orderNoSeed) {
+  const expectedPin = computePickupPin({ id: orderId, order_no: orderNoSeed });
+  const inputPin = prompt('请输入街坊出示的 4 位数字提货核销码：');
+  if (inputPin === null) return;
+  if (inputPin.trim() !== expectedPin) {
+    return alert('⚠️ 提货核销码不匹配！请请街坊打开百工天街「我的预订」核对 4 位数字。');
+  }
+
+  const { data: ord } = await supabase.from('store_order').select('note').eq('id', orderId).single();
+  const nextNote = `${ord?.note || ''} [街坊已凭码自提核销]`.trim();
+  const { error } = await supabase
+    .from('store_order')
+    .update({ note: nextNote, delivery_status: 'delivered', order_status: 'delivered' })
+    .eq('id', orderId);
+
+  if (error) return alert('核销写入失败：' + error.message);
+
+  alert('🎉 提货码核验通过！包裹已交付街坊，本单邻里服务润利已正式记入本店台账。');
+  window.openReceiptsModal();
+};
+
 window.openReceiptsModal = async () => {
   if (!currentStore) return alert('当前供货方未绑定有效门店档案！');
   window.openModal('receipts-modal');
@@ -1505,17 +1535,25 @@ window.openReceiptsModal = async () => {
         const items = Array.isArray(po.items) ? po.items : [];
         const itemsStr = items.map(it => `${it.name} x${it.qty}${it.measure_unit || '件'}`).join('、');
         const isDelivered = po.delivery_status === 'delivered';
+        const isPickedUp = String(po.note || '').includes('[街坊已凭码自提核销]');
         return `
-          <div class="p-2.5 bg-amber-50/80 border border-amber-300 rounded-xl space-y-1 text-xs">
+          <div class="p-2.5 bg-amber-50/80 border border-amber-300 rounded-xl space-y-1.5 text-xs">
             <div class="flex justify-between items-center font-bold">
               <span class="font-mono text-stone-900">#${po.order_no || po.id}</span>
-              <span class="text-[10px] px-1.5 py-0.2 rounded ${isDelivered ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-200 text-amber-950'}">
-                ${isDelivered ? '✅ 随车已到店/已自提' : '🚚 待送货师傅捎带到店'}
+              <span class="text-[10px] px-1.5 py-0.2 rounded ${isPickedUp ? 'bg-stone-200 text-stone-700' : isDelivered ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-200 text-amber-950'}">
+                ${isPickedUp ? '✅ 街坊已凭码提走' : isDelivered ? '📦 已到店待街坊自提' : '🚚 待送货师傅捎带到店'}
               </span>
             </div>
             <div class="text-[11px] text-stone-800 font-bold">货品：${itemsStr}</div>
             <div class="text-[10px] text-stone-600">${po.note || ''}</div>
-            <div class="text-[10px] text-emerald-900 font-bold">🤝 邻里服务润利归属本店 · 实付 ¥${parseFloat(po.total_amount || 0).toFixed(2)}</div>
+            <div class="flex justify-between items-center pt-1 border-t border-amber-200/60">
+              <span class="text-[10px] text-emerald-900 font-bold">🤝 邻里润利归本店 · 实付 ¥${parseFloat(po.total_amount || 0).toFixed(2)}</span>
+              ${
+                !isPickedUp
+                  ? `<button type="button" onclick="window.verifyMallPickupPin(${po.id}, '${po.order_no || po.id}')" class="bg-[#1b4332] hover:bg-[#143628] text-white font-bold px-2.5 py-1 rounded-lg text-[10px] shadow-xs active:scale-95">🔑 输4位码核销自提</button>`
+                  : ''
+              }
+            </div>
           </div>
         `;
       }).join('');
