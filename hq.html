@@ -261,9 +261,12 @@
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
             <h2 class="text-sm font-bold text-stone-800">📦 物勒工名 · 良品发布与仓储盘点</h2>
-            <p class="text-[11px] text-stone-400">支持扫码快查直接入库/盘点、多渠道独立投放、百业自定义属性；<b>点击「当前库存」即可出入库</b></p>
+            <p class="text-[11px] text-stone-400">支持扫码快查直接入库/盘点、CSV批量上架、多渠道独立投放；<b>点击「当前库存」即可出入库</b></p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
+            <button onclick="window.openModal('modal-bulk-import')" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-3 py-1.5 rounded-xl transition active:scale-95">
+              📥 批量导入良品 (CSV)
+            </button>
             <button onclick="window.exportInventorySheetCSV()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-3 py-1.5 rounded-xl transition active:scale-95">
               📋 导出仓库盘点表 (CSV)
             </button>
@@ -397,7 +400,7 @@
               全部往来单据
             </button>
           </div>
-          <span class="text-[10px] text-stone-400">支持将门店用度计划一键转为「主动配货单」并汇入装车总单</span>
+          <span class="text-[10px] text-stone-400">支持退货单质检一键回库入账</span>
         </div>
 
         <div id="order-fulfillment-list" class="space-y-3 text-xs max-h-[520px] overflow-y-auto no-scrollbar"></div>
@@ -448,8 +451,43 @@
   </div>
 
   <!-- =========================================================================
-       新增：正式《随车送货交割单》打印预览弹窗
+       新增：CSV 批量导入良品弹窗
        ========================================================================= -->
+  <div id="modal-bulk-import" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">📥 批量导入良品 (Excel / CSV)</h3>
+          <p class="text-[10px] text-stone-400">适合合作社与工坊一次性批量上架几十款现货良品</p>
+        </div>
+        <button onclick="window.closeModal('modal-bulk-import')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-amber-950 space-y-1.5 text-[11px]">
+        <b>操作步骤：</b><br/>
+        1. 点击下方下载标准模板 CSV（可用 Excel 或 WPS 打开填写）；<br/>
+        2. 必填列：<b>货品全称、平准供货底价</b>（其余列选填，自动补全默认值）；<br/>
+        3. 保存为 CSV (UTF-8) 格式后选择文件上传即可。
+      </div>
+
+      <div class="flex gap-2">
+        <button type="button" onclick="window.downloadBulkProductTemplate()" class="w-full bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold py-2 rounded-xl shadow-xs transition">
+          📄 下载《良品批量导入标准模板.csv》
+        </button>
+      </div>
+
+      <div class="bg-stone-50 border border-dashed border-stone-300 p-4 rounded-2xl text-center space-y-2">
+        <input type="file" id="bulk-csv-file" accept=".csv,text/csv" onchange="window.handleBulkCsvFile(event)" class="text-xs text-stone-600">
+        <div id="bulk-import-preview" class="text-[11px] text-emerald-900 font-bold"></div>
+      </div>
+
+      <button type="button" id="btn-exec-bulk-import" onclick="window.submitBulkProductImport()" disabled class="w-full bg-[#1b4332] disabled:bg-stone-300 text-white font-bold py-2.5 rounded-xl shadow transition">
+        确认批量上架写入云端库
+      </button>
+    </div>
+  </div>
+
+  <!-- 正式《随车送货交割单》打印预览弹窗 -->
   <div id="modal-delivery-note-print" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-2xl rounded-3xl p-5 space-y-3.5 text-stone-900 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -460,7 +498,6 @@
         <button onclick="window.closeModal('modal-delivery-note-print')" class="text-stone-400 text-lg">✕</button>
       </div>
 
-      <!-- 打印内容主体 -->
       <div id="delivery-slip-print-area" class="border border-stone-800 p-4 rounded-xl space-y-3 bg-white text-stone-900">
         <div class="text-center border-b border-stone-400 pb-2">
           <h2 class="text-base font-bold tracking-widest" id="print-slip-company-title">源头直供 · 随车送货交割凭单</h2>
