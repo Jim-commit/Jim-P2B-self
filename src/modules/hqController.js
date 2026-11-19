@@ -44,6 +44,7 @@ let uploadedImageBase64 = '';
 let isUploadingImage = false;
 let selectedTags = [];
 let activeProdFilter = '全部';
+let activeProdSearch = '';
 let activeOrderFilter = 'pending_confirm';
 let activeStoreFilter = '全部';
 let currentStockOpsMode = 'in_purchase';
@@ -1265,6 +1266,31 @@ window.onMainCategoryChange = function (mainCatName) {
   subSelect.innerHTML = subs.map((s) => `<option value="${s.name}">${s.name}</option>`).join('');
 };
 
+window.onProductSearchInput = function (val) {
+  activeProdSearch = (val || '').trim().toLowerCase();
+  renderProductTable();
+};
+
+window.onProductSearchKeydown = function (e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const raw = (e.target.value || '').trim();
+  if (!raw) return;
+  const exactMatch = allProducts.find(
+    (p) => (p.barcode && p.barcode.trim().toLowerCase() === raw.toLowerCase()) || p.name.toLowerCase() === raw.toLowerCase()
+  );
+  if (exactMatch) {
+    window.openStockOpsModal(exactMatch.id);
+  }
+};
+
+window.clearProductSearch = function () {
+  activeProdSearch = '';
+  const input = document.getElementById('prod-search-input');
+  if (input) input.value = '';
+  renderProductTable();
+};
+
 function renderProductFilterBar() {
   const bar = document.getElementById('product-tags-filter');
   if (!bar) return;
@@ -1286,57 +1312,69 @@ function renderProductFilterBar() {
 
 function renderProductTable() {
   let filtered = activeProdFilter === '全部' ? allProducts : allProducts.filter((p) => Array.isArray(p.tags) && p.tags.includes(activeProdFilter));
+  if (activeProdSearch) {
+    filtered = filtered.filter(
+      (p) =>
+        (p.name || '').toLowerCase().includes(activeProdSearch) ||
+        (p.barcode || '').toLowerCase().includes(activeProdSearch) ||
+        (p.spec || '').toLowerCase().includes(activeProdSearch) ||
+        JSON.stringify(p.custom_specs || {}).toLowerCase().includes(activeProdSearch)
+    );
+  }
 
-  document.getElementById('product-table-body').innerHTML = filtered
-    .map((p) => {
-      const tags = Array.isArray(p.tags) ? p.tags : [];
-      const tagBadges = tags.map((t) => `<span class="bg-emerald-50 text-emerald-900 border border-emerald-200 px-1.5 py-0.2 rounded text-[10px] mr-1">${t}</span>`).join('');
-      const isBM = isBrickMortarAllowed(p);
-      const isEC = isEcommerceAllowed(p);
-      let channelBadges = '';
-      if (isBM) channelBadges += '<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">🏬 合作门店专供</span>';
-      if (isEC) channelBadges += '<span class="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] px-1.5 py-0.5 rounded font-bold">🌐 云端扩充货架</span>';
+  document.getElementById('product-table-body').innerHTML =
+    filtered.length === 0
+      ? '<tr><td colspan="10" class="p-8 text-center text-stone-400">未找到匹配的良品记录</td></tr>'
+      : filtered
+          .map((p) => {
+            const tags = Array.isArray(p.tags) ? p.tags : [];
+            const tagBadges = tags.map((t) => `<span class="bg-emerald-50 text-emerald-900 border border-emerald-200 px-1.5 py-0.2 rounded text-[10px] mr-1">${t}</span>`).join('');
+            const isBM = isBrickMortarAllowed(p);
+            const isEC = isEcommerceAllowed(p);
+            let channelBadges = '';
+            if (isBM) channelBadges += '<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">🏬 合作门店专供</span>';
+            if (isEC) channelBadges += '<span class="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] px-1.5 py-0.5 rounded font-bold">🌐 云端扩充货架</span>';
 
-      const customAttrs = p.custom_specs && typeof p.custom_specs === 'object' && p.custom_specs.attrs ? p.custom_specs.attrs : {};
-      const attrBadges = Object.entries(customAttrs)
-        .map(([k, v]) => `<span class="inline-block bg-stone-100 text-stone-700 border border-stone-200 px-1.5 py-0.2 rounded text-[10px] mr-1 mt-0.5">${k}: <b>${v}</b></span>`)
-        .join('');
+            const customAttrs = p.custom_specs && typeof p.custom_specs === 'object' && p.custom_specs.attrs ? p.custom_specs.attrs : {};
+            const attrBadges = Object.entries(customAttrs)
+              .map(([k, v]) => `<span class="inline-block bg-stone-100 text-stone-700 border border-stone-200 px-1.5 py-0.2 rounded text-[10px] mr-1 mt-0.5">${k}: <b>${v}</b></span>`)
+              .join('');
 
-      const curStock = parseInt(p.stock ?? 0);
-      const minLine = parseInt(p.custom_specs?.min_stock ?? 10);
-      const isLow = curStock <= minLine;
+            const curStock = parseInt(p.stock ?? 0);
+            const minLine = parseInt(p.custom_specs?.min_stock ?? 10);
+            const isLow = curStock <= minLine;
 
-      return `
-        <tr class="hover:bg-stone-50 transition">
-          <td class="p-2.5">${p.image_url ? `<img src="${p.image_url}" class="w-10 h-10 rounded-xl object-cover border border-stone-200">` : `<div class="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-[9px] text-stone-400">无图</div>`}</td>
-          <td class="p-2.5 font-bold">${channelBadges || '<span class="text-stone-300 text-[10px]">未投放</span>'}</td>
-          <td class="p-2.5 text-stone-600 font-sans whitespace-normal max-w-[200px]">
-            <div class="text-[11px]">${p.category_main || '常规'} ➔ ${p.category_sub || '通用'} ${p.category_tertiary ? `<b class="text-amber-800">(${p.category_tertiary})</b>` : ''}</div>
-            <div>${attrBadges}</div>
-          </td>
-          <td class="p-2.5 font-sans">
-            <b class="text-stone-900 block">${p.name}</b>
-            <span class="font-mono text-[10px] text-emerald-800">${p.trace_code_prefix || 'QC-'}${p.id} ${p.barcode ? '· 码:' + p.barcode : ''}</span>
-          </td>
-          <td class="p-2.5">${tagBadges || '-'}</td>
-          <td class="p-2.5 font-mono">${p.spec || '整装'} / ${p.measure_unit || '件'}</td>
-          <td class="p-2.5 font-mono font-bold text-emerald-800">
-            <span class="cursor-pointer hover:bg-emerald-50 px-1.5 py-0.5 rounded border border-transparent hover:border-emerald-200" onclick="window.quickEditPrice(${p.id}, ${p.tier_1_price})">¥${p.tier_1_price} ✏️</span>
-          </td>
-          <td class="p-2.5 font-mono text-stone-600">¥${p.tier_2_price || p.tier_1_price}</td>
-          <td class="p-2.5 font-mono">
-            <button onclick="window.openStockOpsModal(${p.id})" class="px-2.5 py-1 rounded-xl font-bold border transition active:scale-95 ${
-        isLow ? 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse' : 'bg-emerald-50 text-emerald-950 border-emerald-200 hover:bg-emerald-100'
-      }" title="点击进行采收入库、损耗出库或实地盘点">${curStock} ${p.measure_unit || '件'} ⚙️</button>
-          </td>
-          <td class="p-2.5 text-right space-x-1.5">
-            <button onclick="window.openEditProductModal(${p.id})" class="text-[11px] text-emerald-800 font-bold hover:underline">编辑</button>
-            <button onclick="window.deleteProduct(${p.id}, '${p.name}')" class="text-[11px] text-rose-600 font-bold hover:underline">删除</button>
-          </td>
-        </tr>
-      `;
-    })
-    .join('');
+            return `
+              <tr class="hover:bg-stone-50 transition">
+                <td class="p-2.5">${p.image_url ? `<img src="${p.image_url}" class="w-10 h-10 rounded-xl object-cover border border-stone-200">` : `<div class="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-[9px] text-stone-400">无图</div>`}</td>
+                <td class="p-2.5 font-bold">${channelBadges || '<span class="text-stone-300 text-[10px]">未投放</span>'}</td>
+                <td class="p-2.5 text-stone-600 font-sans whitespace-normal max-w-[200px]">
+                  <div class="text-[11px]">${p.category_main || '常规'} ➔ ${p.category_sub || '通用'} ${p.category_tertiary ? `<b class="text-amber-800">(${p.category_tertiary})</b>` : ''}</div>
+                  <div>${attrBadges}</div>
+                </td>
+                <td class="p-2.5 font-sans">
+                  <b class="text-stone-900 block">${p.name}</b>
+                  <span class="font-mono text-[10px] text-emerald-800">${p.trace_code_prefix || 'QC-'}${p.id} ${p.barcode ? '· 码:' + p.barcode : ''}</span>
+                </td>
+                <td class="p-2.5">${tagBadges || '-'}</td>
+                <td class="p-2.5 font-mono">${p.spec || '整装'} / ${p.measure_unit || '件'}</td>
+                <td class="p-2.5 font-mono font-bold text-emerald-800">
+                  <span class="cursor-pointer hover:bg-emerald-50 px-1.5 py-0.5 rounded border border-transparent hover:border-emerald-200" onclick="window.quickEditPrice(${p.id}, ${p.tier_1_price})">¥${p.tier_1_price} ✏️</span>
+                </td>
+                <td class="p-2.5 font-mono text-stone-600">¥${p.tier_2_price || p.tier_1_price}</td>
+                <td class="p-2.5 font-mono">
+                  <button onclick="window.openStockOpsModal(${p.id})" class="px-2.5 py-1 rounded-xl font-bold border transition active:scale-95 ${
+              isLow ? 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse' : 'bg-emerald-50 text-emerald-950 border-emerald-200 hover:bg-emerald-100'
+            }" title="点击进行采收入库、损耗出库或实地盘点">${curStock} ${p.measure_unit || '件'} ⚙️</button>
+                </td>
+                <td class="p-2.5 text-right space-x-1.5">
+                  <button onclick="window.openEditProductModal(${p.id})" class="text-[11px] text-emerald-800 font-bold hover:underline">编辑</button>
+                  <button onclick="window.deleteProduct(${p.id}, '${p.name}')" class="text-[11px] text-rose-600 font-bold hover:underline">删除</button>
+                </td>
+              </tr>
+            `;
+          })
+          .join('');
 }
 
 function renderStoreFilterBar() {
@@ -1798,7 +1836,6 @@ function renderOrderFulfillmentList() {
   const container = document.getElementById('order-fulfillment-list');
   if (!container) return;
 
-  // 视角 A：门店提报的真实用度计划单
   if (activeOrderFilter === 'demand_plans') {
     if (allDemandPlans.length === 0) {
       container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">暂无合作门店提报的真实用度计划单。</div>';
@@ -1854,7 +1891,6 @@ function renderOrderFulfillmentList() {
     return;
   }
 
-  // 视角 B：同城余缺互调池动态
   if (activeOrderFilter === 'local_pool') {
     if (allLocalPoolItems.length === 0) {
       container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">当前暂无合作门店挂出的同城余缺互调记录。</div>';
@@ -1904,7 +1940,6 @@ function renderOrderFulfillmentList() {
     return;
   }
 
-  // 视角 C：百工天街求购榜
   if (activeOrderFilter === 'c2b_demands') {
     if (allC2BDemands.length === 0) {
       container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">暂无天街求购或定制用度需求帖。</div>';
