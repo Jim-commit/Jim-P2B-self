@@ -74,6 +74,9 @@
           <button onclick="window.openPlanAggregateModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/40 active:scale-95 transition flex items-center gap-1">
             <span>🌾</span> 产销排产总单
           </button>
+          <button onclick="window.openStoreStatementModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/40 active:scale-95 transition flex items-center gap-1">
+            <span>🧾</span> 门店账期对账
+          </button>
           <button onclick="window.openPromoQrModal()" class="bg-emerald-700/60 hover:bg-emerald-600/70 text-white text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/30 active:scale-95 transition flex items-center gap-1">
             <span>📲</span> 合作名片码
           </button>
@@ -280,10 +283,13 @@
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">🏪 合作门店分类与协议工价</h2>
-            <p class="text-[11px] text-stone-400">支持自由贴圈子标签分类（不限行业）、设定一店一价与集采折扣、指派送货师傅与信义额度</p>
+            <h2 class="text-sm font-bold text-stone-800">🏪 合作门店分类、协议工价与账期对账</h2>
+            <p class="text-[11px] text-stone-400">支持自由贴圈子标签分类、设定一店一价与集采折扣、按周期生成电子对账单与回款核销</p>
           </div>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
+            <button onclick="window.openStoreStatementModal()" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 px-3 py-1.5 rounded-xl font-bold transition">
+              🧾 账期对账与回款销账
+            </button>
             <button onclick="window.switchTab('settle'); window.filterOrderStatus('directory_leads');" class="text-xs bg-amber-50 text-amber-950 border border-amber-300 px-3 py-1.5 rounded-xl font-bold hover:bg-amber-100 transition">
               🤝 查看新店合作意向 (<span id="stores-tab-lead-count">0</span>)
             </button>
@@ -414,8 +420,97 @@
   </div>
 
   <!-- =========================================================================
-       新增：产销排产与集采汇总总单弹窗 (按品名聚合各门店真实用度需求)
+       新增：合作门店周期电子对账单与回款销账清算弹窗
        ========================================================================= -->
+  <div id="modal-store-statement" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🧾 合作门店周期电子对账与回款销账</h3>
+          <p class="text-[10px] text-stone-400">按日期区间自动汇总往来补货、退验冲抵与在账欠款，支持一键转发掌柜核对并销账</p>
+        </div>
+        <button onclick="window.closeModal('modal-store-statement')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <!-- 门店与日期筛选栏 -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-stone-50 p-3 rounded-2xl border border-stone-200">
+        <div>
+          <label class="block text-[10px] font-bold text-stone-600 mb-1">选择合作门店：</label>
+          <select id="stmt-store-select" onchange="window.renderStoreStatementDetail()" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 font-bold outline-none"></select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-stone-600 mb-1">起始日期：</label>
+          <input type="date" id="stmt-start-date" onchange="window.renderStoreStatementDetail()" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 font-mono outline-none">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-stone-600 mb-1">截止日期：</label>
+          <input type="date" id="stmt-end-date" onchange="window.renderStoreStatementDetail()" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 font-mono outline-none">
+        </div>
+      </div>
+
+      <!-- 核心账目晴雨卡片 -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+        <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200">
+          <span class="text-[10px] text-stone-400 block">区间新配总额</span>
+          <b id="stmt-order-sum" class="font-mono text-sm font-bold text-stone-900">¥0.00</b>
+        </div>
+        <div class="bg-rose-50/60 p-2.5 rounded-2xl border border-rose-200">
+          <span class="text-[10px] text-rose-600 block">区间退验冲抵</span>
+          <b id="stmt-return-sum" class="font-mono text-sm font-bold text-rose-700">-¥0.00</b>
+        </div>
+        <div class="bg-emerald-50/70 p-2.5 rounded-2xl border border-emerald-200">
+          <span class="text-[10px] text-emerald-800 block">区间应结净额</span>
+          <b id="stmt-net-sum" class="font-mono text-sm font-bold text-emerald-900">¥0.00</b>
+        </div>
+        <div class="bg-amber-50 p-2.5 rounded-2xl border border-amber-300">
+          <span class="text-[10px] text-amber-900 block">当前累计在账欠款</span>
+          <b id="stmt-current-debt" class="font-mono text-sm font-bold text-rose-700">¥0.00</b>
+        </div>
+      </div>
+
+      <!-- 区间往来单据明细 -->
+      <div class="space-y-1">
+        <div class="flex justify-between items-center text-[11px] font-bold text-stone-700">
+          <span>📋 区间交割往来流水明细：</span>
+          <span id="stmt-basket-info" class="text-[10px] text-amber-800 font-mono">周转载具借存：0 件</span>
+        </div>
+        <div id="stmt-orders-list" class="divide-y divide-stone-100 border border-stone-200 rounded-2xl px-3 py-1 bg-white max-h-44 overflow-y-auto no-scrollbar text-[11px]"></div>
+      </div>
+
+      <!-- 回款销账操作区 -->
+      <div class="bg-emerald-50/70 border border-emerald-200 p-3 rounded-2xl space-y-2">
+        <b class="text-emerald-950 block">💰 周期回款销账平账（扣减门店在账欠款）：</b>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[10px] text-stone-600 mb-1">本次实收平账金额 (元)：</label>
+            <input type="number" step="0.01" min="0" id="stmt-settle-amount" placeholder="0.00" class="w-full bg-white border border-emerald-300 rounded-xl px-2.5 py-1.5 font-mono font-bold text-sm text-emerald-950 outline-none">
+          </div>
+          <div>
+            <label class="block text-[10px] text-stone-600 mb-1">收款方式：</label>
+            <select id="stmt-pay-method" class="w-full bg-white border border-emerald-300 rounded-xl px-2 py-1.5 font-bold outline-none">
+              <option value="银行公户/微信转账">🏦 银行公户 / 微信转账</option>
+              <option value="财务现收现钞">💵 财务现收现钞</option>
+              <option value="农特产代销货款冲抵">🌾 农特产代销货款冲抵</option>
+            </select>
+          </div>
+        </div>
+        <button type="button" onclick="window.submitStoreStatementSettle()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2 rounded-xl shadow active:scale-95 transition">
+          ✅ 确认收款并冲减门店在账欠款
+        </button>
+      </div>
+
+      <div class="flex gap-2 pt-1 border-t border-stone-100">
+        <button type="button" onclick="window.copyStoreStatementText()" class="flex-1 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold py-2.5 rounded-xl shadow transition">
+          📋 复制电子对账单发掌柜
+        </button>
+        <button type="button" onclick="window.exportStoreStatementCSV()" class="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200 font-bold py-2.5 rounded-xl transition">
+          📥 导出该店对账单 (CSV)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 产销排产与集采汇总总单弹窗 -->
   <div id="modal-plan-aggregate" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
