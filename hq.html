@@ -230,8 +230,8 @@
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-4">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
-            <h2 class="text-sm font-bold text-stone-900">🤖 平准均输参谋（自动扫描供需缺口、用度排产、余缺调剂与诚信履约）</h2>
-            <p class="text-[11px] text-stone-400">实时监测库存安全线、门店真实用度计划、授信健康度与载具回收，点击按钮一键落地协同</p>
+            <h2 class="text-sm font-bold text-stone-900">🤖 平准均输参谋（自动扫描供需缺口、用度排产、余缺调剂与临期预警）</h2>
+            <p class="text-[11px] text-stone-400">实时监测库存安全线、保质期效期、门店真实用度计划与载具回收，点击按钮一键落地协同</p>
           </div>
           <span class="text-[11px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-3 py-1 rounded-xl font-bold">
             合作门店: <b id="stat-active-stores">0 家</b> · 在外载具: <b id="stat-baskets">0 件</b>
@@ -244,12 +244,17 @@
       </div>
 
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
             <h3 class="text-sm font-bold text-stone-800">📜 仓库出入库与盘点流水账（含接单自动扣库留痕）</h3>
             <p class="text-[11px] text-stone-400">采收入库、工坊完工、配发出库、损耗领用、实地盘点校准全记录</p>
           </div>
-          <button onclick="window.switchTab('products')" class="text-xs text-emerald-800 font-bold hover:underline">去操作出入库/盘点 ➔</button>
+          <div class="flex items-center gap-2">
+            <button onclick="window.exportInventoryLogsCSV()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-3 py-1 rounded-xl transition active:scale-95">
+              📥 导出出入库流水 (CSV)
+            </button>
+            <button onclick="window.switchTab('products')" class="text-xs text-emerald-800 font-bold hover:underline">去操作出入库/盘点 ➔</button>
+          </div>
         </div>
         <div id="inventory-log-list" class="divide-y divide-stone-100 text-xs max-h-64 overflow-y-auto no-scrollbar"></div>
       </div>
@@ -296,7 +301,7 @@
                 <th class="p-2.5">品类与自定义属性</th>
                 <th class="p-2.5">货品全称 & 溯源码</th>
                 <th class="p-2.5">商道属性标签</th>
-                <th class="p-2.5">度量衡规制</th>
+                <th class="p-2.5">度量衡规制 / 效期</th>
                 <th class="p-2.5">平准供货底价</th>
                 <th class="p-2.5">集采惠价</th>
                 <th class="p-2.5">当前库存 (点此出入库/盘点)</th>
@@ -450,9 +455,7 @@
 
   </div>
 
-  <!-- =========================================================================
-       新增：CSV 批量导入良品弹窗
-       ========================================================================= -->
+  <!-- CSV 批量导入良品弹窗 -->
   <div id="modal-bulk-import" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -876,7 +879,7 @@
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
           <h3 class="font-bold text-sm text-stone-800" id="prod-modal-title">📦 物勒工名 · 发布良品</h3>
-          <p class="text-[10px] text-stone-400">支持多渠道独立投放、百业自定义展示属性、平准与调剂标签</p>
+          <p class="text-[10px] text-stone-400">支持多渠道独立投放、百业自定义展示属性、保质期效期提醒</p>
         </div>
         <button onclick="window.closeAddProductModal()" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
@@ -1007,7 +1010,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-3 items-center">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
         <div>
           <label class="block text-[11px] font-bold text-stone-700 mb-1">货品实拍照：</label>
           <div class="flex items-center gap-2">
@@ -1018,6 +1021,10 @@
             </label>
             <button type="button" onclick="window.clearProductImage()" class="text-rose-600 text-[10px] hover:underline">清除</button>
           </div>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-stone-700 mb-1">保质期到期日 (选填)：</label>
+          <input type="date" id="prod-expiry-date" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-xs outline-none">
         </div>
         <div>
           <label class="block text-[11px] font-bold text-stone-700 mb-1">交接备忘叮咛：</label>
