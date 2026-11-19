@@ -69,6 +69,7 @@ let allProducts = [];
 let currentCategory = '全部';
 let currentTagFilter = '全部';
 let currentAgentFilterCategory = '全部';
+let allowStoreSelfReturn = true;
 
 let cart = {};
 
@@ -709,6 +710,9 @@ window.changeOrderQty = (id, delta) => {
 };
 
 window.openReturnDrawer = async (id) => {
+  if (!allowStoreSelfReturn) {
+    return alert('当前供货方未开启门店自主退货通道，如需退货请联系供货调度台处理。');
+  }
   window.initProdItemState(id);
   const prod = allProducts.find(x => x.id === id);
   if (!prod) return;
@@ -759,6 +763,9 @@ window.openReturnDrawer = async (id) => {
 };
 
 window.openExchangeDrawer = async (id) => {
+  if (!allowStoreSelfReturn) {
+    return alert('当前供货方未开启门店自主换货通道，如需调换请联系供货调度台处理。');
+  }
   window.initProdItemState(id);
   const prod = allProducts.find(x => x.id === id);
   if (!prod) return;
@@ -1370,7 +1377,7 @@ window.callDriver = () => {
 };
 
 // ==========================================
-// 11. 货品列表渲染（兼容百业通用商道标签 + 历史标签）
+// 11. 货品列表渲染（兼容百业通用商道标签 + 历史标签 + 全局退换货策略开关）
 // ==========================================
 function renderCategoryTabs() {
   const categories = ['全部', ...new Set(allProducts.map(p => p.category_main).filter(Boolean))];
@@ -1444,6 +1451,23 @@ function renderProductList() {
     const hasReturn = curState.return > 0;
     const hasExchange = curState.exchange > 0;
 
+    const returnButtonsHtml = allowStoreSelfReturn
+      ? `
+        <div class="flex items-center gap-1.5">
+          <button type="button" onclick="window.openReturnDrawer(${p.id})" class="px-2 py-0.5 rounded-lg font-bold border transition ${
+            hasReturn ? 'bg-rose-50 text-rose-700 border-rose-300' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
+          }">
+            🔄 退货 ${hasReturn ? `(${curState.return}${unit})` : ''}
+          </button>
+          <button type="button" onclick="window.openExchangeDrawer(${p.id})" class="px-2 py-0.5 rounded-lg font-bold border transition ${
+            hasExchange ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
+          }">
+            🔀 换货 ${hasExchange ? `(${curState.exchange}${unit})` : ''}
+          </button>
+        </div>
+      `
+      : `<span class="text-[10px] text-stone-400">源头直供品（退换请联调度台）</span>`;
+
     return `
       <div class="py-3.5 px-1 space-y-2 border-b border-stone-100 ${isOutOfStock ? 'opacity-60' : ''}">
         <div class="flex justify-between items-start gap-3">
@@ -1470,18 +1494,7 @@ function renderProductList() {
         </div>
 
         <div class="flex justify-between items-center pt-0.5 text-[10px]">
-          <div class="flex items-center gap-1.5">
-            <button type="button" onclick="window.openReturnDrawer(${p.id})" class="px-2 py-0.5 rounded-lg font-bold border transition ${
-              hasReturn ? 'bg-rose-50 text-rose-700 border-rose-300' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
-            }">
-              🔄 退货 ${hasReturn ? `(${curState.return}${unit})` : ''}
-            </button>
-            <button type="button" onclick="window.openExchangeDrawer(${p.id})" class="px-2 py-0.5 rounded-lg font-bold border transition ${
-              hasExchange ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
-            }">
-              🔀 换货 ${hasExchange ? `(${curState.exchange}${unit})` : ''}
-            </button>
-          </div>
+          ${returnButtonsHtml}
 
           <button type="button" onclick="window.configureFlyer(${p.id})" class="text-[10px] bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 px-2.5 py-0.5 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition">
             📲 做画报
@@ -1682,7 +1695,14 @@ async function initTerminal() {
   loadAgentCart();
   renderAgentSelector();
 
-  currentStore = await StoreService.getStoreByTenant(currentAgent);
+  const [storeObj, tenantRes] = await Promise.all([
+    StoreService.getStoreByTenant(currentAgent),
+    supabase.from('platform_tenant').select('custom_settings').eq('tenant_id', currentAgent).maybeSingle()
+  ]);
+
+  currentStore = storeObj;
+  allowStoreSelfReturn = tenantRes?.data?.custom_settings?.allowStoreReturn !== false;
+
   if (currentStore) {
     safeSetText('store-title', currentStore.name || '厚德便民门店');
     safeSetText('store-boss', currentStore.contact || '主人家');
