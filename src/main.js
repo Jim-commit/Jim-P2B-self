@@ -39,10 +39,6 @@ function calcBasePrice(prod, type) {
   if (typeof ShopTypeManager.getEffectivePrice === 'function') {
     return ShopTypeManager.getEffectivePrice(prod, type);
   }
-  const bigShopTypes = ['餐饮饭庄', '精品商超', '五金机电', '农资农具'];
-  if (bigShopTypes.includes(type) && prod.tier_2_price) {
-    return parseFloat(prod.tier_2_price);
-  }
   return parseFloat(prod.tier_1_price || 0);
 }
 
@@ -64,6 +60,7 @@ try {
 
 let currentAgent = localStorage.getItem('active_agent') || myAgents[0].id;
 let currentStore = null;
+let currentTenantSettings = {};
 let shopType = localStorage.getItem('active_shop_type') || '社区便利';
 let allProducts = [];
 let currentCategory = '全部';
@@ -339,35 +336,38 @@ window.confirmStoreSelfStatement = async function () {
 };
 
 // ==========================================
-// 统一一店一约 & 协议折扣算价引擎
+// 统一一店一约 & 全局策略折算引擎（严格遵循启用开关）
 // ==========================================
 function getStorePriceInfo(prod) {
   const basePrice = calcBasePrice(prod, shopType);
   const pricing = (currentStore && currentStore.custom_pricing && typeof currentStore.custom_pricing === 'object')
     ? currentStore.custom_pricing
     : {};
+  const itemNotes = (pricing.item_notes && typeof pricing.item_notes === 'object') ? pricing.item_notes : {};
+  const itemNote = itemNotes[String(prod.id)] || '';
 
   if (pricing.item_prices && pricing.item_prices[String(prod.id)] !== undefined) {
     const special = parseFloat(pricing.item_prices[String(prod.id)]);
     if (!isNaN(special) && special > 0) {
-      return { price: special, badge: '专属协议工价' };
+      return { price: special, badge: '专属协议工价', itemNote };
     }
   }
 
   let tierPrice = basePrice;
-  let badge = (basePrice < parseFloat(prod.tier_1_price || basePrice)) ? '集采惠价' : '';
+  let badge = '';
   if (pricing.price_tier === 'tier_2' && prod.tier_2_price) {
     tierPrice = parseFloat(prod.tier_2_price);
-    badge = '集采惠价';
   }
 
-  const rate = parseFloat(pricing.discount_rate || 1);
-  if (!isNaN(rate) && rate > 0 && rate !== 1) {
-    const discounted = Number((tierPrice * rate).toFixed(2));
-    return { price: discounted, badge: `协议${(rate * 10).toFixed(1)}折` };
+  if (currentTenantSettings?.storeTierEnabled !== false) {
+    const rate = parseFloat(pricing.discount_rate || 1);
+    if (!isNaN(rate) && rate > 0 && rate !== 1) {
+      const discounted = Number((tierPrice * rate).toFixed(2));
+      return { price: discounted, badge: `专享${(rate * 10).toFixed(1)}折`, itemNote };
+    }
   }
 
-  return { price: tierPrice, badge };
+  return { price: tierPrice, badge, itemNote };
 }
 
 async function uploadProofBlobToStorage(base64Data) {
@@ -1377,7 +1377,7 @@ window.callDriver = () => {
 };
 
 // ==========================================
-// 11. 货品列表渲染（兼容百业通用商道标签 + 历史标签 + 全局退换货策略开关）
+// 11. 货品列表渲染（支持单品协议备注 + 全局退换货开关 + 促销横幅）
 // ==========================================
 function renderCategoryTabs() {
   const categories = ['全部', ...new Set(allProducts.map(p => p.category_main).filter(Boolean))];
@@ -1429,80 +1429,91 @@ function renderProductList() {
     return;
   }
 
-  container.innerHTML = filtered.map(p => {
-    const imgHtml = p.image_url
-      ? `<img src="${p.image_url}" class="w-16 h-16 rounded-2xl object-cover border border-stone-200 shadow-sm shrink-0" onerror="this.src='';this.parentElement.innerHTML='<div class=\\'w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400 shrink-0\\'>实物包</div>';">`
-      : `<div class="w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400 shrink-0">实物包</div>`;
+  const promoBannerHtml =
+    currentTenantSettings?.campaignActive && Array.isArray(currentTenantSettings?.promos) && currentTenantSettings.promos.length > 0
+      ? `<div class="mb-2 p-2.5 bg-amber-50 border border-amber-300 rounded-2xl text-[11px] text-amber-950 flex items-center gap-1.5">
+          <span>🔥</span>
+          <div><b>${currentTenantSettings.promos[0].title}：</b>${currentTenantSettings.promos[0].rule}</div>
+        </div>`
+      : '';
 
-    const tags = Array.isArray(p.tags) ? p.tags : [];
-    const tagHtml = tags.map(t => `<span class="bg-amber-50 text-amber-900 border border-amber-200 text-[9px] px-1.5 py-0.2 rounded font-medium">${t}</span>`).join(' ');
+  container.innerHTML =
+    promoBannerHtml +
+    filtered.map(p => {
+      const imgHtml = p.image_url
+        ? `<img src="${p.image_url}" class="w-16 h-16 rounded-2xl object-cover border border-stone-200 shadow-sm shrink-0" onerror="this.src='';this.parentElement.innerHTML='<div class=\\'w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400 shrink-0\\'>实物包</div>';">`
+        : `<div class="w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] text-stone-400 shrink-0">实物包</div>`;
 
-    const customAttrs = (p.custom_specs && typeof p.custom_specs === 'object' && p.custom_specs.attrs) ? p.custom_specs.attrs : {};
-    const attrsHtml = Object.entries(customAttrs).map(([k, v]) =>
-      `<span class="bg-stone-100 text-stone-600 border border-stone-200 text-[9px] px-1.5 py-0.2 rounded">${k}:${v}</span>`
-    ).join(' ');
+      const tags = Array.isArray(p.tags) ? p.tags : [];
+      const tagHtml = tags.map(t => `<span class="bg-amber-50 text-amber-900 border border-amber-200 text-[9px] px-1.5 py-0.2 rounded font-medium">${t}</span>`).join(' ');
 
-    const { price, badge } = getStorePriceInfo(p);
-    const unit = p.measure_unit || p.pack_unit || '箱';
-    const stock = p.stock ?? 999;
-    const isOutOfStock = stock <= 0;
+      const customAttrs = (p.custom_specs && typeof p.custom_specs === 'object' && p.custom_specs.attrs) ? p.custom_specs.attrs : {};
+      const attrsHtml = Object.entries(customAttrs).map(([k, v]) =>
+        `<span class="bg-stone-100 text-stone-600 border border-stone-200 text-[9px] px-1.5 py-0.2 rounded">${k}:${v}</span>`
+      ).join(' ');
 
-    const curState = cart[p.id] || { order: 0, return: 0, exchange: 0 };
-    const hasReturn = curState.return > 0;
-    const hasExchange = curState.exchange > 0;
+      const { price, badge, itemNote } = getStorePriceInfo(p);
+      const unit = p.measure_unit || p.pack_unit || '箱';
+      const stock = p.stock ?? 999;
+      const isOutOfStock = stock <= 0;
 
-    const returnButtonsHtml = allowStoreSelfReturn
-      ? `
-        <div class="flex items-center gap-1.5">
-          <button type="button" onclick="window.openReturnDrawer(${p.id})" class="px-2 py-0.5 rounded-lg font-bold border transition ${
-            hasReturn ? 'bg-rose-50 text-rose-700 border-rose-300' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
-          }">
-            🔄 退货 ${hasReturn ? `(${curState.return}${unit})` : ''}
-          </button>
-          <button type="button" onclick="window.openExchangeDrawer(${p.id})" class="px-2 py-0.5 rounded-lg font-bold border transition ${
-            hasExchange ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
-          }">
-            🔀 换货 ${hasExchange ? `(${curState.exchange}${unit})` : ''}
-          </button>
-        </div>
-      `
-      : `<span class="text-[10px] text-stone-400">源头直供品（退换请联调度台）</span>`;
+      const curState = cart[p.id] || { order: 0, return: 0, exchange: 0 };
+      const hasReturn = curState.return > 0;
+      const hasExchange = curState.exchange > 0;
 
-    return `
-      <div class="py-3.5 px-1 space-y-2 border-b border-stone-100 ${isOutOfStock ? 'opacity-60' : ''}">
-        <div class="flex justify-between items-start gap-3">
-          <div class="flex items-start gap-3">
-            ${imgHtml}
-            <div>
-              <div class="font-bold text-xs text-stone-800">${p.name}</div>
-              ${(tagHtml || attrsHtml) ? `<div class="mt-0.5 flex flex-wrap gap-1">${tagHtml} ${attrsHtml}</div>` : ''}
-              <div class="text-[11px] text-stone-400 mt-0.5 font-mono">
-                规格: ${p.spec || '整装'} · 存量: ${isOutOfStock ? '<span class="text-rose-600 font-bold">已调空</span>' : `${stock}${unit}`}
-              </div>
-              <div class="text-xs font-bold text-stone-900 mt-0.5 font-mono flex items-center gap-1">
-                ¥${price.toFixed(2)} <span class="text-[10px] text-stone-400 font-normal">/${unit}</span>
-                ${badge ? `<span class="text-[9px] bg-amber-50 text-amber-900 border border-amber-300 px-1 rounded font-bold">${badge}</span>` : ''}
+      const returnButtonsHtml = allowStoreSelfReturn
+        ? `
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="window.openReturnDrawer(${p.id})" class="px-2 py-0.5 rounded-lg font-bold border transition ${
+              hasReturn ? 'bg-rose-50 text-rose-700 border-rose-300' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
+            }">
+              🔄 退货 ${hasReturn ? `(${curState.return}${unit})` : ''}
+            </button>
+            <button type="button" onclick="window.openExchangeDrawer(${p.id})" class="px-2 py-0.5 rounded-lg font-bold border transition ${
+              hasExchange ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
+            }">
+              🔀 换货 ${hasExchange ? `(${curState.exchange}${unit})` : ''}
+            </button>
+          </div>
+        `
+        : `<span class="text-[10px] text-stone-400">源头直供品（退换请联调度台）</span>`;
+
+      return `
+        <div class="py-3.5 px-1 space-y-2 border-b border-stone-100 ${isOutOfStock ? 'opacity-60' : ''}">
+          <div class="flex justify-between items-start gap-3">
+            <div class="flex items-start gap-3">
+              ${imgHtml}
+              <div>
+                <div class="font-bold text-xs text-stone-800">${p.name}</div>
+                ${(tagHtml || attrsHtml) ? `<div class="mt-0.5 flex flex-wrap gap-1">${tagHtml} ${attrsHtml}</div>` : ''}
+                ${itemNote ? `<div class="text-[10px] text-emerald-900 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded mt-0.5 inline-block">📝 ${itemNote}</div>` : ''}
+                <div class="text-[11px] text-stone-400 mt-0.5 font-mono">
+                  规格: ${p.spec || '整装'} · 存量: ${isOutOfStock ? '<span class="text-rose-600 font-bold">已调空</span>' : `${stock}${unit}`}
+                </div>
+                <div class="text-xs font-bold text-stone-900 mt-0.5 font-mono flex items-center gap-1">
+                  ¥${price.toFixed(2)} <span class="text-[10px] text-stone-400 font-normal">/${unit}</span>
+                  ${badge ? `<span class="text-[9px] bg-amber-50 text-amber-900 border border-amber-300 px-1 rounded font-bold">${badge}</span>` : ''}
+                </div>
               </div>
             </div>
+            
+            <div class="flex items-center gap-1.5 pt-1 shrink-0">
+              <button type="button" onclick="window.changeOrderQty(${p.id}, -1)" class="w-7 h-7 rounded-xl bg-stone-100 active:scale-95 font-bold text-stone-600 flex items-center justify-center text-sm shadow-sm">-</button>
+              <span id="qty-order-${p.id}" class="w-6 text-center font-bold text-xs font-mono">${curState.order || 0}</span>
+              <button type="button" onclick="window.changeOrderQty(${p.id}, 1)" ${isOutOfStock ? 'disabled' : ''} class="w-7 h-7 rounded-xl ${isOutOfStock ? 'bg-stone-200 text-stone-400' : 'bg-stone-900 text-white active:scale-95'} font-bold flex items-center justify-center text-sm shadow-sm">+</button>
+            </div>
           </div>
-          
-          <div class="flex items-center gap-1.5 pt-1 shrink-0">
-            <button type="button" onclick="window.changeOrderQty(${p.id}, -1)" class="w-7 h-7 rounded-xl bg-stone-100 active:scale-95 font-bold text-stone-600 flex items-center justify-center text-sm shadow-sm">-</button>
-            <span id="qty-order-${p.id}" class="w-6 text-center font-bold text-xs font-mono">${curState.order || 0}</span>
-            <button type="button" onclick="window.changeOrderQty(${p.id}, 1)" ${isOutOfStock ? 'disabled' : ''} class="w-7 h-7 rounded-xl ${isOutOfStock ? 'bg-stone-200 text-stone-400' : 'bg-stone-900 text-white active:scale-95'} font-bold flex items-center justify-center text-sm shadow-sm">+</button>
+
+          <div class="flex justify-between items-center pt-0.5 text-[10px]">
+            ${returnButtonsHtml}
+
+            <button type="button" onclick="window.configureFlyer(${p.id})" class="text-[10px] bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 px-2.5 py-0.5 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition">
+              📲 做画报
+            </button>
           </div>
         </div>
-
-        <div class="flex justify-between items-center pt-0.5 text-[10px]">
-          ${returnButtonsHtml}
-
-          <button type="button" onclick="window.configureFlyer(${p.id})" class="text-[10px] bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 px-2.5 py-0.5 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition">
-            📲 做画报
-          </button>
-        </div>
-      </div>
-    `;
-  }).join('');
+      `;
+    }).join('');
 }
 
 // ==========================================
@@ -1701,7 +1712,10 @@ async function initTerminal() {
   ]);
 
   currentStore = storeObj;
-  allowStoreSelfReturn = tenantRes?.data?.custom_settings?.allowStoreReturn !== false;
+  currentTenantSettings = tenantRes?.data?.custom_settings && typeof tenantRes.data.custom_settings === 'object'
+    ? tenantRes.data.custom_settings
+    : {};
+  allowStoreSelfReturn = currentTenantSettings.allowStoreReturn !== false;
 
   if (currentStore) {
     safeSetText('store-title', currentStore.name || '厚德便民门店');
