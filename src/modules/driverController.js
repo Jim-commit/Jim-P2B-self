@@ -16,11 +16,21 @@ let onlyShowWithOrders = false;
 let proofImagesList = [];
 let isSigned = false;
 let isCurrentOrderOnlinePickup = false;
+let currentModalOrderIds = [];
 let canvas, ctx, drawing = false;
 let signPadBound = false;
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
+
+// =========================================================================
+// 0. 一键唤起地图导航到店
+// =========================================================================
+window.openStoreMapNav = function (storeName, address) {
+  const query = encodeURIComponent(`${address || ''} ${storeName || ''}`.trim());
+  const url = `https://uri.amap.com/search?keyword=${query}`;
+  window.open(url, '_blank');
+};
 
 // =========================================================================
 // 1. 离线缓存队列同步
@@ -225,7 +235,7 @@ window.clearSignature = function () {
 };
 
 // =========================================================================
-// 4. 配送路线载入与渲染（含百工天街门店自提捎带单 & 同城余缺顺路调剂单识别）
+// 4. 配送路线载入与渲染（含天街自提单 & 同城余缺顺路调剂单 & 一键导航）
 // =========================================================================
 window.loadDriverTasks = async function () {
   const container = document.getElementById('route-container');
@@ -326,6 +336,9 @@ function renderRouteStores() {
         return sum + parseFloat(o.net_settle_amount || o.total_amount || 0);
       }, 0);
 
+      const safeName = (s.name || '').replace(/'/g, "\\'");
+      const safeAddr = (s.address || '').replace(/'/g, "\\'");
+
       return `
         <div class="p-3.5 ${hasOrders ? 'bg-amber-50/30 border-amber-300 shadow-xs' : 'bg-stone-50/60 border-stone-200/80'} border rounded-2xl space-y-2 hover:bg-white transition">
           <div class="flex justify-between items-start">
@@ -352,14 +365,17 @@ function renderRouteStores() {
 
           ${orderSummary}
 
-          <div class="pt-2 border-t border-stone-200/60 flex justify-between items-center gap-2">
-            <a href="tel:${s.phone}" class="text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 active:scale-95">
+          <div class="pt-2 border-t border-stone-200/60 flex justify-between items-center gap-1.5">
+            <a href="tel:${s.phone}" class="text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 active:scale-95 shrink-0">
               📞 致电
             </a>
-            <button onclick="window.openCollectModal(${s.id}, '${s.name.replace(/'/g, "\\'")}', ${debt}, '${firstOrder ? firstOrder.id : ''}', ${totalNetOrderAmount}, ${
+            <button type="button" onclick="window.openStoreMapNav('${safeName}', '${safeAddr}')" class="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 active:scale-95 shrink-0">
+              🧭 导航
+            </button>
+            <button onclick="window.openCollectModal(${s.id}, '${safeName}', ${debt}, '${firstOrder ? firstOrder.id : ''}', ${totalNetOrderAmount}, ${
         s.carrier_hold_count || s.basket_count || 0
-      }, ${s.credit_limit || 2000})" class="flex-1 text-[11px] bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-1.5 rounded-xl shadow active:scale-95 transition">
-              🤝 现场点验核销 (收退/归具/平账)
+      }, ${s.credit_limit || 2000})" class="flex-1 text-[11px] bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-1.5 px-2 rounded-xl shadow active:scale-95 transition">
+              🤝 现场点验核销${storeOrders.length > 1 ? ` (合${storeOrders.length}单)` : ''}
             </button>
           </div>
         </div>
@@ -369,7 +385,7 @@ function renderRouteStores() {
 }
 
 // =========================================================================
-// 5. 现场核销弹窗与动态算账引擎（支持天街门店自提单免收现签收）
+// 5. 现场核销弹窗与动态算账引擎（支持同店多单合并汇总 + 天街自提单免收现签收）
 // =========================================================================
 window.openCollectModal = async function (storeId, storeName, debt, orderId, orderAmount, basketCount, creditLimit) {
   document.getElementById('modal-shop-title').innerText = storeName;
@@ -383,36 +399,68 @@ window.openCollectModal = async function (storeId, storeName, debt, orderId, ord
   isCurrentOrderOnlinePickup = false;
   renderProofPreview();
 
+  const storeOrders = allPendingOrders.filter((o) => Number(o.store_id) === Number(storeId));
+  currentModalOrderIds = storeOrders.map((o) => o.id);
+
   let itemsOrder = [];
   let itemsReturn = [];
   let itemsExchange = [];
-  let totalOrderAmount = orderAmount;
+  let totalOrderAmount = 0;
   let returnDeductAmount = 0;
-  let netAmount = orderAmount;
+  let netAmount = 0;
   let settlementType = 'credit';
-  let instructionText = '';
+  const instructions = [];
 
-  if (orderId) {
+  if (storeOrders.length > 0) {
+    const allOnlinePickup = storeOrders.every((o) => o.order_source === 'online_mall' || o.settlement_type === 'online_paid');
+    isCurrentOrderOnlinePickup = allOnlinePickup;
+
+    storeOrders.forEach((o) => {
+      const oItems = Array.isArray(o.items) ? o.items : [];
+      const rItems = Array.isArray(o.items_return) ? o.items_return : [];
+      const eItems = Array.isArray(o.items_exchange) ? o.items_exchange : [];
+      itemsOrder = itemsOrder.concat(oItems);
+      itemsReturn = itemsReturn.concat(rItems);
+      itemsExchange = itemsExchange.concat(eItems);
+
+      const isPickup = o.order_source === 'online_mall' || o.settlement_type === 'online_paid';
+      if (isPickup) {
+        instructions.push(`🛍️【天街自提单 #${o.order_no || o.id}】街坊线上已付清，切勿向掌柜重复收款`);
+      } else {
+        totalOrderAmount += parseFloat(o.total_amount || 0);
+        returnDeductAmount += parseFloat(o.return_amount || 0);
+        netAmount += parseFloat(o.net_settle_amount || parseFloat(o.total_amount || 0) - parseFloat(o.return_amount || 0));
+        if (o.settlement_type) settlementType = o.settlement_type;
+      }
+
+      if (o.driver_action_instruction) {
+        instructions.push(o.driver_action_instruction);
+      }
+    });
+
+    if (storeOrders.length > 1) {
+      instructions.unshift(`📦 本店今日共 ${storeOrders.length} 笔待交割单据已自动合并汇总，一次签收全部核销！`);
+    }
+  } else if (orderId) {
+    currentModalOrderIds = [parseInt(orderId)];
     const o = await DriverService.fetchOrderDetail(orderId);
     if (o) {
       itemsOrder = Array.isArray(o.items) ? o.items : [];
       itemsReturn = Array.isArray(o.items_return) ? o.items_return : [];
       itemsExchange = Array.isArray(o.items_exchange) ? o.items_exchange : [];
       settlementType = o.settlement_type || 'credit';
-      instructionText = o.driver_action_instruction || '';
+      if (o.driver_action_instruction) instructions.push(o.driver_action_instruction);
 
       isCurrentOrderOnlinePickup = o.order_source === 'online_mall' || settlementType === 'online_paid';
-      if (isCurrentOrderOnlinePickup) {
-        totalOrderAmount = 0;
-        returnDeductAmount = 0;
-        netAmount = 0;
-        instructionText = `🛍️【天街门店自提捎带单】街坊线上已付清（服务润利归属该店），请门店掌柜点收包裹签字即可，切勿向掌柜重复收款！`;
-      } else {
+      if (!isCurrentOrderOnlinePickup) {
         totalOrderAmount = parseFloat(o.total_amount || 0);
         returnDeductAmount = parseFloat(o.return_amount || 0);
         netAmount = parseFloat(o.net_settle_amount || totalOrderAmount - returnDeductAmount);
       }
     }
+  } else {
+    totalOrderAmount = orderAmount;
+    netAmount = orderAmount;
   }
 
   document.getElementById('modal-settlement-type').value = settlementType;
@@ -436,8 +484,8 @@ window.openCollectModal = async function (storeId, storeName, debt, orderId, ord
     : '无对调品物';
 
   const instBox = document.getElementById('modal-instruction-box');
-  if (instructionText) {
-    instBox.innerText = instructionText;
+  if (instructions.length > 0) {
+    instBox.innerText = instructions.join(' | ');
     instBox.classList.remove('hidden');
   } else {
     instBox.classList.add('hidden');
@@ -632,6 +680,7 @@ window.submitCollection = async function () {
   const recordToSave = {
     storeId,
     orderId,
+    orderIds: [...currentModalOrderIds],
     amount,
     method,
     expectedNewDebt,
@@ -658,22 +707,24 @@ window.submitCollection = async function () {
     await DriverService.executeSettlement(recordToSave);
 
     // 若本次签收包含「同城余缺顺路捎带单 (SWAP-)」，自动将互调池对应记录标记为已交割平账
-    if (orderId) {
-      const targetOrder = allPendingOrders.find((o) => String(o.id) === String(orderId));
-      if (targetOrder && (String(targetOrder.order_no || '').startsWith('SWAP-') || String(targetOrder.note || '').includes('同城余缺互调'))) {
-        await supabase
-          .from('local_inventory_pool')
-          .update({ status: 'completed', completed_at: new Date().toISOString() })
-          .eq('tenant_id', currentAgent)
-          .eq('to_store_id', storeId)
-          .eq('status', 'claimed');
-      }
+    const matchedOrders = allPendingOrders.filter((o) => currentModalOrderIds.includes(o.id) || String(o.id) === String(orderId));
+    const hasSwapOrder = matchedOrders.some(
+      (o) => String(o.order_no || '').startsWith('SWAP-') || String(o.note || '').includes('同城余缺互调')
+    );
+    if (hasSwapOrder) {
+      await supabase
+        .from('local_inventory_pool')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('tenant_id', currentAgent)
+        .eq('to_store_id', storeId)
+        .eq('status', 'claimed');
     }
 
     if (isCurrentOrderOnlinePickup) {
       alert(`✅ 天街自提包裹已送达并签收存信！\n掌柜可通知街坊到店自提，本单服务润利全额归属该合作门店。`);
     } else {
-      alert(`✅ 交割完好！\n实收款项: ¥${amount.toFixed(2)} (${method})\n迎回周转载具: ${basketReturn} 件 (抵¥${basketDeduct})\n门店剩余在账: ¥${expectedNewDebt.toFixed(2)}。和合共生！`);
+      const mergedTip = currentModalOrderIds.length > 1 ? `（已合并核销 ${currentModalOrderIds.length} 笔单据）` : '';
+      alert(`✅ 交割完好！${mergedTip}\n实收款项: ¥${amount.toFixed(2)} (${method})\n迎回周转载具: ${basketReturn} 件 (抵¥${basketDeduct})\n门店剩余在账: ¥${expectedNewDebt.toFixed(2)}。和合共生！`);
     }
   } catch (err) {
     console.warn('网络信号较弱，已自动存入离线防丢单队列:', err);
