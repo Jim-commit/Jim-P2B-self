@@ -370,6 +370,28 @@ window.exportInventorySheetCSV = function () {
   downloadCSV(`${currentAgent}_仓库实地盘点表_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
 };
 
+window.exportInventoryLogsCSV = function () {
+  if (allInventoryLogs.length === 0) return alert('当前暂无仓库出入库流水记录！');
+  const typeMap = {
+    in_purchase: '采收/完工入库',
+    out_loss: '损耗/领用出库',
+    audit_adjust: '实地盘点校准',
+    order_ship: '配货发运出库'
+  };
+  const headers = ['流水时间', '变动类型', '货品全称', '变动数量', '变动前库存', '变动后库存', '经手人', '事由备注'];
+  const rows = allInventoryLogs.map((l) => [
+    l.created_at ? new Date(l.created_at).toLocaleString() : '',
+    typeMap[l.action_type] || l.action_type || '库存变动',
+    l.product_name || '',
+    l.delta_qty ?? 0,
+    l.before_stock ?? 0,
+    l.after_stock ?? 0,
+    l.operator_name || '仓管',
+    (l.remark || '').replace(/[\r\n,]+/g, ' ')
+  ]);
+  downloadCSV(`${currentAgent}_仓库出入库流水明细_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+};
+
 // =========================================================================
 // 3. 百业自定义属性 & 一店一约规则行
 // =========================================================================
@@ -498,6 +520,25 @@ function renderThreeFlowsAndAIAdvisor() {
       btnText: '+ 立即入库补备',
       action: `window.openStockOpsModal(${p.id})`
     });
+  });
+
+  const nowTs = Date.now();
+  const thirtyDaysMs = 30 * 24 * 3600 * 1000;
+  allProducts.forEach((p) => {
+    const expStr = p.custom_specs?.expiry_date;
+    if (!expStr || parseInt(p.stock ?? 0) <= 0) return;
+    const expTs = new Date(`${expStr}T23:59:59`).getTime();
+    const diffDays = Math.ceil((expTs - nowTs) / (24 * 3600 * 1000));
+    if (expTs - nowTs <= thirtyDaysMs) {
+      aiTips.push({
+        level: diffDays <= 7 ? 'rose' : 'amber',
+        icon: '⏳',
+        title: `${diffDays <= 0 ? '批次已到期提醒' : `临期预警（余 ${diffDays} 天）`}：【${p.name}】在库 ${p.stock}${p.measure_unit || '件'}`,
+        desc: `到期日为 ${expStr}，建议优先通过「主动配货」或标注「🔄 余缺平价调剂」加快周转，减少损耗。`,
+        btnText: '📦 安排优先配发',
+        action: `window.openPushOrderModal()`
+      });
+    }
   });
 
   allStores.forEach((s) => {
@@ -1563,6 +1604,9 @@ function renderProductTable() {
               .map(([k, v]) => `<span class="inline-block bg-stone-100 text-stone-700 border border-stone-200 px-1.5 py-0.2 rounded text-[10px] mr-1 mt-0.5">${k}: <b>${v}</b></span>`)
               .join('');
 
+            const expDate = p.custom_specs?.expiry_date || '';
+            const expBadge = expDate ? `<span class="block text-[10px] font-mono text-amber-800 mt-0.5">效期至: ${expDate}</span>` : '';
+
             const curStock = parseInt(p.stock ?? 0);
             const minLine = parseInt(p.custom_specs?.min_stock ?? 10);
             const isLow = curStock <= minLine;
@@ -1580,7 +1624,7 @@ function renderProductTable() {
                   <span class="font-mono text-[10px] text-emerald-800">${p.trace_code_prefix || 'QC-'}${p.id} ${p.barcode ? '· 码:' + p.barcode : ''}</span>
                 </td>
                 <td class="p-2.5">${tagBadges || '-'}</td>
-                <td class="p-2.5 font-mono">${p.spec || '整装'} / ${p.measure_unit || '件'}</td>
+                <td class="p-2.5 font-mono">${p.spec || '整装'} / ${p.measure_unit || '件'}${expBadge}</td>
                 <td class="p-2.5 font-mono font-bold text-emerald-800">
                   <span class="cursor-pointer hover:bg-emerald-50 px-1.5 py-0.5 rounded border border-transparent hover:border-emerald-200" onclick="window.quickEditPrice(${p.id}, ${p.tier_1_price})">¥${p.tier_1_price} ✏️</span>
                 </td>
@@ -1787,6 +1831,7 @@ window.openAddProductModal = function () {
   document.getElementById('prod-measure-unit').value = '箱';
   document.getElementById('prod-trace-prefix').value = `${currentAgent}-QC-`;
   document.getElementById('prod-origin-place').value = '源头合作社/工坊原产';
+  document.getElementById('prod-expiry-date').value = '';
   document.getElementById('prod-remark').value = '';
   document.getElementById('custom-attrs-container').innerHTML = '';
   renderTagChips();
@@ -1816,6 +1861,7 @@ window.openEditProductModal = function (id) {
   document.getElementById('prod-measure-unit').value = p.measure_unit || '箱';
   document.getElementById('prod-trace-prefix').value = p.trace_code_prefix || 'QC-';
   document.getElementById('prod-origin-place').value = p.origin_place || '源头合作社/工坊原产';
+  document.getElementById('prod-expiry-date').value = p.custom_specs?.expiry_date || '';
   document.getElementById('prod-remark').value = p.remark || '';
 
   const attrBox = document.getElementById('custom-attrs-container');
@@ -1846,6 +1892,7 @@ window.submitProductForm = async function () {
 
   const customAttrs = collectCustomAttrs();
   const minStock = parseInt(document.getElementById('prod-min-stock').value) || 10;
+  const expiryDate = document.getElementById('prod-expiry-date')?.value || '';
 
   const channelLabel = isBM && !isEC ? '实体店' : !isBM && isEC ? '电子商务' : '实体与电商双轨';
 
@@ -1869,7 +1916,7 @@ window.submitProductForm = async function () {
     image_url: uploadedImageBase64,
     remark: document.getElementById('prod-remark').value.trim(),
     tags: selectedTags,
-    custom_specs: { attrs: customAttrs, min_stock: minStock },
+    custom_specs: { attrs: customAttrs, min_stock: minStock, expiry_date: expiryDate },
     status: 'active'
   };
 
