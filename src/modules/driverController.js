@@ -12,6 +12,7 @@ let currentAgent = (localStorage.getItem('active_agent') || 'BJ_SHUNDA').trim().
 let currentDriver = localStorage.getItem('active_driver') || '老张师傅';
 let routeStores = [];
 let allPendingOrders = [];
+let unsettledLogsCache = [];
 let onlyShowWithOrders = false;
 let proofImagesList = [];
 let isSigned = false;
@@ -24,12 +25,87 @@ window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
 
 // =========================================================================
-// 0. 一键唤起地图导航到店
+// 0. 一键唤起地图导航到店 & 今日已交割电子收条存根回看
 // =========================================================================
 window.openStoreMapNav = function (storeName, address) {
   const query = encodeURIComponent(`${address || ''} ${storeName || ''}`.trim());
   const url = `https://uri.amap.com/search?keyword=${query}`;
   window.open(url, '_blank');
+};
+
+window.openReceiptHistoryModal = function () {
+  const listEl = document.getElementById('driver-receipt-history-list');
+  if (!listEl) return;
+
+  if (unsettledLogsCache.length === 0) {
+    listEl.innerHTML = '<div class="py-8 text-center text-stone-400">当前班次暂无已交割签收存根。</div>';
+    window.openModal('receipt-history-modal');
+    return;
+  }
+
+  listEl.innerHTML = unsettledLogsCache
+    .map((log, idx) => {
+      const amt = parseFloat(log.amount || 0).toFixed(2);
+      const baskets = parseInt(log.basket_return || 0);
+      const timeStr = log.created_at ? new Date(log.created_at).toLocaleString() : '刚刚';
+      return `
+        <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
+          <div class="flex justify-between items-start gap-2">
+            <div>
+              <b class="text-stone-900 text-xs">${idx + 1}. ${log.store_name || '合作门店'}</b>
+              <span class="text-[10px] text-stone-400 block font-mono">${timeStr}</span>
+            </div>
+            <div class="text-right font-mono">
+              <b class="text-emerald-900 font-bold text-sm">¥${amt}</b>
+              <span class="text-[10px] text-stone-500 block">${log.pay_method || '签收'}</span>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-center pt-1.5 border-t border-stone-200/70">
+            <div class="flex items-center gap-2">
+              ${
+                log.sign_image_url
+                  ? `<img src="${log.sign_image_url}" class="h-8 bg-white border border-stone-300 rounded px-1" alt="收货人签名">`
+                  : '<span class="text-[10px] text-stone-400">已电子存信</span>'
+              }
+              ${baskets > 0 ? `<span class="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold">退载具 ${baskets} 件</span>` : ''}
+            </div>
+            <button type="button" onclick="window.copyDriverReceiptText(${idx})" class="bg-[#1b4332] hover:bg-[#143628] text-white font-bold px-2.5 py-1 rounded-xl text-[10px] shadow-xs active:scale-95 transition">
+              📋 复制电子收条
+            </button>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+
+  window.openModal('receipt-history-modal');
+};
+
+window.copyDriverReceiptText = function (idx) {
+  const log = unsettledLogsCache[idx];
+  if (!log) return;
+  const amt = parseFloat(log.amount || 0).toFixed(2);
+  const baskets = parseInt(log.basket_return || 0);
+  const deduct = parseFloat(log.basket_deduct_amount || 0).toFixed(2);
+  const timeStr = log.created_at ? new Date(log.created_at).toLocaleString() : new Date().toLocaleString();
+
+  const text = [
+    `【随车送货交割电子收信条】`,
+    `供货商号：${currentAgent}`,
+    `收货门店：${log.store_name || '合作门店'}`,
+    `经手师傅：${currentDriver}`,
+    `交割方式：${log.pay_method || '签收'}`,
+    `本次实收：¥${amt}`,
+    ...(baskets > 0 ? [`退还载具：${baskets} 件（折抵 ¥${deduct}）`] : []),
+    `核销时间：${timeStr}`,
+    `------------------------`,
+    `钱货两清，诚信相照！感谢掌柜支持！`
+  ].join('\n');
+
+  navigator.clipboard.writeText(text).then(() => {
+    alert(`✅ 【${log.store_name}】电子收条已复制，可直接转发微信发给掌柜！`);
+  });
 };
 
 // =========================================================================
@@ -706,7 +782,6 @@ window.submitCollection = async function () {
   try {
     await DriverService.executeSettlement(recordToSave);
 
-    // 若本次签收包含「同城余缺顺路捎带单 (SWAP-)」，自动将互调池对应记录标记为已交割平账
     const matchedOrders = allPendingOrders.filter((o) => currentModalOrderIds.includes(o.id) || String(o.id) === String(orderId));
     const hasSwapOrder = matchedOrders.some(
       (o) => String(o.order_no || '').startsWith('SWAP-') || String(o.note || '').includes('同城余缺互调')
@@ -792,6 +867,7 @@ window.submitDriverSuggestion = async function () {
 
 async function calculateTodayStats() {
   const list = await DriverService.fetchUnsettledLogs(currentAgent, currentDriver);
+  unsettledLogsCache = list;
   let totalCash = 0,
     totalWechat = 0,
     totalBaskets = 0,
