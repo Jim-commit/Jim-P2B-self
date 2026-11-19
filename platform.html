@@ -64,23 +64,26 @@
     </div>
 
     <!-- 导航切换标签 -->
-    <nav class="flex bg-white rounded-2xl shadow-sm border border-stone-200 p-1.5 gap-2 text-xs font-bold">
-      <button id="p-tab-btn-apps" onclick="window.switchTab('apps')" class="flex-1 py-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1.5">
+    <nav class="flex flex-wrap bg-white rounded-2xl shadow-sm border border-stone-200 p-1.5 gap-1.5 text-xs font-bold">
+      <button id="p-tab-btn-apps" onclick="window.switchTab('apps')" class="flex-1 py-2 px-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1.5 whitespace-nowrap">
         📝 合作社 / 工坊入驻查验
         <span id="badge-pending-count" class="bg-rose-500 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
       </button>
-      <button id="p-tab-btn-tenants" onclick="window.switchTab('tenants')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
-        🏢 在册供货主体名册 (独立账本与契约)
+      <button id="p-tab-btn-tenants" onclick="window.switchTab('tenants')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
+        🏢 在册供货主体名册
       </button>
-      <button id="p-tab-btn-suggestions" onclick="window.switchTab('suggestions')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition flex items-center justify-center gap-1.5">
-        📜 商道建言堂 (倾听百工心声)
+      <button id="p-tab-btn-ecosystem" onclick="window.switchTab('ecosystem')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
+        🌐 全域供需与互调大盘
+      </button>
+      <button id="p-tab-btn-suggestions" onclick="window.switchTab('suggestions')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+        📜 商道建言堂
         <span id="badge-sugg-count" class="bg-emerald-600 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
       </button>
-      <button id="p-tab-btn-categories" onclick="window.switchTab('categories')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
-        🗂️ 标准一二级品类字典
+      <button id="p-tab-btn-categories" onclick="window.switchTab('categories')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
+        🗂️ 标准品类字典
       </button>
-      <button id="p-tab-btn-audit" onclick="window.switchTab('audit')" class="flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition">
-        ⚖️ 天道明鉴 (只读防篡改审计)
+      <button id="p-tab-btn-audit" onclick="window.switchTab('audit')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
+        ⚖️ 天道明鉴审计
       </button>
     </nav>
 
@@ -130,6 +133,72 @@
             </thead>
             <tbody id="tenants-table-body" class="divide-y divide-stone-100 font-mono"></tbody>
           </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 新增板块 2.5：全域供需协同与互调大盘 -->
+    <section id="p-tab-ecosystem" class="hidden space-y-4">
+      <!-- 四大协同晴雨指标 -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-stone-200">
+          <span class="text-[11px] text-stone-400 block">全网真实用度计划单</span>
+          <b id="eco-stat-plans" class="text-xl font-mono font-bold text-emerald-900 mt-1 block">0 份</b>
+          <span id="eco-stat-plans-sub" class="text-[10px] text-emerald-700 font-mono">已纳入排产：0 份</span>
+        </div>
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-stone-200">
+          <span class="text-[11px] text-stone-400 block">同城余缺互调流转池</span>
+          <b id="eco-stat-pool" class="text-xl font-mono font-bold text-cyan-900 mt-1 block">0 笔</b>
+          <span id="eco-stat-pool-sub" class="text-[10px] text-cyan-700 font-mono">已成单/交割：0 笔</span>
+        </div>
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-stone-200">
+          <span class="text-[11px] text-stone-400 block">百工天街公域求购榜</span>
+          <b id="eco-stat-c2b" class="text-xl font-mono font-bold text-amber-800 mt-1 block">0 条</b>
+          <span id="eco-stat-c2b-sub" class="text-[10px] text-amber-700 font-mono">源头已回应：0 条</span>
+        </div>
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-stone-200">
+          <span class="text-[11px] text-stone-400 block">全网累计履约交割单</span>
+          <b id="eco-stat-orders" class="text-xl font-mono font-bold text-stone-900 mt-1 block">0 单</b>
+          <span id="eco-stat-orders-sub" class="text-[10px] text-stone-500 font-mono">含门店自提与顺路捎带</span>
+        </div>
+      </div>
+
+      <!-- 各供货商供需协同响应活跃度排行 -->
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">🏆 在册合作社与工坊 · 供需协同响应力榜单</h2>
+            <p class="text-[11px] text-stone-400">汇总各供货商承接的真实用度计划、同城余缺互调单及交割履约量，供平台择优推荐至百工天街与供需名录</p>
+          </div>
+          <span class="text-[10px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-xl font-bold">以销定产 · 阳光排行</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs whitespace-nowrap">
+            <thead class="bg-stone-50 border-b border-stone-200 text-stone-500 font-medium">
+              <tr>
+                <th class="p-2.5">商号代号</th>
+                <th class="p-2.5">合作社 / 工坊全称</th>
+                <th class="p-2.5">真实用度计划 (已排产/总收)</th>
+                <th class="p-2.5">同城余缺互调 (成单/挂池)</th>
+                <th class="p-2.5">天街求购回应数</th>
+                <th class="p-2.5">累计完成交割单</th>
+                <th class="p-2.5 text-right">直达展位</th>
+              </tr>
+            </thead>
+            <tbody id="ecosystem-rank-body" class="divide-y divide-stone-100 font-mono"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 最新全网公域求购与互调动态 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-2.5">
+          <h3 class="text-sm font-bold text-stone-900">📢 最新百工天街公域求购动态</h3>
+          <div id="eco-recent-c2b-list" class="divide-y divide-stone-100 text-xs max-h-64 overflow-y-auto no-scrollbar"></div>
+        </div>
+        <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-2.5">
+          <h3 class="text-sm font-bold text-stone-900">🔄 最新同城余缺互调流转动态</h3>
+          <div id="eco-recent-pool-list" class="divide-y divide-stone-100 text-xs max-h-64 overflow-y-auto no-scrollbar"></div>
         </div>
       </div>
     </section>
