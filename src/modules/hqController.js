@@ -363,9 +363,9 @@ function renderThreeFlowsAndAIAdvisor() {
       level: 'emerald',
       icon: '📅',
       title: `真实用度计划：有 ${pendingPlans.length} 份合作门店用度计划待纳入排产`,
-      desc: `门店已提前提报未来周期真实用度预估量，及时确认纳入产区采收/工坊排产，以销定产零损耗。`,
-      btnText: '查看并纳入排产 ➔',
-      action: `window.switchTab('settle'); window.filterOrderStatus('demand_plans');`
+      desc: `门店已提前提报未来周期真实用度预估量，可先查看「产销排产汇总单」合并总量，再按需采收排产。`,
+      btnText: '查看排产总单 ➔',
+      action: `window.openPlanAggregateModal();`
     });
   }
 
@@ -511,8 +511,103 @@ function renderInventoryLogs() {
 }
 
 // =========================================================================
-// 5. 装车总拣货单、对账单导出 & 合作名片码
+// 5. 产销排产汇总总单、装车总拣货单、对账单导出 & 合作名片码
 // =========================================================================
+function buildAggregatedPlanItems() {
+  const activePlans = allDemandPlans.filter((p) => p.status === 'submitted' || p.status === 'scheduled');
+  const map = {};
+  activePlans.forEach((p) => {
+    const items = Array.isArray(p.items) ? p.items : [];
+    items.forEach((it) => {
+      const unit = it.unit || '件';
+      const key = `${it.name}|${unit}`;
+      if (!map[key]) {
+        const matchedProd = allProducts.find((prod) => prod.name === it.name || prod.name.includes(it.name));
+        map[key] = {
+          name: it.name,
+          unit,
+          totalQty: 0,
+          currentStock: matchedProd ? parseInt(matchedProd.stock ?? 0) : null,
+          stores: []
+        };
+      }
+      map[key].totalQty += parseInt(it.qty || 0);
+      map[key].stores.push(`${p.store_name}(${it.qty}${unit}·${p.expected_date || '近期'})`);
+    });
+  });
+  return { activePlans, aggregatedList: Object.values(map) };
+}
+
+window.openPlanAggregateModal = function () {
+  const { activePlans, aggregatedList } = buildAggregatedPlanItems();
+  document.getElementById('plan-agg-tenant-name').innerText = `${currentTenantData?.company_name || currentAgent} · 源头采收/排产汇总单`;
+  document.getElementById('plan-agg-summary-meta').innerText = `汇总时间：${new Date().toLocaleString()}`;
+  document.getElementById('plan-agg-count').innerText = `${activePlans.length} 份计划`;
+
+  const container = document.getElementById('plan-agg-items-container');
+  if (aggregatedList.length === 0) {
+    container.innerHTML = '<div class="py-8 text-center text-stone-400">当前暂无「待排产 / 已纳入排产」的门店真实用度计划。</div>';
+    window.openModal('modal-plan-aggregate');
+    return;
+  }
+
+  container.innerHTML = aggregatedList
+    .map((row, idx) => {
+      const gap = row.currentStock !== null ? Math.max(0, row.totalQty - row.currentStock) : null;
+      return `
+        <div class="py-2.5 flex justify-between items-start gap-2">
+          <div>
+            <div class="font-bold text-stone-900 text-xs">${idx + 1}. ${row.name}</div>
+            <div class="text-[10px] text-stone-500 mt-0.5">门店需求拆解：${row.stores.join('、')}</div>
+            ${
+              row.currentStock !== null
+                ? `<div class="text-[10px] font-mono mt-0.5 ${gap > 0 ? 'text-rose-700 font-bold' : 'text-emerald-700'}">当前账面库存：${row.currentStock}${row.unit} ${
+                    gap > 0 ? `（净缺口需采收/排产 ${gap}${row.unit}）` : '（现货充足可直接配发）'
+                  }</div>`
+                : '<div class="text-[10px] text-amber-800 mt-0.5">非标准在库品 · 需按需定制/采收</div>'
+            }
+          </div>
+          <span class="bg-emerald-100 text-emerald-950 border border-emerald-300 px-2.5 py-0.5 rounded-lg font-mono font-bold text-sm shrink-0">${row.totalQty} ${row.unit}</span>
+        </div>
+      `;
+    })
+    .join('');
+
+  window.openModal('modal-plan-aggregate');
+};
+
+window.copyPlanAggregateText = function () {
+  const { activePlans, aggregatedList } = buildAggregatedPlanItems();
+  if (aggregatedList.length === 0) return alert('暂无可复制的排产计划！');
+  const lines = [
+    `【${currentTenantData?.company_name || currentAgent} 产销排产汇总单】`,
+    `汇总时间：${new Date().toLocaleString()} | 涵盖 ${activePlans.length} 份门店用度计划`,
+    `------------------------`,
+    ...aggregatedList.map((r, i) => {
+      const stockInfo = r.currentStock !== null ? `（在库${r.currentStock}${r.unit}，缺口${Math.max(0, r.totalQty - r.currentStock)}${r.unit}）` : '';
+      return `${i + 1}. ${r.name}：共需 ${r.totalQty} ${r.unit} ${stockInfo}`;
+    }),
+    `------------------------`,
+    `请村社合作社与源头工坊按此真实用度总量安排采收与生产！`
+  ];
+  navigator.clipboard.writeText(lines.join('\n')).then(() => alert('✅ 产销排产汇总单已复制，可直接发至产区合作社或工坊微信群！'));
+};
+
+window.exportPlanAggregateCSV = function () {
+  const { aggregatedList } = buildAggregatedPlanItems();
+  if (aggregatedList.length === 0) return alert('暂无可导出的排产汇总数据！');
+  const headers = ['品名', '单位', '门店计划总需量', '当前在库库存', '需新增采收/排产缺口', '各门店明细拆解'];
+  const rows = aggregatedList.map((r) => [
+    r.name,
+    r.unit,
+    r.totalQty,
+    r.currentStock !== null ? r.currentStock : '非在库品',
+    r.currentStock !== null ? Math.max(0, r.totalQty - r.currentStock) : r.totalQty,
+    r.stores.join('; ')
+  ]);
+  downloadCSV(`${currentAgent}_产销排产汇总单_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+};
+
 window.openBatchPickListModal = function () {
   const toShipOrders = allOrders.filter(
     (o) => (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') && o.delivery_status !== 'delivered' && !isDirectoryLead(o)
@@ -1418,7 +1513,7 @@ window.deleteProduct = function (id, name) {
 };
 
 // =========================================================================
-// 8. 订单履约、真实用度计划排产、同城余缺互调、天街求购 & 财务点款
+// 8. 订单履约、真实用度计划排产与一键转配货、同城余缺互调、天街求购 & 财务点款
 // =========================================================================
 window.updateDemandPlanStatus = async function (planId, nextStatus) {
   const label = nextStatus === 'scheduled' ? '已纳入产区排产' : '已履约配发';
@@ -1426,6 +1521,42 @@ window.updateDemandPlanStatus = async function (planId, nextStatus) {
   if (error) return alert('更新用度计划状态失败：' + error.message);
   alert(`✅ 该份用度计划单已标记为【${label}】，合作门店端将同步收到回执！`);
   window.loadHQData();
+};
+
+window.convertPlanToPushOrder = function (planId) {
+  const plan = allDemandPlans.find((p) => p.id === planId);
+  if (!plan) return;
+  if (allStores.length === 0) return alert('当前名册下暂无合作门店，请先在「合作门店」中立户！');
+
+  window.openPushOrderModal();
+
+  const storeSelect = document.getElementById('push-store-select');
+  const matchedStore = allStores.find((s) => Number(s.id) === Number(plan.store_id) || s.name === plan.store_name);
+  if (storeSelect && matchedStore) {
+    storeSelect.value = matchedStore.id;
+    window.onPushStoreChange(matchedStore.id);
+  }
+
+  const noteInput = document.getElementById('push-note-input');
+  if (noteInput) {
+    noteInput.value = `按【${plan.plan_cycle}】用度计划排产配发${plan.note ? '（' + plan.note + '）' : ''}`;
+  }
+
+  const planItems = Array.isArray(plan.items) ? plan.items : [];
+  const unmatched = [];
+  planItems.forEach((it) => {
+    const prod = allProducts.find((p) => p.name === it.name || p.name.includes(it.name));
+    if (prod) {
+      const qtyInput = document.getElementById(`push-qty-${prod.id}`);
+      if (qtyInput) qtyInput.value = parseInt(it.qty || 0);
+    } else {
+      unmatched.push(`${it.name}x${it.qty}${it.unit || '件'}`);
+    }
+  });
+
+  if (unmatched.length > 0) {
+    alert(`已为您自动匹配门店并回填在架货品数量！\n以下计划品项暂未上架标准货品，请核对或先发布良品：\n• ${unmatched.join('\n• ')}`);
+  }
 };
 
 window.completeLocalPoolItem = async function (poolId) {
@@ -1508,15 +1639,16 @@ function renderOrderFulfillmentList() {
 
             ${p.note ? `<div class="text-[11px] text-stone-600">💬 门店叮咛：${p.note}</div>` : ''}
 
-            <div class="flex justify-between items-center pt-1 border-t border-emerald-200/50 text-[11px]">
+            <div class="flex flex-wrap justify-between items-center gap-2 pt-1 border-t border-emerald-200/50 text-[11px]">
               <span class="text-stone-400 font-mono">提报时间：${new Date(p.created_at).toLocaleString()}</span>
-              <div class="flex gap-2">
+              <div class="flex flex-wrap gap-1.5">
+                <button onclick="window.convertPlanToPushOrder(${p.id})" class="bg-white hover:bg-stone-50 text-emerald-950 border border-emerald-300 px-3 py-1.5 rounded-xl font-bold shadow-xs active:scale-95 transition">📦 一键转为配货单</button>
                 ${
                   isSubmitted
                     ? `<button onclick="window.updateDemandPlanStatus(${p.id}, 'scheduled')" class="bg-[#1b4332] hover:bg-[#143628] text-white px-3.5 py-1.5 rounded-xl font-bold shadow active:scale-95 transition">✅ 纳入产区采收/排产</button>`
                     : isScheduled
-                    ? `<button onclick="window.updateDemandPlanStatus(${p.id}, 'fulfilled')" class="bg-amber-400 hover:bg-amber-300 text-stone-950 px-3.5 py-1.5 rounded-xl font-bold shadow active:scale-95 transition">📦 标记已按计划配发</button>`
-                    : '<span class="text-stone-400 font-bold">已完成履约闭环</span>'
+                    ? `<button onclick="window.updateDemandPlanStatus(${p.id}, 'fulfilled')" class="bg-amber-400 hover:bg-amber-300 text-stone-950 px-3.5 py-1.5 rounded-xl font-bold shadow active:scale-95 transition">✓ 标记已按计划配发</button>`
+                    : '<span class="text-stone-400 font-bold self-center">已完成履约闭环</span>'
                 }
               </div>
             </div>
