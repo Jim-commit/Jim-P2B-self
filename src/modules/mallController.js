@@ -9,6 +9,15 @@ const CART_STORAGE_KEY = 'baigong_mall_cart_v1';
 const LAST_CUST_KEY = 'baigong_mall_last_cust_v1';
 const JOINED_DEMANDS_KEY = 'baigong_c2b_joined_ids_v1';
 
+function computePickupPin(order) {
+  const seed = String(order?.order_no || order?.id || '1000');
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) % 9000;
+  }
+  return String(1000 + Math.abs(hash));
+}
+
 let allProducts = [];
 let allTenants = [];
 let allCategories = [];
@@ -1323,19 +1332,37 @@ window.searchConsumerOrders = async function () {
         const items = Array.isArray(o.items) ? o.items : [];
         const itemsText = items.map((it) => `${it.name} x${it.qty}${it.measure_unit || '件'}`).join('、');
         const isDelivered = o.delivery_status === 'delivered';
+        const isPickedUp = String(o.note || '').includes('[街坊已凭码自提核销]');
+        const isStorePickup = !!o.store_id || String(o.note || '').includes('【门店自提】');
+        const pinCode = computePickupPin(o);
         const encodedItems = encodeURIComponent(JSON.stringify(items));
         const safeItemsSummary = itemsText.replace(/'/g, '');
+
+        const pickupPinBanner = isStorePickup
+          ? isPickedUp
+            ? `<div class="text-[10px] bg-stone-200 text-stone-700 px-2.5 py-1 rounded-xl font-bold text-center">✅ 已凭核销码到店自提取货</div>`
+            : `<div class="bg-amber-50 border border-amber-300 px-2.5 py-1.5 rounded-xl flex justify-between items-center">
+                 <span class="text-[10px] text-amber-950 font-bold">🔑 到店自提核销码（报给门店掌柜）：</span>
+                 <b class="font-mono text-base font-bold text-[#1b4332] tracking-widest">${pinCode}</b>
+               </div>`
+          : '';
+
         return `
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
             <div class="flex justify-between items-center">
               <b class="font-mono text-stone-900">#${o.order_no || o.id}</b>
               <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                isDelivered ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
+                isPickedUp
+                  ? 'bg-stone-200 text-stone-700'
+                  : isDelivered
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-amber-100 text-amber-900'
               }">
-                ${isDelivered ? '✅ 已送达/自提完成' : '📦 产区备货出库中'}
+                ${isPickedUp ? '✅ 已自提核销' : isDelivered ? '✅ 已送达门店待自提' : '📦 产区备货出库中'}
               </span>
             </div>
             <div class="text-stone-700">${itemsText || '标准良品组合'}</div>
+            ${pickupPinBanner}
             <div class="text-[10px] text-stone-500">${o.note || ''}</div>
             <div class="flex justify-between items-center text-[10px] text-stone-400 font-mono pt-1.5 border-t border-stone-200/60">
               <span>实付 <b class="text-emerald-900">¥${parseFloat(o.total_amount || 0).toFixed(2)}</b></span>
