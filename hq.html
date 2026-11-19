@@ -119,6 +119,33 @@
 
     </header>
 
+    <!-- 新手掌柜 3 步快速上手指引卡片（可随时关闭不再提示） -->
+    <div id="hq-onboarding-guide" class="hidden bg-white border border-emerald-200 p-4 rounded-3xl shadow-xs space-y-2.5 text-xs">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <span class="bg-[#1b4332] text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-lg">📖 新手 3 步上手</span>
+          <b class="text-stone-900">欢迎开席！只需三步即可跑通源头直供与门店协同</b>
+        </div>
+        <button type="button" onclick="window.dismissOnboardingGuide()" class="text-[11px] text-stone-400 hover:text-stone-700 font-bold">
+          不再提示 ✕
+        </button>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div onclick="window.switchTab('products'); window.openAddProductModal();" class="cursor-pointer bg-stone-50 hover:bg-emerald-50/70 border border-stone-200 p-3 rounded-2xl transition">
+          <b class="text-emerald-950 block">第一步：上架现货良品</b>
+          <span class="text-[11px] text-stone-500 mt-0.5 block">点此发布首款商品或批量导入 CSV，设定平准底价与集采惠价 ➔</span>
+        </div>
+        <div onclick="window.openPromoQrModal()" class="cursor-pointer bg-stone-50 hover:bg-emerald-50/70 border border-stone-200 p-3 rounded-2xl transition">
+          <b class="text-emerald-950 block">第二步：分享合作名片码</b>
+          <span class="text-[11px] text-stone-500 mt-0.5 block">生成专属二维码发给周边门店与餐饮老板，一键绑定直供关系 ➔</span>
+        </div>
+        <div onclick="window.switchTab('settle')" class="cursor-pointer bg-stone-50 hover:bg-emerald-50/70 border border-stone-200 p-3 rounded-2xl transition">
+          <b class="text-emerald-950 block">第三步：接单装车与对账</b>
+          <span class="text-[11px] text-stone-500 mt-0.5 block">审核门店补货单与用度计划，生成装车总单与周期电子对账单 ➔</span>
+        </div>
+      </div>
+    </div>
+
     <!-- 预设密钥安全提醒条 -->
     <div id="hq-default-pwd-banner" class="hidden bg-emerald-50 border border-emerald-300 text-emerald-950 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs">
       <div class="flex items-center gap-2">
