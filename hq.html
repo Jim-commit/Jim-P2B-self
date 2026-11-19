@@ -71,10 +71,10 @@
           <button onclick="window.openPushOrderModal()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-xs active:scale-95 transition flex items-center gap-1.5">
             <span>📦</span> 主动配货
           </button>
-          <button onclick="window.openPlanAggregateModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/40 active:scale-95 transition flex items-center gap-1">
+          <button onclick="window.openPlanAggregateModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-amber-200 text-xs px-3.5 py-1.5 rounded-xl font-bold border border-amber-400/40 active:scale-95 transition flex items-center gap-1">
             <span>🌾</span> 产销排产总单
           </button>
-          <button onclick="window.openStoreStatementModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/40 active:scale-95 transition flex items-center gap-1">
+          <button onclick="window.openStoreStatementModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-100 text-xs px-3.5 py-1.5 rounded-xl font-bold border border-emerald-400/40 active:scale-95 transition flex items-center gap-1">
             <span>🧾</span> 门店账期对账
           </button>
           <button onclick="window.openPromoQrModal()" class="bg-emerald-700/60 hover:bg-emerald-600/70 text-white text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/30 active:scale-95 transition flex items-center gap-1">
@@ -242,7 +242,7 @@
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
             <h2 class="text-sm font-bold text-stone-800">📦 物勒工名 · 良品发布与仓储盘点</h2>
-            <p class="text-[11px] text-stone-400">支持多渠道独立投放、百业自定义展示属性、平准与调剂标签；<b>直接点击「当前库存」数字即可出入库或实地盘点</b></p>
+            <p class="text-[11px] text-stone-400">支持扫码快查直接入库/盘点、多渠道独立投放、百业自定义属性；<b>点击「当前库存」即可出入库</b></p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <button onclick="window.exportInventorySheetCSV()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-3 py-1.5 rounded-xl transition active:scale-95">
@@ -254,7 +254,17 @@
           </div>
         </div>
 
-        <div id="product-tags-filter" class="flex flex-wrap gap-1.5 pt-1 text-xs"></div>
+        <!-- 仓库实时搜索与扫码直达入库快筛条 -->
+        <div class="flex flex-wrap items-center gap-2 bg-stone-50 p-2.5 rounded-2xl border border-stone-200/80">
+          <div class="relative flex-1 min-w-[200px]">
+            <input type="text" id="prod-search-input" oninput="window.onProductSearchInput(this.value)" onkeydown="window.onProductSearchKeydown(event)" placeholder="🔍 输入品名、69条码或规格快筛（扫码枪扫入回车直达入库/盘点）..." class="w-full bg-white border border-stone-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-emerald-700 font-medium">
+          </div>
+          <button type="button" onclick="window.clearProductSearch()" class="text-[11px] bg-white hover:bg-stone-100 text-stone-600 border border-stone-200 px-2.5 py-1.5 rounded-xl font-bold">
+            清空搜索
+          </button>
+        </div>
+
+        <div id="product-tags-filter" class="flex flex-wrap gap-1.5 pt-0.5 text-xs"></div>
 
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs whitespace-nowrap">
@@ -419,9 +429,7 @@
 
   </div>
 
-  <!-- =========================================================================
-       新增：合作门店周期电子对账单与回款销账清算弹窗
-       ========================================================================= -->
+  <!-- 合作门店周期电子对账单与回款销账清算弹窗 -->
   <div id="modal-store-statement" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -432,7 +440,6 @@
         <button onclick="window.closeModal('modal-store-statement')" class="text-stone-400 text-lg">✕</button>
       </div>
 
-      <!-- 门店与日期筛选栏 -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-stone-50 p-3 rounded-2xl border border-stone-200">
         <div>
           <label class="block text-[10px] font-bold text-stone-600 mb-1">选择合作门店：</label>
@@ -448,7 +455,6 @@
         </div>
       </div>
 
-      <!-- 核心账目晴雨卡片 -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
         <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200">
           <span class="text-[10px] text-stone-400 block">区间新配总额</span>
@@ -468,7 +474,6 @@
         </div>
       </div>
 
-      <!-- 区间往来单据明细 -->
       <div class="space-y-1">
         <div class="flex justify-between items-center text-[11px] font-bold text-stone-700">
           <span>📋 区间交割往来流水明细：</span>
@@ -477,7 +482,6 @@
         <div id="stmt-orders-list" class="divide-y divide-stone-100 border border-stone-200 rounded-2xl px-3 py-1 bg-white max-h-44 overflow-y-auto no-scrollbar text-[11px]"></div>
       </div>
 
-      <!-- 回款销账操作区 -->
       <div class="bg-emerald-50/70 border border-emerald-200 p-3 rounded-2xl space-y-2">
         <b class="text-emerald-950 block">💰 周期回款销账平账（扣减门店在账欠款）：</b>
         <div class="grid grid-cols-2 gap-2">
@@ -744,7 +748,7 @@
     </div>
   </div>
 
-  <!-- 弹窗 C：良品发布与全自定义属性弹窗（含多行业属性快捷模板） -->
+  <!-- 弹窗 C：良品发布与全自定义属性弹窗 -->
   <div id="product-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
