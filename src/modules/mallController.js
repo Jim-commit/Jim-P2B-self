@@ -98,38 +98,60 @@ window.switchMarketMode = async function (mode) {
   }
 };
 
-function getEffectiveUnitPrice(prod, qty) {
-  const p1 = parseFloat(prod.tier_1_price || 0);
-  const p2 = parseFloat(prod.tier_2_price || 0);
-  const p3 = parseFloat(prod.tier_3_price || 0);
+// =========================================================================
+// 网上/天街价格策略实时计算引擎（与调度台全局策略中心严格同步）
+// =========================================================================
+function calcMallOnlinePrice(prod, qty = 1) {
+  const tenant = allTenants.find((t) => t.tenant_id === prod.tenant_id) || {};
+  const settings = tenant.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
+  const onlineBase = parseFloat(prod.tier_2_price || prod.tier_1_price || 0);
 
-  if (qty >= 20 && p3 > 0 && p3 < p1) return p3;
-  if (qty >= 5 && p2 > 0 && p2 < p1) return p2;
-  return p1;
+  if (settings.onlinePriceEnabled) {
+    const baseRate = parseFloat(settings.onlineDiscountRate || 1.0);
+    const bulkQty = parseInt(settings.onlineBulkQty || 5);
+    const bulkRate = parseFloat(settings.onlineBulkRate || 0.9);
+
+    let appliedRate = baseRate;
+    let label = baseRate < 1 ? `专柜${(baseRate * 10).toFixed(1)}折` : '网上平准直供价';
+    if (qty >= bulkQty && bulkRate < baseRate) {
+      appliedRate = bulkRate;
+      label = `🔥 满${bulkQty}件享${(bulkRate * 10).toFixed(1)}折`;
+    }
+    const unitPrice = Number((onlineBase * appliedRate).toFixed(2));
+    const bulkUnitPrice = bulkRate < baseRate ? Number((onlineBase * bulkRate).toFixed(2)) : 0;
+
+    return {
+      unitPrice,
+      basePrice: onlineBase,
+      bulkQty,
+      bulkUnitPrice,
+      hasDiscount: unitPrice < onlineBase,
+      tierLabel: label,
+      nextTierHint: qty < bulkQty && bulkRate < baseRate ? `再加 ${bulkQty - qty} 件享 ¥${bulkUnitPrice}/件` : ''
+    };
+  }
+
+  return {
+    unitPrice: onlineBase,
+    basePrice: onlineBase,
+    bulkQty: 5,
+    bulkUnitPrice: 0,
+    hasDiscount: false,
+    tierLabel: '阳光直供正价',
+    nextTierHint: ''
+  };
+}
+
+function getEffectiveUnitPrice(prod, qty) {
+  return calcMallOnlinePrice(prod, qty).unitPrice;
 }
 
 function getTierLabel(prod, qty) {
-  const p1 = parseFloat(prod.tier_1_price || 0);
-  const p2 = parseFloat(prod.tier_2_price || 0);
-  const p3 = parseFloat(prod.tier_3_price || 0);
-
-  if (qty >= 20 && p3 > 0 && p3 < p1) return '🔥 满20件抱团集采价';
-  if (qty >= 5 && p2 > 0 && p2 < p1) return '✨ 满5件阶梯惠价';
-  return '阳光直供正价';
+  return calcMallOnlinePrice(prod, qty).tierLabel;
 }
 
 function getNextTierHint(prod, qty) {
-  const p1 = parseFloat(prod.tier_1_price || 0);
-  const p2 = parseFloat(prod.tier_2_price || 0);
-  const p3 = parseFloat(prod.tier_3_price || 0);
-
-  if (qty < 5 && p2 > 0 && p2 < p1) {
-    return `再加 ${5 - qty} 件享 ¥${p2}/件`;
-  }
-  if (qty >= 5 && qty < 20 && p3 > 0 && p3 < (p2 || p1)) {
-    return `再加 ${20 - qty} 件享 ¥${p3}/件`;
-  }
-  return '';
+  return calcMallOnlinePrice(prod, qty).nextTierHint;
 }
 
 function setupTianJieMode() {
@@ -146,6 +168,8 @@ function setupTianJieMode() {
 function setupBrandStoreMode(tenantId) {
   const tenant = allTenants.find((t) => (t.tenant_id || '').toUpperCase() === (tenantId || '').toUpperCase());
   const name = tenant ? tenant.company_name : tenantId;
+  const settings = tenant?.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
+
   document.getElementById('mall-header-title').innerText = `${name} · 数字专柜`;
   document.getElementById('mall-mode-badge').innerText = '源头专柜';
   document.getElementById('mall-header-sub').innerText = '产区直营 · 阳光工价 · 按需直配';
@@ -155,7 +179,11 @@ function setupBrandStoreMode(tenantId) {
   document.getElementById('tianjie-quick-counter-pill')?.classList.add('hidden');
 
   document.getElementById('hero-brand-name').innerText = name;
-  document.getElementById('hero-brand-desc').innerText = tenant?.brand_origin_desc || '村社合作社与匠心工坊 · 按需直配 · 阳光工价';
+  let heroDesc = tenant?.brand_origin_desc || '村社合作社与匠心工坊 · 按需直配 · 阳光工价';
+  if (settings.campaignActive && Array.isArray(settings.promos) && settings.promos.length > 0) {
+    heroDesc = `🔥 ${settings.promos[0].title}：${settings.promos[0].rule}`;
+  }
+  document.getElementById('hero-brand-desc').innerText = heroDesc;
   document.getElementById('hero-tenant-id').innerText = tenant ? tenant.tenant_id : tenantId;
 
   document.getElementById('craft-type-text').innerText =
@@ -256,17 +284,18 @@ function renderDigitalCountersGrid() {
               sampleProds.length > 0
                 ? `<div class="grid grid-cols-3 gap-1.5 pt-1">
                     ${sampleProds
-                      .map(
-                        (sp) => `
-                        <div class="bg-stone-50 border border-stone-100 rounded-xl p-1.5 text-center">
-                          <div class="w-full h-12 rounded-lg bg-stone-200/60 overflow-hidden flex items-center justify-center mb-1">
-                            ${sp.image_url ? `<img src="${sp.image_url}" class="w-full h-full object-cover">` : '<span class="text-[9px] text-stone-400">良品</span>'}
+                      .map((sp) => {
+                        const { unitPrice } = calcMallOnlinePrice(sp, 1);
+                        return `
+                          <div class="bg-stone-50 border border-stone-100 rounded-xl p-1.5 text-center">
+                            <div class="w-full h-12 rounded-lg bg-stone-200/60 overflow-hidden flex items-center justify-center mb-1">
+                              ${sp.image_url ? `<img src="${sp.image_url}" class="w-full h-full object-cover">` : '<span class="text-[9px] text-stone-400">良品</span>'}
+                            </div>
+                            <span class="text-[9px] text-stone-700 block truncate">${sp.name}</span>
+                            <b class="text-[10px] font-mono text-emerald-900">¥${unitPrice}</b>
                           </div>
-                          <span class="text-[9px] text-stone-700 block truncate">${sp.name}</span>
-                          <b class="text-[10px] font-mono text-emerald-900">¥${sp.tier_1_price}</b>
-                        </div>
-                      `
-                      )
+                        `;
+                      })
                       .join('')}
                   </div>`
                 : `<div class="bg-stone-50 rounded-xl p-2 text-[10px] text-stone-400 text-center">该专柜支持按需预订与集采排产</div>`
@@ -420,7 +449,7 @@ function renderGoodsGrid() {
       const tenantName = tenant ? tenant.company_name : p.tenant_id;
       const tags = Array.isArray(p.tags) ? p.tags : [];
       const isSingleShop = !!currentTenantParam;
-      const hasTierPrice = parseFloat(p.tier_2_price || 0) > 0 && parseFloat(p.tier_2_price) < parseFloat(p.tier_1_price || 0);
+      const priceInfo = calcMallOnlinePrice(p, 1);
       const isStoreRecommended =
         !!referrerStoreObj ||
         tags.some((t) => String(t).includes('直供') || String(t).includes('严选') || String(t).includes('常备'));
@@ -434,9 +463,9 @@ function renderGoodsGrid() {
                 ${p.measure_unit || '件'}装
               </span>
               ${
-                hasTierPrice
+                priceInfo.bulkUnitPrice > 0
                   ? `<span class="absolute top-1.5 right-1.5 bg-amber-500 text-stone-950 text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-xs">
-                      满5件集采¥${p.tier_2_price}
+                      满${priceInfo.bulkQty}件¥${priceInfo.bulkUnitPrice}
                     </span>`
                   : ''
               }
@@ -468,8 +497,11 @@ function renderGoodsGrid() {
 
           <div class="pt-2 border-t border-stone-100 flex justify-between items-center">
             <div>
-              <span class="text-[9px] text-stone-400 block font-mono">阳光正价</span>
-              <b class="font-mono text-sm text-emerald-900 font-bold">¥${p.tier_1_price}</b>
+              <span class="text-[9px] text-stone-400 block font-mono">${priceInfo.tierLabel}</span>
+              <div class="flex items-baseline gap-1 font-mono">
+                <b class="text-sm text-emerald-900 font-bold">¥${priceInfo.unitPrice}</b>
+                ${priceInfo.hasDiscount ? `<span class="text-[10px] text-stone-400 line-through">¥${priceInfo.basePrice}</span>` : ''}
+              </div>
             </div>
 
             <div class="flex items-center gap-1">
@@ -497,27 +529,28 @@ window.openProductDetail = function (prodId) {
 
   const tenant = allTenants.find((t) => t.tenant_id === p.tenant_id);
   const tenantName = tenant ? tenant.company_name : p.tenant_id;
+  const priceInfo = calcMallOnlinePrice(p, 1);
 
   document.getElementById('detail-prod-img').innerHTML = p.image_url
     ? `<img src="${p.image_url}" class="w-full h-full object-cover">`
     : '<span class="text-stone-400 text-xs">源头良品封装</span>';
   document.getElementById('detail-prod-name').innerText = p.name;
-  document.getElementById('detail-prod-price').innerText = `¥${p.tier_1_price}`;
+  document.getElementById('detail-prod-price').innerText = priceInfo.hasDiscount
+    ? `¥${priceInfo.unitPrice} (原价 ¥${priceInfo.basePrice})`
+    : `¥${priceInfo.unitPrice}`;
   document.getElementById('detail-prod-spec').innerText = `${p.spec || '整装'} · ${p.measure_unit || '件'}装`;
   document.getElementById('detail-prod-tenant').innerText = tenantName;
   document.getElementById('detail-prod-origin').innerText = p.origin_place || '源头合作社/工坊原产';
-  document.getElementById('detail-prod-desc').innerText = p.description || p.handover_note || '产区直发，阳光工价，支持物勒工名溯源验真。';
+  document.getElementById('detail-prod-desc').innerText =
+    p.custom_specs?.summary || p.description || p.handover_note || '产区直发，阳光工价，支持物勒工名溯源验真。';
 
   const tierBox = document.getElementById('detail-tier-prices');
-  const p2 = parseFloat(p.tier_2_price || 0);
-  const p3 = parseFloat(p.tier_3_price || 0);
-  if (p2 > 0 || p3 > 0) {
+  if (priceInfo.bulkUnitPrice > 0) {
     tierBox.innerHTML = `
-      <b class="text-amber-900 block mb-1">📊 抱团集采阶梯惠价标准：</b>
-      <div class="grid grid-cols-3 gap-1.5 text-center font-mono">
-        <div class="bg-white p-1.5 rounded-lg border border-amber-200"><span class="text-[9px] text-stone-400 block">1~4件</span><b>¥${p.tier_1_price}</b></div>
-        <div class="bg-white p-1.5 rounded-lg border border-amber-200"><span class="text-[9px] text-stone-400 block">满5件</span><b class="text-amber-800">¥${p2 || p.tier_1_price}</b></div>
-        <div class="bg-white p-1.5 rounded-lg border border-amber-200"><span class="text-[9px] text-stone-400 block">满20件</span><b class="text-emerald-800">¥${p3 || p2 || p.tier_1_price}</b></div>
+      <b class="text-amber-900 block mb-1">📊 网上专柜集采阶梯惠价：</b>
+      <div class="grid grid-cols-2 gap-1.5 text-center font-mono">
+        <div class="bg-white p-1.5 rounded-lg border border-amber-200"><span class="text-[9px] text-stone-400 block">1~${priceInfo.bulkQty - 1}件零售价</span><b>¥${priceInfo.unitPrice}</b></div>
+        <div class="bg-white p-1.5 rounded-lg border border-amber-200"><span class="text-[9px] text-stone-400 block">满${priceInfo.bulkQty}件集采惠价</span><b class="text-emerald-800">¥${priceInfo.bulkUnitPrice}</b></div>
       </div>
     `;
     tierBox.classList.remove('hidden');
@@ -526,7 +559,10 @@ window.openProductDetail = function (prodId) {
   }
 
   const attrsBox = document.getElementById('detail-custom-attrs');
-  const customAttrs = p.custom_attributes && typeof p.custom_attributes === 'object' ? p.custom_attributes : {};
+  const customAttrs =
+    (p.custom_specs && typeof p.custom_specs === 'object' && p.custom_specs.attrs)
+      ? p.custom_specs.attrs
+      : (p.custom_attributes && typeof p.custom_attributes === 'object' ? p.custom_attributes : {});
   const entries = Object.entries(customAttrs);
   if (entries.length > 0) {
     attrsBox.innerHTML = entries
@@ -933,8 +969,7 @@ function calcCartSummary() {
   let savedAmt = 0;
 
   cart.forEach((item) => {
-    const unitPrice = getEffectiveUnitPrice(item.prod, item.qty);
-    const basePrice = parseFloat(item.prod.tier_1_price || 0);
+    const { unitPrice, basePrice } = calcMallOnlinePrice(item.prod, item.qty);
     totalQty += item.qty;
     totalAmt += unitPrice * item.qty;
     if (basePrice > unitPrice) {
@@ -1135,7 +1170,7 @@ window.openCheckoutModal = async function () {
   const savedTip = document.getElementById('checkout-saved-tip');
   if (savedTip) {
     if (savedAmt > 0) {
-      savedTip.innerText = `已享抱团集采立省 ¥${savedAmt.toFixed(2)}`;
+      savedTip.innerText = `已享网上策略/抱团集采立省 ¥${savedAmt.toFixed(2)}`;
       savedTip.classList.remove('hidden');
     } else {
       savedTip.classList.add('hidden');
