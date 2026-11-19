@@ -12,8 +12,27 @@
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     @media print {
       body * { visibility: hidden; }
-      #picklist-print-area, #picklist-print-area * { visibility: visible; }
-      #picklist-print-area { position: fixed; left: 0; top: 0; width: 100%; background: white; padding: 20px; }
+      body.print-single-slip #delivery-slip-print-area,
+      body.print-single-slip #delivery-slip-print-area * { visibility: visible; }
+      body.print-single-slip #delivery-slip-print-area {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white;
+        padding: 24px;
+        color: #000;
+      }
+      body:not(.print-single-slip) #picklist-print-area,
+      body:not(.print-single-slip) #picklist-print-area * { visibility: visible; }
+      body:not(.print-single-slip) #picklist-print-area {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white;
+        padding: 20px;
+      }
     }
   </style>
 </head>
@@ -254,7 +273,6 @@
           </div>
         </div>
 
-        <!-- 仓库实时搜索与扫码直达入库快筛条 -->
         <div class="flex flex-wrap items-center gap-2 bg-stone-50 p-2.5 rounded-2xl border border-stone-200/80">
           <div class="relative flex-1 min-w-[200px]">
             <input type="text" id="prod-search-input" oninput="window.onProductSearchInput(this.value)" onkeydown="window.onProductSearchKeydown(event)" placeholder="🔍 输入品名、69条码或规格快筛（扫码枪扫入回车直达入库/盘点）..." class="w-full bg-white border border-stone-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-emerald-700 font-medium">
@@ -321,7 +339,7 @@
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
             <h2 class="text-sm font-bold text-stone-800">🚚 货畅其流 · 配货制单与统一装车发运（受单 + 主动配货合流）</h2>
-            <p class="text-[11px] text-stone-400">第一步：审核「受单配货」或按「真实用度计划」排产配发 ➔ 第二步：一键生成「本车装车总拣货单」统一发运</p>
+            <p class="text-[11px] text-stone-400">第一步：审核「受单配货」或按「真实用度计划」排产配发 ➔ 第二步：一键生成「本车装车总拣货单」或打印「随车送货交割单」</p>
           </div>
           <div class="flex flex-wrap gap-1.5">
             <button onclick="window.openPlanAggregateModal()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 flex items-center gap-1">
@@ -427,6 +445,73 @@
       </div>
     </section>
 
+  </div>
+
+  <!-- =========================================================================
+       新增：正式《随车送货交割单》打印预览弹窗
+       ========================================================================= -->
+  <div id="modal-delivery-note-print" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-2xl rounded-3xl p-5 space-y-3.5 text-stone-900 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🖨️ 正式《随车送货交割单》打印预览</h3>
+          <p class="text-[10px] text-stone-400">支持 A4 或二等分针式/激光打印，随车交接双签留底</p>
+        </div>
+        <button onclick="window.closeModal('modal-delivery-note-print')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <!-- 打印内容主体 -->
+      <div id="delivery-slip-print-area" class="border border-stone-800 p-4 rounded-xl space-y-3 bg-white text-stone-900">
+        <div class="text-center border-b border-stone-400 pb-2">
+          <h2 class="text-base font-bold tracking-widest" id="print-slip-company-title">源头直供 · 随车送货交割凭单</h2>
+          <p class="text-[10px] text-stone-500 font-mono mt-0.5" id="print-slip-meta-line">单号：-- | 日期：--</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-[11px] bg-stone-50 p-2.5 rounded-lg border border-stone-200">
+          <div>收货门店：<b id="print-slip-store-name">--</b></div>
+          <div>联系方式：<b id="print-slip-store-phone" class="font-mono">--</b></div>
+          <div>送货地址：<span id="print-slip-store-addr">--</span></div>
+          <div>交割方式：<b id="print-slip-settle-type">--</b> · 师傅：<b id="print-slip-driver">--</b></div>
+        </div>
+
+        <table class="w-full text-left border-collapse border border-stone-400 text-[11px]">
+          <thead>
+            <tr class="bg-stone-100 border-b border-stone-400">
+              <th class="border border-stone-400 p-1.5 text-center w-10">序号</th>
+              <th class="border border-stone-400 p-1.5">货品全称</th>
+              <th class="border border-stone-400 p-1.5">规格</th>
+              <th class="border border-stone-400 p-1.5 text-center">数量</th>
+              <th class="border border-stone-400 p-1.5 text-right">协议单价</th>
+              <th class="border border-stone-400 p-1.5 text-right">小计金额</th>
+            </tr>
+          </thead>
+          <tbody id="print-slip-items-tbody"></tbody>
+        </table>
+
+        <div id="print-slip-special-notes" class="text-[11px] space-y-1 text-stone-700"></div>
+
+        <div class="flex justify-between items-center border-t border-b border-stone-400 py-2 px-1 font-mono text-xs">
+          <span>新配总值：<b id="print-slip-total-amt">¥0.00</b></span>
+          <span>调退冲抵：<b id="print-slip-return-amt">-¥0.00</b></span>
+          <span class="text-sm font-bold">本单应结净额：<b id="print-slip-net-amt" class="underline">¥0.00</b></span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 pt-4 text-[11px]">
+          <div>仓库拣货核验：_______________</div>
+          <div>送货师傅经手：_______________</div>
+          <div>收货掌柜签章：_______________</div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button type="button" onclick="window.executeSingleDeliverySlipPrint()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">
+          🖨️ 立即打印本张交割单
+        </button>
+        <button type="button" onclick="window.closeModal('modal-delivery-note-print')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold px-5 py-2.5 rounded-xl">
+          关闭
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- 合作门店周期电子对账单与回款销账清算弹窗 -->
@@ -933,7 +1018,7 @@
       </div>
       <div class="flex gap-2 pt-2 border-t border-stone-100">
         <button onclick="window.copyPickListText()" class="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold py-2.5 rounded-xl transition">📋 复制文字发仓管群</button>
-        <button onclick="window.print()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">🖨️ 打印装车总单</button>
+        <button onclick="document.body.classList.remove('print-single-slip'); window.print();" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">🖨️ 打印装车总单</button>
       </div>
     </div>
   </div>
@@ -1135,6 +1220,14 @@
     <video id="scanner-video" class="w-full max-w-sm h-72 object-cover rounded-2xl"></video>
     <button onclick="window.stopBarcodeScan()" class="mt-4 bg-white/20 text-white font-bold text-xs px-5 py-2 rounded-xl">关闭识码</button>
   </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
 
   <script type="module">
     import { initHQController } from './src/modules/hqController.js';
