@@ -7,6 +7,10 @@ let allTenants = [];
 let allCategories = [];
 let allSuggestions = [];
 let allAuditLogs = [];
+let allEcoPlans = [];
+let allEcoPool = [];
+let allEcoC2B = [];
+let allEcoOrders = [];
 let pendingPlatform2FACallback = null;
 
 function formatBusinessTypeLabel(type) {
@@ -23,14 +27,14 @@ window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
 
 window.switchTab = function (tabName) {
-  ['apps', 'tenants', 'suggestions', 'categories', 'audit'].forEach((t) => {
+  ['apps', 'tenants', 'ecosystem', 'suggestions', 'categories', 'audit'].forEach((t) => {
     document.getElementById(`p-tab-${t}`)?.classList.add('hidden');
     const btn = document.getElementById(`p-tab-btn-${t}`);
-    if (btn) btn.className = 'flex-1 py-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition';
+    if (btn) btn.className = 'flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap';
   });
   document.getElementById(`p-tab-${tabName}`)?.classList.remove('hidden');
   const activeBtn = document.getElementById(`p-tab-btn-${tabName}`);
-  if (activeBtn) activeBtn.className = 'flex-1 py-2 text-center rounded-xl bg-stone-900 text-white transition';
+  if (activeBtn) activeBtn.className = 'flex-1 py-2 px-2 text-center rounded-xl bg-stone-900 text-white transition whitespace-nowrap';
 };
 
 window.syncManualModalDefaults = function () {
@@ -260,7 +264,7 @@ async function recordAuditLog(actionTitle, level, details) {
 // 大盘数据加载与各板块渲染
 // =========================================================================
 window.loadPlatformData = async function () {
-  const [appsRes, tenantsRes, suggsRes, catsRes, auditsRes] = await Promise.all([
+  const [appsRes, tenantsRes, suggsRes, catsRes, auditsRes, plansRes, poolRes, c2bRes, ordersRes] = await Promise.all([
     supabase.from('tenant_application').select('*').order('id', { ascending: false }),
     supabase.from('platform_tenant').select('*').order('id', { ascending: false }),
     supabase
@@ -269,7 +273,11 @@ window.loadPlatformData = async function () {
       .not('proposer_type', 'in', '("c2b_demand","mall_review")')
       .order('id', { ascending: false }),
     supabase.from('platform_category').select('*').order('sort_order', { ascending: true }),
-    supabase.from('audit_immutable_log').select('*').order('id', { ascending: false }).limit(25)
+    supabase.from('audit_immutable_log').select('*').order('id', { ascending: false }).limit(25),
+    supabase.from('demand_forecast_plan').select('*').order('id', { ascending: false }).limit(100),
+    supabase.from('local_inventory_pool').select('*').order('id', { ascending: false }).limit(100),
+    supabase.from('platform_suggestion_board').select('*').eq('proposer_type', 'c2b_demand').order('id', { ascending: false }).limit(50),
+    supabase.from('store_order').select('id, tenant_id, delivery_status, order_status').order('id', { ascending: false }).limit(200)
   ]);
 
   allApplications = appsRes.data || [];
@@ -310,8 +318,142 @@ window.loadPlatformData = async function () {
 
   allAuditLogs = auditsRes.data || [];
   renderAuditLogs();
+
+  allEcoPlans = plansRes.data || [];
+  allEcoPool = poolRes.data || [];
+  allEcoC2B = c2bRes.data || [];
+  allEcoOrders = ordersRes.data || [];
+  renderEcosystemDashboard();
+
   updateAISummaryInsight();
 };
+
+function renderEcosystemDashboard() {
+  const scheduledPlans = allEcoPlans.filter((p) => p.status === 'scheduled' || p.status === 'fulfilled');
+  const matchedPool = allEcoPool.filter((p) => p.status === 'claimed' || p.status === 'completed');
+  const repliedC2B = allEcoC2B.filter((d) => !!d.official_reply);
+  const deliveredOrders = allEcoOrders.filter((o) => o.delivery_status === 'delivered');
+
+  const elPlans = document.getElementById('eco-stat-plans');
+  if (elPlans) elPlans.innerText = `${allEcoPlans.length} 份`;
+  const elPlansSub = document.getElementById('eco-stat-plans-sub');
+  if (elPlansSub) elPlansSub.innerText = `已纳入排产：${scheduledPlans.length} 份`;
+
+  const elPool = document.getElementById('eco-stat-pool');
+  if (elPool) elPool.innerText = `${allEcoPool.length} 笔`;
+  const elPoolSub = document.getElementById('eco-stat-pool-sub');
+  if (elPoolSub) elPoolSub.innerText = `已成单/交割：${matchedPool.length} 笔`;
+
+  const elC2B = document.getElementById('eco-stat-c2b');
+  if (elC2B) elC2B.innerText = `${allEcoC2B.length} 条`;
+  const elC2BSub = document.getElementById('eco-stat-c2b-sub');
+  if (elC2BSub) elC2BSub.innerText = `源头已回应：${repliedC2B.length} 条`;
+
+  const elOrders = document.getElementById('eco-stat-orders');
+  if (elOrders) elOrders.innerText = `${deliveredOrders.length} 单`;
+
+  // 供货商协同活跃度排行
+  const rankBody = document.getElementById('ecosystem-rank-body');
+  if (rankBody) {
+    const statsList = allTenants.map((t) => {
+      const tid = t.tenant_id;
+      const tPlans = allEcoPlans.filter((p) => p.tenant_id === tid);
+      const tPlansDone = tPlans.filter((p) => p.status === 'scheduled' || p.status === 'fulfilled');
+      const tPool = allEcoPool.filter((p) => p.tenant_id === tid);
+      const tPoolDone = tPool.filter((p) => p.status === 'claimed' || p.status === 'completed');
+      const tC2B = repliedC2B.filter((d) => (d.official_reply || '').includes(tid) || (d.official_reply || '').includes(t.company_name));
+      const tOrders = deliveredOrders.filter((o) => o.tenant_id === tid);
+      const score = tPlansDone.length * 3 + tPoolDone.length * 3 + tC2B.length * 2 + tOrders.length;
+      return { t, tPlans, tPlansDone, tPool, tPoolDone, tC2B, tOrders, score };
+    });
+
+    statsList.sort((a, b) => b.score - a.score);
+
+    rankBody.innerHTML =
+      statsList.length === 0
+        ? '<tr><td colspan="7" class="p-6 text-center text-stone-400 font-sans">暂无在册供货商统计数据</td></tr>'
+        : statsList
+            .map(
+              (row) => `
+              <tr class="hover:bg-stone-50 transition">
+                <td class="p-2.5 font-bold text-amber-800">${row.t.tenant_id}</td>
+                <td class="p-2.5 font-sans font-bold text-stone-900">${row.t.company_name}</td>
+                <td class="p-2.5 text-emerald-800 font-bold">${row.tPlansDone.length} / ${row.tPlans.length} 份</td>
+                <td class="p-2.5 text-cyan-800 font-bold">${row.tPoolDone.length} / ${row.tPool.length} 笔</td>
+                <td class="p-2.5 text-amber-800 font-bold">${row.tC2B.length} 次</td>
+                <td class="p-2.5 text-stone-800 font-bold">${row.tOrders.length} 单</td>
+                <td class="p-2.5 text-right font-sans">
+                  <a href="mall.html?t=${encodeURIComponent(row.t.tenant_id)}" target="_blank" class="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-xl font-bold">
+                    查看专柜 ➔
+                  </a>
+                </td>
+              </tr>
+            `
+            )
+            .join('');
+  }
+
+  // 最新公域求购动态
+  const c2bListEl = document.getElementById('eco-recent-c2b-list');
+  if (c2bListEl) {
+    c2bListEl.innerHTML =
+      allEcoC2B.length === 0
+        ? '<div class="py-6 text-center text-stone-400">暂无百工天街求购需求</div>'
+        : allEcoC2B
+            .slice(0, 10)
+            .map((d) => {
+              let title = d.content;
+              try {
+                const parsed = JSON.parse(d.content);
+                if (parsed?.title) title = `${parsed.title} (${parsed.qty || '若干'})`;
+              } catch (e) {}
+              return `
+                <div class="py-2 flex justify-between items-center gap-2">
+                  <div class="truncate">
+                    <b class="text-stone-800">${title}</b>
+                    <span class="text-[10px] text-stone-400 block">${d.proposer_name || '买家'} · ${new Date(d.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                    d.official_reply ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
+                  }">
+                    ${d.official_reply ? '已报价回应' : '待回应'}
+                  </span>
+                </div>
+              `;
+            })
+            .join('');
+  }
+
+  // 最新同城余缺互调动态
+  const poolListEl = document.getElementById('eco-recent-pool-list');
+  if (poolListEl) {
+    poolListEl.innerHTML =
+      allEcoPool.length === 0
+        ? '<div class="py-6 text-center text-stone-400">暂无同城余缺互调流转记录</div>'
+        : allEcoPool
+            .slice(0, 10)
+            .map(
+              (p) => `
+              <div class="py-2 flex justify-between items-center gap-2">
+                <div class="truncate">
+                  <b class="text-stone-800">${p.product_name} × ${p.qty}${p.measure_unit || '件'}</b>
+                  <span class="text-[10px] text-stone-400 block">${p.from_store_name} ➔ ${p.to_store_name || '待同行认领'}</span>
+                </div>
+                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                  p.status === 'completed'
+                    ? 'bg-stone-200 text-stone-700'
+                    : p.status === 'claimed'
+                    ? 'bg-amber-100 text-amber-900'
+                    : 'bg-emerald-100 text-emerald-800'
+                }">
+                  ${p.status === 'completed' ? '已交割平账' : p.status === 'claimed' ? '顺路捎带中' : '挂池待领'}
+                </span>
+              </div>
+            `
+            )
+            .join('');
+  }
+}
 
 function updateAISummaryInsight() {
   const activeCount = allTenants.filter((t) => (t.membership_status || 'active') === 'active').length;
@@ -320,7 +462,7 @@ function updateAISummaryInsight() {
   const restCount = allTenants.filter((t) => t.membership_status === 'restricted').length;
   const pausedCount = allTenants.filter((t) => !t.is_active || t.membership_status === 'paused').length;
 
-  let insight = `当前在册合作社与工坊商号 ${allTenants.length} 家，和合畅运 ${activeCount} 家。`;
+  let insight = `当前在册合作社与工坊商号 ${allTenants.length} 家，和合畅运 ${activeCount} 家；全网累计用度计划 ${allEcoPlans.length} 份、同城余缺互调 ${allEcoPool.length} 笔。`;
   if (trialCount > 0) insight += ` 尝鲜开席试用中 ${trialCount} 家（转正前请点击查册核对工商存续状态）；`;
   if (graceCount > 0) insight += ` 有 ${graceCount} 家商号处于【春风宽待期】；`;
   if (restCount > 0) insight += ` ${restCount} 家处于【护盘存续】；`;
