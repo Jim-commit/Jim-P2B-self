@@ -54,7 +54,7 @@ window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
 
 // =========================================================================
-// 0. 产区工艺档案与车间实拍配置（打通百工天街「产区工艺档案 + 实拍视频」）
+// 0. 产区工艺档案与车间实拍配置
 // =========================================================================
 window.openCounterProfileModal = function () {
   document.getElementById('counter-origin-desc-input').value = currentTenantData?.brand_origin_desc || '';
@@ -512,7 +512,86 @@ function renderInventoryLogs() {
 }
 
 // =========================================================================
-// 5. 合作门店周期电子对账单与回款销账清算中心
+// 5. 正式《随车送货交割单》打印预览与执行
+// =========================================================================
+window.openSingleDeliverySlipPrint = function (orderId) {
+  const o = allOrders.find((x) => Number(x.id) === Number(orderId));
+  if (!o) return;
+
+  const store = allStores.find((s) => Number(s.id) === Number(o.store_id));
+  const companyTitle = currentTenantData?.company_name || currentAgent;
+
+  document.getElementById('print-slip-company-title').innerText = `${companyTitle} · 随车送货交割凭单`;
+  document.getElementById('print-slip-meta-line').innerText = `单号：#${o.order_no || o.id} | 制单日期：${
+    o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
+  }`;
+  document.getElementById('print-slip-store-name').innerText = o.store_name || store?.name || '合作门店';
+  document.getElementById('print-slip-store-phone').innerText = store?.phone || '-';
+  document.getElementById('print-slip-store-addr').innerText = store?.address || '临街门面';
+  document.getElementById('print-slip-settle-type').innerText = o.settlement_type || 'credit';
+  document.getElementById('print-slip-driver').innerText = o.driver_name || store?.driver_name || '送货师傅';
+
+  const items = Array.isArray(o.items) ? o.items : [];
+  const tbody = document.getElementById('print-slip-items-tbody');
+  tbody.innerHTML =
+    items.length === 0
+      ? '<tr><td colspan="6" class="border border-stone-400 p-2 text-center text-stone-400">本单为调退冲抵单，无新配货品</td></tr>'
+      : items
+          .map((it, idx) => {
+            const price = parseFloat(it.price || 0);
+            const qty = parseInt(it.qty || 0);
+            const sub = price * qty;
+            return `
+              <tr>
+                <td class="border border-stone-400 p-1.5 text-center font-mono">${idx + 1}</td>
+                <td class="border border-stone-400 p-1.5 font-bold">${it.name}</td>
+                <td class="border border-stone-400 p-1.5">${it.spec || '整装'}</td>
+                <td class="border border-stone-400 p-1.5 text-center font-mono">${qty} ${it.measure_unit || '件'}</td>
+                <td class="border border-stone-400 p-1.5 text-right font-mono">¥${price.toFixed(2)}</td>
+                <td class="border border-stone-400 p-1.5 text-right font-mono font-bold">¥${sub.toFixed(2)}</td>
+              </tr>
+            `;
+          })
+          .join('');
+
+  const returnItems = Array.isArray(o.items_return) ? o.items_return : [];
+  const exchangeItems = Array.isArray(o.items_exchange) ? o.items_exchange : [];
+  const notesArr = [];
+  if (returnItems.length > 0) {
+    notesArr.push(`• 验退旧品冲抵：${returnItems.map((r) => `${r.name} x${r.qty} (-¥${r.price || 0})`).join('、')}`);
+  }
+  if (exchangeItems.length > 0) {
+    notesArr.push(`• 平价换新对调：${exchangeItems.map((e) => `${e.name} x${e.qty}`).join('、')}`);
+  }
+  if (o.note) {
+    notesArr.push(`• 交接附言：${o.note}`);
+  }
+  const baskets = parseInt(store?.carrier_hold_count || store?.basket_count || 0);
+  notesArr.push(`• 该门店累计借存${carrierLabel}：${baskets} 件（本次归还数量：_____ 件）`);
+
+  document.getElementById('print-slip-special-notes').innerHTML = notesArr.map((n) => `<div>${n}</div>`).join('');
+
+  const totalAmt = parseFloat(o.total_amount || 0);
+  const returnAmt = parseFloat(o.return_amount || 0);
+  const netAmt = parseFloat(o.net_settle_amount || totalAmt - returnAmt);
+
+  document.getElementById('print-slip-total-amt').innerText = `¥${totalAmt.toFixed(2)}`;
+  document.getElementById('print-slip-return-amt').innerText = `-¥${returnAmt.toFixed(2)}`;
+  document.getElementById('print-slip-net-amt').innerText = `¥${netAmt.toFixed(2)}`;
+
+  window.openModal('modal-delivery-note-print');
+};
+
+window.executeSingleDeliverySlipPrint = function () {
+  document.body.classList.add('print-single-slip');
+  window.print();
+  setTimeout(() => {
+    document.body.classList.remove('print-single-slip');
+  }, 500);
+};
+
+// =========================================================================
+// 5.2 合作门店周期电子对账单与回款销账清算中心
 // =========================================================================
 window.openStoreStatementModal = function (preselectStoreId = null) {
   if (allStores.length === 0) return alert('当前名册下暂无合作门店！');
@@ -2069,25 +2148,26 @@ function renderOrderFulfillmentList() {
           `
               : ''
           }
-          <div class="flex justify-between items-center pt-2 border-t border-stone-200/60 text-xs">
+          <div class="flex flex-wrap justify-between items-center gap-2 pt-2 border-t border-stone-200/60 text-xs">
             <span class="font-mono text-stone-800 font-bold">净结: ¥${netTotal.toFixed(2)}</span>
-            ${
-              isOverCredit
-                ? `
-              <div class="flex gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="window.openSingleDeliverySlipPrint(${o.id})" class="bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 px-3 py-1.5 rounded-xl font-bold shadow-xs transition">
+                🖨️ 打印交割单
+              </button>
+              ${
+                isOverCredit
+                  ? `
                 <button onclick="window.hqRejectOverCredit(${o.id})" class="bg-rose-50 text-rose-700 px-3 py-1.5 rounded-xl border border-rose-200 font-bold">拒绝赊销</button>
                 <button onclick="window.hqApproveOverCredit(${o.id}, ${o.store_id}, ${o.over_credit_amount || 0})" class="bg-emerald-800 text-white px-4 py-1.5 rounded-xl font-bold shadow">🛡️ 2FA特信放行</button>
-              </div>
-            `
-                : isPending
-                ? `
-              <div class="flex gap-2">
+              `
+                  : isPending
+                  ? `
                 <button onclick="window.hqRejectWithProposal(${o.id})" class="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-xl font-bold">建议微调</button>
                 <button onclick="window.hqApproveOrder(${o.id})" class="bg-[#1b4332] text-white px-4 py-1.5 rounded-xl font-bold shadow">✅ 应允接单并扣库</button>
-              </div>
-            `
-                : `<span class="text-stone-400 font-mono">${o.driver_action_instruction || '正常办理'}</span>`
-            }
+              `
+                  : `<span class="text-stone-400 font-mono text-[11px]">${o.driver_action_instruction || '正常办理'}</span>`
+              }
+            </div>
           </div>
         </div>
       `;
