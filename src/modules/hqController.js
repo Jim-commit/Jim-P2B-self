@@ -54,6 +54,11 @@ let pending2FACallback = null;
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
 
+window.dismissOnboardingGuide = function () {
+  localStorage.setItem('hq_onboarding_dismissed_' + currentAgent, '1');
+  document.getElementById('hq-onboarding-guide')?.classList.add('hidden');
+};
+
 // =========================================================================
 // 0. 产区工艺档案与车间实拍配置
 // =========================================================================
@@ -1442,6 +1447,12 @@ window.loadHQData = async function () {
   document.getElementById('carrier-label-btn').innerText = `${carrierLabel} ✎`;
   updateWebhookStatusBadge(curTenant.webhook_url || '');
   updateTotpStatusBadge(!!(curTenant.totp_enabled && curTenant.totp_secret));
+
+  const guideEl = document.getElementById('hq-onboarding-guide');
+  if (guideEl) {
+    const isDismissed = localStorage.getItem('hq_onboarding_dismissed_' + currentAgent) === '1';
+    guideEl.classList.toggle('hidden', isDismissed);
+  }
 
   const defaultBanner = document.getElementById('hq-default-pwd-banner');
   if (currentRoleCode === 'owner' && curTenant.credit_code && curTenant.credit_code.length >= 6) {
