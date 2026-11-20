@@ -77,7 +77,7 @@
     </div>
   </header>
 
-  <!-- 态型 A：合作社/工坊私域专柜门面（含可折叠产区水土与工艺档案 + 实拍入口） -->
+  <!-- 态型 A：合作社/工坊私域专柜门面（含可折叠产区水土与工艺档案 + 实拍与社交外链矩阵入口） -->
   <section id="brand-hero-section" class="hidden px-3 pt-3">
     <div class="bg-gradient-to-br from-stone-900 to-[#1b4332] text-white p-4 rounded-3xl shadow-md border border-stone-800 space-y-2.5">
       <div class="flex justify-between items-start gap-2">
@@ -102,7 +102,7 @@
         </button>
       </div>
 
-      <!-- 可折叠展开的产区水土、匠心档案与田间/车间实拍卡 -->
+      <!-- 可折叠展开的产区水土、匠心档案与田间/车间实拍卡（mallController 自动向此注入官网/公众号/客服微信按钮） -->
       <div id="brand-craft-archive-panel" class="hidden bg-black/30 border border-emerald-700/40 rounded-2xl p-3 space-y-1.5 text-[11px] text-stone-200">
         <div class="flex justify-between"><span class="text-stone-400">经营主体身份：</span><b id="craft-type-text">--</b></div>
         <div class="flex justify-between"><span class="text-stone-400">当值执事对接：</span><b id="craft-contact-text">--</b></div>
@@ -173,9 +173,32 @@
     <div id="c2b-demands-list" class="space-y-3"></div>
   </div>
 
-  <!-- 极简平台背书与合作社/工坊入驻入口 -->
-  <div class="px-4 pt-3 pb-6 text-center text-[10px] text-stone-400">
-    百工天街 · 供需平衡、服务归店源头直供集市 ｜ <a href="join.html" class="hover:text-emerald-800 underline transition">合作社 / 工坊入驻</a>
+  <!-- 平台背书、双公约公示与建言堂直达页脚 -->
+  <div class="px-4 pt-3 pb-6 text-center text-[10px] text-stone-400 space-y-1">
+    <div>百工天街 · 零竞价排名 · 服务归店源头直供集市</div>
+    <div class="flex flex-wrap justify-center gap-3">
+      <a href="join.html" class="hover:text-emerald-800 underline transition">合作社 / 工坊 / 个人匠人入驻</a>
+      <span>·</span>
+      <button type="button" onclick="window.openModal('modal-mall-covenant')" class="hover:text-emerald-800 underline transition">📜 商道与邻里公约</button>
+      <span>·</span>
+      <button type="button" onclick="window.openC2BDemandModal('【建言献策】')" class="hover:text-emerald-800 underline transition">💬 商道建言堂</button>
+    </div>
+  </div>
+
+  <!-- 《百工百业商道与邻里公约》常驻公示弹窗 -->
+  <div id="modal-mall-covenant" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-emerald-950">📜 《百工百业商道与邻里驿站公约》</h3>
+        <button onclick="window.closeModal('modal-mall-covenant')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-2xl space-y-2 text-[11px] text-stone-700 leading-relaxed">
+        <p><b>一、源头平准 · 零抽佣：</b>本集市不收交易抽佣、不搞竞价排名，合作社、工坊与实名匠人直连邻里，阳光工价。</p>
+        <p><b>二、服务归店 · 邻里互助：</b>选择就近合作门店自提，服务润利全额归属该门店，支持社区小店可持续发展。</p>
+        <p><b>三、物勒工名 · 一物一码：</b>每款良品均公开出品主体与产地溯源印记，共同守护货真价实的城乡商业信用。</p>
+      </div>
+      <button onclick="window.closeModal('modal-mall-covenant')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl">我已阅知并共同守护</button>
+    </div>
   </div>
 
   <!-- 底部常驻购物车结算胶囊 -->
