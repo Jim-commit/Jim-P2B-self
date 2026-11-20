@@ -3,13 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>百工商道 · 合作社与源头工坊实名入驻中心</title>
+  <title>百工商道 · 合作社、源头工坊与实名匠人入驻中心</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1b4332">
-  <meta name="description" content="村社合作社、源头工坊与批发商行入驻通道，营业执照光学核验，零佣金直连合作门店与百工天街。">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="入驻百工百业数字协作平台 · 源头直供开席">
-  <meta property="og:description" content="一照一码专属独立账本，支持合作门店直配与百工天街双轨供货，TOTP 双重安全守护。">
+  <meta name="description" content="村社合作社、源头工坊、服务商与实名个人匠人入驻通道，零抽佣直连合作门店与百工天街。">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
@@ -27,29 +24,29 @@
       <div class="w-14 h-14 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-inner">
         🏛️
       </div>
-      <h1 class="text-xl font-bold text-white tracking-wide">百工商道 · 合作社与工坊实名入驻中心</h1>
+      <h1 class="text-xl font-bold text-white tracking-wide">百工商道 · 合作社、工坊与实名匠人入驻中心</h1>
       <p class="text-xs text-stone-400">
-        商号代号唯一标识 · 执照后六位即预设安家密钥 · 光学验真秒开席
+        零交易抽佣 · 7天免费开席 · 营业执照或个人实名均可入驻
       </p>
     </header>
 
     <!-- 双模式导航切换标签 -->
     <nav class="flex bg-stone-900 p-1.5 rounded-2xl border border-stone-800 text-xs font-bold gap-2">
       <button type="button" id="tab-btn-apply" onclick="window.switchJoinTab('apply')" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-stone-950 transition shadow">
-        📝 合作社 / 工坊入驻立约
+        📝 合作社 / 工坊 / 个人入驻立约
       </button>
       <button type="button" id="tab-btn-query" onclick="window.switchJoinTab('query')" class="flex-1 py-2.5 rounded-xl text-stone-400 hover:text-white transition">
         🔍 查询审核结果与商号信物
       </button>
     </nav>
 
-    <!-- 视图 1：主体入驻表单（支援首次立约 + 退回补件修正） -->
+    <!-- 视图 1：主体入驻表单（支援首次立约 + 退回补件修正 + 个人实名入驻） -->
     <form id="join-vendor-form" onsubmit="window.handleVendorRegister(event)" class="space-y-4 text-xs">
       
       <div id="resubmit-banner" class="hidden bg-amber-950/60 border border-amber-500/50 p-3.5 rounded-2xl flex items-center justify-between gap-2 text-amber-200">
         <div>
           <b class="text-amber-400 block">🔄 当前处于【退回补件修正模式】</b>
-          <span class="text-[11px]">请根据平台批示意见重新拍摄清晰营业执照原件，修改无误后再次递交复核。</span>
+          <span class="text-[11px]">请根据平台批示意见重新拍摄清晰资质原件，修改无误后再次递交复核。</span>
         </div>
         <button type="button" onclick="window.cancelResubmitMode()" class="text-[11px] bg-stone-800 px-2.5 py-1 rounded-lg text-stone-300 hover:text-white shrink-0">
           退出补件
@@ -57,10 +54,25 @@
       </div>
       <input type="hidden" id="resubmit-app-id" value="">
 
-      <!-- 执照上传与交互式质检区 -->
+      <!-- 先选择主体身份（企业合作社 vs 个人实名匠人） -->
+      <div class="bg-[#202023] p-4 rounded-2xl border border-stone-700/80 space-y-2.5">
+        <label class="block text-stone-300 font-bold">1. 选择入驻主体身份：</label>
+        <select id="v-business-type" onchange="window.onBusinessTypeChange(this.value)" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-amber-300 font-bold outline-none focus:border-amber-500">
+          <option value="coop">🌾 村社合作社 / 产区直供站 (营业执照)</option>
+          <option value="factory">🏭 源头工坊 / 生产制造厂 (营业执照)</option>
+          <option value="dealer">🏢 区域平准仓 / 集散商行 (营业执照)</option>
+          <option value="service">🛠️ 工料配件 / 维修农机服务商 (营业执照)</option>
+          <option value="individual">👨‍🌾 个人农户 / 非遗手艺人 / 个体匠人 (实名证件 · 生成GR代号)</option>
+        </select>
+        <div id="individual-rule-tip" class="hidden bg-amber-950/40 border border-amber-500/30 p-2.5 rounded-xl text-[11px] text-amber-200 leading-relaxed">
+          <b>👨‍🌾 个人实名准入与联保规则：</b>无企业执照的种植大户、手艺人可上传实名身份证件入驻（自动生成 <code>GR-</code> 个人代号）。初始享稳健交易限额保护；若获在册合作社或合作门店担保联名，可解锁更高供货额度。
+        </div>
+      </div>
+
+      <!-- 执照/实名证件上传与交互式质检区 -->
       <div class="bg-[#202023] p-4 rounded-2xl border border-stone-700/80 space-y-3">
         <div class="flex justify-between items-center">
-          <label class="text-stone-300 font-bold">1. 营业执照正本 / 副本实拍照 (拍照后自动即时核验) *：</label>
+          <label id="lbl-license-upload" class="text-stone-300 font-bold">2. 营业执照正本 / 副本实拍照 (拍照后自动即时核验) *：</label>
           <span id="btn-reupload" onclick="document.getElementById('license-file-input').click()" class="hidden text-amber-400 hover:text-amber-300 underline cursor-pointer font-bold">
             🔄 重新拍摄/更换照片
           </span>
@@ -73,17 +85,16 @@
           
           <div id="upload-placeholder" class="text-center space-y-1.5 py-5">
             <span class="text-3xl block">📷</span>
-            <span class="text-stone-200 font-bold block text-sm">点击拍摄或上传营业执照原件</span>
-            <span class="text-[11px] text-stone-400 block">系统将自动识别信用代码，并以【代码后六位】作为预设安家密钥</span>
+            <span id="lbl-upload-main" class="text-stone-200 font-bold block text-sm">点击拍摄或上传营业执照原件</span>
+            <span id="lbl-upload-sub" class="text-[11px] text-stone-400 block">系统将自动识别信用代码，并以【代码后六位】作为预设安家密钥</span>
           </div>
         </div>
 
-        <!-- 扫描动态进度条 -->
         <div id="ocr-progress-box" class="hidden bg-stone-900 p-3 rounded-xl border border-stone-800 space-y-2">
           <div class="flex justify-between items-center text-[11px]">
             <span class="text-amber-400 font-mono flex items-center gap-1.5" id="ocr-status-text">
               <span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-              正在进行三维度光学防伪扫描...
+              正在进行光学核验扫描...
             </span>
             <span class="text-stone-400 font-mono" id="ocr-progress-pct">0%</span>
           </div>
@@ -92,7 +103,6 @@
           </div>
         </div>
 
-        <!-- 交互式诊断与人工兜底提示框 -->
         <div id="audit-feedback-box" class="hidden p-3.5 rounded-2xl border space-y-2 transition-all">
           <div class="flex items-center justify-between">
             <b id="audit-feedback-title" class="text-xs flex items-center gap-1.5"></b>
@@ -106,66 +116,77 @@
 
       <!-- 基本信息录入 -->
       <div class="bg-[#202023] p-4 rounded-2xl border border-stone-700/80 space-y-3">
-        <label class="block text-stone-300 font-bold">2. 商号主体登记信息：</label>
+        <label class="block text-stone-300 font-bold">3. 商号主体登记信息：</label>
         
         <div>
-          <label class="block text-stone-400 mb-1">主体执照全称 (与执照一致) *：</label>
+          <label id="lbl-company-name" class="block text-stone-400 mb-1">主体执照全称 (与执照一致) *：</label>
           <input type="text" id="v-company-name" required placeholder="上传清晰执照自动提取或手动核对填写" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 font-bold outline-none focus:border-amber-500">
         </div>
 
         <div>
-          <label class="block text-stone-400 mb-1">统一社会信用代码 (18位国标校验 · 后6位即为预设密钥) *：</label>
+          <label id="lbl-credit-code" class="block text-stone-400 mb-1">统一社会信用代码 (18位国标校验 · 后6位即为预设密钥) *：</label>
           <input type="text" id="v-credit-code" required maxlength="18" oninput="window.syncAccessKeyFromCreditCode(this.value)" placeholder="系统自动提取或手动核对填写 18 位代码" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase text-amber-400 font-bold outline-none focus:border-amber-500">
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-stone-400 mb-1">商号代号 (全盘唯一商业标识) *：</label>
-            <input type="text" id="v-tenant-id" required placeholder="如：NY-FUNIU" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase font-bold text-amber-400 outline-none focus:border-amber-500">
-          </div>
-          <div>
-            <label class="block text-stone-400 mb-1">经营主体身份 *：</label>
-            <select id="v-business-type" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 font-bold outline-none focus:border-amber-500">
-              <option value="coop">🌾 村社合作社 / 产区直供站</option>
-              <option value="factory">🏭 源头工坊 / 生产制造厂</option>
-              <option value="dealer">🏢 区域平准仓 / 集散商行</option>
-              <option value="service">🛠️ 工料配件 / 综合服务商</option>
-            </select>
-          </div>
+        <div id="individual-sponsor-box" class="hidden">
+          <label class="block text-stone-400 mb-1">担保合作社 / 联保合作门店名称（选填，有联保可提额）：</label>
+          <input type="text" id="v-sponsor-org" placeholder="如：伏牛山生态农业合作社 / 顺达便民超市" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-emerald-300 outline-none focus:border-amber-500">
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-stone-400 mb-1">当家负责人称呼 *：</label>
-            <input type="text" id="v-contact-person" required placeholder="如：王理事长 / 王掌柜" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 outline-none focus:border-amber-500">
+            <label class="block text-stone-400 mb-1">商号代号 (全盘唯一标识) *：</label>
+            <input type="text" id="v-tenant-id" required placeholder="如：NY-FUNIU" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase font-bold text-amber-400 outline-none focus:border-amber-500">
           </div>
+          <div>
+            <label class="block text-stone-400 mb-1">当家负责人称呼 *：</label>
+            <input type="text" id="v-contact-person" required placeholder="如：王理事长 / 王师傅" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 outline-none focus:border-amber-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-stone-400 mb-1">联络电话 (查询进度凭证) *：</label>
             <input type="tel" id="v-contact-phone" required placeholder="11位手机号码" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono text-stone-200 outline-none focus:border-amber-500">
           </div>
+          <div>
+            <label class="block text-stone-400 mb-1">预设安家密钥 (自动同步后6位) *：</label>
+            <input type="text" id="v-access-key" required placeholder="自动填入后六位" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase font-bold text-emerald-400 outline-none focus:border-amber-500">
+          </div>
         </div>
+      </div>
 
-        <div>
-          <label class="block text-stone-400 mb-1">预设安家密钥 (自动同步执照代码后 6 位，登录后可自改) *：</label>
-          <input type="text" id="v-access-key" required placeholder="识别信用代码后自动填入后六位" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase font-bold text-emerald-400 outline-none focus:border-amber-500">
+      <!-- 《百工百业平台入驻与商道公约》必读签署框 -->
+      <div class="bg-stone-900/90 border border-stone-700 p-3.5 rounded-2xl space-y-2">
+        <div class="flex justify-between items-center">
+          <b class="text-amber-300 text-xs">📜 《百工百业平台入驻与商道公约》</b>
+          <span class="text-[10px] text-stone-400">零抽佣 · 数字主权归己</span>
         </div>
+        <p class="text-[11px] text-stone-400 leading-relaxed">
+          1. 平台不抽一分交易佣金、不搞竞价排名；入驻后享 <b>7 天免费开席体验</b>，满意转正成为正式会员后仅需缴纳<b>极少定额公共运维会费</b>以维持服务器与带宽运转。<br/>
+          2. 商号拥有完全独立的私有账本、客户资料与定价主权，平台绝不窥探也不干涉商家内部事务；入驻方承诺实名保真、不作虚假宣传。
+        </p>
+        <label class="flex items-center gap-2 text-stone-200 font-bold cursor-pointer pt-1">
+          <input type="checkbox" id="chk-agree-covenant" checked class="w-4 h-4 rounded text-amber-500">
+          <span>我已阅读并自愿恪守《百工百业平台入驻与商道公约》</span>
+        </label>
       </div>
 
       <!-- 提交按钮 -->
       <button type="submit" id="btn-submit-join" disabled class="w-full py-3.5 bg-stone-700 text-stone-400 cursor-not-allowed font-bold rounded-2xl transition shadow-lg text-sm flex items-center justify-center gap-2">
-        <span>🔒</span> 请先上传营业执照进行光学验真
+        <span>🔒</span> 请先上传资质原件进行核验
       </button>
     </form>
 
-    <!-- 视图 2：审核进度查询（凭手机号 + 营业执照后 6 位双重核身查询） -->
+    <!-- 视图 2：审核进度查询（凭手机号 + 信用代码/证件号后 6 位双重核身查询） -->
     <section id="query-status-section" class="hidden space-y-4 text-xs">
       <div class="bg-[#202023] p-5 rounded-2xl border border-stone-700/80 space-y-3">
         <label class="block text-stone-300 font-bold text-sm">🔍 查询入驻审核批示与商号信物</label>
-        <p class="text-[11px] text-stone-400">请输入登记时的「联络手机号码」及「营业执照信用代码后 6 位」进行核身查询：</p>
+        <p class="text-[11px] text-stone-400">请输入登记时的「联络手机号码」及「信用代码/证件号后 6 位」进行核身查询：</p>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
           <input type="tel" id="q-search-phone" placeholder="1. 输入 11 位联络手机号码" class="bg-stone-900 border border-stone-700 rounded-xl px-3.5 py-2.5 font-mono text-white outline-none focus:border-amber-500">
-          <input type="text" id="q-search-last6" maxlength="6" placeholder="2. 输入营业执照代码后 6 位" class="bg-stone-900 border border-stone-700 rounded-xl px-3.5 py-2.5 font-mono uppercase text-amber-400 font-bold outline-none focus:border-amber-500">
+          <input type="text" id="q-search-last6" maxlength="6" placeholder="2. 输入代码/证件号后 6 位" class="bg-stone-900 border border-stone-700 rounded-xl px-3.5 py-2.5 font-mono uppercase text-amber-400 font-bold outline-none focus:border-amber-500">
         </div>
 
         <button type="button" onclick="window.queryApplicationStatus()" class="w-full bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
