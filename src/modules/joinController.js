@@ -15,6 +15,36 @@ window.syncAccessKeyFromCreditCode = function (codeVal) {
   }
 };
 
+window.onBusinessTypeChange = function (bType) {
+  const isInd = bType === 'individual';
+  document.getElementById('individual-rule-tip')?.classList.toggle('hidden', !isInd);
+  document.getElementById('individual-sponsor-box')?.classList.toggle('hidden', !isInd);
+
+  const lblUpload = document.getElementById('lbl-license-upload');
+  const lblMain = document.getElementById('lbl-upload-main');
+  const lblName = document.getElementById('lbl-company-name');
+  const lblCode = document.getElementById('lbl-credit-code');
+  const tidInput = document.getElementById('v-tenant-id');
+
+  if (isInd) {
+    if (lblUpload) lblUpload.innerText = '2. 个人实名身份证件 / 手艺资质实拍照 *：';
+    if (lblMain) lblMain.innerText = '点击拍摄或上传本人身份证件正面原件';
+    if (lblName) lblName.innerText = '个人匠人/农户名号 (如：王师傅生态果园) *：';
+    if (lblCode) lblCode.innerText = '个人身份证号码 (18位 · 后6位即为预设密钥) *：';
+    if (tidInput && (!tidInput.value || tidInput.value.startsWith('T-'))) {
+      tidInput.value = 'GR-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+    }
+  } else {
+    if (lblUpload) lblUpload.innerText = '2. 营业执照正本 / 副本实拍照 (拍照后自动即时核验) *：';
+    if (lblMain) lblMain.innerText = '点击拍摄或上传营业执照原件';
+    if (lblName) lblName.innerText = '主体执照全称 (与执照一致) *：';
+    if (lblCode) lblCode.innerText = '统一社会信用代码 (18位国标校验 · 后6位即为预设密钥) *：';
+    if (tidInput && tidInput.value.startsWith('GR-')) {
+      tidInput.value = 'T-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+    }
+  }
+};
+
 window.switchJoinTab = function (tab) {
   const formEl = document.getElementById('join-vendor-form');
   const queryEl = document.getElementById('query-status-section');
@@ -57,7 +87,7 @@ function updateSubmitButtonState(enabled, isManual = false) {
     btn.disabled = true;
     btn.className =
       'w-full py-3.5 bg-stone-700 text-stone-400 cursor-not-allowed font-bold rounded-2xl transition shadow-lg text-sm flex items-center justify-center gap-2';
-    btn.innerHTML = '<span>🔒</span> 请先完成营业执照光学验真以解锁提交';
+    btn.innerHTML = '<span>🔒</span> 请先完成资质原件核验以解锁提交';
   }
 }
 
@@ -66,6 +96,7 @@ function renderInteractiveFeedback(passed, successes, issues, creditCode) {
   const title = document.getElementById('audit-feedback-title');
   const list = document.getElementById('audit-feedback-list');
   const retryBtn = document.getElementById('audit-retry-btn');
+  const isInd = document.getElementById('v-business-type')?.value === 'individual';
 
   box?.classList.remove('hidden');
 
@@ -73,7 +104,9 @@ function renderInteractiveFeedback(passed, successes, issues, creditCode) {
     isLicenseVerified = true;
     isManualFallbackMode = false;
     box.className = 'p-4 rounded-2xl border border-emerald-500/40 bg-emerald-950/30 text-emerald-200 space-y-2';
-    title.innerHTML = '🎉 营业执照三维度光学验真通过！已解锁签约开席';
+    title.innerHTML = isInd
+      ? '🎉 个人实名证件核验通过！已解锁签约开席'
+      : '🎉 营业执照三维度光学验真通过！已解锁签约开席';
     retryBtn?.classList.add('hidden');
 
     list.innerHTML = successes.map((s) => `<li>${s}</li>`).join('');
@@ -83,7 +116,8 @@ function renderInteractiveFeedback(passed, successes, issues, creditCode) {
       window.syncAccessKeyFromCreditCode(creditCode);
     }
     if (!document.getElementById('v-tenant-id').value) {
-      document.getElementById('v-tenant-id').value = 'T-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+      const prefix = isInd ? 'GR-' : 'T-';
+      document.getElementById('v-tenant-id').value = prefix + Math.random().toString(36).substring(2, 7).toUpperCase();
     }
 
     verifiedAuditSummary = successes.join(' | ').replace(/<[^>]+>/g, '');
@@ -92,23 +126,28 @@ function renderInteractiveFeedback(passed, successes, issues, creditCode) {
     failedAttemptsCount++;
     isLicenseVerified = false;
 
-    if (failedAttemptsCount >= 2) {
+    if (failedAttemptsCount >= 2 || isInd) {
       isManualFallbackMode = true;
       box.className = 'p-4 rounded-2xl border border-amber-500/50 bg-amber-950/30 text-amber-200 space-y-2';
-      title.innerHTML = '🛡️ 已为您开启【人工绿色复核通道】';
+      title.innerHTML = isInd
+        ? '👨‍🌾 个人实名证件已留档 · 已开启【人工绿色复核通道】'
+        : '🛡️ 已为您开启【人工绿色复核通道】';
       retryBtn?.classList.remove('hidden');
       if (retryBtn) retryBtn.innerText = '📷 再试一次清晰拍摄';
 
       list.innerHTML = [
-        '<li>系统检测到当前照片可能存在<b>镜面反光、旧版执照或设备兼容限制</b>。</li>',
-        '<li>请在下方核对填写您的<b>18位统一社会信用代码</b>（系统将自动取后6位为预设密钥），提交后直接转交平台总控人工复核。</li>'
+        '<li>请在下方核对填写您的<b>18位统一社会信用代码或个人身份证号码</b>（系统将自动取后6位为预设密钥）。</li>',
+        '<li>提交后直接转交平台总控人工复核原件，审核通过后即可正式营业。</li>'
       ].join('');
 
       if (!document.getElementById('v-tenant-id').value) {
-        document.getElementById('v-tenant-id').value = 'T-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+        const prefix = isInd ? 'GR-' : 'T-';
+        document.getElementById('v-tenant-id').value = prefix + Math.random().toString(36).substring(2, 7).toUpperCase();
       }
 
-      verifiedAuditSummary = '【触发人工兜底通道】前端光学多次未达标，已附原件转入后台人工复核。';
+      verifiedAuditSummary = isInd
+        ? '【个人实名入驻通道】已附实名证件原件转入后台人工复核。'
+        : '【触发人工兜底通道】前端光学多次未达标，已附原件转入后台人工复核。';
       updateSubmitButtonState(true, true);
     } else {
       isManualFallbackMode = false;
@@ -124,6 +163,12 @@ function renderInteractiveFeedback(passed, successes, issues, creditCode) {
 }
 
 async function runInteractiveLicenseCheck(imgElement, base64Data) {
+  const isInd = document.getElementById('v-business-type')?.value === 'individual';
+  if (isInd) {
+    renderInteractiveFeedback(false, [], [], '');
+    return;
+  }
+
   const progressBox = document.getElementById('ocr-progress-box');
   const statusText = document.getElementById('ocr-status-text');
   const pctText = document.getElementById('ocr-progress-pct');
@@ -242,8 +287,11 @@ window.handleImageUpload = function (e) {
 
 window.handleVendorRegister = async function (e) {
   e.preventDefault();
+  if (!document.getElementById('chk-agree-covenant')?.checked) {
+    return alert('请先阅读并勾选同意《百工百业平台入驻与商道公约》！');
+  }
   if (!isLicenseVerified && !isManualFallbackMode) {
-    return alert('请先上传营业执照并完成系统验真！');
+    return alert('请先上传营业执照或实名证件原件并完成核验！');
   }
 
   const resubmitId = document.getElementById('resubmit-app-id').value;
@@ -253,13 +301,17 @@ window.handleVendorRegister = async function (e) {
   const businessType = document.getElementById('v-business-type').value;
   const contactPerson = document.getElementById('v-contact-person').value.trim();
   const contactPhone = document.getElementById('v-contact-phone').value.trim();
+  const sponsorOrg = document.getElementById('v-sponsor-org')?.value.trim() || '';
 
   if (creditCode.length < 6) {
-    return alert('请完整填写统一社会信用代码（至少需包含后 6 位用于核身与预设密钥）！');
+    return alert('请完整填写统一社会信用代码或个人身份证号码（至少需包含后 6 位用于核身与预设密钥）！');
   }
 
   const defaultLast6Key = creditCode.slice(-6);
   const accessKey = document.getElementById('v-access-key').value.trim().toUpperCase() || defaultLast6Key;
+  const finalAuditSummary = sponsorOrg
+    ? `${verifiedAuditSummary} | 联保担保单位：${sponsorOrg}`
+    : verifiedAuditSummary;
 
   const btn = document.getElementById('btn-submit-join');
   btn.disabled = true;
@@ -280,7 +332,7 @@ window.handleVendorRegister = async function (e) {
           updateSubmitButtonState(true, isManualFallbackMode);
           return;
         } else {
-          alert(`⚠️ 商号代号【${tenantId}】已被其他合作社或工坊使用，请在后方加上数字（如 ${tenantId}01）后重新提交！`);
+          alert(`⚠️ 商号代号【${tenantId}】已被其他主体使用，请在后方加上数字（如 ${tenantId}01）后重新提交！`);
           btn.disabled = false;
           updateSubmitButtonState(true, isManualFallbackMode);
           return;
@@ -298,25 +350,24 @@ window.handleVendorRegister = async function (e) {
       businessType,
       accessKey,
       isManualFallback: isManualFallbackMode,
-      auditSummary: verifiedAuditSummary,
+      auditSummary: finalAuditSummary,
       licenseBase64: currentCompressedBase64
     });
 
     if (!isManualFallbackMode) {
       alert(
-        `🎉 资质验真通过！已为您开通「🍃 尝鲜体验」7天全功能席位！\n\n` +
+        `🎉 资质验真通过！已为您开通「🍃 尝鲜体验」7天全功能席位（期满满意转正仅收极少公共运维会费，零交易抽佣）！\n\n` +
           `• 主体名称：${companyName}\n` +
           `• 商号代号（唯一标识）：${tenantId}\n` +
-          `• 预设安家密钥（执照后6位）：${accessKey}\n\n` +
-          `后续凭「手机号 + 执照后6位」可随时查询进度！`
+          `• 预设安家密钥（后6位）：${accessKey}`
       );
     } else {
       alert(
-        `📨 您的入驻资料与执照原件已成功递交！\n\n` +
+        `📨 您的入驻资料与资质原件已成功递交！\n\n` +
           `• 登记手机：${contactPhone}\n` +
-          `• 执照代码后 6 位（查询与预设密码）：${defaultLast6Key}\n` +
+          `• 证件/代码后 6 位（查询与预设密码）：${defaultLast6Key}\n` +
           `• 商号代号：${tenantId}\n\n` +
-          `平台总控核对原件后将第一时间批示，您随时可凭「手机号 + 执照后6位」查询结果！`
+          `平台总控核对原件后将第一时间批示，您随时可凭「手机号 + 后6位」查询结果！`
       );
     }
 
@@ -338,10 +389,10 @@ window.queryApplicationStatus = async function () {
   const container = document.getElementById('query-result-container');
 
   if (!phone || last6.length !== 6) {
-    return alert('请完整输入登记时的「手机号码」与「营业执照统一信用代码后 6 位」！');
+    return alert('请完整输入登记时的「手机号码」与「信用代码/证件号后 6 位」！');
   }
 
-  container.innerHTML = '<div class="text-center py-6 text-stone-400">正在核验手机号与执照后六位...</div>';
+  container.innerHTML = '<div class="text-center py-6 text-stone-400">正在核验手机号与后六位...</div>';
 
   try {
     const matchedApps = await JoinService.queryApplicationsByPhoneAndLast6(phone, last6);
@@ -349,8 +400,8 @@ window.queryApplicationStatus = async function () {
       container.innerHTML = `
         <div class="bg-[#202023] border border-stone-700/80 rounded-2xl p-6 text-center space-y-2">
           <span class="text-2xl block">🔐</span>
-          <b class="text-stone-200 block">未查询到匹配档案（手机号或执照后 6 位不符）</b>
-          <p class="text-[11px] text-stone-400">请核对手机号码及营业执照统一社会信用代码最后 6 位字符（注意区分数字 0 与字母 O）。</p>
+          <b class="text-stone-200 block">未查询到匹配档案（手机号或后 6 位不符）</b>
+          <p class="text-[11px] text-stone-400">请核对手机号码及信用代码/证件号码最后 6 位字符（注意区分数字 0 与字母 O）。</p>
         </div>
       `;
       return;
@@ -383,13 +434,13 @@ window.queryApplicationStatus = async function () {
                   <b class="text-amber-400 text-base font-bold">${app.tenant_id}</b>
                 </div>
                 <div>
-                  <span class="text-[10px] text-stone-400 block">预设安家密钥 (执照后 6 位)</span>
+                  <span class="text-[10px] text-stone-400 block">预设安家密钥 (后 6 位)</span>
                   <b class="text-emerald-400 text-base font-bold">${codeLast6}</b>
                 </div>
               </div>
 
               <p class="text-[11px] text-emerald-200/80">
-                🎉 核验成功！您可凭商号代号【<b>${app.tenant_id}</b>】与安家密钥【<b>${codeLast6}</b>】登录平准调度台；合作门店直接输入您的商号代号【<b>${app.tenant_id}</b>】即可绑定直供。
+                🎉 核验成功！您可凭商号代号【<b>${app.tenant_id}</b>】与安家密钥【<b>${codeLast6}</b>】登录产销调度台或百工掌中宝。
               </p>
 
               <div class="pt-1 flex justify-end gap-2">
@@ -397,7 +448,7 @@ window.queryApplicationStatus = async function () {
                   🏛️ 查看我的数字专柜
                 </a>
                 <a href="hq.html" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-4 py-2 rounded-xl shadow transition">
-                  🚀 立即登录平准调度台 ➔
+                  🚀 立即登录调度台 ➔
                 </a>
               </div>
             </div>
@@ -416,11 +467,11 @@ window.queryApplicationStatus = async function () {
               </div>
               <div class="bg-stone-900/90 p-3.5 rounded-xl border border-rose-500/30 space-y-1">
                 <b class="text-rose-400 text-[11px] block">📋 平台审核批示意见（不通过原因）：</b>
-                <p class="text-stone-200 text-xs leading-relaxed">${app.review_note || '营业执照图片不够清晰或信息不符，请重新上传清晰原件照片。'}</p>
+                <p class="text-stone-200 text-xs leading-relaxed">${app.review_note || '资质图片不够清晰或信息不符，请重新上传清晰原件照片。'}</p>
               </div>
               <div class="pt-1 flex justify-end">
                 <button type="button" onclick="window.startResubmitCorrection(${app.id})" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-4 py-2 rounded-xl shadow active:scale-95 transition flex items-center gap-1.5">
-                  <span>🔄</span> 立即改善并重新上传执照
+                  <span>🔄</span> 立即改善并重新上传资质
                 </button>
               </div>
             </div>
@@ -438,7 +489,7 @@ window.queryApplicationStatus = async function () {
                 </span>
               </div>
               <p class="text-[11px] text-stone-300 leading-relaxed">
-                您的营业执照与申请资料已进入平台人工复核队列。总控核对无误后，您即可凭商号代号【<b>${app.tenant_id}</b>】及执照后 6 位【<b>${codeLast6}</b>】登录运营。
+                您的申请资料已进入平台人工复核队列。总控核对无误后，您即可凭商号代号【<b>${app.tenant_id}</b>】及后 6 位【<b>${codeLast6}</b>】登录运营。
               </p>
               <div class="text-[10px] text-stone-500 font-mono">
                 提交时间：${new Date(app.created_at).toLocaleString()}
@@ -465,6 +516,7 @@ window.startResubmitCorrection = function (appId) {
   window.syncAccessKeyFromCreditCode(app.credit_code || '');
   document.getElementById('v-tenant-id').value = app.tenant_id || '';
   document.getElementById('v-business-type').value = app.business_type || 'coop';
+  window.onBusinessTypeChange(app.business_type || 'coop');
   document.getElementById('v-contact-person').value = app.contact_person || '';
   document.getElementById('v-contact-phone').value = app.contact_phone || '';
 
