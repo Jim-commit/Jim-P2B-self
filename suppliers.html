@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>百业供需合作名录 · 村社合作社与源头工坊直供名册</title>
+  <title>百业供需合作名录 · 合作社、源头工坊与实名匠人直供名册</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1b4332">
-  <meta name="description" content="查验营业执照的源头合作社、匠心工坊与区域平准仓名录，支持预约送货师傅免费上门送样。">
+  <meta name="description" content="实名资质核验的合作社、源头工坊、服务商与实名农户匠人名录，支持预约送货师傅免费上门送样。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="百业供需合作名录 · 源头直供一手货源对接">
-  <meta property="og:description" content="一店一约弹性账期，支持先上门送样验货再合作，直连源头合作社与生产工坊。">
-  <meta name="theme-color" content="#1b4332">
+  <meta property="og:description" content="一店一约弹性账期，支持先上门送样验货再合作，直连源头合作社、工坊与实名匠人。">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background-color: #f7f5f0; }
@@ -26,7 +25,7 @@
         <div class="w-8 h-8 rounded-xl bg-amber-400 flex items-center justify-center font-bold text-stone-900 text-lg shadow-xs">供</div>
         <div>
           <h1 class="text-base font-bold leading-tight tracking-wide">百业供需合作名录</h1>
-          <p class="text-[11px] text-emerald-200">源头直供 · 资质核验 · 送货到店</p>
+          <p class="text-[11px] text-emerald-200">源头直供 · 实名核验 · 送货到店</p>
         </div>
       </div>
       <div class="flex items-center gap-2 text-xs">
@@ -34,7 +33,7 @@
           🛍️ 百工天街
         </a>
         <a href="join.html" class="px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-900 font-bold shadow transition">
-          + 合作社/工坊入驻
+          + 合作社/工坊/个人入驻
         </a>
       </div>
     </div>
@@ -48,8 +47,8 @@
             <span class="inline-block px-2 py-0.5 text-[11px] font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-300/30 rounded-lg mb-1">
               产销直连 · 合作门店对接
             </span>
-            <h2 class="text-lg font-bold">对接本地村社合作社与源头工坊</h2>
-            <p class="text-xs text-emerald-100/90 mt-0.5">所有在册主体均已核验营业执照，支持预约送货师傅上门送样、先验货后合作。</p>
+            <h2 class="text-lg font-bold">对接本地村社合作社、源头工坊与实名匠人</h2>
+            <p class="text-xs text-emerald-100/90 mt-0.5">所有在册主体均已实名资质核验，支持预约送货师傅上门送样、先验货后合作。</p>
           </div>
           <div class="text-right hidden sm:block">
             <div class="text-2xl font-bold text-amber-300 font-mono" id="stat-supplier-count">-</div>
@@ -62,7 +61,7 @@
         <input
           type="text"
           id="search-input"
-          placeholder="搜索合作社、工坊名称、商号代号、主营货品、材质或规格..."
+          placeholder="搜索合作社、工坊、实名匠人、商号代号、主营货品、材质或规格..."
           class="w-full pl-10 pr-4 py-3 rounded-2xl bg-white text-stone-900 placeholder-stone-400 text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
         />
         <svg class="w-5 h-5 text-stone-400 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,11 +88,19 @@
     </div>
 
     <div id="empty-state" class="hidden bg-white rounded-3xl p-10 text-center shadow-sm border border-stone-200/80">
-      <p class="text-base font-bold text-stone-700">暂未找到匹配的合作社或工坊</p>
-      <p class="text-xs text-stone-400 mt-1">请尝试更换关键词，或欢迎各地合作社与源头工坊点击右上角申请入驻</p>
+      <p class="text-base font-bold text-stone-700">暂未找到匹配的合作社、工坊或实名匠人</p>
+      <p class="text-xs text-stone-400 mt-1">请尝试更换关键词，或欢迎各地合作社、源头工坊与手艺人点击右上角申请入驻</p>
     </div>
 
     <div id="supplier-list" class="space-y-4"></div>
+
+    <!-- 平台入驻公约背书提示 -->
+    <div class="mt-6 text-center text-[11px] text-stone-400 space-y-1">
+      <div>百工百业数字协作平台 · 零交易抽佣 · 商号数字主权归己</div>
+      <div>
+        <a href="join.html" class="text-emerald-800 hover:underline font-bold">查看《百工百业平台入驻与商道公约》并申请入驻 ➔</a>
+      </div>
+    </div>
   </main>
 
   <!-- 预约送样 / 申请合作弹窗 -->
