@@ -23,11 +23,11 @@
             <span class="w-1.5 h-1.5 rounded-full bg-stone-500"></span> TOTP 未激活
           </span>
           <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 font-mono">
-            AI 参谋当席 · 知雄守雌
+            AI 辅政 · 平台做路灯不做偷窥者
           </span>
         </div>
         <div class="text-xs text-stone-400 mt-1 flex flex-wrap gap-4 font-mono">
-          <span>在册合作社/工坊: <b id="stat-total-tenants" class="text-white">0 家</b></span>
+          <span>在册主体(含合作社/工坊/个体): <b id="stat-total-tenants" class="text-white">0 家</b></span>
           <span>待审入驻申请: <b id="stat-pending-apps" class="text-amber-400 font-bold">0 份</b></span>
           <span>百工建言呈报: <b id="stat-pending-suggs" class="text-emerald-400">0 帖</b></span>
           <span>标准化一级品类: <b id="stat-cat-l1" class="text-emerald-400">0 类</b></span>
@@ -51,33 +51,33 @@
       </div>
     </header>
 
-    <!-- AI 参谋：百工百业供需生态体察简报 -->
+    <!-- AI 参谋：百工百业供需生态体察简报（支持一键隐去并记住偏好） -->
     <div id="ai-platform-adviser" class="bg-gradient-to-r from-stone-900 via-stone-800 to-emerald-950 text-white p-4 rounded-3xl shadow-sm border border-stone-700 flex flex-wrap items-center justify-between gap-3 text-xs">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-2xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-lg">💡</div>
+      <div class="flex items-center gap-3 flex-1 min-w-[260px]">
+        <div class="w-9 h-9 rounded-2xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-lg shrink-0">💡</div>
         <div>
-          <b class="text-amber-300 font-bold block text-xs">AI 参谋 · 百工百业供需生态体察简报</b>
+          <b class="text-amber-300 font-bold block text-xs">AI 参谋 · 宏观供需生态体察简报（绝不干涉商家内务）</b>
           <span id="ai-adviser-text" class="text-stone-300 text-[11px] leading-relaxed">全盘数据调和安泰，在册合作社与工坊履约守信良好，城乡供需平衡运转。</span>
         </div>
       </div>
       <span class="text-[10px] text-stone-400 font-mono">辅佐人断 · 宽猛相济</span>
     </div>
 
-    <!-- 导航切换标签（增量加入「商道清朗巡检」） -->
+    <!-- 导航切换标签（新增「🧭 平台自省与公约」） -->
     <nav class="flex flex-wrap bg-white rounded-2xl shadow-sm border border-stone-200 p-1.5 gap-1.5 text-xs font-bold">
       <button id="p-tab-btn-apps" onclick="window.switchTab('apps')" class="flex-1 py-2 px-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1.5 whitespace-nowrap">
-        📝 合作社 / 工坊入驻查验
+        📝 入驻资质查验
         <span id="badge-pending-count" class="bg-rose-500 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
       </button>
       <button id="p-tab-btn-tenants" onclick="window.switchTab('tenants')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
-        🏢 在册供货主体名册
+        🏢 在册主体名册
       </button>
       <button id="p-tab-btn-compliance" onclick="window.switchTab('compliance'); window.runPlatformAIComplianceScan();" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition flex items-center justify-center gap-1 whitespace-nowrap">
         🌿 商道清朗巡检
         <span id="badge-compliance-count" class="bg-amber-500 text-stone-950 text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
       </button>
       <button id="p-tab-btn-ecosystem" onclick="window.switchTab('ecosystem')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
-        🌐 全域供需与互调大盘
+        🌐 全域供需大盘
       </button>
       <button id="p-tab-btn-suggestions" onclick="window.switchTab('suggestions')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
         📜 商道建言堂
@@ -86,18 +86,21 @@
       <button id="p-tab-btn-categories" onclick="window.switchTab('categories')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
         🗂️ 标准品类字典
       </button>
+      <button id="p-tab-btn-selfcheck" onclick="window.switchTab('selfcheck'); window.renderPlatformSelfCheck();" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
+        🧭 平台自省与公约
+      </button>
       <button id="p-tab-btn-audit" onclick="window.switchTab('audit')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
         ⚖️ 天道明鉴审计
       </button>
     </nav>
 
-    <!-- 板块 1：入驻审核与执照底库终审 -->
+    <!-- 板块 1：入驻审核与执照/个人实名终审 -->
     <section id="p-tab-apps" class="space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-sm font-bold text-stone-900">入驻申请与执照档案池 (人工终审与退回批示站)</h2>
-            <p class="text-[11px] text-stone-400">查看前端光学核验结果、放大查验执照公章原件，并可「一键免费查验工商底库」确认合作社/企业是否在营</p>
+            <h2 class="text-sm font-bold text-stone-900">入驻申请与资质档案池 (人工终审与退回批示站)</h2>
+            <p class="text-[11px] text-stone-400">支持合作社/工坊执照核验，及个人农户/手艺人实名认证（GR-代号 · 支持村社/老店联保背书）</p>
           </div>
           <span class="text-xs text-stone-500 font-mono">实名资质审查 · 零成本官方查册</span>
         </div>
@@ -110,8 +113,8 @@
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-sm font-bold text-stone-900">在册合作社与工坊管辖名册</h2>
-            <p class="text-[11px] text-stone-400">统一使用商号代号作为唯一商业标识，预设初始安家密钥为执照信用代码后 6 位</p>
+            <h2 class="text-sm font-bold text-stone-900">在册合作社、工坊与个体匠人管辖名册</h2>
+            <p class="text-[11px] text-stone-400">统一使用商号代号作为唯一商业标识，预设初始安家密钥为执照信用代码/证件后 6 位</p>
           </div>
           <div class="text-[11px] text-stone-400 flex flex-wrap gap-2 font-mono">
             <span>🍃 尝鲜体验</span>
@@ -119,7 +122,6 @@
             <span>🍃 春风宽待</span>
             <span>🛡️ 护盘存续</span>
             <span>🛑 商道暂歇</span>
-            <span>❌ 作废除名</span>
           </div>
         </div>
         <div class="overflow-x-auto">
@@ -127,7 +129,7 @@
             <thead class="bg-stone-50 border-b border-stone-200 text-stone-500 font-medium">
               <tr>
                 <th class="p-3">商号代号 (唯一标识)</th>
-                <th class="p-3">主体执照全称 / 信用代码</th>
+                <th class="p-3">主体全称 / 信用代码</th>
                 <th class="p-3">主体身份</th>
                 <th class="p-3">当家负责人</th>
                 <th class="p-3">后台安全凭证</th>
@@ -141,24 +143,44 @@
       </div>
     </section>
 
-    <!-- 新增板块：商道清朗 · 全网商品 AI 合规智能巡检（一键全局扫描） -->
+    <!-- 板块 2.2：商道清朗 · 全网商品 AI 合规智能巡检（AI自动提醒 vs 人工终审边界可选） -->
     <section id="p-tab-compliance" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3 text-xs">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
-            <h2 class="text-sm font-bold text-stone-900">🌿 商道清朗 · 全网在架良品 AI 合规智能巡检（AI 辅检 · 人工终审）</h2>
-            <p class="text-[11px] text-stone-400">一键扫描全网所有在架商品是否存在广告法禁用绝对化用语、缺实拍照或异常定价，温婉发函提请商号润色整改</p>
+            <h2 class="text-sm font-bold text-stone-900">🌿 商道清朗 · 全网在架良品 AI 合规巡检（常规琐事AI自动提醒 · 涉违底线人工终审）</h2>
+            <p class="text-[11px] text-stone-400">平台只发温婉规范提示至商品公开提示栏，绝不篡改商号留给自家仓管和司机的内部备注</p>
           </div>
-          <button type="button" onclick="window.runPlatformAIComplianceScan()" class="bg-stone-900 hover:bg-stone-800 text-white font-bold px-4 py-2 rounded-xl shadow active:scale-95 transition">
-            🔍 重新扫描全网良品
-          </button>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" onclick="window.batchAutoNotifyMinorIssues()" class="bg-emerald-800 hover:bg-emerald-900 text-white font-bold px-3.5 py-2 rounded-xl shadow active:scale-95 transition">
+              🤖 AI 一键自动推送常规润色提醒
+            </button>
+            <button type="button" onclick="window.runPlatformAIComplianceScan()" class="bg-stone-900 hover:bg-stone-800 text-white font-bold px-3.5 py-2 rounded-xl shadow active:scale-95 transition">
+              🔍 重新扫描
+            </button>
+          </div>
         </div>
+
+        <!-- 人机界定策略自选开关 -->
+        <div class="bg-stone-50 border border-stone-200 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-4">
+            <label class="flex items-center gap-1.5 font-bold text-stone-800 cursor-pointer">
+              <input type="checkbox" id="chk-ai-auto-minor" checked onchange="window.savePlatformGovernancePrefs()" class="w-4 h-4 rounded text-emerald-800">
+              <span>🤖 缺实拍照/缺规格等常规琐事由 AI 自动温和提示商号（无需平台人逐条点击）</span>
+            </label>
+            <label class="flex items-center gap-1.5 font-bold text-rose-900 cursor-pointer">
+              <input type="checkbox" id="chk-human-severe-only" checked onchange="window.savePlatformGovernancePrefs()" class="w-4 h-4 rounded text-rose-700">
+              <span>⚖️ 广告法违禁词与异常价格疑点保留人工终审把关</span>
+            </label>
+          </div>
+        </div>
+
         <div id="platform-compliance-summary" class="hidden bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-emerald-950 font-bold"></div>
         <div id="platform-compliance-list" class="divide-y divide-stone-100 max-h-[520px] overflow-y-auto no-scrollbar"></div>
       </div>
     </section>
 
-    <!-- 板块 2.5：全域供需协同与互调大盘 -->
+    <!-- 板块 2.5：全域供需协同与互调大盘（宏观脱敏指标，绝不窥探商家私有欠款） -->
     <section id="p-tab-ecosystem" class="hidden space-y-4">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
         <div class="bg-white p-4 rounded-3xl shadow-sm border border-stone-200">
@@ -186,8 +208,8 @@
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-sm font-bold text-stone-900">🏆 在册合作社与工坊 · 供需协同响应力榜单</h2>
-            <p class="text-[11px] text-stone-400">汇总各供货商承接的真实用度计划、同城余缺互调单及交割履约量，供平台择优推荐至百工天街与供需名录</p>
+            <h2 class="text-sm font-bold text-stone-900">🏆 在册供货主体 · 供需协同响应力榜单（阳光脱敏排行）</h2>
+            <p class="text-[11px] text-stone-400">仅汇总供需计划响应、余缺互调与履约单量等宏观指标，保护商号私有账目与定价主权</p>
           </div>
           <span class="text-[10px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-xl font-bold">以销定产 · 阳光排行</span>
         </div>
@@ -196,7 +218,7 @@
             <thead class="bg-stone-50 border-b border-stone-200 text-stone-500 font-medium">
               <tr>
                 <th class="p-2.5">商号代号</th>
-                <th class="p-2.5">合作社 / 工坊全称</th>
+                <th class="p-2.5">合作社 / 工坊 / 匠人全称</th>
                 <th class="p-2.5">真实用度计划 (已排产/总收)</th>
                 <th class="p-2.5">同城余缺互调 (成单/挂池)</th>
                 <th class="p-2.5">天街求购回应数</th>
@@ -251,6 +273,44 @@
       </div>
     </section>
 
+    <!-- 新增板块：🧭 平台自身自省体检与双向公约公示 -->
+    <section id="p-tab-selfcheck" class="hidden space-y-4 text-xs">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
+        <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">🧭 平台自身自省与健康度体检（正人先正己 · 守正创新）</h2>
+            <p class="text-[11px] text-stone-400">定期自查平台是否坚守非掠夺性公益定位、数字主权隔离是否严密、审计链是否无断层</p>
+          </div>
+          <button type="button" onclick="window.renderPlatformSelfCheck()" class="bg-stone-900 text-white font-bold px-3.5 py-1.5 rounded-xl">
+            ↻ 立即自检体检
+          </button>
+        </div>
+        <div id="platform-selfcheck-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-2">
+          <h3 class="text-sm font-bold text-emerald-950">📜 《百工百业数字公器 · 平台入驻与商道公约》</h3>
+          <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-2xl space-y-1.5 text-[11px] text-stone-700 leading-relaxed">
+            <p><b>第一条（数字公器定位）：</b>本平台作为社会公共数字基础设施，坚守均输平准初心，绝不搞流量竞价排名、绝不抽佣掠夺生产者劳动成果。</p>
+            <p><b>第二条（数字主权归己）：</b>入驻合作社、源头工坊、服务商及实名个体拥有完全独立的私有账本、客户档案与自主定价权，平台绝不窥探、绝不倒卖数据。</p>
+            <p><b>第三条（物勒工名保真）：</b>入驻主体须如实登记资质，上架货品与服务须实拍明码、不作虚假夸大宣传，接受同行与邻里监督。</p>
+            <p><b>第四条（同行公议自治）：</b>遇跨主体重大履约争议，遵循“先协商、再行会调解、必要时由无利益关联高信用同行陪审团众裁”原则。</p>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-2">
+          <h3 class="text-sm font-bold text-amber-950">🏪 《合作门店与社区邻里驿站公约》</h3>
+          <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-2xl space-y-1.5 text-[11px] text-stone-700 leading-relaxed">
+            <p><b>第一条（先行官与驿站角色）：</b>合作门店扎根社区村镇，承担邻里体验、展销与自提服务，服务润利全额归属门店。</p>
+            <p><b>第二条（诚信账期与载具循环）：</b>依约使用免息信用周转额度，按期清白对账；爱护周转筐、托盘、容器等循环载具，随车及时归还。</p>
+            <p><b>第三条（余缺互助 · 零浪费）：</b>店内富余货品或闲置载具可一键挂入同城余缺互调池，平价调剂给周边同行，同舟共济。</p>
+            <p><b>第四条（真实用度排产）：</b>如实提报周期真实用度计划，助力源头合作社与工坊按需采收生产，不囤积居奇、不恶意炒作。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- 板块 5：天道明鉴 · 绝对防篡改审计日志 -->
     <section id="p-tab-audit" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
@@ -281,7 +341,7 @@
 
   </div>
 
-  <!-- 平台总控安全凭证登录拦截模态窗 -->
+  <!-- 原有全部弹窗（登录门禁、总控TOTP绑定、总控2FA核验、商契气象调控、手动特邀立户含个人主体选项、新增标准品类）100% 完整保留 -->
   <div id="platform-auth-gate" class="fixed inset-0 bg-stone-950/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
     <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-white shadow-2xl">
       <div class="text-center space-y-1">
@@ -311,7 +371,6 @@
     </div>
   </div>
 
-  <!-- 总控专属 TOTP 绑定配置弹窗 -->
   <div id="modal-platform-totp-setup" class="hidden fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
     <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-white shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-800">
@@ -353,7 +412,6 @@
     </div>
   </div>
 
-  <!-- 总控 2FA 高危二次核验模态窗 -->
   <div id="modal-platform-2fa" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
     <div class="bg-stone-900 border border-stone-800 w-full max-w-xs rounded-3xl p-5 space-y-3 text-white shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-800 pb-2">
@@ -375,7 +433,6 @@
     </div>
   </div>
 
-  <!-- 商契气象调控弹窗 -->
   <div id="modal-status-adjust" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -452,26 +509,25 @@
     </div>
   </div>
 
-  <!-- 手动特邀开户弹窗 -->
   <div id="manual-tenant-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">🏛️ 线下特邀合作社 / 工坊直通立户</h3>
+        <h3 class="font-bold text-sm text-stone-900">🏛️ 线下特邀主体直通立户（含合作社/工坊/个人匠人）</h3>
         <button onclick="window.closeModal('manual-tenant-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="space-y-2.5">
         <div>
-          <label class="block text-stone-600 font-medium mb-1">主体执照全称 *：</label>
+          <label class="block text-stone-600 font-medium mb-1">主体全称 / 个人匠人名号 *：</label>
           <input type="text" id="m-company-name" placeholder="如：南阳伏牛山生态农业专业合作社" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
         </div>
         <div>
-          <label class="block text-stone-600 font-medium mb-1">统一社会信用代码 (18位 · 自动取后6位为预设密钥) *：</label>
-          <input type="text" id="m-credit-code" maxlength="18" oninput="window.syncManualModalDefaults()" placeholder="输入18位信用代码" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold">
+          <label class="block text-stone-600 font-medium mb-1">统一社会信用代码 / 实名证件号 (自动取后6位为预设密钥) *：</label>
+          <input type="text" id="m-credit-code" maxlength="18" oninput="window.syncManualModalDefaults()" placeholder="输入18位信用代码或证件号" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-stone-600 font-medium mb-1">商号代号 (唯一标识) *：</label>
-            <input type="text" id="m-tenant-id" placeholder="如：NY-FUNIU" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold text-amber-700">
+            <input type="text" id="m-tenant-id" placeholder="如：NY-FUNIU 或 GR-WANG" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold text-amber-700">
           </div>
           <div>
             <label class="block text-stone-600 font-medium mb-1">经营主体身份：</label>
@@ -480,6 +536,7 @@
               <option value="factory">🏭 源头工坊 / 生产制造厂</option>
               <option value="dealer">🏢 区域平准仓 / 集散商行</option>
               <option value="service">🛠️ 工料配件 / 综合服务商</option>
+              <option value="individual">👨‍🌾 个人农户 / 非遗手艺人 (GR)</option>
             </select>
           </div>
         </div>
@@ -497,8 +554,8 @@
             <input type="text" id="m-contact-person" placeholder="如：陈理事长 / 陈厂长" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
           </div>
           <div>
-            <label class="block text-stone-600 font-medium mb-1">预设安家密钥 (执照后6位)：</label>
-            <input type="text" id="m-access-key" placeholder="自动同步执照后6位" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold text-emerald-800">
+            <label class="block text-stone-600 font-medium mb-1">预设安家密钥 (后6位)：</label>
+            <input type="text" id="m-access-key" placeholder="自动同步后6位" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold text-emerald-800">
           </div>
         </div>
       </div>
@@ -513,7 +570,6 @@
     </div>
   </div>
 
-  <!-- 新增平台标准品类弹窗 -->
   <div id="add-category-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
