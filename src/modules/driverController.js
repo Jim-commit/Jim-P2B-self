@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase.js';
 import { compressImageFile, uploadBlobToStorage } from '../utils/storage.js';
 import { DriverService } from '../services/driverService.js';
+import { AuthSecurity } from '../utils/authSecurity.js';
 
 const OFFLINE_QUEUE_KEY = 'b2b_driver_offline_queue_v1';
 const PALM_SESSION_KEY = 'baigong_palm_session_v1';
@@ -39,8 +40,305 @@ let qcCtx = null;
 let isQcSigning = false;
 let hasQcSigned = false;
 
+// 新增状态：4位快捷短码输入缓冲、已知配货单集合（用于新单语音播报）、扫码授权状态
+let palmPinBuffer = '';
+let knownActiveOrderIds = new Set();
+let palmQrStream = null;
+let palmQrRafId = null;
+let pendingPalmQrToken = '';
+
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
+
+// =========================================================================
+// 适老化大字模式 & 新单语音播报
+// =========================================================================
+window.togglePalmLargeFont = function () {
+  const isLarge = document.body.classList.toggle('large-font-mode');
+  localStorage.setItem('baigong_palm_large_font', isLarge ? '1' : '0');
+  const btn = document.getElementById('btn-palm-large-font');
+  if (btn) btn.innerText = isLarge ? '🔎 标准字' : '🔍 大字';
+};
+
+function speakPalmVoiceNotice(text) {
+  const enabled = document.getElementById('chk-palm-voice')?.checked;
+  if (!enabled || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN';
+    u.rate = 0.95;
+    window.speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+// =========================================================================
+// 本机信任 + 4 位数字九宫格快捷解锁与一键锁屏
+// =========================================================================
+function updatePalmPinDotsUI() {
+  const dots = document.querySelectorAll('#palm-pin-dots span');
+  dots.forEach((dot, idx) => {
+    dot.className =
+      idx < palmPinBuffer.length
+        ? 'w-3.5 h-3.5 rounded-full border-2 border-emerald-700 bg-emerald-700 scale-110 transition'
+        : 'w-3.5 h-3.5 rounded-full border-2 border-emerald-700 bg-transparent transition';
+  });
+}
+
+window.pressPalmPinDigit = async function (digit) {
+  if (palmPinBuffer.length >= 4) return;
+  palmPinBuffer += digit;
+  updatePalmPinDotsUI();
+
+  if (palmPinBuffer.length === 4) {
+    const savedTid = localStorage.getItem('baigong_palm_last_tid') || '';
+    const res = await AuthSecurity.verifyDeviceQuickPin(savedTid, palmPinBuffer);
+    palmPinBuffer = '';
+    updatePalmPinDotsUI();
+
+    if (res.ok && res.sessionSnapshot) {
+      document.getElementById('palm-pin-err')?.classList.add('hidden');
+      const s = res.sessionSnapshot;
+      localStorage.setItem(PALM_SESSION_KEY, JSON.stringify(s));
+      currentAgent = s.tenantId;
+      currentRoleCode = s.roleCode || 'driver';
+      effectiveViewRole = currentRoleCode === 'owner' ? 'owner_cockpit' : currentRoleCode;
+      currentAccountCode = s.accountCode || '';
+      currentOperatorName = s.operatorName || '一线执事';
+      document.getElementById('palm-auth-gate')?.classList.add('hidden');
+      await bootPalmWorkspace();
+    } else {
+      const errEl = document.getElementById('palm-pin-err');
+      if (res.reason === 'MAX_ATTEMPTS') {
+        alert('⚠️ 快捷短码连续输错 3 次，为保障账本安全已退回主密码核身！');
+        window.switchPalmToFullLogin(true);
+      } else if (errEl) {
+        errEl.classList.remove('hidden');
+        errEl.innerText = `快捷短码不符，还可尝试 ${res.remain || 1} 次`;
+      }
+    }
+  }
+};
+
+window.clearPalmPinDigits = function () {
+  palmPinBuffer = '';
+  updatePalmPinDotsUI();
+};
+
+window.backspacePalmPinDigit = function () {
+  palmPinBuffer = palmPinBuffer.slice(0, -1);
+  updatePalmPinDotsUI();
+};
+
+window.switchPalmToFullLogin = function (clearSavedPin = false) {
+  const savedTid = localStorage.getItem('baigong_palm_last_tid') || '';
+  if (clearSavedPin && savedTid) {
+    AuthSecurity.clearDeviceQuickPin(savedTid);
+  }
+  document.getElementById('palm-pin-unlock-box')?.classList.add('hidden');
+  document.getElementById('palm-full-login-form')?.classList.remove('hidden');
+  if (savedTid) {
+    const tidInp = document.getElementById('palm-login-tenant');
+    if (tidInp) tidInp.value = savedTid;
+  }
+};
+
+window.backToPalmPinPanel = function () {
+  document.getElementById('palm-full-login-form')?.classList.add('hidden');
+  document.getElementById('palm-pin-unlock-box')?.classList.remove('hidden');
+};
+
+window.lockPalmQuickPinScreen = function () {
+  const pinInfo = AuthSecurity.getDeviceQuickPinInfo(currentAgent);
+  if (!pinInfo) {
+    if (confirm('当前手机尚未设置 4 位数字快捷短码，是否现在设置以便离开时一键锁屏？')) {
+      window.openPalmPinSetupModal();
+    }
+    return;
+  }
+  localStorage.removeItem(PALM_SESSION_KEY);
+  document.getElementById('palm-pin-tenant-label').innerText = `商号：${currentAgent}`;
+  document.getElementById('palm-pin-operator-label').innerText = `已锁屏 · ${currentOperatorName} 请按 4 位短码`;
+  document.getElementById('palm-pin-unlock-box')?.classList.remove('hidden');
+  document.getElementById('palm-full-login-form')?.classList.add('hidden');
+  document.getElementById('btn-palm-back-pin')?.classList.remove('hidden');
+  document.getElementById('palm-auth-gate')?.classList.remove('hidden');
+};
+
+window.openPalmPinSetupModal = function () {
+  document.getElementById('palm-setup-pin-1').value = '';
+  document.getElementById('palm-setup-pin-2').value = '';
+  window.openModal('modal-palm-setup-pin');
+};
+
+window.confirmSavePalmPin = async function () {
+  const p1 = document.getElementById('palm-setup-pin-1').value.trim();
+  const p2 = document.getElementById('palm-setup-pin-2').value.trim();
+  if (!/^\d{4}$/.test(p1)) return alert('请输入 4 位纯数字短码！');
+  if (p1 !== p2) return alert('两次输入的 4 位短码不一致！');
+
+  const sessionSnap = {
+    tenantId: currentAgent,
+    roleCode: currentRoleCode,
+    accountCode: currentAccountCode,
+    operatorName: currentOperatorName
+  };
+  await AuthSecurity.saveDeviceQuickPin(currentAgent, currentRoleCode, p1, sessionSnap);
+  localStorage.setItem('baigong_palm_last_tid', currentAgent);
+  window.closeModal('modal-palm-setup-pin');
+  alert('✅ 本机 4 位快捷短码绑定成功！以后打开掌中宝按 4 个数字即可秒进，点顶栏「🔒 锁屏」可随时锁定。');
+};
+
+// =========================================================================
+// 手机扫一扫授权电脑端平准调度台免密登录
+// =========================================================================
+window.openPalmQrAuthorizeModal = function () {
+  if (currentRoleCode !== 'owner') {
+    return alert('仅大当家账号有权授权电脑端登录平准调度中枢！');
+  }
+  document.getElementById('palm-qr-scanner-box')?.classList.remove('hidden');
+  document.getElementById('palm-qr-confirm-card')?.classList.add('hidden');
+  window.openModal('modal-palm-qr-authorize');
+  startPalmCameraQrScan();
+};
+
+window.closePalmQrAuthorizeModal = function () {
+  stopPalmCameraQrScan();
+  window.closeModal('modal-palm-qr-authorize');
+};
+
+async function startPalmCameraQrScan() {
+  const video = document.getElementById('palm-qr-video');
+  const hint = document.getElementById('palm-qr-cam-hint');
+  if (!video || !navigator.mediaDevices?.getUserMedia) {
+    if (hint) hint.innerText = '当前浏览器不支持直接调摄像头，请点下方「相册选二维码图」或「输口令码」';
+    return;
+  }
+  try {
+    palmQrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = palmQrStream;
+    await video.play();
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const tick = () => {
+      if (!palmQrStream) return;
+      if (video.readyState === video.HAVE_ENOUGH_DATA && window.jsQR) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = window.jsQR(imgData.data, imgData.width, imgData.height);
+        if (code && code.data) {
+          stopPalmCameraQrScan();
+          window.preparePalmApproveQrToken(code.data);
+          return;
+        }
+      }
+      palmQrRafId = requestAnimationFrame(tick);
+    };
+    palmQrRafId = requestAnimationFrame(tick);
+  } catch (e) {
+    if (hint) hint.innerText = '未获取摄像头权限，请点下方「相册选二维码图」或「输口令码」';
+  }
+}
+
+function stopPalmCameraQrScan() {
+  if (palmQrRafId) cancelAnimationFrame(palmQrRafId);
+  palmQrRafId = null;
+  if (palmQrStream) {
+    palmQrStream.getTracks().forEach((t) => t.stop());
+    palmQrStream = null;
+  }
+}
+
+window.scanPalmQrFromImage = function (e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = window.jsQR ? window.jsQR(imgData.data, imgData.width, imgData.height) : null;
+      if (code && code.data) {
+        stopPalmCameraQrScan();
+        window.preparePalmApproveQrToken(code.data);
+      } else {
+        alert('未在图片中识别到有效登录二维码，请对准电脑屏幕重拍或手动输入口令码。');
+      }
+    };
+    img.src = evt.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+window.preparePalmApproveQrToken = function (rawText) {
+  let token = String(rawText || '').trim();
+  if (token.includes('qr_token=')) {
+    const m = token.match(/qr_token=([A-Za-z0-9\-_]+)/);
+    if (m) token = m[1];
+  }
+  if (!token.startsWith('SCAN-')) {
+    return alert('无效的登录二维码，请扫描电脑端平准调度台登录页的二维码！');
+  }
+  pendingPalmQrToken = token;
+  document.getElementById('palm-qr-scanner-box')?.classList.add('hidden');
+  document.getElementById('palm-qr-confirm-card')?.classList.remove('hidden');
+  document.getElementById('palm-auth-qr-tenant').innerText = currentAgent;
+  document.getElementById('palm-auth-qr-operator').innerText = currentOperatorName;
+  document.getElementById('palm-auth-qr-token').innerText = token;
+};
+
+window.executePalmApproveQrLogin = async function () {
+  if (!pendingPalmQrToken || !currentAgent) return;
+  const btn = document.getElementById('btn-palm-confirm-qr');
+  btn.disabled = true;
+  btn.innerText = '正在放行授权...';
+
+  try {
+    const { data, error } = await supabase
+      .from('login_qr_session')
+      .update({
+        tenant_id: currentAgent,
+        role_code: 'owner',
+        operator_name: currentOperatorName,
+        status: 'approved'
+      })
+      .eq('session_token', pendingPalmQrToken)
+      .eq('status', 'waiting')
+      .select();
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('该二维码已过期（超过90秒）或已被使用，请刷新电脑端二维码后重试');
+    }
+
+    try {
+      await supabase.from('audit_logs').insert([
+        {
+          tenant_id: currentAgent,
+          operator_role: currentOperatorName,
+          action_type: 'QR_PC_LOGIN_APPROVE',
+          detail: `通过百工掌中宝扫码放行电脑端平准调度台登录（令牌：${pendingPalmQrToken}）`
+        }
+      ]);
+    } catch (e) {}
+
+    alert('✅ 授权放行成功！电脑端平准调度中枢正在自动登入。');
+    window.closePalmQrAuthorizeModal();
+  } catch (err) {
+    alert('❌ 授权失败：' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = '✅ 确认授权登录';
+  }
+};
 
 function isDirectoryLead(o) {
   return (
@@ -74,7 +372,6 @@ function getVisibleStoresForSales() {
 // 0. 拍照智能识别（OCR 辅助提取门头/手机号/回执金额）& 语音 & GPS
 // =========================================================================
 async function runLightweightOcrOnFile(file) {
-  // 优先尝试浏览器原生 TextDetector，若不支持则动态按需加载轻量级 Tesseract
   if ('TextDetector' in window) {
     try {
       const bitmap = await createImageBitmap(file);
@@ -243,14 +540,22 @@ window.navigateToStoreGps = function (storeId) {
 };
 
 // =========================================================================
-// 1. 掌中宝身份核身登录与双合一视图切换（大当家指挥舱 + 一线执行专席）
+// 1. 掌中宝身份核身登录（支持 SHA-256 哈希核验 + 连续 5 次输错熔断 + 自动引导绑定4位短码）
 // =========================================================================
 window.verifyPalmAuthLogin = async function (e) {
   e.preventDefault();
   const tenantId = document.getElementById('palm-login-tenant').value.trim().toUpperCase();
   const rawKey = document.getElementById('palm-login-key').value.trim();
+  const wantBindPin = document.getElementById('chk-palm-bind-pin')?.checked;
   const errBox = document.getElementById('palm-auth-error');
   const btn = document.getElementById('btn-palm-login');
+
+  const lockInfo = AuthSecurity.checkLoginLockout(`PALM_${tenantId}`);
+  if (lockInfo.locked) {
+    errBox.innerText = `🛡️ 安全熔断：连续输错次数过多，请 ${lockInfo.remainMins} 分钟后再试。`;
+    errBox.classList.remove('hidden');
+    return;
+  }
 
   btn.disabled = true;
   btn.innerText = '核验身份中...';
@@ -266,6 +571,7 @@ window.verifyPalmAuthLogin = async function (e) {
       .limit(1);
 
     if (!tenantList || tenantList.length === 0) {
+      AuthSecurity.recordLoginFailure(`PALM_${tenantId}`);
       btn.disabled = false;
       btn.innerText = '核验身份 · 进入移动工作台';
       errBox.innerText = '⚠️ 商号代号不存在或已暂歇！';
@@ -278,18 +584,24 @@ window.verifyPalmAuthLogin = async function (e) {
       .select('*')
       .eq('tenant_id', tenantId)
       .eq('account_name', subAcc)
-      .eq('password_hash', subPwd)
       .eq('is_active', true)
       .limit(1);
 
-    if (!subList || subList.length === 0) {
+    let subValid = false;
+    if (subList && subList.length > 0) {
+      subValid = await AuthSecurity.verifyPassword(subPwd, subList[0].password_hash, tenantId);
+    }
+
+    if (!subValid) {
+      const failRec = AuthSecurity.recordLoginFailure(`PALM_${tenantId}`);
       btn.disabled = false;
       btn.innerText = '核验身份 · 进入移动工作台';
-      errBox.innerText = '⚠️ 属员子账号或密码不正确！';
+      errBox.innerText = `⚠️ 属员子账号或密码不正确（还可尝试 ${Math.max(0, 5 - failRec.count)} 次）！`;
       errBox.classList.remove('hidden');
       return;
     }
 
+    AuthSecurity.clearLoginFailure(`PALM_${tenantId}`);
     const sessionObj = {
       tenantId,
       roleCode: subList[0].role_code || 'driver',
@@ -297,14 +609,20 @@ window.verifyPalmAuthLogin = async function (e) {
       operatorName: subList[0].real_name || subAcc
     };
     localStorage.setItem(PALM_SESSION_KEY, JSON.stringify(sessionObj));
+    localStorage.setItem('baigong_palm_last_tid', tenantId);
     currentAgent = sessionObj.tenantId;
     currentRoleCode = sessionObj.roleCode;
     effectiveViewRole = sessionObj.roleCode;
     currentAccountCode = sessionObj.accountCode;
     currentOperatorName = sessionObj.operatorName;
 
+    btn.disabled = false;
+    btn.innerText = '核验身份 · 进入移动工作台';
     document.getElementById('palm-auth-gate').classList.add('hidden');
     await bootPalmWorkspace();
+    if (wantBindPin && !AuthSecurity.getDeviceQuickPinInfo(tenantId)) {
+      window.openPalmPinSetupModal();
+    }
     return;
   }
 
@@ -312,18 +630,24 @@ window.verifyPalmAuthLogin = async function (e) {
     .from('platform_tenant')
     .select('*')
     .eq('tenant_id', tenantId)
-    .or(`access_key.eq.${rawKey},access_key.eq.${rawKey.toUpperCase()}`)
     .eq('is_active', true)
     .limit(1);
 
-  if (!tenants || tenants.length === 0) {
+  let ownerValid = false;
+  if (tenants && tenants.length > 0) {
+    ownerValid = await AuthSecurity.verifyPassword(rawKey, tenants[0].access_key, tenantId);
+  }
+
+  if (!ownerValid) {
+    const failRec = AuthSecurity.recordLoginFailure(`PALM_${tenantId}`);
     btn.disabled = false;
     btn.innerText = '核验身份 · 进入移动工作台';
-    errBox.innerText = '⚠️ 商号代号或访问密钥不符！';
+    errBox.innerText = `⚠️ 商号代号或安家主密码不符（还可尝试 ${Math.max(0, 5 - failRec.count)} 次）！`;
     errBox.classList.remove('hidden');
     return;
   }
 
+  AuthSecurity.clearLoginFailure(`PALM_${tenantId}`);
   const sessionObj = {
     tenantId,
     roleCode: 'owner',
@@ -331,14 +655,20 @@ window.verifyPalmAuthLogin = async function (e) {
     operatorName: '大当家掌柜'
   };
   localStorage.setItem(PALM_SESSION_KEY, JSON.stringify(sessionObj));
+  localStorage.setItem('baigong_palm_last_tid', tenantId);
   currentAgent = tenantId;
   currentRoleCode = 'owner';
   effectiveViewRole = 'owner_cockpit';
   currentAccountCode = '';
   currentOperatorName = '大当家掌柜';
 
+  btn.disabled = false;
+  btn.innerText = '核验身份 · 进入移动工作台';
   document.getElementById('palm-auth-gate').classList.add('hidden');
   await bootPalmWorkspace();
+  if (wantBindPin && !AuthSecurity.getDeviceQuickPinInfo(tenantId)) {
+    window.openPalmPinSetupModal();
+  }
 };
 
 window.logoutPalmTerminal = function () {
@@ -365,6 +695,9 @@ function renderRoleAdaptiveShell() {
   document.getElementById('tenant-display').innerText = currentAgent;
   document.getElementById('driver-name-display').innerText = currentOperatorName;
   document.getElementById('palm-role-badge').innerText = roleNames[currentRoleCode] || currentRoleCode;
+
+  // 仅大当家显示「📷 授权电脑」按钮与顶部视角切换器
+  document.getElementById('btn-palm-qr-auth')?.classList.toggle('hidden', currentRoleCode !== 'owner');
 
   const ownerSwitcher = document.getElementById('owner-view-switcher');
   if (ownerSwitcher) {
@@ -454,7 +787,7 @@ window.switchPalmSubTab = function (subTab) {
 };
 
 // =========================================================================
-// 1.5 👑 掌柜移动指挥舱（手机端审批定损单、草稿定价上架、超信批复）
+// 1.5 👑 掌柜移动指挥舱
 // =========================================================================
 function renderOwnerMobileCockpit() {
   const goodsVal = allProducts.reduce((s, p) => s + parseFloat(p.tier_1_price || 0) * parseInt(p.stock ?? 0), 0);
@@ -553,7 +886,7 @@ window.quickPriceAndPublishDraft = async function (prodId, prodName) {
 window.openPalmHelpModal = function () {
   const viewRole = currentRoleCode === 'owner' ? effectiveViewRole : currentRoleCode;
   const helpMap = {
-    owner_cockpit: '• <b>掌柜移动指挥舱</b>：手机随时查看三流晴雨、核准商号内部定损单(DS-)冲减欠款、或为仓管提交的草稿货品定好价格正式上架。<br/>• <b>视角切换</b>：顶部下拉框可随时切换送货、仓管、业务员、定损任意岗位视角巡检。',
+    owner_cockpit: '• <b>掌柜移动指挥舱</b>：手机随时查看三流晴雨、核准商号内部定损单(DS-)冲减欠款、或为仓管提交的草稿货品定好价格正式上架。<br/>• <b>扫码授权电脑</b>：点击顶栏「📷 授权电脑」扫描电脑调度台二维码，免输长密码秒登电脑。<br/>• <b>快捷短码锁屏</b>：点击顶栏「🔒 锁屏」一键锁定为 4 位数字九宫格，防旁人误看。',
     driver: '• <b>随车交割</b>：点击合作门店卡片即可查看新配、退验与对调明细，清点回收周转载具并让掌柜手写签名确认。<br/>• <b>精准导航</b>：点击门店「🧭 导航」可直接调起地图直达店门口。<br/>• <b>地下室防丢单</b>：无信号时照常提交签收，出库有信号后点击顶部黄色提示条一键同步回库。',
     warehouse: '• <b>盲价隔离保护</b>：本工作台已自动屏蔽所有商品进销价格与客户账款。<br/>• <b>标准单据制单</b>：系统自动生成年月日时标准入库单(RK)与出库单(CK)，并可查看装车总拣货单。',
     producer: '• <b>田间/车间预入库</b>：采收或完工后，选择货品与交货班组直接提交 RK 入库单，仓库库存实时增加。',
@@ -566,7 +899,7 @@ window.openPalmHelpModal = function () {
 };
 
 // =========================================================================
-// 2. 仓储调度 & 产区采收移动制单功能（年月日时统一编码 + 物理盲价隔离）
+// 2. 仓储调度 & 产区采收移动制单功能
 // =========================================================================
 window.setPalmStockMode = function (mode) {
   palmStockMode = mode;
@@ -635,7 +968,6 @@ window.submitPalmStockVoucher = async function () {
   if (uErr) return alert('库存写入失败：' + uErr.message);
 
   const voucherNo = palmVoucherNo || generateUnifiedVoucherNo(palmStockMode === 'out_loss' ? 'CK' : 'RK');
-  // 物理盲价隔离：严禁向数据库备注写入任何金额文字
   const fullRemark = `[单号:${voucherNo}] [${subType} · ${source}] ${remark}`.trim();
 
   await supabase.from('inventory_log').insert([
@@ -745,7 +1077,7 @@ window.markExpressOrderShipped = async function (orderId) {
 };
 
 // =========================================================================
-// 3. 业务员跟进合作门店（私海客户隔离）& 上门拜访催收
+// 3. 业务员跟进合作门店 & 上门拜访催收
 // =========================================================================
 function renderSalesStoresList() {
   const listEl = document.getElementById('palm-sales-stores-list');
@@ -873,7 +1205,7 @@ window.submitPalmSalesCollection = async function () {
 };
 
 // =========================================================================
-// 4. 售后定损 / 质检鉴证工作台（写入商号私有 inventory_log，不惊动平台）
+// 4. 售后定损 / 质检鉴证工作台
 // =========================================================================
 function renderQcStoreSelect() {
   const sel = document.getElementById('qc-store-select');
@@ -983,7 +1315,7 @@ window.submitQcReport = async function () {
 };
 
 // =========================================================================
-// 5. 送货师傅核心交割、多载具分项回收、电子签名与离线防丢单（100% 完整保留）
+// 5. 送货师傅核心交割、多载具分项回收、电子签名与离线防丢单（100% 完整保留 + 新单语音播报）
 // =========================================================================
 function getOfflineQueue() {
   try {
@@ -1156,6 +1488,22 @@ window.loadDriverTasks = async function () {
   activeOrders = activeOrds.filter((o) => !isDirectoryLead(o));
   deliveredOrdersCache = deliveredOrds;
   inventoryLogsCache = invLogsRes?.data || [];
+
+  // 新到待送单语音播报提醒
+  let newStoreName = '';
+  activeOrders.forEach((o) => {
+    const oid = Number(o.id);
+    if (!knownActiveOrderIds.has(oid)) {
+      if (knownActiveOrderIds.size > 0) {
+        newStoreName = o.store_name || '合作门店';
+      }
+      knownActiveOrderIds.add(oid);
+    }
+  });
+  if (newStoreName) {
+    speakPalmVoiceNotice(`您有一笔发往${newStoreName}的新配货单，请留意核对装车`);
+  }
+
   renderRoute();
 
   const cashAmt = todayLogs.filter((l) => l.pay_method === '现金').reduce((sum, l) => sum + parseFloat(l.amount || 0), 0);
@@ -1737,9 +2085,23 @@ window.submitDriverSuggestion = async function () {
 async function bootPalmWorkspace() {
   renderRoleAdaptiveShell();
   await window.loadDriverTasks();
+
+  // 检查是否由微信扫一扫带 ?qr_token= 唤起
+  const urlParams = new URLSearchParams(window.location.search);
+  const incomingQr = urlParams.get('qr_token');
+  if (incomingQr && currentRoleCode === 'owner') {
+    window.openPalmQrAuthorizeModal();
+    window.preparePalmApproveQrToken(incomingQr);
+  }
 }
 
 export async function initDriverController() {
+  if (localStorage.getItem('baigong_palm_large_font') === '1') {
+    document.body.classList.add('large-font-mode');
+    const btn = document.getElementById('btn-palm-large-font');
+    if (btn) btn.innerText = '🔎 标准字';
+  }
+
   let savedSession = null;
   try {
     savedSession = JSON.parse(localStorage.getItem(PALM_SESSION_KEY) || 'null');
@@ -1753,7 +2115,22 @@ export async function initDriverController() {
     currentOperatorName = savedSession.operatorName || '一线执事';
     document.getElementById('palm-auth-gate')?.classList.add('hidden');
     await bootPalmWorkspace();
-  } else {
-    document.getElementById('palm-auth-gate')?.classList.remove('hidden');
+    return;
   }
+
+  // 检查当前设备是否已绑定 4 位快捷短码，若有则优先展示大号九宫格解锁面板
+  const lastTid = localStorage.getItem('baigong_palm_last_tid') || '';
+  const pinInfo = lastTid ? AuthSecurity.getDeviceQuickPinInfo(lastTid) : null;
+  if (pinInfo && pinInfo.sessionSnapshot) {
+    document.getElementById('palm-pin-tenant-label').innerText = `商号：${lastTid}`;
+    document.getElementById('palm-pin-operator-label').innerText = `欢迎回来，${pinInfo.sessionSnapshot.operatorName} · 请按 4 位快捷短码`;
+    document.getElementById('palm-pin-unlock-box')?.classList.remove('hidden');
+    document.getElementById('palm-full-login-form')?.classList.add('hidden');
+    document.getElementById('btn-palm-back-pin')?.classList.remove('hidden');
+  } else if (lastTid) {
+    const tidInp = document.getElementById('palm-login-tenant');
+    if (tidInp) tidInp.value = lastTid;
+  }
+
+  document.getElementById('palm-auth-gate')?.classList.remove('hidden');
 }
