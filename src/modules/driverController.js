@@ -8,6 +8,7 @@ const PALM_SESSION_KEY = 'baigong_palm_session_v1';
 let currentAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
 let currentRoleCode = 'driver';
 let effectiveViewRole = 'driver';
+let currentAccountCode = '';
 let currentOperatorName = '送货师傅';
 let currentCarrierLabel = '周转筐';
 let globalCarriersList = [{ name: '周转筐', deposit: 15 }];
@@ -15,11 +16,13 @@ let allStores = [];
 let allProducts = [];
 let activeOrders = [];
 let deliveredOrdersCache = [];
+let inventoryLogsCache = [];
 let onlyShowOrders = false;
 let proofImagesList = [];
 let qcPhotoList = [];
 let palmStockMode = 'in_purchase';
 let palmVoucherNo = '';
+let qcVoucherNo = '';
 
 let signCanvas = null;
 let signCtx = null;
@@ -30,6 +33,11 @@ let salesCanvas = null;
 let salesCtx = null;
 let isSalesSigning = false;
 let hasSalesSigned = false;
+
+let qcCanvas = null;
+let qcCtx = null;
+let isQcSigning = false;
+let hasQcSigned = false;
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
@@ -44,9 +52,111 @@ function isDirectoryLead(o) {
   );
 }
 
+function generateUnifiedVoucherNo(prefix) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const h = String(now.getHours()).padStart(2, '0');
+  const rand4 = Math.floor(1000 + Math.random() * 9000);
+  return `${prefix}-${y}${m}${d}${h}-${rand4}`;
+}
+
+function getVisibleStoresForSales() {
+  if (currentRoleCode !== 'sales') return allStores;
+  return allStores.filter((s) => {
+    const ownerAcc = s.custom_pricing?.sales_owner || '';
+    return !ownerAcc || ownerAcc === currentAccountCode || ownerAcc === currentOperatorName;
+  });
+}
+
 // =========================================================================
-// 0. 语音速记转文字 & GPS 精准定位导航工具
+// 0. 拍照智能识别（OCR 辅助提取门头/手机号/回执金额）& 语音 & GPS
 // =========================================================================
+async function runLightweightOcrOnFile(file) {
+  // 优先尝试浏览器原生 TextDetector，若不支持则动态按需加载轻量级 Tesseract
+  if ('TextDetector' in window) {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const detector = new window.TextDetector();
+      const blocks = await detector.detect(bitmap);
+      return blocks.map((b) => b.rawValue).join('\n');
+    } catch (e) {}
+  }
+  if (!window.Tesseract) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  if (window.Tesseract) {
+    const res = await window.Tesseract.recognize(file, 'chi_sim+eng');
+    return res?.data?.text || '';
+  }
+  return '';
+}
+
+window.ocrScanStoreFront = async function (e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const nameInput = document.getElementById('lead-name-input');
+  const phoneInput = document.getElementById('lead-phone-input');
+  const origPh = nameInput?.placeholder || '';
+  if (nameInput) nameInput.placeholder = '⏳ 正在识读门头/名片文字...';
+
+  try {
+    const rawText = await runLightweightOcrOnFile(file);
+    const lines = rawText
+      .split(/\r?\n/)
+      .map((l) => l.replace(/\s+/g, '').trim())
+      .filter((l) => l.length >= 2);
+
+    const phoneMatch = rawText.replace(/[-\s]/g, '').match(/1[3-9]\d{9}/);
+    if (phoneMatch && phoneInput) phoneInput.value = phoneMatch[0];
+
+    const shopCandidate = lines.find((l) => !/^\d+$/.test(l) && l.length >= 3 && l.length <= 20);
+    if (shopCandidate && nameInput && !nameInput.value.trim()) {
+      nameInput.value = shopCandidate;
+    }
+
+    alert(
+      rawText.trim()
+        ? `📸 已识别图片文字并自动回填！请核对微调：\n${lines.slice(0, 4).join(' / ')}`
+        : '⚠️ 画面光线略暗未识出清晰文字，请直接手动输入或使用语音录入。'
+    );
+  } catch (err) {
+    alert('当前弱网环境无法加载识字引擎，请直接手动填写或使用语音录入。');
+  } finally {
+    if (nameInput) nameInput.placeholder = origPh;
+  }
+};
+
+window.ocrScanReceiptAmount = async function (e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const amtInput = document.getElementById('psc-amount');
+  try {
+    const rawText = await runLightweightOcrOnFile(file);
+    const amtMatches = rawText.match(/(?:¥|￥|金额|实付|转账)?\s*(\d+(?:\.\d{1,2})?)/g) || [];
+    const nums = amtMatches
+      .map((m) => parseFloat(m.replace(/[^\d.]/g, '')))
+      .filter((n) => !isNaN(n) && n > 0 && n < 500000);
+
+    if (nums.length > 0 && amtInput) {
+      const best = Math.max(...nums);
+      amtInput.value = best.toFixed(2);
+      alert(`📸 已从转账回执中识别到金额 ¥${best.toFixed(2)} 并自动填入，请核对确认！`);
+    } else {
+      alert('未从截图中识别出明确金额，请直接手动核对输入。');
+    }
+  } catch (err) {
+    alert('当前弱网环境无法识别截图，请直接手动填入实收金额。');
+  }
+};
+
 window.startVoiceInput = function (targetInputId) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
@@ -67,9 +177,7 @@ window.startVoiceInput = function (targetInputId) {
     const transcript = event.results[0][0].transcript;
     targetEl.value = targetEl.value ? `${targetEl.value}；${transcript}` : transcript;
   };
-  recognition.onerror = () => {
-    alert('未听清语音内容，请重试或手动输入。');
-  };
+  recognition.onerror = () => alert('未听清语音内容，请重试或手动输入。');
   recognition.onend = () => {
     targetEl.placeholder = origPlaceholder;
   };
@@ -77,9 +185,7 @@ window.startVoiceInput = function (targetInputId) {
 };
 
 window.captureGpsForNewLead = function () {
-  if (!navigator.geolocation) {
-    return alert('当前设备不支持 GPS 定位功能。');
-  }
+  if (!navigator.geolocation) return alert('当前设备不支持 GPS 定位功能。');
   const addrInput = document.getElementById('lead-addr-input');
   navigator.geolocation.getCurrentPosition(
     (pos) => {
@@ -92,9 +198,7 @@ window.captureGpsForNewLead = function () {
       }
       alert(`📍 门头精准 GPS 坐标已采集成功：${lng}, ${lat}`);
     },
-    (err) => {
-      alert('获取定位失败，请确认已开启手机定位权限：' + err.message);
-    },
+    (err) => alert('获取定位失败，请确认已开启手机定位权限：' + err.message),
     { enableHighAccuracy: true, timeout: 8000 }
   );
 };
@@ -139,7 +243,7 @@ window.navigateToStoreGps = function (storeId) {
 };
 
 // =========================================================================
-// 1. 掌中宝身份核身登录与最小化权限视图切换
+// 1. 掌中宝身份核身登录与双合一视图切换（大当家指挥舱 + 一线执行专席）
 // =========================================================================
 window.verifyPalmAuthLogin = async function (e) {
   e.preventDefault();
@@ -163,7 +267,7 @@ window.verifyPalmAuthLogin = async function (e) {
 
     if (!tenantList || tenantList.length === 0) {
       btn.disabled = false;
-      btn.innerText = '核验身份 · 进入岗位工作台';
+      btn.innerText = '核验身份 · 进入移动工作台';
       errBox.innerText = '⚠️ 商号代号不存在或已暂歇！';
       errBox.classList.remove('hidden');
       return;
@@ -180,7 +284,7 @@ window.verifyPalmAuthLogin = async function (e) {
 
     if (!subList || subList.length === 0) {
       btn.disabled = false;
-      btn.innerText = '核验身份 · 进入岗位工作台';
+      btn.innerText = '核验身份 · 进入移动工作台';
       errBox.innerText = '⚠️ 属员子账号或密码不正确！';
       errBox.classList.remove('hidden');
       return;
@@ -189,12 +293,14 @@ window.verifyPalmAuthLogin = async function (e) {
     const sessionObj = {
       tenantId,
       roleCode: subList[0].role_code || 'driver',
+      accountCode: subList[0].account_name,
       operatorName: subList[0].real_name || subAcc
     };
     localStorage.setItem(PALM_SESSION_KEY, JSON.stringify(sessionObj));
     currentAgent = sessionObj.tenantId;
     currentRoleCode = sessionObj.roleCode;
     effectiveViewRole = sessionObj.roleCode;
+    currentAccountCode = sessionObj.accountCode;
     currentOperatorName = sessionObj.operatorName;
 
     document.getElementById('palm-auth-gate').classList.add('hidden');
@@ -212,7 +318,7 @@ window.verifyPalmAuthLogin = async function (e) {
 
   if (!tenants || tenants.length === 0) {
     btn.disabled = false;
-    btn.innerText = '核验身份 · 进入岗位工作台';
+    btn.innerText = '核验身份 · 进入移动工作台';
     errBox.innerText = '⚠️ 商号代号或访问密钥不符！';
     errBox.classList.remove('hidden');
     return;
@@ -221,20 +327,22 @@ window.verifyPalmAuthLogin = async function (e) {
   const sessionObj = {
     tenantId,
     roleCode: 'owner',
-    operatorName: '大当家巡检'
+    accountCode: '',
+    operatorName: '大当家掌柜'
   };
   localStorage.setItem(PALM_SESSION_KEY, JSON.stringify(sessionObj));
   currentAgent = tenantId;
   currentRoleCode = 'owner';
-  effectiveViewRole = 'driver';
-  currentOperatorName = '大当家巡检';
+  effectiveViewRole = 'owner_cockpit';
+  currentAccountCode = '';
+  currentOperatorName = '大当家掌柜';
 
   document.getElementById('palm-auth-gate').classList.add('hidden');
   await bootPalmWorkspace();
 };
 
 window.logoutPalmTerminal = function () {
-  if (!confirm('确认退出当前掌中宝岗位登录？')) return;
+  if (!confirm('确认退出当前掌中宝登录？')) return;
   localStorage.removeItem(PALM_SESSION_KEY);
   document.getElementById('palm-auth-gate').classList.remove('hidden');
 };
@@ -246,7 +354,7 @@ window.switchOwnerPreviewRole = function (role) {
 
 function renderRoleAdaptiveShell() {
   const roleNames = {
-    owner: '👑 大当家全能巡检',
+    owner: '👑 大当家双合一专席',
     driver: '🚚 送货师傅专席',
     warehouse: '📦 仓储调度专席 (盲价)',
     sales: '🤝 业务员 / 催收专席',
@@ -261,12 +369,13 @@ function renderRoleAdaptiveShell() {
   const ownerSwitcher = document.getElementById('owner-view-switcher');
   if (ownerSwitcher) {
     ownerSwitcher.classList.toggle('hidden', currentRoleCode !== 'owner');
+    const sel = document.getElementById('owner-role-preview-select');
+    if (sel && currentRoleCode === 'owner') sel.value = effectiveViewRole;
   }
 
   const viewRole = currentRoleCode === 'owner' ? effectiveViewRole : currentRoleCode;
 
-  // 隐藏所有工作区与底栏，再按当前岗位最小化权限按需开放
-  ['pane-deliver', 'pane-warehouse', 'pane-sales-stores', 'pane-qc-service', 'pane-explore'].forEach((id) => {
+  ['pane-owner-cockpit', 'pane-deliver', 'pane-warehouse', 'pane-sales-stores', 'pane-qc-service', 'pane-explore'].forEach((id) => {
     document.getElementById(id)?.classList.add('hidden');
   });
   document.getElementById('driver-cash-summary-card')?.classList.add('hidden');
@@ -275,7 +384,11 @@ function renderRoleAdaptiveShell() {
   const navBox = document.getElementById('palm-role-nav');
   if (!navBox) return;
 
-  if (viewRole === 'driver') {
+  if (viewRole === 'owner_cockpit') {
+    navBox.innerHTML = '';
+    document.getElementById('pane-owner-cockpit')?.classList.remove('hidden');
+    renderOwnerMobileCockpit();
+  } else if (viewRole === 'driver') {
     document.getElementById('driver-cash-summary-card')?.classList.remove('hidden');
     document.getElementById('driver-checkout-footer')?.classList.remove('hidden');
     navBox.innerHTML = `
@@ -303,9 +416,12 @@ function renderRoleAdaptiveShell() {
   } else if (viewRole === 'qc_service') {
     navBox.innerHTML = '';
     document.getElementById('pane-qc-service')?.classList.remove('hidden');
+    qcVoucherNo = generateUnifiedVoucherNo('DS');
+    const qNoEl = document.getElementById('qc-voucher-no');
+    if (qNoEl) qNoEl.innerText = qcVoucherNo;
     renderQcStoreSelect();
+    initQcSignaturePad();
   } else {
-    // 兜底默认配送视图
     document.getElementById('driver-cash-summary-card')?.classList.remove('hidden');
     document.getElementById('driver-checkout-footer')?.classList.remove('hidden');
     document.getElementById('pane-deliver')?.classList.remove('hidden');
@@ -337,14 +453,112 @@ window.switchPalmSubTab = function (subTab) {
   }
 };
 
+// =========================================================================
+// 1.5 👑 掌柜移动指挥舱（手机端审批定损单、草稿定价上架、超信批复）
+// =========================================================================
+function renderOwnerMobileCockpit() {
+  const goodsVal = allProducts.reduce((s, p) => s + parseFloat(p.tier_1_price || 0) * parseInt(p.stock ?? 0), 0);
+  const debtVal = allStores.reduce((s, st) => s + parseFloat(st.current_debt || 0), 0);
+  const settledVal = deliveredOrdersCache.reduce((s, o) => s + parseFloat(o.net_settle_amount || o.total_amount || 0), 0);
+
+  const gEl = document.getElementById('oc-goods-val');
+  const dEl = document.getElementById('oc-debt-val');
+  const sEl = document.getElementById('oc-settled-val');
+  if (gEl) gEl.innerText = `¥${goodsVal.toFixed(0)}`;
+  if (dEl) dEl.innerText = `¥${debtVal.toFixed(0)}`;
+  if (sEl) sEl.innerText = `¥${settledVal.toFixed(0)}`;
+
+  const listEl = document.getElementById('oc-todo-list');
+  if (!listEl) return;
+
+  const cards = [];
+  const pendingClaims = inventoryLogsCache.filter((l) => l.action_type === 'qc_damage_claim' && !String(l.remark || '').includes('[已核准冲账]'));
+  pendingClaims.forEach((c) => {
+    const noMatch = (c.remark || '').match(/\[单号:([^\]]+)\]/);
+    const amtMatch = (c.remark || '').match(/\[冲抵金额:¥([0-9.]+)\]/);
+    const voucherNo = noMatch ? noMatch[1] : `DS-${c.id}`;
+    const amt = amtMatch ? parseFloat(amtMatch[1]) : 0;
+    cards.push(`
+      <div class="p-3 bg-rose-50/70 border border-rose-200 rounded-2xl space-y-1.5">
+        <div class="flex justify-between items-center font-bold">
+          <span class="text-rose-900">🔧 内部定损单 ${voucherNo}</span>
+          <span class="font-mono text-rose-700">冲抵 ¥${amt.toFixed(2)}</span>
+        </div>
+        <p class="text-[11px] text-stone-600">${c.remark || ''}</p>
+        <button type="button" onclick="window.approveOwnerMobileClaim(${c.id})" class="w-full bg-rose-600 text-white font-bold py-1.5 rounded-xl text-[11px]">
+          ✅ 手机核准定损并冲减欠款
+        </button>
+      </div>
+    `);
+  });
+
+  const draftProds = allProducts.filter((p) => p.status === 'draft');
+  draftProds.forEach((p) => {
+    cards.push(`
+      <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-1.5">
+        <div class="flex justify-between items-center font-bold">
+          <span class="text-amber-950">📝 待定价草稿：${p.name}</span>
+          <span class="font-mono text-stone-500">存 ${p.stock ?? 0}${p.measure_unit || '件'}</span>
+        </div>
+        <button type="button" onclick="window.quickPriceAndPublishDraft(${p.id}, '${p.name.replace(/'/g, '')}')" class="w-full bg-[#1b4332] text-white font-bold py-1.5 rounded-xl text-[11px]">
+          💎 手机设定基准价并上架
+        </button>
+      </div>
+    `);
+  });
+
+  if (cards.length === 0) {
+    listEl.innerHTML = '<div class="py-6 text-center text-stone-400">🌿 暂无待审批定损单或待定价草稿，可在顶部下拉切换任意一线岗位巡检！</div>';
+  } else {
+    listEl.innerHTML = cards.join('');
+  }
+}
+
+window.approveOwnerMobileClaim = async function (logId) {
+  const log = inventoryLogsCache.find((x) => Number(x.id) === Number(logId));
+  if (!log) return;
+  const amtMatch = (log.remark || '').match(/\[冲抵金额:¥([0-9.]+)\]/);
+  const storeIdMatch = (log.remark || '').match(/\[门店ID:(\d+)\]/);
+  const deductAmt = amtMatch ? parseFloat(amtMatch[1]) : 0;
+  const storeId = storeIdMatch ? parseInt(storeIdMatch[1]) : 0;
+  const store = allStores.find((s) => Number(s.id) === storeId);
+
+  if (!confirm(`确认核准该笔内部定损单并冲减门店欠款 ¥${deductAmt.toFixed(2)}？`)) return;
+
+  if (store && deductAmt > 0) {
+    const nextDebt = Math.max(0, Number((parseFloat(store.current_debt || 0) - deductAmt).toFixed(2)));
+    await supabase.from('store').update({ current_debt: nextDebt }).eq('id', store.id);
+  }
+  await supabase
+    .from('inventory_log')
+    .update({ remark: `${log.remark || ''} [已核准冲账 · 掌柜手机核准]`.trim() })
+    .eq('id', log.id);
+
+  alert('✅ 定损单已核准并完成账目冲抵！');
+  await window.loadDriverTasks();
+};
+
+window.quickPriceAndPublishDraft = async function (prodId, prodName) {
+  const p1 = prompt(`为【${prodName}】设定「批发平准基准价」(元)：`);
+  if (!p1 || isNaN(p1) || parseFloat(p1) <= 0) return;
+  const p2 = prompt(`为【${prodName}】设定「网上平准零售基准价」(元，留空同批发价)：`, p1);
+  const tier1 = parseFloat(p1);
+  const tier2 = p2 && !isNaN(p2) && parseFloat(p2) > 0 ? parseFloat(p2) : tier1;
+
+  await supabase.from('product').update({ tier_1_price: tier1, tier_2_price: tier2, status: 'active' }).eq('id', prodId);
+  alert(`🎉 【${prodName}】已设定基准价（批发 ¥${tier1} / 零售 ¥${tier2}）并正式上架！`);
+  await window.loadDriverTasks();
+};
+
 window.openPalmHelpModal = function () {
   const viewRole = currentRoleCode === 'owner' ? effectiveViewRole : currentRoleCode;
   const helpMap = {
+    owner_cockpit: '• <b>掌柜移动指挥舱</b>：手机随时查看三流晴雨、核准商号内部定损单(DS-)冲减欠款、或为仓管提交的草稿货品定好价格正式上架。<br/>• <b>视角切换</b>：顶部下拉框可随时切换送货、仓管、业务员、定损任意岗位视角巡检。',
     driver: '• <b>随车交割</b>：点击合作门店卡片即可查看新配、退验与对调明细，清点回收周转载具并让掌柜手写签名确认。<br/>• <b>精准导航</b>：点击门店「🧭 导航」可直接调起地图直达店门口。<br/>• <b>地下室防丢单</b>：无信号时照常提交签收，出库有信号后点击顶部黄色提示条一键同步回库。',
-    warehouse: '• <b>盲价隔离保护</b>：本工作台已自动屏蔽所有商品进销价格与客户账款。<br/>• <b>扫码/选品开单</b>：选择货品填写数量与产区/领用去向，系统自动生成标准入库单(RK)或出库单(CK)。<br/>• <b>装车总拣货单</b>：点击右上角「📋 装车总拣货单」可查看本车汇总备货数量。',
-    producer: '• <b>田间/车间预入库</b>：采收或完工后，选择货品与交货班组直接提交入库单，仓库库存实时增加并生成可稽核单号。',
-    sales: '• <b>拜访催收与内控</b>：点击门店卡片「🤝 上门催收」可录入回款并让掌柜当面电子签名；单据提交后自动推送财务点款台，财务核验到账后自动冲减门店欠款。<br/>• <b>采集定位</b>：到店后点击「📍 采集定位」保存门头经纬度，方便后续物流配送。',
-    qc_service: '• <b>上门定损留证</b>：选择合作门店、拍摄破损/质量问题现场照片并填写定损结论，提交后自动同步调度中枢存档。'
+    warehouse: '• <b>盲价隔离保护</b>：本工作台已自动屏蔽所有商品进销价格与客户账款。<br/>• <b>标准单据制单</b>：系统自动生成年月日时标准入库单(RK)与出库单(CK)，并可查看装车总拣货单。',
+    producer: '• <b>田间/车间预入库</b>：采收或完工后，选择货品与交货班组直接提交 RK 入库单，仓库库存实时增加。',
+    sales: '• <b>私海客户与催收</b>：仅显示归属您跟进及公海门店；拍门头或转账回执可自动识字填金额，催收单经掌柜签名后直推财务核销。',
+    qc_service: '• <b>商号内部定损单 (DS-)</b>：选择门店、填写建议冲抵金额、拍照并请掌柜签名，写入商号私有账本供财务核准冲账（不惊动平台）。'
   };
   const body = document.getElementById('palm-help-body');
   if (body) body.innerHTML = helpMap[viewRole] || helpMap.driver;
@@ -352,18 +566,11 @@ window.openPalmHelpModal = function () {
 };
 
 // =========================================================================
-// 2. 仓储调度 & 产区采收移动制单功能（盲价隔离）
+// 2. 仓储调度 & 产区采收移动制单功能（年月日时统一编码 + 物理盲价隔离）
 // =========================================================================
-function generatePalmVoucherNo(mode) {
-  const prefix = mode === 'in_purchase' ? 'RK' : 'CK';
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const rand4 = Math.floor(1000 + Math.random() * 9000);
-  return `${prefix}-${dateStr}-${rand4}`;
-}
-
 window.setPalmStockMode = function (mode) {
   palmStockMode = mode;
-  palmVoucherNo = generatePalmVoucherNo(mode);
+  palmVoucherNo = generateUnifiedVoucherNo(mode === 'out_loss' ? 'CK' : 'RK');
   const noEl = document.getElementById('palm-wh-voucher-no');
   if (noEl) noEl.innerText = palmVoucherNo;
 
@@ -374,9 +581,25 @@ window.setPalmStockMode = function (mode) {
     btnOut.className = mode === 'out_loss' ? 'py-1.5 rounded-lg bg-rose-700 text-white transition' : 'py-1.5 rounded-lg text-stone-600 transition';
   }
 
+  const subSelect = document.getElementById('palm-wh-subtype');
   const srcLbl = document.getElementById('palm-wh-source-lbl');
-  if (srcLbl) {
-    srcLbl.innerText = mode === 'in_purchase' ? '供货产区/班组 *：' : '领用/损耗去向 *：';
+  if (mode === 'in_purchase') {
+    if (subSelect) {
+      subSelect.innerHTML = `
+        <option value="采收/完工入库">🌾 采收 / 完工新品入库</option>
+        <option value="门店退货回库">🔄 门店退货完好回库</option>
+        <option value="他库调入">🚚 其他分仓调拨入库</option>
+      `;
+    }
+    if (srcLbl) srcLbl.innerText = '供货产区/班组 *：';
+  } else {
+    if (subSelect) {
+      subSelect.innerHTML = `
+        <option value="损耗/领用出库">📉 损耗 / 样品 / 内部领用出库</option>
+        <option value="调出他库">🚚 调拨出库至其他分仓</option>
+      `;
+    }
+    if (srcLbl) srcLbl.innerText = '领用/损耗去向 *：';
   }
 };
 
@@ -394,6 +617,7 @@ function renderPalmWarehouseProducts() {
 
 window.submitPalmStockVoucher = async function () {
   const prodId = parseInt(document.getElementById('palm-wh-prod-select')?.value || 0);
+  const subType = document.getElementById('palm-wh-subtype')?.value || '采收/完工入库';
   const qty = parseInt(document.getElementById('palm-wh-qty')?.value || 0);
   const source = document.getElementById('palm-wh-source')?.value.trim();
   const remark = document.getElementById('palm-wh-remark')?.value.trim();
@@ -410,9 +634,9 @@ window.submitPalmStockVoucher = async function () {
   const { error: uErr } = await supabase.from('product').update({ stock: afterStock }).eq('id', p.id);
   if (uErr) return alert('库存写入失败：' + uErr.message);
 
-  const voucherNo = palmVoucherNo || generatePalmVoucherNo(palmStockMode);
-  const goodsValue = (qty * parseFloat(p.tier_1_price || 0)).toFixed(2);
-  const fullRemark = `[单号:${voucherNo}] [${source}] (核算货值:¥${goodsValue}) ${remark}`.trim();
+  const voucherNo = palmVoucherNo || generateUnifiedVoucherNo(palmStockMode === 'out_loss' ? 'CK' : 'RK');
+  // 物理盲价隔离：严禁向数据库备注写入任何金额文字
+  const fullRemark = `[单号:${voucherNo}] [${subType} · ${source}] ${remark}`.trim();
 
   await supabase.from('inventory_log').insert([
     {
@@ -431,7 +655,8 @@ window.submitPalmStockVoucher = async function () {
 
   alert(
     `✅ 仓库单据已制单入账！\n\n` +
-      `• 正式单号：${voucherNo}\n` +
+      `• 标准单号：${voucherNo}\n` +
+      `• 单据子类：${subType}\n` +
       `• 货品名称：${p.name}\n` +
       `• 变动后结存：${afterStock} ${p.measure_unit || '件'}`
   );
@@ -520,17 +745,18 @@ window.markExpressOrderShipped = async function (orderId) {
 };
 
 // =========================================================================
-// 3. 业务员跟进合作门店 & 上门拜访催收
+// 3. 业务员跟进合作门店（私海客户隔离）& 上门拜访催收
 // =========================================================================
 function renderSalesStoresList() {
   const listEl = document.getElementById('palm-sales-stores-list');
   if (!listEl) return;
-  if (allStores.length === 0) {
-    listEl.innerHTML = '<div class="py-8 text-center text-stone-400">当前商号名册下暂无合作门店。</div>';
+  const myStores = getVisibleStoresForSales();
+  if (myStores.length === 0) {
+    listEl.innerHTML = '<div class="py-8 text-center text-stone-400">暂无归属您跟进的合作门店记录。</div>';
     return;
   }
 
-  listEl.innerHTML = allStores
+  listEl.innerHTML = myStores
     .map((s) => {
       const debt = parseFloat(s.current_debt || 0);
       const hasGps = String(s.address || '').includes('[GPS:');
@@ -647,13 +873,44 @@ window.submitPalmSalesCollection = async function () {
 };
 
 // =========================================================================
-// 4. 售后定损 / 质检鉴证工作台 (qc_service)
+// 4. 售后定损 / 质检鉴证工作台（写入商号私有 inventory_log，不惊动平台）
 // =========================================================================
 function renderQcStoreSelect() {
   const sel = document.getElementById('qc-store-select');
   if (!sel) return;
   sel.innerHTML = allStores.map((s) => `<option value="${s.id}">${s.name}</option>`).join('');
 }
+
+function initQcSignaturePad() {
+  qcCanvas = document.getElementById('qc-sign-pad');
+  if (!qcCanvas) return;
+  qcCtx = qcCanvas.getContext('2d');
+  qcCtx.strokeStyle = '#1b4332';
+  qcCtx.lineWidth = 2.5;
+  qcCtx.lineCap = 'round';
+  hasQcSigned = false;
+
+  const getPos = (e) => {
+    const rect = qcCanvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: (clientX - rect.left) * (qcCanvas.width / rect.width), y: (clientY - rect.top) * (qcCanvas.height / rect.height) };
+  };
+
+  const start = (e) => { isQcSigning = true; const p = getPos(e); qcCtx.beginPath(); qcCtx.moveTo(p.x, p.y); };
+  const move = (e) => { if (!isQcSigning) return; e.preventDefault(); const p = getPos(e); qcCtx.lineTo(p.x, p.y); qcCtx.stroke(); hasQcSigned = true; };
+  const end = () => { isQcSigning = false; };
+
+  qcCanvas.onmousedown = start; qcCanvas.onmousemove = move; window.addEventListener('mouseup', end);
+  qcCanvas.ontouchstart = start; qcCanvas.ontouchmove = move; qcCanvas.ontouchend = end;
+}
+
+window.clearQcSignature = () => {
+  if (qcCtx && qcCanvas) {
+    qcCtx.clearRect(0, 0, qcCanvas.width, qcCanvas.height);
+    hasQcSigned = false;
+  }
+};
 
 window.handleQcPhotoUpload = async function (e) {
   const file = e.target.files?.[0];
@@ -675,31 +932,54 @@ window.submitQcReport = async function () {
   const storeId = parseInt(document.getElementById('qc-store-select')?.value || 0);
   const s = allStores.find((x) => x.id === storeId);
   const verdict = document.getElementById('qc-verdict-select')?.value || '';
+  const deductAmt = parseFloat(document.getElementById('qc-deduct-amount')?.value || 0);
   const detail = document.getElementById('qc-detail-input')?.value.trim();
 
-  if (!s || !detail) return alert('请选择涉及门店并填写定损鉴证说明！');
+  if (!s || !detail) return alert('请选择涉及门店并填写定损货品与破损说明！');
+  if (!hasQcSigned) return alert('请请门店掌柜在下方签字框手写签名确认定损结论！');
 
-  const { error } = await supabase.from('product_suggestion').insert([
+  let signUrl = '';
+  try {
+    const signDataUrl = qcCanvas.toDataURL('image/png');
+    signUrl = await uploadBlobToStorage(signDataUrl, currentAgent, 'qc_signatures');
+  } catch (e) {}
+
+  const voucherNo = qcVoucherNo || generateUnifiedVoucherNo('DS');
+  const fullRemark = `[单号:${voucherNo}] [${s.name}] [门店ID:${s.id}] [冲抵金额:¥${deductAmt.toFixed(2)}] ${verdict}：${detail}${
+    qcPhotoList.length > 0 ? ` (实拍${qcPhotoList.length}张)` : ''
+  }${signUrl ? ' [掌柜已电子签名]' : ''}`;
+
+  const { error } = await supabase.from('inventory_log').insert([
     {
-      proposer_type: 'qc_damage_report',
-      proposer_name: `${currentOperatorName} (${currentAgent})`,
-      category: `定损鉴证:${s.name}`,
-      content: JSON.stringify({
-        storeId: s.id,
-        storeName: s.name,
-        verdict,
-        detail,
-        photos: qcPhotoList
-      })
+      tenant_id: currentAgent,
+      product_id: 0,
+      product_name: `实地定损鉴证 (${s.name})`,
+      action_type: 'qc_damage_claim',
+      delta_qty: 0,
+      before_stock: 0,
+      after_stock: 0,
+      operator_name: currentOperatorName,
+      remark: fullRemark,
+      created_at: new Date().toISOString()
     }
   ]);
 
   if (error) return alert('提交定损单失败：' + error.message);
 
-  alert('✅ 《实地定损鉴证单》已提交并上传现场实拍照，调度中枢与财务均可调阅作为仲裁依据！');
+  alert(
+    `✅ 《商号内部定损单》已提交并附带掌柜签名！\n` +
+      `• 定损单号：${voucherNo}\n` +
+      `• 建议冲抵：¥${deductAmt.toFixed(2)}\n` +
+      `• 已直推大当家与账房财务调度台审核冲账（商号私有闭环，不惊动平台）。`
+  );
   document.getElementById('qc-detail-input').value = '';
+  document.getElementById('qc-deduct-amount').value = '0';
   qcPhotoList = [];
   document.getElementById('qc-photo-preview').innerHTML = '尚未拍照';
+  qcVoucherNo = generateUnifiedVoucherNo('DS');
+  const qNoEl = document.getElementById('qc-voucher-no');
+  if (qNoEl) qNoEl.innerText = qcVoucherNo;
+  window.clearQcSignature();
 };
 
 // =========================================================================
@@ -853,13 +1133,14 @@ window.removeProofImg = function (idx) {
 window.loadDriverTasks = async function () {
   updateOfflineBanner();
 
-  const [tenantRes, stores, prods, activeOrds, deliveredOrds, todayLogs] = await Promise.all([
+  const [tenantRes, stores, prods, activeOrds, deliveredOrds, todayLogs, invLogsRes] = await Promise.all([
     supabase.from('platform_tenant').select('custom_settings').eq('tenant_id', currentAgent).maybeSingle(),
     DriverService.fetchRouteStores(currentAgent),
     supabase.from('product').select('*').eq('tenant_id', currentAgent).order('id', { ascending: false }),
     DriverService.fetchActiveOrders(currentAgent),
     DriverService.fetchTodayDeliveredOrders(currentAgent),
-    DriverService.fetchTodayCollections(currentAgent)
+    DriverService.fetchTodayCollections(currentAgent),
+    supabase.from('inventory_log').select('*').eq('tenant_id', currentAgent).order('id', { ascending: false }).limit(50)
   ]);
 
   const settings = tenantRes?.data?.custom_settings && typeof tenantRes.data.custom_settings === 'object'
@@ -874,6 +1155,7 @@ window.loadDriverTasks = async function () {
   allProducts = prods.data || [];
   activeOrders = activeOrds.filter((o) => !isDirectoryLead(o));
   deliveredOrdersCache = deliveredOrds;
+  inventoryLogsCache = invLogsRes?.data || [];
   renderRoute();
 
   const cashAmt = todayLogs.filter((l) => l.pay_method === '现金').reduce((sum, l) => sum + parseFloat(l.amount || 0), 0);
@@ -884,7 +1166,9 @@ window.loadDriverTasks = async function () {
   document.getElementById('stat-done-count').innerText = deliveredOrdersCache.length;
 
   const viewRole = currentRoleCode === 'owner' ? effectiveViewRole : currentRoleCode;
-  if (viewRole === 'warehouse' || viewRole === 'producer') {
+  if (viewRole === 'owner_cockpit') {
+    renderOwnerMobileCockpit();
+  } else if (viewRole === 'warehouse' || viewRole === 'producer') {
     renderPalmWarehouseProducts();
     renderPalmExpressOrders();
   } else if (viewRole === 'sales') {
@@ -929,7 +1213,7 @@ function renderRoute() {
             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">已在线支付</span>
           </div>
           <div class="bg-white p-2 rounded-2xl border border-blue-200 text-[11px] space-y-1">
-            <div class="text-emerald-950 font-bold">📦 货品：${orderStr || '标准良品组合'}</div>
+            <div class="text-emerald-950 font-bold">📦 货品：${orderStr || '标准货品组合'}</div>
             <div class="text-[10px] text-stone-500 font-mono">实付金额：¥${parseFloat(ord.total_amount || 0).toFixed(2)}</div>
           </div>
           ${
@@ -1020,7 +1304,7 @@ function renderRoute() {
   container.innerHTML = standaloneHtml + storesHtml;
 }
 
-function renderMultiCarrierRows(basketsCount) {
+function renderMultiCarrierRows() {
   const box = document.getElementById('multi-carrier-rows');
   if (!box) return;
   box.innerHTML = globalCarriersList
@@ -1072,7 +1356,7 @@ window.openStandaloneOrderCollect = function (orderId) {
   document.getElementById('modal-items-return-list').innerHTML = '无须带回旧品';
   document.getElementById('modal-items-exchange-list').innerHTML = '无对调品物';
 
-  renderMultiCarrierRows(0);
+  renderMultiCarrierRows();
   document.getElementById('collect-amount').value = '0';
   document.getElementById('collect-discount').value = '0';
   document.getElementById('collect-method').value = '仅签收回单';
@@ -1155,7 +1439,7 @@ window.openCollectModal = function (storeId, orderId) {
   }
 
   document.getElementById('modal-settlement-type').value = settlementType;
-  renderMultiCarrierRows(baskets);
+  renderMultiCarrierRows();
   document.getElementById('collect-discount').value = '0';
 
   if (workflow === 'receipt_only') {
@@ -1401,7 +1685,7 @@ window.submitLeadByDriver = async function () {
     note
   });
 
-  alert('🎉 意向合作门店信息已登记！已直传源头调度中枢，并自动计入您的客户开拓实绩。');
+  alert('🎉 意向合作门店信息已登记！已直传源头调度台，并自动计入您的客户开拓实绩。');
   ['lead-name-input', 'lead-boss-input', 'lead-phone-input', 'lead-addr-input', 'lead-note-input'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -1444,7 +1728,7 @@ window.submitDriverSuggestion = async function () {
   const { error } = await DriverService.submitSuggestion(currentAgent, currentOperatorName, content);
   if (error) alert('提交失败: ' + error.message);
   else {
-    alert('🙏 感谢执事建言，已呈达平台总控！');
+    alert('🙏 感谢执事建言，已呈达平台建言堂！');
     document.getElementById('driver-suggestion-text').value = '';
     window.closeModal('modal-suggestion');
   }
@@ -1464,7 +1748,8 @@ export async function initDriverController() {
   if (savedSession && savedSession.tenantId) {
     currentAgent = savedSession.tenantId;
     currentRoleCode = savedSession.roleCode || 'driver';
-    effectiveViewRole = currentRoleCode === 'owner' ? 'driver' : currentRoleCode;
+    effectiveViewRole = currentRoleCode === 'owner' ? 'owner_cockpit' : currentRoleCode;
+    currentAccountCode = savedSession.accountCode || '';
     currentOperatorName = savedSession.operatorName || '一线执事';
     document.getElementById('palm-auth-gate')?.classList.add('hidden');
     await bootPalmWorkspace();
