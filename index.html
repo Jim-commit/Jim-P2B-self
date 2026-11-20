@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>商道相通 · 门店采销掌中宝</title>
+  <title>商道相通 · 门店采销与邻里驿站</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1b4332">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -85,11 +85,11 @@
               </div>
             </button>
 
-            <button type="button" onclick="window.openStoreOverview(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-amber-50/60 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
-              <span class="w-6 h-6 rounded-lg bg-amber-100/70 text-amber-800 flex items-center justify-center text-xs">📜</span>
+            <button type="button" onclick="window.openModal('store-covenant-modal'); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-emerald-50/60 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
+              <span class="w-6 h-6 rounded-lg bg-emerald-100/70 text-emerald-900 flex items-center justify-center text-xs">📜</span>
               <div>
-                <div class="font-bold text-stone-800 text-[11px]">各家账本总览</div>
-                <div class="text-[9px] text-stone-400">和合信义 · 账目明澈</div>
+                <div class="font-bold text-stone-800 text-[11px]">合作门店与邻里驿站公约</div>
+                <div class="text-[9px] text-stone-400">诚信账期 · 爱护载具 · 建言堂</div>
               </div>
             </button>
 
@@ -193,8 +193,9 @@
             </div>
           </div>
 
-          <div class="text-[10px] text-emerald-100/80 font-mono mt-0.5">
-            当家掌柜: <b id="store-boss" class="text-white">主人家</b>
+          <div class="text-[10px] text-emerald-100/80 font-mono mt-0.5 flex items-center gap-2">
+            <span>掌柜: <b id="store-boss" class="text-white">主人家</b></span>
+            <span class="bg-emerald-500/25 text-amber-300 px-1.5 py-0.2 rounded font-bold">🏅 诚信驿站</span>
           </div>
         </div>
 
@@ -363,9 +364,24 @@
 
   </div>
 
-  <!-- =========================================================================
-       新增核心自助对账弹窗：本店周期电子对账单与掌柜核对确认
-       ========================================================================= -->
+  <!-- 《合作门店与邻里驿站公约》公示弹窗 -->
+  <div id="store-covenant-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('store-covenant-modal')">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <h3 class="font-bold text-sm text-emerald-950">📜 《合作门店与邻里驿站公约》</h3>
+        <button type="button" onclick="window.closeModal('store-covenant-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-2xl space-y-2 text-[11px] text-stone-700 leading-relaxed">
+        <p><b>一、邻里驿站 · 实干得利：</b>合作门店扎根社区村镇，承担体验展示与邻里自提服务，天街自提服务润利全额归属门店。</p>
+        <p><b>二、诚信账期 · 爱护载具：</b>依约使用免息信用周转额度，按月清白对账；爱护周转筐、托盘、水桶等循环载具，随车及时归还。</p>
+        <p><b>三、余缺互助 · 零浪费：</b>店内富余货品可随时挂入「同城余缺互调池」平价调剂给同行，同舟共济。</p>
+        <p><b>四、真实用度 · 不囤积炒作：</b>如实提报周期真实用度计划，助力产区按需采收生产，守护千家万户稳定供应。</p>
+      </div>
+      <button type="button" onclick="window.closeModal('store-covenant-modal')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl">我已阅知并恪守公约</button>
+    </div>
+  </div>
+
+  <!-- 原有全部弹窗（周期电子对账单、同城余缺互调池、真实用度计划单、云端扩充货架码、推荐同行、存桌面引导、随车送货凭单、合作供货方名册、邻里便民海报、单据与自提核销、接入新供货方）100% 完整保留 -->
   <div id="store-self-statement-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('store-self-statement-modal')">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -376,7 +392,6 @@
         <button type="button" onclick="window.closeModal('store-self-statement-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
 
-      <!-- 日期区间选择 -->
       <div class="grid grid-cols-2 gap-2 bg-stone-50 p-2.5 rounded-2xl border border-stone-200">
         <div>
           <label class="block text-[10px] font-bold text-stone-600 mb-1">起始日期：</label>
@@ -388,7 +403,6 @@
         </div>
       </div>
 
-      <!-- 四项汇总晴雨格 -->
       <div class="grid grid-cols-2 gap-2 text-center">
         <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200">
           <span class="text-[10px] text-stone-400 block">区间进货总额</span>
@@ -408,16 +422,14 @@
         </div>
       </div>
 
-      <!-- 区间往来明细 -->
       <div class="space-y-1">
         <div class="flex justify-between items-center text-[11px] font-bold text-stone-700">
-          <span>📋 区间往来单据明细：</span>
+          <span>📋 区间往来单据与回款明细：</span>
           <span id="self-stmt-basket-label" class="text-[10px] text-amber-800 font-mono">载具借存：0 件</span>
         </div>
         <div id="self-stmt-orders-list" class="divide-y divide-stone-100 border border-stone-200 rounded-2xl px-3 py-1 bg-white max-h-48 overflow-y-auto no-scrollbar text-[11px]"></div>
       </div>
 
-      <!-- 掌柜确认对账与复制按钮 -->
       <div class="space-y-2 pt-1 border-t border-stone-100">
         <button type="button" onclick="window.confirmStoreSelfStatement()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
           ✅ 账目核对无误 · 确认本期对账单
@@ -429,7 +441,6 @@
     </div>
   </div>
 
-  <!-- 同城余缺互调池弹窗 -->
   <div id="local-pool-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('local-pool-modal')">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -491,7 +502,6 @@
     </div>
   </div>
 
-  <!-- 真实用度计划单弹窗 -->
   <div id="demand-plan-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('demand-plan-modal')">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -545,7 +555,6 @@
     </div>
   </div>
 
-  <!-- 本店云端扩充货架二维码弹窗 -->
   <div id="cloud-shelf-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[85] flex items-center justify-center p-4" onclick="if(event.target===this) window.closeModal('cloud-shelf-modal')">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs text-center">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100 text-left">
@@ -571,7 +580,6 @@
     </div>
   </div>
 
-  <!-- 老客户推荐同行口碑互助弹窗 -->
   <div id="referral-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[85] flex items-center justify-center p-4" onclick="if(event.target===this) window.closeModal('referral-modal')">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs text-center">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100 text-left">
@@ -597,7 +605,6 @@
     </div>
   </div>
 
-  <!-- 存到手机桌面引导弹窗 -->
   <div id="pwa-install-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[90] flex items-center justify-center p-4" onclick="if(event.target===this) window.closePwaModal()">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -625,8 +632,8 @@
         </div>
         <div class="bg-stone-50 border border-stone-200 p-3 rounded-2xl space-y-1">
           <b>第二步（在手机浏览器中生成图标）：</b><br/>
-- <b>苹果 iPhone</b>：点屏幕正下方 <b>「分享 ⬆️」</b> ➔ 往下滑点 <b>「添加到主屏幕」</b>。<br/>
-- <b>华为 / 小米 / OPPO / vivo</b>：点底部或右上角 <b>「菜单 ☰ / ⋮」</b> ➔ 选择 <b>「添加到桌面 / 主屏幕」</b>。
+          • <b>苹果 iPhone</b>：点屏幕正下方 <b>「分享 ⬆️」</b> ➔ 往下滑点 <b>「添加到主屏幕」</b>。<br/>
+          • <b>华为 / 小米 / OPPO / vivo</b>：点底部或右上角 <b>「菜单 ☰ / ⋮」</b> ➔ 选择 <b>「添加到桌面 / 主屏幕」</b>。
         </div>
       </div>
 
@@ -636,7 +643,6 @@
     </div>
   </div>
 
-  <!-- 随车送货凭单弹窗 -->
   <div id="settlement-slip-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-3.5">
     <div class="bg-white w-full max-w-sm rounded-[2rem] p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar border border-stone-200/80">
       <div class="border-b border-stone-100 pb-2.5 text-center relative">
@@ -715,7 +721,6 @@
     </div>
   </div>
 
-  <!-- 合作供货方名册弹窗 -->
   <div id="all-agents-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3.5">
     <div class="bg-white w-full max-w-sm rounded-[2rem] p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar border border-stone-100 flex flex-col">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -744,7 +749,6 @@
     </div>
   </div>
 
-  <!-- 邻里便民海报弹窗 -->
   <div id="marketing-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -793,7 +797,6 @@
     </div>
   </div>
 
-  <!-- 单据、街坊到店自提单与收条核照 -->
   <div id="receipts-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[88vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -817,7 +820,6 @@
     </div>
   </div>
 
-  <!-- 接入新供货方弹窗 -->
   <div id="bind-agent-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -850,7 +852,6 @@
 
   <canvas id="hidden-canvas" class="hidden"></canvas>
 
-  <!-- 独立内联 PWA 桌面安装引擎 -->
   <script>
     (function() {
       let deferredPrompt = null;
@@ -880,10 +881,10 @@
       };
     })();
     if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  });
-}
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
   </script>
 
   <script type="module" src="./src/main.js"></script>
