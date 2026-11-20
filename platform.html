@@ -63,7 +63,7 @@
       <span class="text-[10px] text-stone-400 font-mono">辅佐人断 · 宽猛相济</span>
     </div>
 
-    <!-- 导航切换标签 -->
+    <!-- 导航切换标签（增量加入「商道清朗巡检」） -->
     <nav class="flex flex-wrap bg-white rounded-2xl shadow-sm border border-stone-200 p-1.5 gap-1.5 text-xs font-bold">
       <button id="p-tab-btn-apps" onclick="window.switchTab('apps')" class="flex-1 py-2 px-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1.5 whitespace-nowrap">
         📝 合作社 / 工坊入驻查验
@@ -71,6 +71,10 @@
       </button>
       <button id="p-tab-btn-tenants" onclick="window.switchTab('tenants')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
         🏢 在册供货主体名册
+      </button>
+      <button id="p-tab-btn-compliance" onclick="window.switchTab('compliance'); window.runPlatformAIComplianceScan();" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition flex items-center justify-center gap-1 whitespace-nowrap">
+        🌿 商道清朗巡检
+        <span id="badge-compliance-count" class="bg-amber-500 text-stone-950 text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
       </button>
       <button id="p-tab-btn-ecosystem" onclick="window.switchTab('ecosystem')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
         🌐 全域供需与互调大盘
@@ -137,9 +141,25 @@
       </div>
     </section>
 
-    <!-- 新增板块 2.5：全域供需协同与互调大盘 -->
+    <!-- 新增板块：商道清朗 · 全网商品 AI 合规智能巡检（一键全局扫描） -->
+    <section id="p-tab-compliance" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3 text-xs">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">🌿 商道清朗 · 全网在架良品 AI 合规智能巡检（AI 辅检 · 人工终审）</h2>
+            <p class="text-[11px] text-stone-400">一键扫描全网所有在架商品是否存在广告法禁用绝对化用语、缺实拍照或异常定价，温婉发函提请商号润色整改</p>
+          </div>
+          <button type="button" onclick="window.runPlatformAIComplianceScan()" class="bg-stone-900 hover:bg-stone-800 text-white font-bold px-4 py-2 rounded-xl shadow active:scale-95 transition">
+            🔍 重新扫描全网良品
+          </button>
+        </div>
+        <div id="platform-compliance-summary" class="hidden bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-emerald-950 font-bold"></div>
+        <div id="platform-compliance-list" class="divide-y divide-stone-100 max-h-[520px] overflow-y-auto no-scrollbar"></div>
+      </div>
+    </section>
+
+    <!-- 板块 2.5：全域供需协同与互调大盘 -->
     <section id="p-tab-ecosystem" class="hidden space-y-4">
-      <!-- 四大协同晴雨指标 -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
         <div class="bg-white p-4 rounded-3xl shadow-sm border border-stone-200">
           <span class="text-[11px] text-stone-400 block">全网真实用度计划单</span>
@@ -163,7 +183,6 @@
         </div>
       </div>
 
-      <!-- 各供货商供需协同响应活跃度排行 -->
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
           <div>
@@ -190,7 +209,6 @@
         </div>
       </div>
 
-      <!-- 最新全网公域求购与互调动态 -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-2.5">
           <h3 class="text-sm font-bold text-stone-900">📢 最新百工天街公域求购动态</h3>
