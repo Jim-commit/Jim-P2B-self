@@ -7,20 +7,28 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1b4332">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     canvas { touch-action: none; }
+    /* 适老化与行车安全大字关怀模式 */
+    body.large-font-mode { font-size: 16px; }
+    body.large-font-mode .text-xs { font-size: 14px !important; line-height: 1.45 !important; }
+    body.large-font-mode .text-\[11px\] { font-size: 13px !important; }
+    body.large-font-mode .text-\[10px\] { font-size: 12px !important; }
+    body.large-font-mode .text-sm { font-size: 16px !important; }
+    body.large-font-mode button { min-height: 38px; }
   </style>
 </head>
 <body class="bg-[#f7f5f0] text-stone-800 font-sans pb-28 min-h-screen select-none">
   
   <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-xl relative">
     
-    <!-- 顶栏：按岗位自适应显示身份与功能入口 -->
+    <!-- 顶栏：按岗位自适应显示身份与功能入口（新增：大字模式、授权电脑、一键锁屏） -->
     <header class="bg-[#1b4332] text-white p-4 pt-5 rounded-b-3xl shadow-md space-y-3">
       <div class="space-y-1.5">
-        <div class="flex justify-between items-center gap-2">
+        <div class="flex justify-between items-center gap-1.5">
           <div class="flex items-center gap-1.5 min-w-0">
             <h1 id="palm-header-title" class="text-sm sm:text-base font-bold truncate">📱 百工掌中宝</h1>
             <span id="palm-role-badge" class="bg-amber-400 text-stone-950 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">
@@ -28,11 +36,17 @@
             </span>
           </div>
           <div class="flex items-center gap-1 shrink-0">
+            <button type="button" id="btn-palm-large-font" onclick="window.togglePalmLargeFont()" class="text-[10px] bg-white/10 hover:bg-white/20 text-emerald-100 border border-white/20 px-2 py-1 rounded-xl font-bold whitespace-nowrap transition">
+              🔍 大字
+            </button>
+            <button type="button" id="btn-palm-qr-auth" onclick="window.openPalmQrAuthorizeModal()" class="hidden text-[10px] bg-amber-400 hover:bg-amber-300 text-stone-950 px-2 py-1 rounded-xl font-bold whitespace-nowrap shadow transition">
+              📷 授权电脑
+            </button>
+            <button type="button" onclick="window.lockPalmQuickPinScreen()" class="text-[10px] bg-white/10 hover:bg-white/20 text-amber-200 border border-white/20 px-2 py-1 rounded-xl font-bold whitespace-nowrap transition" title="离开一键锁屏">
+              🔒 锁屏
+            </button>
             <button onclick="window.openPalmHelpModal()" class="text-[10px] bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-100 border border-emerald-400/30 px-2 py-1 rounded-xl font-bold whitespace-nowrap transition">
               💡 指引
-            </button>
-            <button onclick="window.openSuggestionModal()" class="text-[10px] bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 px-2 py-1 rounded-xl font-bold whitespace-nowrap transition">
-              建言堂
             </button>
             <button onclick="window.logoutPalmTerminal()" class="text-[10px] bg-rose-950/70 hover:bg-rose-800 text-rose-200 border border-rose-700/50 px-2 py-1 rounded-xl whitespace-nowrap transition">
               退出
@@ -41,7 +55,11 @@
         </div>
         <div class="text-[11px] text-emerald-200 flex justify-between items-center">
           <span>当值执事: <b id="driver-name-display" class="text-white">--</b></span>
-          <span>商号: <b id="tenant-display" class="font-mono text-amber-300">--</b></span>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="window.openPalmPinSetupModal()" class="text-amber-300 hover:underline text-[10px] font-bold">🔢 设快捷短码</button>
+            <button type="button" onclick="window.openSuggestionModal()" class="text-emerald-200 hover:underline text-[10px]">建言堂</button>
+            <span>商号: <b id="tenant-display" class="font-mono text-amber-300">--</b></span>
+          </div>
         </div>
       </div>
 
@@ -89,7 +107,6 @@
          工作区 O：👑 掌柜移动指挥舱（大当家手机端批复定损/超信、定草稿价格、看三流晴雨）
          ===================================================================== -->
     <main id="pane-owner-cockpit" class="hidden p-3 flex-1 space-y-3 text-xs">
-      <!-- 三流晴雨简报 -->
       <div class="grid grid-cols-3 gap-2 text-center">
         <div class="bg-stone-50 border border-stone-200 p-2.5 rounded-2xl">
           <span class="text-[10px] text-stone-400 block">在库货值估算</span>
@@ -105,7 +122,6 @@
         </div>
       </div>
 
-      <!-- 掌柜手机待办批复清单（内部定损单DS / 超信特批 / 待定价草稿） -->
       <div class="bg-white border border-stone-200 p-3.5 rounded-3xl space-y-2.5 shadow-2xs">
         <div class="flex justify-between items-center border-b border-stone-100 pb-2">
           <b class="text-stone-900">⚡ 掌柜掌上快捷审批与定价</b>
@@ -114,7 +130,6 @@
         <div id="oc-todo-list" class="space-y-2"></div>
       </div>
 
-      <!-- 快捷直达电脑版完整调度台 -->
       <div class="bg-stone-50 border border-stone-200 p-3 rounded-2xl flex justify-between items-center">
         <div>
           <b class="text-stone-800 block">需要设置阶梯返利或导出报表？</b>
@@ -137,9 +152,15 @@
             全部门店
           </button>
         </div>
-        <button onclick="window.loadDriverTasks()" class="text-[11px] text-emerald-800 font-bold hover:underline">
-          刷新路线
-        </button>
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-1 text-[10px] text-emerald-900 font-bold cursor-pointer">
+            <input type="checkbox" id="chk-palm-voice" checked class="rounded text-emerald-700">
+            <span>🔊 新单播报</span>
+          </label>
+          <button onclick="window.loadDriverTasks()" class="text-[11px] text-emerald-800 font-bold hover:underline">
+            刷新路线
+          </button>
+        </div>
       </div>
       <div id="route-container" class="space-y-3">
         <div class="p-12 text-center text-stone-400 text-xs">正调阅待配路线...</div>
@@ -160,7 +181,6 @@
         </button>
       </div>
 
-      <!-- 快捷开具出入库单卡片 -->
       <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-3xl space-y-2.5">
         <div class="flex justify-between items-center">
           <b class="text-stone-900">✍️ 手机快捷开具仓库单据</b>
@@ -205,7 +225,6 @@
         </button>
       </div>
 
-      <!-- 天街快递直发待打单发货列表（仓管专属） -->
       <div id="palm-express-orders-box" class="space-y-2">
         <h3 class="font-bold text-stone-700 px-1">📮 天街快递直发待出库单据</h3>
         <div id="palm-express-orders-list" class="space-y-2"></div>
@@ -373,29 +392,156 @@
   </div>
 
   <!-- =========================================================================
-       掌中宝身份验证登录门禁（大当家与所有属员通用，一次登录持久记住）
+       掌中宝身份验证登录门禁（支持：本机 4 位九宫格快捷解锁 + 主密码/属员子账号密码核验）
        ========================================================================= -->
   <div id="palm-auth-gate" class="fixed inset-0 bg-[#0c1e16]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-stone-800 shadow-2xl">
       <div class="text-center space-y-1">
         <div class="w-12 h-12 bg-[#1b4332] text-amber-300 rounded-2xl flex items-center justify-center font-bold text-xl mx-auto shadow-md">📱</div>
         <h2 class="text-base font-bold text-stone-900 pt-1">百工掌中宝 · 掌柜与一线核身登录</h2>
-        <p class="text-[11px] text-stone-400">大当家输入商号主密钥进入移动指挥舱；属员输入「子账号:密码」如 <code>wh_li:123456</code></p>
+        <p class="text-[11px] text-stone-400">本机信任短码秒进 · 零生物隐私采集</p>
       </div>
-      <form onsubmit="window.verifyPalmAuthLogin(event)" class="space-y-3 text-xs">
+
+      <!-- 模式 A：本机已绑定 4 位快捷短码九宫格面板 -->
+      <div id="palm-pin-unlock-box" class="hidden space-y-3">
+        <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-center space-y-0.5">
+          <span id="palm-pin-tenant-label" class="text-[10px] font-mono text-emerald-700 block">--</span>
+          <b id="palm-pin-operator-label" class="text-xs text-emerald-950 block">请按 4 位快捷短码解锁</b>
+        </div>
+
+        <div id="palm-pin-dots" class="flex justify-center gap-3 py-1">
+          <span class="w-3.5 h-3.5 rounded-full border-2 border-emerald-700 bg-transparent transition"></span>
+          <span class="w-3.5 h-3.5 rounded-full border-2 border-emerald-700 bg-transparent transition"></span>
+          <span class="w-3.5 h-3.5 rounded-full border-2 border-emerald-700 bg-transparent transition"></span>
+          <span class="w-3.5 h-3.5 rounded-full border-2 border-emerald-700 bg-transparent transition"></span>
+        </div>
+        <p id="palm-pin-err" class="hidden text-center text-[11px] text-rose-600 font-bold"></p>
+
+        <div class="grid grid-cols-3 gap-2 font-mono font-bold text-lg">
+          <button type="button" onclick="window.pressPalmPinDigit('1')" class="py-3 bg-stone-100 hover:bg-emerald-50 active:bg-emerald-200 rounded-2xl text-stone-900">1</button>
+          <button type="button" onclick="window.pressPalmPinDigit('2')" class="py-3 bg-stone-100 hover:bg-emerald-50 active:bg-emerald-200 rounded-2xl text-stone-900">2</button>
+          <button type="button" onclick="window.pressPalmPinDigit('3')" class="py-3 bg-stone-100 hover:bg-emerald-50 active:bg-emerald-200 rounded-2xl text-stone-900">3</button>
+          <button type="button" onclick="window.pressPalmPinDigit('4')" class="py-3 bg-stone-100 hover:bg-emerald-50 active:bg-emerald-200 rounded-2xl text-stone-900">4</button>
+          <button type="button" onclick="window.pressPalmPinDigit('5')" class="py-3 bg-stone-100 hover:bg-emerald-50 active:bg-emerald-200 rounded-2xl text-stone-900">5</button>
+          <button type="button" onclick="window.pressPalmPinDigit('6')" class="py-3 bg-stone-100 hover:bg-emerald-50 active:bg-emerald-200 rounded-2xl text-stone-900">6</button>
+          <button type="button" onclick="window.pressPalmPinDigit('7')" class="py-3 bg-stone-100 hover:bg-emerald-50 active:bg-emerald-200 rounded-2xl text-stone-900">7</button>
+          <button type="button" onclick="window.pressPalmPinDigit('8')" class="py-3 bg-stone-100 hover:bg-emerald-50 active:bg-emerald-200 rounded-2xl text-stone-900">8</button>
+          <button type="button" onclick="window.pressPalmPinDigit('9')" class="py-3 bg-stone-100 hover:bg-emerald-50 active:bg-emerald-200 rounded-2xl text-stone-900">9</button>
+          <button type="button" onclick="window.clearPalmPinDigits()" class="py-3 bg-stone-50 text-stone-500 text-xs font-sans rounded-2xl">清空</button>
+          <button type="button" onclick="window.pressPalmPinDigit('0')" class="py-3 bg-stone-100 hover:bg-emerald-50 active:bg-emerald-200 rounded-2xl text-stone-900">0</button>
+          <button type="button" onclick="window.backspacePalmPinDigit()" class="py-3 bg-stone-50 text-stone-600 text-sm rounded-2xl">⌫</button>
+        </div>
+
+        <div class="pt-2 border-t border-stone-100 flex justify-between items-center text-[11px]">
+          <button type="button" onclick="window.switchPalmToFullLogin(true)" class="text-stone-500 hover:text-emerald-800 underline">
+            忘记短码 / 换号登录
+          </button>
+          <span class="text-stone-400 font-mono">本机已绑定</span>
+        </div>
+      </div>
+
+      <!-- 模式 B：首次 / 换机完整密码登录表单 -->
+      <form id="palm-full-login-form" onsubmit="window.verifyPalmAuthLogin(event)" class="space-y-3 text-xs">
+        <p class="text-[11px] text-stone-400 text-center">大当家输入商号主密码；属员输入「子账号:密码」如 <code>wh_li:123456</code></p>
         <div>
           <label class="block text-stone-600 font-medium mb-1">商号代号 (Tenant ID) *：</label>
-          <input type="text" id="palm-login-tenant" required placeholder="如：NY-FUNIU" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono uppercase font-bold text-stone-900">
+          <input type="text" id="palm-login-tenant" required placeholder="如：HZ-91411300X" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono uppercase font-bold text-stone-900">
         </div>
         <div>
-          <label class="block text-stone-600 font-medium mb-1">主密钥 或 属员子账号:密码 *：</label>
-          <input type="password" id="palm-login-key" required placeholder="主密钥 或 driver_zhang:123456" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono text-stone-900">
+          <label class="block text-stone-600 font-medium mb-1">安家主密码 或 属员子账号:密码 *：</label>
+          <input type="password" id="palm-login-key" required placeholder="主密码 或 driver_zhang:123456" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono text-stone-900">
         </div>
+        <label class="flex items-center gap-2 text-[11px] text-stone-600 cursor-pointer">
+          <input type="checkbox" id="chk-palm-bind-pin" checked class="w-4 h-4 rounded text-emerald-700">
+          <span>登录后为本机设置 <b>4 位数字快捷短码</b>（日后点按即进）</span>
+        </label>
         <button type="submit" id="btn-palm-login" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
           核验身份 · 进入移动工作台
         </button>
+        <div id="btn-palm-back-pin" class="hidden text-center">
+          <button type="button" onclick="window.backToPalmPinPanel()" class="text-[11px] text-emerald-800 font-bold underline">
+            ← 返回本机 4 位快捷短码解锁
+          </button>
+        </div>
       </form>
       <div id="palm-auth-error" class="hidden text-rose-600 text-[11px] font-bold text-center"></div>
+    </div>
+  </div>
+
+  <!-- 设置本机 4 位快捷短码弹窗 -->
+  <div id="modal-palm-setup-pin" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xs rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
+      <div class="text-center space-y-1">
+        <span class="text-2xl block">🔢</span>
+        <h3 class="font-bold text-sm text-stone-900">设置本机 4 位数字快捷短码</h3>
+        <p class="text-[11px] text-stone-500">仅绑定当前这台手机，以后打开点按 4 下数字即进，湿手戴手套也秒开</p>
+      </div>
+      <div class="space-y-2">
+        <input type="tel" id="palm-setup-pin-1" maxlength="4" inputmode="numeric" placeholder="输入 4 位数字短码（如 2580）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2.5 text-center font-mono text-lg tracking-widest font-bold outline-none focus:border-emerald-700">
+        <input type="tel" id="palm-setup-pin-2" maxlength="4" inputmode="numeric" placeholder="再次输入确认 4 位短码" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2.5 text-center font-mono text-lg tracking-widest font-bold outline-none focus:border-emerald-700">
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button type="button" onclick="window.closeModal('modal-palm-setup-pin')" class="flex-1 py-2.5 rounded-xl bg-stone-100 text-stone-600 font-bold">暂不设置</button>
+        <button type="button" onclick="window.confirmSavePalmPin()" class="flex-1 py-2.5 rounded-xl bg-[#1b4332] text-white font-bold shadow">确认绑定本机</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手机扫一扫授权电脑端登录弹窗 -->
+  <div id="modal-palm-qr-authorize" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">🖥️ 授权电脑端登录平准调度台</h3>
+        <button onclick="window.closePalmQrAuthorizeModal()" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div id="palm-qr-scanner-box" class="space-y-2">
+        <div class="relative w-full h-48 bg-stone-950 rounded-2xl overflow-hidden flex items-center justify-center">
+          <video id="palm-qr-video" playsinline class="w-full h-full object-cover"></video>
+          <div class="absolute inset-6 border-2 border-amber-400/80 rounded-2xl pointer-events-none"></div>
+          <span id="palm-qr-cam-hint" class="absolute bottom-2 bg-black/70 text-amber-300 text-[10px] px-2.5 py-1 rounded-full">
+            将电脑端登录二维码放入框内自动识别
+          </span>
+        </div>
+
+        <div class="flex gap-2">
+          <label class="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2 rounded-xl text-center cursor-pointer">
+            🖼️ 相册选二维码图
+            <input type="file" accept="image/*" class="hidden" onchange="window.scanPalmQrFromImage(event)">
+          </label>
+          <button type="button" onclick="document.getElementById('palm-manual-qr-box')?.classList.toggle('hidden')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold px-3 py-2 rounded-xl">
+            ⌨️ 输口令码
+          </button>
+        </div>
+
+        <div id="palm-manual-qr-box" class="hidden flex gap-1.5 pt-1">
+          <input type="text" id="palm-manual-qr-input" placeholder="粘贴电脑端显示的 SCAN- 令牌" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono uppercase outline-none">
+          <button type="button" onclick="window.preparePalmApproveQrToken(document.getElementById('palm-manual-qr-input').value)" class="bg-[#1b4332] text-white font-bold px-3 py-2 rounded-xl">
+            识别
+          </button>
+        </div>
+      </div>
+
+      <div id="palm-qr-confirm-card" class="hidden bg-emerald-50 border border-emerald-300 rounded-2xl p-4 space-y-2.5">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🛡️</span>
+          <div>
+            <b class="text-sm text-emerald-950 block">确认放行电脑端登录调度中枢？</b>
+            <span class="text-[11px] text-emerald-800">请确认您本人正在电脑屏幕前操作</span>
+          </div>
+        </div>
+        <div class="bg-white/90 rounded-xl p-2.5 border border-emerald-200 space-y-1 font-mono text-[11px]">
+          <div class="flex justify-between"><span class="text-stone-500">授权商号：</span><b id="palm-auth-qr-tenant" class="text-stone-900">--</b></div>
+          <div class="flex justify-between"><span class="text-stone-500">放行执事：</span><b id="palm-auth-qr-operator" class="text-emerald-900 font-sans">--</b></div>
+          <div class="flex justify-between"><span class="text-stone-500">会话令牌：</span><b id="palm-auth-qr-token" class="text-stone-600">--</b></div>
+        </div>
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="window.closePalmQrAuthorizeModal()" class="flex-1 py-2.5 rounded-xl bg-stone-200 text-stone-700 font-bold">拒绝取消</button>
+          <button type="button" id="btn-palm-confirm-qr" onclick="window.executePalmApproveQrLogin()" class="flex-1 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143628] text-white font-bold shadow">
+            ✅ 确认授权登录
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -456,7 +602,7 @@
     </div>
   </div>
 
-  <!-- 仓管装车总拣货单弹窗、现场核销签收弹窗、今日收条存根、回库清算、建言堂与智能指引弹窗（100% 完整保留） -->
+  <!-- 仓管装车总拣货单弹窗 -->
   <div id="palm-picklist-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[88vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -471,6 +617,7 @@
     </div>
   </div>
 
+  <!-- 现场核销签收弹窗 -->
   <div id="collect-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -592,6 +739,7 @@
     </div>
   </div>
 
+  <!-- 今日收条存根、回库清算、建言堂与智能指引弹窗 -->
   <div id="receipt-history-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[88vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
