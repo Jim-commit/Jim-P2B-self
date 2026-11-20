@@ -50,7 +50,7 @@
 <body class="bg-[#f7f5f0] text-stone-800 font-sans p-3 sm:p-4 min-h-screen">
   <div class="max-w-7xl mx-auto space-y-3.5">
     
-    <!-- 顶栏：主体招牌置顶 + 精简去重 + 最小化角色权限 -->
+    <!-- 顶栏：主体招牌置顶 + 精简去重 + 最小化角色权限 + 场景化智能帮助 -->
     <header class="bg-gradient-to-r from-[#1b4332] via-[#1f4d3a] to-[#143628] text-white p-4 sm:p-5 rounded-3xl shadow-lg space-y-3 border border-emerald-700/40">
       
       <!-- 第一层：主体招牌主标题 + 系统控制 -->
@@ -79,6 +79,9 @@
         </div>
 
         <div class="flex items-center gap-2 shrink-0">
+          <button onclick="window.openContextualHelpModal()" class="bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/40 transition active:scale-95 flex items-center gap-1" title="根据您当前所在页面与岗位身份提供操作指引与排错建议">
+            <span>💡</span> 智能指引
+          </button>
           <button onclick="window.openNotificationDrawer()" class="relative bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/40 transition active:scale-95 flex items-center gap-1">
             <span>📬</span> 消息待办
             <span id="hq-notif-badge" class="hidden bg-rose-600 text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full">0</span>
@@ -92,7 +95,7 @@
         </div>
       </div>
 
-      <!-- 第二层：商号核心身份与已启用全局策略状态（精简无冗余） -->
+      <!-- 第二层：商号核心身份与已启用全局策略状态 -->
       <div class="bg-[#112d21]/70 px-3.5 py-2 rounded-2xl border border-emerald-700/40 text-xs text-emerald-100/90 flex flex-wrap items-center justify-between gap-2 font-mono">
         <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
           <span>商号代号: <b id="hq-tenant-id" class="text-amber-300 tracking-wider">--</b></span>
@@ -101,7 +104,7 @@
         <div id="active-policy-badges-bar" class="flex flex-wrap items-center gap-1.5 text-[10px]"></div>
       </div>
 
-      <!-- 第三层：高频业务工具 vs 安全维护按钮分区（已去除重复的主动配货入口） -->
+      <!-- 第三层：高频业务工具 vs 安全维护按钮分区 -->
       <div class="flex flex-wrap justify-between items-center gap-2 pt-0.5">
         <div class="flex flex-wrap items-center gap-2">
           <button onclick="window.openPlanAggregateModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-amber-200 text-xs px-3.5 py-1.5 rounded-xl font-bold border border-amber-400/40 active:scale-95 transition flex items-center gap-1">
@@ -114,7 +117,7 @@
             <span>📲</span> 合作名片码
           </button>
           <button id="btn-top-counter" onclick="window.openCounterProfileModal()" class="bg-[#143628]/80 hover:bg-[#0e271d] text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/30 active:scale-95 transition flex items-center gap-1">
-            <span>🎥</span> 产区实拍档案
+            <span>🎥</span> 产区实拍与外链
           </button>
           <button id="btn-webhook-status" onclick="window.openWebhookModal()" class="bg-[#143628]/80 hover:bg-[#0e271d] text-emerald-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-500/30 active:scale-95 transition flex items-center gap-1">
             <span>🔔</span> 报单群通知
@@ -136,7 +139,7 @@
 
     </header>
 
-    <!-- 新手掌柜 3 步快速上手指引卡片（可随时关闭不再提示） -->
+    <!-- 新手掌柜 3 步快速上手指引卡片 -->
     <div id="hq-onboarding-guide" class="hidden bg-white border border-emerald-200 p-4 rounded-3xl shadow-xs space-y-2.5 text-xs">
       <div class="flex justify-between items-center">
         <div class="flex items-center gap-2">
@@ -150,11 +153,11 @@
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div onclick="window.openGlobalPolicyModal('tiers')" class="cursor-pointer bg-stone-50 hover:bg-emerald-50/70 border border-stone-200 p-3 rounded-2xl transition">
           <b class="text-emerald-950 block">第一步：定制全局行当策略</b>
-          <span class="text-[11px] text-stone-500 mt-0.5 block">套用行业模板，配置门店分级折扣、网上价格策略与风控规则 ➔</span>
+          <span class="text-[11px] text-stone-500 mt-0.5 block">套用行业模板，配置门店分级折扣、网上多档阶梯价与风控规则 ➔</span>
         </div>
         <div onclick="window.switchTab('products'); window.openAddProductModal();" class="cursor-pointer bg-stone-50 hover:bg-emerald-50/70 border border-stone-200 p-3 rounded-2xl transition">
           <b class="text-emerald-950 block">第二步：上架现货良品</b>
-          <span class="text-[11px] text-stone-500 mt-0.5 block">设定批发平准基准价与网上零售基准价，支持入库制单与扫码盘点 ➔</span>
+          <span class="text-[11px] text-stone-500 mt-0.5 block">设定批发平准基准价与网上平准零售基准价，支持仓管暂存与AI合规核验 ➔</span>
         </div>
         <div onclick="window.openPromoQrModal()" class="cursor-pointer bg-stone-50 hover:bg-emerald-50/70 border border-stone-200 p-3 rounded-2xl transition">
           <b class="text-emerald-950 block">第三步：分享合作名片码</b>
@@ -174,7 +177,7 @@
       </button>
     </div>
 
-    <!-- 第一层：三流合一晴雨表（全部 9 项子指标均可精准定位跳转，仓管自动隐藏敏感资金数字） -->
+    <!-- 第一层：三流合一晴雨表（全部 9 项子指标均可精准定位跳转） -->
     <section class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
       <div class="bg-white p-4 rounded-3xl shadow-sm border border-stone-200/80 hover:border-emerald-500 transition">
         <div onclick="window.switchTab('products'); window.filterLowStockOnly(false);" class="cursor-pointer flex justify-between items-center mb-2 group">
@@ -203,8 +206,8 @@
           <span class="text-[10px] text-amber-800 font-bold group-hover:underline">点款与对账 ➔</span>
         </div>
         <div class="grid grid-cols-3 gap-2 pt-1 border-t border-stone-100 text-center">
-          <div onclick="window.jumpToDriverCashPanel()" class="cursor-pointer hover:bg-amber-50 rounded-xl py-1 transition" title="直达随车收款清点入账面板">
-            <span class="text-[10px] text-stone-400 block">随车待缴现款</span>
+          <div onclick="window.jumpToDriverCashPanel()" class="cursor-pointer hover:bg-amber-50 rounded-xl py-1 transition" title="直达随车与拜访催收待点款面板">
+            <span class="text-[10px] text-stone-400 block">待点入库现款</span>
             <b id="flow-money-pending" class="font-mono text-sm font-bold text-amber-700 underline decoration-dotted">¥0.00</b>
           </div>
           <div onclick="window.switchTab('stores'); window.sortStoresByDebt();" class="cursor-pointer hover:bg-rose-50 rounded-xl py-1 transition" title="查看门店在账欠款排行">
@@ -240,19 +243,20 @@
       </div>
     </section>
 
-    <!-- 第二层：五大固定工作台导航（按岗位角色动态隐藏无关工作台） -->
+    <!-- 第二层：五大固定工作台导航 -->
     <nav id="hq-main-nav" class="grid grid-cols-2 sm:grid-cols-5 bg-white rounded-2xl shadow-sm border border-stone-200/80 p-1.5 gap-1.5 text-xs font-bold">
       <button id="tab-btn-advisor" onclick="window.switchTab('advisor')" class="py-2.5 px-2 text-center rounded-xl bg-[#1b4332] text-white transition flex items-center justify-center gap-1">
         <span>📊 平准参谋 & 仓储单据</span>
       </button>
       <button id="tab-btn-products" onclick="window.switchTab('products')" class="py-2.5 px-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition flex items-center justify-center gap-1">
         <span>📦 良品发布 & 出入库制单</span>
+        <span id="draft-prod-badge" class="bg-amber-500 text-stone-950 text-[9px] px-1.5 py-0.2 rounded-full hidden">待定价</span>
       </button>
       <button id="tab-btn-stores" onclick="window.switchTab('stores')" class="py-2.5 px-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition flex items-center justify-center gap-1">
-        <span>🏪 合作门店 & 协议工价</span>
+        <span>🏪 合作门店 & 拜访催收</span>
       </button>
       <button id="tab-btn-settle" onclick="window.switchTab('settle')" class="py-2.5 px-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition flex items-center justify-center gap-1">
-        <span>🚚 货畅其流 & 四权分立</span>
+        <span>🚚 货畅其流 & 岗位授任</span>
         <span id="unsettled-badge" class="bg-rose-600 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">待办</span>
       </button>
       <button id="tab-btn-perf" onclick="window.switchTab('perf')" class="py-2.5 px-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition flex items-center justify-center gap-1">
@@ -278,7 +282,7 @@
         </div>
       </div>
 
-      <!-- 正式仓库出入库与盘点单据台账（含单号、来源去向、货值、搜索与打印凭单） -->
+      <!-- 正式仓库出入库与盘点单据台账 -->
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
@@ -303,13 +307,13 @@
       </div>
     </section>
 
-    <!-- 工作台 2：良品发布 & 仓库出入库制单/盘点 -->
+    <!-- 工作台 2：良品发布 & 仓库出入库制单/盘点（支持仓管暂存草稿 ➔ 老板定价合规上架） -->
     <section id="tab-products" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">📦 物勒工名 · 良品发布与仓库出入库制单</h2>
-            <p class="text-[11px] text-stone-400">支持扫码快查直接开具入库/出库/盘点单、CSV批量上架、B端批发与C端网上独立定价；<b>点击「当前库存」即可开单</b></p>
+            <h2 class="text-sm font-bold text-stone-800">📦 物勒工名 · 良品分段发布与仓库出入库制单</h2>
+            <p class="text-[11px] text-stone-400">仓管录入品名库存图片暂存草稿 ➔ 定价岗定双轨基准价并经AI合规核验正式上架；<b>点击「当前库存」开出入库单</b></p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <button id="btn-bulk-import" onclick="window.openModal('modal-bulk-import')" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-3 py-1.5 rounded-xl transition active:scale-95">
@@ -319,7 +323,7 @@
               📋 导出仓库盘点表 (CSV)
             </button>
             <button id="btn-add-product" onclick="window.openAddProductModal()" class="text-xs bg-[#1b4332] text-white font-bold px-3.5 py-1.5 rounded-xl shadow active:scale-95 transition">
-              + 发布新良品
+              + 发布 / 暂存新良品
             </button>
           </div>
         </div>
@@ -328,6 +332,9 @@
           <div class="relative flex-1 min-w-[200px]">
             <input type="text" id="prod-search-input" oninput="window.onProductSearchInput(this.value)" onkeydown="window.onProductSearchKeydown(event)" placeholder="🔍 输入品名、69条码或规格快筛（扫码枪扫入回车直达开具出入库单）..." class="w-full bg-white border border-stone-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-emerald-700 font-medium">
           </div>
+          <button type="button" id="btn-draft-filter" onclick="window.toggleDraftOnlyFilter()" class="text-[11px] bg-white hover:bg-amber-50 text-stone-700 border border-stone-200 px-2.5 py-1.5 rounded-xl font-bold transition">
+            只看待定价草稿
+          </button>
           <button type="button" id="btn-low-stock-filter" onclick="window.toggleLowStockFilter()" class="text-[11px] bg-white hover:bg-rose-50 text-stone-700 border border-stone-200 px-2.5 py-1.5 rounded-xl font-bold transition">
             仅看紧缺预警
           </button>
@@ -343,7 +350,7 @@
             <thead class="bg-stone-50 border-b border-stone-100 text-stone-500 font-medium">
               <tr>
                 <th class="p-2.5">实拍照</th>
-                <th class="p-2.5">投放渠道</th>
+                <th class="p-2.5">状态与投放渠道</th>
                 <th class="p-2.5">品类与自定义属性</th>
                 <th class="p-2.5">货品全称 & 溯源码</th>
                 <th class="p-2.5">商道属性标签</th>
@@ -360,17 +367,17 @@
       </div>
     </section>
 
-    <!-- 工作台 3：合作门店 & 协议工价策略 -->
+    <!-- 工作台 3：合作门店 & 拜访催收登记 -->
     <section id="tab-stores" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">🏪 合作门店分级分类、协议工价与账期对账</h2>
-            <p class="text-[11px] text-stone-400">支持套用全局门店分级字典、自定义扩展档案字段、贴圈子标签与周期对账回款核销</p>
+            <h2 class="text-sm font-bold text-stone-800">🏪 合作门店分级、拜访催收与协议工价</h2>
+            <p class="text-[11px] text-stone-400">支持业务员登记上门拜访催收留痕（提交财务点验销账）、设置单店协议价与扩展档案</p>
           </div>
           <div class="flex flex-wrap gap-2">
             <button onclick="window.openGlobalPolicyModal('tiers')" class="owner-only-guard text-xs bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 px-3 py-1.5 rounded-xl font-bold transition">
-              🎛️ 管理分级与扩展字段
+              🎛️ 管理分级与档案字段
             </button>
             <button onclick="window.openStoreStatementModal()" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 px-3 py-1.5 rounded-xl font-bold transition">
               🧾 账期对账与回款销账
@@ -390,7 +397,7 @@
       </div>
     </section>
 
-    <!-- 工作台 4：配货制单、统一装车发运、财务对账 & 属员四权分立 -->
+    <!-- 工作台 4：配货制单、统一装车发运、财务点款 & 自定义互斥角色管理 -->
     <section id="tab-settle" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3.5">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
@@ -460,27 +467,27 @@
         <div id="order-fulfillment-list" class="space-y-3 text-xs max-h-[520px] overflow-y-auto no-scrollbar"></div>
       </div>
 
-      <!-- 财务点款入账（仓管自动隐藏） -->
+      <!-- 财务点款入账（含送货师傅随车收款 + 业务员上门拜访催收待核账） -->
       <div id="driver-settle-card" class="price-col-guard bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3 transition">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">💵 随车收款清点入账 (财务当面点验平账)</h2>
-            <p class="text-[11px] text-stone-400">实收现钞与电子扫码款，大额平账由 TOTP 2FA 风控二次核验</p>
+            <h2 class="text-sm font-bold text-stone-800">💵 随车收款与业务催收清点入账 (财务核验后正式冲减欠款)</h2>
+            <p class="text-[11px] text-stone-400">业务员上门拜访催收的回款需经财务点验到账后方可销账，大额平账自动触发 2FA 验证</p>
           </div>
           <button onclick="window.loadHQData()" class="text-xs text-emerald-800 font-bold hover:underline">刷新对账</button>
         </div>
         <div id="driver-settle-list" class="space-y-2 text-xs"></div>
       </div>
 
-      <!-- 属员四权分立（仅大当家主账号可见） -->
+      <!-- 属员与自定义岗位管理（内置四权分立互斥检查） -->
       <div id="rbac-card-box" class="owner-only-guard bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">👥 属员四权分立管理 (各得其所 · 最小化权限 · 支持子账号直登)</h2>
-            <p class="text-[11px] text-stone-400">属员登录时在登录门禁输入「商号代号 + 子账号名:密码」（如 <code>wh_li:123456</code>）即可直达受限专属工作台</p>
+            <h2 class="text-sm font-bold text-stone-800">👥 属员授任与自定义岗位权限 (内置四权分立互斥锁 · 支持电脑与掌中宝登录)</h2>
+            <p class="text-[11px] text-stone-400">支持自定义岗位名称与权限组合，系统自动拦截“管物又管钱”、“改价又审计”等舞弊冲突；登录输入 <code>子账号:密码</code></p>
           </div>
           <button onclick="window.openAddSubUserModal()" class="text-xs bg-[#1b4332] text-white font-bold px-3.5 py-1.5 rounded-xl shadow active:scale-95 transition">
-            + 授任新属员
+            + 授任新属员 / 自定义岗位
           </button>
         </div>
 
@@ -490,7 +497,7 @@
               <tr>
                 <th class="p-2.5">登录账号</th>
                 <th class="p-2.5">执事姓名</th>
-                <th class="p-2.5">权责职能 (最小化权限隔离)</th>
+                <th class="p-2.5">岗位名称与最小化权限范围</th>
                 <th class="p-2.5">联系手机</th>
                 <th class="p-2.5">在位状态</th>
                 <th class="p-2.5 text-right">管理</th>
@@ -502,15 +509,13 @@
       </div>
     </section>
 
-    <!-- =========================================================================
-         工作台 5：内部属员实绩考核 & 外部推客分润与门店返利核算中心
-         ========================================================================= -->
+    <!-- 工作台 5：内部属员实绩考核 & 外部推客分润与门店返利核算中心 -->
     <section id="tab-perf" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3.5">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
-            <h2 class="text-sm font-bold text-stone-900">👷 内部属员岗位实绩考核（自动汇总仓管出入库单、送货师傅交割单、财务核账单）</h2>
-            <p class="text-[11px] text-stone-400">按岗位职责自动统计经手单据量、件数与交割金额，实绩透明可稽核</p>
+            <h2 class="text-sm font-bold text-stone-900">👷 内部属员岗位实绩考核（自动汇总仓管出入库单、送货交割单、业务催收单）</h2>
+            <p class="text-[11px] text-stone-400">按岗位职责自动统计经手单据量、件数与交割催收金额，实绩透明可稽核</p>
           </div>
           <button onclick="window.exportPerformanceCSV()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-3 py-1.5 rounded-xl transition active:scale-95">
             📥 导出绩效与分润核算表 (CSV)
@@ -524,7 +529,7 @@
                 <th class="p-2.5">人员姓名 / 账号</th>
                 <th class="p-2.5">岗位职能</th>
                 <th class="p-2.5">仓储制单/核验笔数</th>
-                <th class="p-2.5">随车交割签收笔数</th>
+                <th class="p-2.5">交割/催收经手笔数</th>
                 <th class="p-2.5">经手实收交割总额</th>
                 <th class="p-2.5">回收周转载具总数</th>
               </tr>
@@ -538,7 +543,7 @@
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
             <h2 class="text-sm font-bold text-stone-900">🤝 外部推客分润 & 合作门店进货阶梯返利台账</h2>
-            <p class="text-[11px] text-stone-400">自动核算天街云端货架邻里引流分润，以及实体店累计进货达标返利（支持一键冲抵门店在账欠款）</p>
+            <p class="text-[11px] text-stone-400">自动核算天街云端货架邻里引流分润，以及实体店累计进货多档阶梯达标返利</p>
           </div>
           <button onclick="window.openGlobalPolicyModal('promo')" class="owner-only-guard text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-3 py-1.5 rounded-xl transition">
             ⚙️ 调整返利与推客分润比例
@@ -552,6 +557,65 @@
   </div>
 
   <!-- =========================================================================
+       场景化自适应智能帮助与报错诊断弹窗
+       ========================================================================= -->
+  <div id="modal-contextual-help" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[88vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">💡 智能场景指引与问题诊断助手</h3>
+          <p class="text-[10px] text-stone-400" id="help-context-subtitle">已自动匹配您当前的岗位身份与所在工作台</p>
+        </div>
+        <button onclick="window.closeModal('modal-contextual-help')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <div id="help-guidance-cards" class="space-y-2.5"></div>
+      <button type="button" onclick="window.closeModal('modal-contextual-help')" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-2xl">
+        明白了，关闭指引
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       业务员 / 客户经理上门拜访催收登记弹窗（提交后进入待财务核账队列）
+       ========================================================================= -->
+  <div id="modal-sales-collect" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🤝 拜访客户催收与回款留痕</h3>
+          <p class="text-[10px] text-stone-400" id="sc-store-subtitle">合作门店名称 · 当前在账欠款</p>
+        </div>
+        <button onclick="window.closeModal('modal-sales-collect')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <input type="hidden" id="sc-store-id" value="">
+      <div class="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-[11px] text-amber-950 leading-relaxed">
+        <b>内控合规说明：</b>业务员上门催收登记后，单据将直达<b>账房财务点款台</b>；财务核对公户到账或点清现钞后，系统自动冲减该门店在账欠款。
+      </div>
+      <div class="space-y-2.5">
+        <div>
+          <label class="block text-stone-700 font-bold mb-1">本次催收回款金额 (元) *：</label>
+          <input type="number" step="0.01" min="0" id="sc-amount-input" placeholder="0.00" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-base font-bold text-emerald-950 outline-none">
+        </div>
+        <div>
+          <label class="block text-stone-700 font-bold mb-1">客户付款方式：</label>
+          <select id="sc-pay-method" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 font-bold outline-none">
+            <option value="扫码直转商号公户/微信">📱 客户已扫码直转商号收款码</option>
+            <option value="业务员代收现钞">💵 业务员现场代收现钞（需回库交财务）</option>
+            <option value="银行公户对公转账">🏦 银行对公转账（已拍回执）</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-stone-700 font-bold mb-1">拜访催收情况与沟通备忘：</label>
+          <input type="text" id="sc-note-input" placeholder="例：上门核对本月账单无误，掌柜微信转账已付清" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+        </div>
+      </div>
+      <button type="button" onclick="window.submitSalesVisitCollection()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl shadow active:scale-95 transition">
+        ✅ 提交催收留痕 · 通知财务核账销账
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
        调度中枢智能消息待办聚合抽屉
        ========================================================================= -->
   <div id="modal-hq-notifications" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
@@ -559,7 +623,7 @@
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
           <h3 class="font-bold text-sm text-stone-900">📬 调度中枢 · 智能消息待办聚合</h3>
-          <p class="text-[10px] text-stone-400">实时汇总门店新单、用度计划、超信审批、天街求购与随车待交款</p>
+          <p class="text-[10px] text-stone-400">实时汇总门店新单、用度计划、待定价草稿、超信审批与待核账回款</p>
         </div>
         <button onclick="window.closeModal('modal-hq-notifications')" class="text-stone-400 text-lg">✕</button>
       </div>
@@ -571,22 +635,27 @@
   </div>
 
   <!-- =========================================================================
-       商号全局自定义策略中心（Global Policy Studio - 显性启用开关 + 网上价格策略 + 8大2FA风控）
+       商号全局自定义策略中心（Global Policy Studio - 顶部增减按钮去红叉 + 自定义模板 + 多档阶梯）
        ========================================================================= -->
   <div id="modal-global-policy" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-3xl rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2.5 border-b border-stone-100">
         <div>
           <h3 class="font-bold text-base text-stone-900">🎛️ 商号全局自定义策略中心 (Global Policy Studio)</h3>
-          <p class="text-[11px] text-stone-400">每一项策略均可自由开启/停用与增减规则 · 启用即刻全端生效，停用则按基准原价直出</p>
+          <p class="text-[11px] text-stone-400">每一项策略均可自由开启/停用与增减规则 · 启用即刻全端生效，支持保存个人专属模板</p>
         </div>
         <button onclick="window.closeModal('modal-global-policy')" class="text-stone-400 hover:text-stone-700 text-xl">✕</button>
       </div>
 
-      <!-- 行业一键初始化模板条 -->
-      <div class="bg-amber-50/80 border border-amber-200 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2">
-        <span class="font-bold text-amber-950">✨ 行业一键初始化预设：</span>
-        <div class="flex flex-wrap gap-1.5">
+      <!-- 行业一键初始化预设 + 自定义保存模板 -->
+      <div class="bg-amber-50/80 border border-amber-200 p-3 rounded-2xl space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span class="font-bold text-amber-950">✨ 行业样板与我的自定义模板：</span>
+          <button type="button" onclick="window.saveCurrentAsCustomPreset()" class="px-2.5 py-1 rounded-xl bg-[#1b4332] hover:bg-[#143628] text-white font-bold text-[11px] shadow-2xs transition">
+            💾 将当前配置存为我的模板
+          </button>
+        </div>
+        <div id="policy-presets-bar" class="flex flex-wrap gap-1.5">
           <button type="button" onclick="window.applyGlobalPreset('coop')" class="px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-amber-300 text-stone-800 font-bold transition">🌾 村社合作社/生鲜</button>
           <button type="button" onclick="window.applyGlobalPreset('factory')" class="px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-amber-300 text-stone-800 font-bold transition">🏭 源头工坊/制造</button>
           <button type="button" onclick="window.applyGlobalPreset('hardware')" class="px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-amber-300 text-stone-800 font-bold transition">🛠️ 五金建材/汽配</button>
@@ -603,7 +672,7 @@
         <button type="button" onclick="window.switchPolicyTab('slip')" id="gp-tab-slip" class="py-2 rounded-xl text-stone-600 transition">⑤ 凭单落款与印章</button>
       </div>
 
-      <!-- 子面板 1：实体店分级折扣策略与自定义门店建档扩展字段 -->
+      <!-- 子面板 1：实体店分级折扣策略与合作门店档案扩展信息栏（顶部增减按钮，清爽无红叉） -->
       <div id="gp-pane-tiers" class="space-y-3.5">
         <div class="bg-emerald-50/70 border border-emerald-200 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -617,85 +686,84 @@
         </div>
 
         <div class="space-y-2">
-          <div class="flex justify-between items-center">
+          <div class="flex flex-wrap justify-between items-center gap-2">
             <div>
-              <b class="text-stone-900">🏪 自定义合作门店分级与默认授信策略（自由增减）</b>
+              <b class="text-stone-900">🏪 自定义合作门店分级与默认授信策略</b>
               <p class="text-[10px] text-stone-400">列顺序：分级名称 | 默认信用额度(元) | 批发折扣系数(0.95=95折) | 月度免批退货额(元)</p>
             </div>
-            <button type="button" onclick="window.addPolicyTierRow()" class="bg-emerald-800 text-white font-bold px-3 py-1 rounded-xl text-[11px]">
-              + 新增门店分级
-            </button>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="window.addPolicyTierRow()" class="bg-emerald-800 text-white font-bold px-2.5 py-1 rounded-xl text-[11px]">
+                + 新增分级
+              </button>
+              <button type="button" onclick="window.removeLastRow('gp-tiers-container')" class="bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold px-2.5 py-1 rounded-xl text-[11px]">
+                - 删减末行
+              </button>
+            </div>
           </div>
           <div id="gp-tiers-container" class="space-y-2 max-h-40 overflow-y-auto no-scrollbar"></div>
         </div>
 
         <div class="pt-2.5 border-t border-stone-200 space-y-2">
-          <div class="flex justify-between items-center">
+          <div class="flex flex-wrap justify-between items-center gap-2">
             <div>
-              <b class="text-stone-900">📋 合作门店建档自定义扩展字段（自由增减）</b>
-              <p class="text-[10px] text-stone-400">如：施工工地名称、冷库容量、开票税号等；填写后在门店策略弹窗与打印交割单自动展示</p>
+              <b class="text-stone-900">📋 合作门店档案扩展信息栏（按需登记客户专属资料）</b>
+              <p class="text-[10px] text-stone-400">用于记录不同行业客户的专属属性（如五金厂记“施工工地名称”、食品厂记“冷库容量”、企业记“开票税号”），打印送货单时自动印出</p>
             </div>
-            <button type="button" onclick="window.addPolicyStoreFieldRow()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-3 py-1 rounded-xl text-[11px]">
-              + 添加扩展字段
-            </button>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="window.addPolicyStoreFieldRow()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[11px]">
+                + 新增信息栏
+              </button>
+              <button type="button" onclick="window.removeLastRow('gp-store-fields-container')" class="bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold px-2.5 py-1 rounded-xl text-[11px]">
+                - 删减末行
+              </button>
+            </div>
           </div>
           <div id="gp-store-fields-container" class="space-y-1.5 max-h-28 overflow-y-auto no-scrollbar"></div>
         </div>
       </div>
 
-      <!-- 子面板 2：网上价格策略（天街/数字专柜）、返利策略与促销活动 -->
+      <!-- 子面板 2：网上多档阶梯价格策略、实体店多档进货返利与促销活动 -->
       <div id="gp-pane-promo" class="hidden space-y-3">
-        <!-- 网上/天街零售价格策略 -->
         <div class="bg-blue-50/70 border border-blue-200 p-3 rounded-2xl space-y-2.5">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <b class="text-blue-950 block">🌐 网上 / 百工天街零售价格策略（启用即同步全网展示价）</b>
-              <span class="text-[10px] text-blue-800">天街与数字专柜最终展示价 = 「网上平准零售基准价 × 网上折扣系数」（未启用则按零售基准原价展示）</span>
+              <b class="text-blue-950 block">🌐 网上 / 百工天街多档阶梯零售价格策略</b>
+              <span class="text-[10px] text-blue-800">启用后，天街与数字专柜按「网上平准零售基准价 × 对应购买件数阶梯折扣」实时折算最终展示价</span>
             </div>
-            <label class="flex items-center gap-2 font-bold text-blue-950 cursor-pointer bg-white px-3 py-1 rounded-xl border border-blue-300">
-              <input type="checkbox" id="gp-online-price-enabled" class="w-4 h-4 rounded text-blue-800">
-              <span>🟢 启用网上价格策略</span>
-            </label>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <div>
-              <label class="block text-[10px] text-stone-600 mb-0.5">全网零售折扣系数 (1=原价)：</label>
-              <input type="number" step="0.01" min="0.1" max="2" id="gp-online-discount-rate" value="1.00" class="w-full bg-white border border-blue-300 rounded-xl px-2.5 py-1.5 font-mono font-bold outline-none">
-            </div>
-            <div>
-              <label class="block text-[10px] text-stone-600 mb-0.5">满件集采惠折门槛 (满X件)：</label>
-              <input type="number" min="2" id="gp-online-bulk-qty" value="5" class="w-full bg-white border border-blue-300 rounded-xl px-2.5 py-1.5 font-mono font-bold outline-none">
-            </div>
-            <div>
-              <label class="block text-[10px] text-stone-600 mb-0.5">满件再享折上折系数：</label>
-              <input type="number" step="0.01" min="0.1" max="1" id="gp-online-bulk-rate" value="0.90" class="w-full bg-white border border-blue-300 rounded-xl px-2.5 py-1.5 font-mono font-bold outline-none">
+            <div class="flex items-center gap-1.5">
+              <label class="flex items-center gap-1.5 font-bold text-blue-950 cursor-pointer bg-white px-2.5 py-1 rounded-xl border border-blue-300">
+                <input type="checkbox" id="gp-online-price-enabled" class="w-4 h-4 rounded text-blue-800">
+                <span>🟢 启用网上价格策略</span>
+              </label>
+              <button type="button" onclick="window.addOnlineTierRow()" class="bg-blue-700 text-white font-bold px-2.5 py-1 rounded-xl text-[11px]">
+                + 增设阶梯档
+              </button>
+              <button type="button" onclick="window.removeLastRow('gp-online-tiers-container')" class="bg-stone-200 text-stone-700 font-bold px-2 py-1 rounded-xl text-[11px]">
+                - 删减末档
+              </button>
             </div>
           </div>
+          <div id="gp-online-tiers-container" class="space-y-1.5 max-h-28 overflow-y-auto no-scrollbar"></div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="bg-emerald-50/70 p-3 rounded-2xl border border-emerald-200 space-y-2">
             <div class="flex justify-between items-center">
-              <b class="text-emerald-950">🎁 实体店累计进货返利策略</b>
-              <label class="flex items-center gap-1 text-[10px] font-bold text-emerald-900 cursor-pointer">
-                <input type="checkbox" id="gp-rebate-enabled" checked class="rounded text-emerald-800"> 启用
-              </label>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="block text-[10px] text-stone-600 mb-0.5">累计进货达标线(元)：</label>
-                <input type="number" id="gp-rebate-threshold" value="10000" class="w-full bg-white border border-emerald-300 rounded-xl px-2 py-1 font-mono font-bold outline-none">
-              </div>
-              <div>
-                <label class="block text-[10px] text-stone-600 mb-0.5">达标返利比例(%)：</label>
-                <input type="number" step="0.1" id="gp-rebate-rate" value="3.0" class="w-full bg-white border border-emerald-300 rounded-xl px-2 py-1 font-mono font-bold outline-none">
+              <b class="text-emerald-950">🎁 实体店多档进货返利</b>
+              <div class="flex items-center gap-1.5">
+                <label class="flex items-center gap-1 text-[10px] font-bold text-emerald-900 cursor-pointer">
+                  <input type="checkbox" id="gp-rebate-enabled" checked class="rounded text-emerald-800"> 启用
+                </label>
+                <button type="button" onclick="window.addRebateTierRow()" class="bg-emerald-800 text-white px-2 py-0.5 rounded-lg text-[10px] font-bold">+ 增档</button>
+                <button type="button" onclick="window.removeLastRow('gp-rebate-tiers-container')" class="bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded-lg text-[10px] font-bold">- 减档</button>
               </div>
             </div>
+            <div id="gp-rebate-tiers-container" class="space-y-1.5 max-h-24 overflow-y-auto no-scrollbar"></div>
           </div>
 
           <div class="bg-amber-50/70 p-3 rounded-2xl border border-amber-200 space-y-2">
             <div class="flex justify-between items-center">
-              <b class="text-amber-950">📣 推客分润与门店引流奖励</b>
+              <b class="text-amber-950">📣 推客分润与引流奖励</b>
               <label class="flex items-center gap-1 text-[10px] font-bold text-amber-950 cursor-pointer">
                 <input type="checkbox" id="gp-promoter-enabled" checked class="rounded text-amber-700"> 启用
               </label>
@@ -713,34 +781,43 @@
           </div>
         </div>
 
-        <!-- 可自由增减的灵活促销活动规则列表 -->
         <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200 space-y-2">
-          <div class="flex justify-between items-center">
+          <div class="flex flex-wrap justify-between items-center gap-2">
             <div class="flex items-center gap-2">
-              <b class="text-stone-900">🔥 自定义促销活动规则（自由增减 · 同步门店与天街）</b>
+              <b class="text-stone-900">🔥 自定义促销活动规则（同步门店与天街）</b>
               <label class="flex items-center gap-1 font-bold text-emerald-900 cursor-pointer bg-white px-2 py-0.5 rounded-lg border border-stone-200">
                 <input type="checkbox" id="gp-campaign-active" class="rounded text-emerald-800">
                 <span>启用活动</span>
               </label>
             </div>
-            <button type="button" onclick="window.addPolicyPromoRow()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[11px]">
-              + 添加促销活动
-            </button>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="window.addPolicyPromoRow()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[11px]">
+                + 添加活动
+              </button>
+              <button type="button" onclick="window.removeLastRow('gp-promos-container')" class="bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold px-2.5 py-1 rounded-xl text-[11px]">
+                - 删减末行
+              </button>
+            </div>
           </div>
-          <div id="gp-promos-container" class="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar"></div>
+          <div id="gp-promos-container" class="space-y-1.5 max-h-28 overflow-y-auto no-scrollbar"></div>
         </div>
       </div>
 
       <!-- 子面板 3：周转载具与回收押金单价 -->
       <div id="gp-pane-carriers" class="hidden space-y-3">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
-            <b class="text-stone-900">🔄 自定义多种周转载具与押金抵扣标准（自由增减 · 联动送货师傅端）</b>
+            <b class="text-stone-900">🔄 自定义多种周转载具与押金抵扣标准（联动送货师傅端）</b>
             <p class="text-[10px] text-stone-400">送货师傅端现场签收时将列出此处配置的全部载具，支持分项录入退回数量并自动按各自押金单价合计冲抵货款</p>
           </div>
-          <button type="button" onclick="window.addPolicyCarrierRow()" class="bg-emerald-800 text-white font-bold px-3 py-1 rounded-xl text-[11px]">
-            + 添加载具规格
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="window.addPolicyCarrierRow()" class="bg-emerald-800 text-white font-bold px-3 py-1 rounded-xl text-[11px]">
+              + 添加载具规格
+            </button>
+            <button type="button" onclick="window.removeLastRow('gp-carriers-container')" class="bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold px-2.5 py-1 rounded-xl text-[11px]">
+              - 删减末行
+            </button>
+          </div>
         </div>
         <div id="gp-carriers-container" class="space-y-2 max-h-64 overflow-y-auto no-scrollbar"></div>
       </div>
@@ -870,8 +947,115 @@
   </div>
 
   <!-- =========================================================================
-       专供品道弹窗（显示门店策略折算价 + 铅笔快捷改价 + 单品专属协议备注）
+       产区实拍档案与外部社交平台/官网/公众号矩阵联动弹窗
        ========================================================================= -->
+  <div id="modal-counter-profile" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🎥 产区水土档案与外部平台外链矩阵</h3>
+          <p class="text-[10px] text-stone-400">填写后自动同步展示于百工天街「数字专柜」与合作名片页，构织全网传播网络</p>
+        </div>
+        <button onclick="window.closeModal('modal-counter-profile')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <div class="space-y-2.5">
+        <div>
+          <label class="block text-stone-700 font-bold mb-1">合作社水土禀赋 / 工坊匠心工艺简介：</label>
+          <textarea id="counter-origin-desc-input" rows="3" placeholder="如：村社合作社自有生态种植基地500亩，不催熟、源头直供，支持定制包装与合作门店自提..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none focus:border-emerald-700"></textarea>
+        </div>
+        <div>
+          <label class="block text-stone-700 font-bold mb-1">田间/车间实拍视频链接 (视频号/抖音/快手)：</label>
+          <input type="url" id="counter-media-url-input" placeholder="https://..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-xs outline-none">
+        </div>
+        <div>
+          <label class="block text-stone-700 font-bold mb-1">商号官网 / 品牌介绍页链接 (选填)：</label>
+          <input type="url" id="counter-website-url-input" placeholder="https://..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-xs outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-stone-700 font-bold mb-1">微信公众号名称/链接：</label>
+            <input type="text" id="counter-wechat-oa-input" placeholder="如：伏牛山生态合作社" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+          </div>
+          <div>
+            <label class="block text-stone-700 font-bold mb-1">专属客服微信号：</label>
+            <input type="text" id="counter-service-wx-input" placeholder="如：funiushan888" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 font-mono text-xs outline-none">
+          </div>
+        </div>
+      </div>
+      <button type="button" onclick="window.saveCounterProfile()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">储存并同步至数字专柜与合作名片</button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       属员授任与自定义岗位弹窗（内置四权分立互斥锁校验）
+       ========================================================================= -->
+  <div id="modal-add-subuser" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">👥 授任新属员 / 自定义岗位权限</h3>
+          <p class="text-[10px] text-stone-400">支持自由命名岗位名称并组合权限，系统自动执行四权分立互斥校验</p>
+        </div>
+        <button onclick="window.closeModal('modal-add-subuser')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">登录账号 *：</label>
+          <input type="text" id="sub-account-input" placeholder="如 sales_wang" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono">
+        </div>
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">执事姓名 *：</label>
+          <input type="text" id="sub-name-input" placeholder="如 王经理" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-stone-600 font-bold mb-1">基础职能模板（切换自动勾选对应权限）：</label>
+        <select id="sub-role-select" onchange="window.onSubRoleTemplateChange(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 font-bold">
+          <option value="sales">🤝 业务员 / 客户经理 (拜访跟进 · 上门催收留痕 · 代客报单)</option>
+          <option value="warehouse">📦 仓储调度 (出入库制单 · 装车拣货 · 屏蔽所有价格金额)</option>
+          <option value="finance">💰 账房财务 (审单核账 · 催收与随车点款销账 · 不碰库房)</option>
+          <option value="driver">🚚 送货师傅 (随车交割 · 多载具回收 · 现场签名收款)</option>
+          <option value="producer">🌾 产区采收 / 车间班组长 (预入库制单 · 看排产总单 · 屏蔽客户账款)</option>
+          <option value="qc_service">🔧 售后定损 / 质检员 (上门验损拍照定责 · 退货质检)</option>
+          <option value="auditor">🔍 独立稽核 (全盘只读审计 · 零写入改动权限)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-stone-600 font-bold mb-1">自定义岗位显示名称（可自由修改，如“冷链大客户专员”）：</label>
+        <input type="text" id="sub-custom-title-input" value="业务员 / 客户经理" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-bold">
+      </div>
+
+      <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200 space-y-1.5">
+        <b class="text-stone-800 block">🔐 细粒度权限勾选（系统自动检查四权分立互斥红线）：</b>
+        <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+          <label class="flex items-center gap-1.5"><input type="checkbox" value="perm_stock" class="sub-perm-cb"> 📦 仓库实物出入库制单</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" value="perm_deliver" class="sub-perm-cb"> 🚚 随车送货与载具清点</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" value="perm_sales_visit" checked class="sub-perm-cb"> 🤝 拜访客户与上门催收登记</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" value="perm_finance_settle" class="sub-perm-cb"> 💰 财务核账与回款最终销账</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" value="perm_price_edit" class="sub-perm-cb"> 💎 设定基准价与单店协议价</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" value="perm_audit_readonly" class="sub-perm-cb"> 🔍 独立全盘只读稽核</label>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">初始登录密码 *：</label>
+          <input type="password" id="sub-pwd-input" value="123456" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono">
+        </div>
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">联系手机：</label>
+          <input type="tel" id="sub-phone-input" placeholder="11位手机号" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono">
+        </div>
+      </div>
+
+      <button onclick="window.saveSubUser()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow">校验互斥规则 · 授任立册</button>
+    </div>
+  </div>
+
+  <!-- 专供品道弹窗、仓库凭单打印、仓库制单、产品发布（含分段暂存与AI合规核验）及其他弹窗 -->
   <div id="visibility-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -893,9 +1077,6 @@
     </div>
   </div>
 
-  <!-- =========================================================================
-       正式《仓库入库 / 出库 / 盘点核验凭单》打印预览弹窗
-       ========================================================================= -->
   <div id="modal-stock-voucher-print" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-xl rounded-3xl p-5 space-y-3.5 text-stone-900 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -905,20 +1086,17 @@
         </div>
         <button onclick="window.closeModal('modal-stock-voucher-print')" class="text-stone-400 text-lg">✕</button>
       </div>
-
       <div id="stock-voucher-print-area" class="border border-stone-800 p-4 rounded-xl space-y-3 bg-white text-stone-900">
         <div class="text-center border-b border-stone-400 pb-2">
           <h2 class="text-base font-bold tracking-widest" id="sv-print-title">仓库入库核验凭单</h2>
           <p class="text-[11px] font-mono font-bold text-stone-700 mt-1" id="sv-print-voucher-no">单据编号：RK-00000000-0000</p>
         </div>
-
         <div class="grid grid-cols-2 gap-2 text-[11px] bg-stone-50 p-2.5 rounded-lg border border-stone-200">
           <div>单据类型：<b id="sv-print-type">--</b></div>
           <div>制单时间：<span id="sv-print-time" class="font-mono">--</span></div>
           <div>来源/去向：<b id="sv-print-source">--</b></div>
           <div>经手人：<b id="sv-print-operator">--</b></div>
         </div>
-
         <table class="w-full text-left border-collapse border border-stone-400 text-[11px]">
           <thead>
             <tr class="bg-stone-100 border-b border-stone-400">
@@ -931,28 +1109,20 @@
           </thead>
           <tbody id="sv-print-tbody"></tbody>
         </table>
-
         <div class="text-[11px] text-stone-700" id="sv-print-remark">事由备注：--</div>
-
         <div class="grid grid-cols-3 gap-3 pt-5 text-[11px]">
           <div>仓管核验签字：_______________</div>
           <div>交接/领用人签字：_____________</div>
           <div>财务稽核签章：_______________</div>
         </div>
       </div>
-
       <div class="flex gap-2 pt-1">
-        <button type="button" onclick="window.executeStockVoucherPrint()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">
-          🖨️ 立即打印仓库凭单
-        </button>
-        <button type="button" onclick="window.closeModal('modal-stock-voucher-print')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold px-5 py-2.5 rounded-xl">
-          关闭
-        </button>
+        <button type="button" onclick="window.executeStockVoucherPrint()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">🖨️ 立即打印仓库凭单</button>
+        <button type="button" onclick="window.closeModal('modal-stock-voucher-print')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold px-5 py-2.5 rounded-xl">关闭</button>
       </div>
     </div>
   </div>
 
-  <!-- 弹窗 A：仓库出入库与实地盘点制单弹窗 -->
   <div id="modal-stock-ops" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -962,21 +1132,17 @@
         </div>
         <button onclick="window.closeModal('modal-stock-ops')" class="text-stone-400 text-lg">✕</button>
       </div>
-
       <input type="hidden" id="stock-ops-prod-id" value="">
       <input type="hidden" id="stock-ops-cur-stock" value="0">
-
       <div class="grid grid-cols-3 gap-1.5 bg-stone-100 p-1 rounded-xl font-bold text-center">
         <button type="button" onclick="window.setStockOpsMode('in_purchase')" id="btn-mode-in" class="py-1.5 rounded-lg bg-[#1b4332] text-white transition">+ 采收/完工入库</button>
         <button type="button" onclick="window.setStockOpsMode('out_loss')" id="btn-mode-out" class="py-1.5 rounded-lg text-stone-600 transition">- 损耗/领用出库</button>
         <button type="button" onclick="window.setStockOpsMode('audit_adjust')" id="btn-mode-audit" class="py-1.5 rounded-lg text-stone-600 transition">⚖️ 实地盘点校准</button>
       </div>
-
       <div class="bg-emerald-50/80 border border-emerald-200 px-3 py-2 rounded-xl flex justify-between items-center font-mono">
         <span class="text-[10px] text-emerald-900 font-bold">系统自动生成单号：</span>
         <b id="stock-ops-voucher-no" class="text-emerald-950 font-bold">RK-00000000-0000</b>
       </div>
-
       <div class="space-y-2.5">
         <div>
           <label id="stock-ops-qty-label" class="block text-stone-700 font-bold mb-1">本次采收 / 完工入库数量 (+) *：</label>
@@ -995,20 +1161,19 @@
           <input type="text" id="stock-ops-remark" placeholder="例：202611批次田间采收/工坊完工入库" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none">
         </div>
       </div>
-
       <button onclick="window.submitStockOperation()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
         ✅ 确认制单入账（生成可查可印仓库凭单）
       </button>
     </div>
   </div>
 
-  <!-- 弹窗 C：良品发布与双渠道基准定价弹窗 -->
+  <!-- 弹窗 C：良品分段发布与双渠道基准定价弹窗（含仓管暂存与AI合规检测） -->
   <div id="product-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
           <h3 class="font-bold text-sm text-stone-800" id="prod-modal-title">📦 物勒工名 · 发布良品</h3>
-          <p class="text-[10px] text-stone-400">设定批发平准基准价与网上平准零售基准价，全端自动套用全局策略折算</p>
+          <p class="text-[10px] text-stone-400">支持分段协作：仓管填写实物与库存后暂存草稿 ➔ 定价岗补充基准价并通过合规核验正式上架</p>
         </div>
         <button onclick="window.closeAddProductModal()" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
@@ -1062,7 +1227,8 @@
         <input type="text" id="prod-name" placeholder="输入商品/农产/材料/配件完整名称" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-700 font-medium">
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-emerald-50/80 border border-emerald-200 p-3 rounded-2xl">
+      <!-- 双渠道基准定价区（仓管角色自动隐藏，保护商业定价权） -->
+      <div id="prod-price-editor-box" class="price-col-guard grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-emerald-50/80 border border-emerald-200 p-3 rounded-2xl">
         <div class="space-y-1">
           <label id="lbl-prod-tier1" class="block text-[11px] font-bold text-emerald-950">🏬 批发平准基准价 (元) *：</label>
           <input type="number" step="0.01" id="prod-price" placeholder="0.00" class="w-full bg-white border border-emerald-300 rounded-xl px-3 py-1.5 font-mono font-bold text-sm text-emerald-950 outline-none">
@@ -1076,14 +1242,19 @@
       </div>
 
       <div class="bg-amber-50/70 p-3 rounded-2xl border border-amber-200 space-y-2">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-wrap justify-between items-center gap-1">
           <div>
             <label class="font-bold text-amber-950 text-[11px] block">🧩 百业自定义展示属性（不写死规格，按需添加）：</label>
             <span class="text-[10px] text-amber-800">支持点击下方行业模板一键填入常见属性字段</span>
           </div>
-          <button type="button" onclick="window.addCustomAttrRow()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[11px] shadow-xs shrink-0">
-            + 添加属性
-          </button>
+          <div class="flex items-center gap-1">
+            <button type="button" onclick="window.addCustomAttrRow()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2 py-1 rounded-xl text-[11px] shadow-xs">
+              + 添加
+            </button>
+            <button type="button" onclick="window.removeLastRow('custom-attrs-container')" class="bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold px-2 py-1 rounded-xl text-[11px]">
+              - 删减
+            </button>
+          </div>
         </div>
         <div class="flex flex-wrap items-center gap-1 pt-0.5 text-[10px]">
           <span class="text-amber-900 font-bold">行业快捷模板:</span>
@@ -1143,8 +1314,8 @@
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <div>
-          <label class="block text-[11px] font-bold text-stone-700 mb-1">📝 货品对外简要描述（客户可见）：</label>
-          <textarea id="prod-summary" rows="2" placeholder="介绍产区水土、工艺亮点、用法场景，展示于门店与天街详情页..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-xs outline-none focus:border-emerald-700"></textarea>
+          <label class="block text-[11px] font-bold text-stone-700 mb-1">📝 货品对外简要描述（客户可见 · 自动合规核验）：</label>
+          <textarea id="prod-summary" rows="2" placeholder="介绍产区水土、工艺亮点、用法场景（禁填夸大违禁词与私下联系方式）..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-xs outline-none focus:border-emerald-700"></textarea>
         </div>
         <div>
           <label class="block text-[11px] font-bold text-stone-700 mb-1">🔒 内部仓储/交接备注（仅内部可见）：</label>
@@ -1154,7 +1325,7 @@
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
         <div>
-          <label class="block text-[11px] font-bold text-stone-700 mb-1">货品实拍照：</label>
+          <label class="block text-[11px] font-bold text-stone-700 mb-1">货品实拍照 *：</label>
           <div class="flex items-center gap-2">
             <div id="image-preview-box" class="w-14 h-14 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center overflow-hidden text-stone-400 text-[10px]">无图</div>
             <label class="cursor-pointer bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold px-2.5 py-1.5 rounded-xl border border-stone-200">
@@ -1170,15 +1341,18 @@
         </div>
       </div>
 
-      <div class="flex gap-2.5 pt-2 border-t border-stone-100">
-        <button id="btn-submit-product" onclick="window.submitProductForm()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
-          储存并发布良品
+      <div class="flex gap-2 pt-2 border-t border-stone-100">
+        <button type="button" onclick="window.submitProductForm('draft')" class="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold px-4 py-2.5 rounded-2xl text-xs transition">
+          💾 暂存草稿 (待定价/完善)
+        </button>
+        <button type="button" id="btn-submit-product" onclick="window.submitProductForm('active')" class="price-col-guard flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
+          ✅ 合规核验 · 正式上架发布
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 其余弹窗（CSV导入、送货交割单打印、门店对账、排产总单、产区档案、群通知、门店协议策略、装车总拣货单、合作名片码、主动配货、门禁、改密、2FA、验证器、属员、扫码）全部完整保留 -->
+  <!-- 其余原有弹窗（CSV导入、送货交割单打印、门店对账、排产总单、群通知、门店协议策略、装车总拣货单、合作名片码、主动配货、门禁、改密、2FA、验证器、扫码）全部 100% 完整保留 -->
   <div id="modal-bulk-import" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -1311,7 +1485,7 @@
         </div>
         <div id="stmt-orders-list" class="divide-y divide-stone-100 border border-stone-200 rounded-2xl px-3 py-1 bg-white max-h-44 overflow-y-auto no-scrollbar text-[11px]"></div>
       </div>
-      <div class="bg-emerald-50/70 border border-emerald-200 p-3 rounded-2xl space-y-2">
+      <div class="write-op-guard bg-emerald-50/70 border border-emerald-200 p-3 rounded-2xl space-y-2">
         <b class="text-emerald-950 block">💰 周期回款销账平账（扣减门店在账欠款）：</b>
         <div class="grid grid-cols-2 gap-2">
           <div>
@@ -1360,29 +1534,6 @@
         <button onclick="window.copyPlanAggregateText()" class="flex-1 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold py-2.5 rounded-xl shadow transition">📋 复制总单发产区/工坊群</button>
         <button onclick="window.exportPlanAggregateCSV()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">📥 导出排产表 (CSV)</button>
       </div>
-    </div>
-  </div>
-
-  <div id="modal-counter-profile" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
-      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-        <div>
-          <h3 class="font-bold text-sm text-stone-900">🎥 产区水土档案与车间实拍</h3>
-          <p class="text-[10px] text-stone-400">填写后自动同步展示于百工天街「数字专柜」产区工艺档案卡</p>
-        </div>
-        <button onclick="window.closeModal('modal-counter-profile')" class="text-stone-400 text-lg">✕</button>
-      </div>
-      <div class="space-y-2.5">
-        <div>
-          <label class="block text-stone-700 font-bold mb-1">合作社水土禀赋 / 工坊匠心工艺简介：</label>
-          <textarea id="counter-origin-desc-input" rows="3" placeholder="如：村社合作社自有生态种植基地500亩，不催熟、源头直供，支持定制包装与合作门店自提..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none focus:border-emerald-700"></textarea>
-        </div>
-        <div>
-          <label class="block text-stone-700 font-bold mb-1">田间实拍 / 车间实拍 / 图文溯源链接 (选填)：</label>
-          <input type="url" id="counter-media-url-input" placeholder="粘贴抖音/快手/视频号或公众号田间/车间实拍链接..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-xs outline-none focus:border-emerald-700">
-        </div>
-      </div>
-      <button type="button" onclick="window.saveCounterProfile()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">储存并同步至数字专柜</button>
     </div>
   </div>
 
@@ -1448,7 +1599,10 @@
           <div class="space-y-1.5 pt-1 border-t border-emerald-200/70">
             <div class="flex justify-between items-center">
               <span class="text-[11px] font-bold text-emerald-900">单品协议特价（一店一约）：</span>
-              <button type="button" onclick="window.addCustomPriceRuleRow()" class="text-[10px] bg-white border border-emerald-300 text-emerald-900 font-bold px-2 py-0.5 rounded-lg">+ 指定单品协议价</button>
+              <div class="flex items-center gap-1">
+                <button type="button" onclick="window.addCustomPriceRuleRow()" class="text-[10px] bg-white border border-emerald-300 text-emerald-900 font-bold px-2 py-0.5 rounded-lg">+ 添加</button>
+                <button type="button" onclick="window.removeLastRow('custom-price-rules-box')" class="text-[10px] bg-stone-200 text-stone-700 font-bold px-2 py-0.5 rounded-lg">- 删减</button>
+              </div>
             </div>
             <div id="custom-price-rules-box" class="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar"></div>
           </div>
@@ -1617,7 +1771,7 @@
     </div>
   </div>
 
-  <!-- 改密、2FA、验证器、属员、扫码弹窗 -->
+  <!-- 改密、2FA、验证器、扫码弹窗 -->
   <div id="modal-change-password" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -1679,26 +1833,6 @@
       </div>
       <input type="text" id="totp-test-code" maxlength="6" placeholder="输入验证器显示的 6 位动态码" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base outline-none focus:border-emerald-700">
       <button type="button" onclick="window.verifyAndSaveTotp()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">验证并储存绑定</button>
-    </div>
-  </div>
-
-  <div id="modal-add-subuser" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
-      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-        <h3 class="font-bold text-sm text-stone-900">👥 授任新属员</h3>
-        <button onclick="window.closeModal('modal-add-subuser')" class="text-stone-400 text-lg">✕</button>
-      </div>
-      <input type="text" id="sub-account-input" placeholder="登录账号（如 wh_li）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono">
-      <input type="text" id="sub-name-input" placeholder="真实姓名（如 李四）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5">
-      <select id="sub-role-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 font-bold">
-        <option value="finance">账房财务 (管账审单 · 不过手现金 · 不改策略)</option>
-        <option value="warehouse">仓储调度 (出入库盘点发货 · 屏蔽所有价格金额)</option>
-        <option value="driver">送货师傅 (随车收款签收 · 不管总账)</option>
-        <option value="auditor">独立稽核 (全盘只读审计 · 零改动权限)</option>
-      </select>
-      <input type="password" id="sub-pwd-input" value="123456" placeholder="初始密码" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono">
-      <input type="tel" id="sub-phone-input" placeholder="联系手机" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono">
-      <button onclick="window.saveSubUser()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow">授任立册</button>
     </div>
   </div>
 
