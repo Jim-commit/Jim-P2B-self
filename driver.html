@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>百工一线掌中宝 · 仓配销采全能移动终端</title>
+  <title>百工掌中宝 · 掌柜指挥与一线移动工作台</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1b4332">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -22,7 +22,7 @@
       <div class="space-y-1.5">
         <div class="flex justify-between items-center gap-2">
           <div class="flex items-center gap-1.5 min-w-0">
-            <h1 id="palm-header-title" class="text-sm sm:text-base font-bold truncate">📱 百工一线掌中宝</h1>
+            <h1 id="palm-header-title" class="text-sm sm:text-base font-bold truncate">📱 百工掌中宝</h1>
             <span id="palm-role-badge" class="bg-amber-400 text-stone-950 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">
               校验身份中
             </span>
@@ -45,10 +45,11 @@
         </div>
       </div>
 
-      <!-- 大当家专属一线视角切换器（仅 owner 登录时显示） -->
+      <!-- 大当家专属工作台切换器（仅 owner 登录时显示） -->
       <div id="owner-view-switcher" class="hidden bg-[#143628] p-2 rounded-2xl border border-emerald-700/50 flex items-center justify-between gap-2 text-[11px]">
-        <span class="text-amber-300 font-bold shrink-0">👑 大当家巡检视角:</span>
+        <span class="text-amber-300 font-bold shrink-0">👑 掌柜切换视角:</span>
         <select id="owner-role-preview-select" onchange="window.switchOwnerPreviewRole(this.value)" class="flex-1 bg-[#0c1e16] text-white border border-emerald-600/50 rounded-xl px-2 py-1 font-bold outline-none">
+          <option value="owner_cockpit">👑 掌柜移动指挥舱 (审批/定价/看账)</option>
           <option value="driver">🚚 送货师傅交割视图</option>
           <option value="warehouse">📦 仓储调度出入库视图</option>
           <option value="sales">🤝 业务员跟单与催收视图</option>
@@ -57,7 +58,7 @@
         </select>
       </div>
 
-      <!-- 送货师傅随车收款汇总看板（仅 driver / owner 配送视角可见） -->
+      <!-- 送货师傅随车收款汇总看板（仅 driver 配送视角可见） -->
       <div id="driver-cash-summary-card" onclick="window.openReceiptHistoryModal()" class="cursor-pointer bg-[#143628] hover:bg-[#102b20] p-3 rounded-2xl border border-emerald-700/50 flex justify-between items-center text-xs shadow-inner transition">
         <div>
           <span class="text-emerald-300 text-[10px] block">今日随车已收款项 (待交财务)</span>
@@ -83,6 +84,47 @@
 
     <!-- 动态岗位功能导航栏（由 JS 根据当前角色最小化权限动态生成） -->
     <div id="palm-role-nav" class="p-3 pb-0"></div>
+
+    <!-- =====================================================================
+         工作区 O：👑 掌柜移动指挥舱（大当家手机端批复定损/超信、定草稿价格、看三流晴雨）
+         ===================================================================== -->
+    <main id="pane-owner-cockpit" class="hidden p-3 flex-1 space-y-3 text-xs">
+      <!-- 三流晴雨简报 -->
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="bg-stone-50 border border-stone-200 p-2.5 rounded-2xl">
+          <span class="text-[10px] text-stone-400 block">在库货值估算</span>
+          <b id="oc-goods-val" class="font-mono text-sm font-bold text-stone-900">¥0</b>
+        </div>
+        <div class="bg-rose-50/70 border border-rose-200 p-2.5 rounded-2xl">
+          <span class="text-[10px] text-rose-600 block">门店在账欠款</span>
+          <b id="oc-debt-val" class="font-mono text-sm font-bold text-rose-700">¥0</b>
+        </div>
+        <div class="bg-emerald-50/70 border border-emerald-200 p-2.5 rounded-2xl">
+          <span class="text-[10px] text-emerald-800 block">已交割总额</span>
+          <b id="oc-settled-val" class="font-mono text-sm font-bold text-emerald-900">¥0</b>
+        </div>
+      </div>
+
+      <!-- 掌柜手机待办批复清单（内部定损单DS / 超信特批 / 待定价草稿） -->
+      <div class="bg-white border border-stone-200 p-3.5 rounded-3xl space-y-2.5 shadow-2xs">
+        <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+          <b class="text-stone-900">⚡ 掌柜掌上快捷审批与定价</b>
+          <button type="button" onclick="window.loadDriverTasks()" class="text-[11px] text-emerald-800 font-bold">↻ 刷新</button>
+        </div>
+        <div id="oc-todo-list" class="space-y-2"></div>
+      </div>
+
+      <!-- 快捷直达电脑版完整调度台 -->
+      <div class="bg-stone-50 border border-stone-200 p-3 rounded-2xl flex justify-between items-center">
+        <div>
+          <b class="text-stone-800 block">需要设置阶梯返利或导出报表？</b>
+          <span class="text-[10px] text-stone-400">支持手机随时切入完整产销调度台</span>
+        </div>
+        <a href="hq.html" class="bg-[#1b4332] text-white font-bold px-3 py-1.5 rounded-xl text-[11px] shadow">
+          进完整调度台 ➔
+        </a>
+      </div>
+    </main>
 
     <!-- =====================================================================
          工作区 A：送货师傅随车交割路线 (driver)
@@ -111,7 +153,7 @@
       <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl flex justify-between items-center">
         <div>
           <b class="text-emerald-950 block">📦 移动仓储与产区入库制单（盲价隔离保护）</b>
-          <span class="text-[10px] text-emerald-800">支持扫码或选品直接开具入库单(RK)/出库单(CK)，并查看装车总拣货单</span>
+          <span class="text-[10px] text-emerald-800">支持扫码或选品直接开具统一入库单(RK)/出库单(CK)，并查看装车总拣货单</span>
         </div>
         <button onclick="window.openPalmPickListModal()" class="bg-[#1b4332] text-white font-bold px-3 py-1.5 rounded-xl text-[11px] shadow active:scale-95 shrink-0">
           📋 装车总拣货单
@@ -122,16 +164,21 @@
       <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-3xl space-y-2.5">
         <div class="flex justify-between items-center">
           <b class="text-stone-900">✍️ 手机快捷开具仓库单据</b>
-          <span id="palm-wh-voucher-no" class="font-mono text-[10px] bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded font-bold">RK-00000000-0000</span>
+          <span id="palm-wh-voucher-no" class="font-mono text-[10px] bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded font-bold">RK-0000000000-0000</span>
         </div>
 
         <div class="grid grid-cols-2 gap-1.5 bg-stone-200/70 p-1 rounded-xl font-bold text-center">
-          <button type="button" onclick="window.setPalmStockMode('in_purchase')" id="palm-btn-in" class="py-1.5 rounded-lg bg-[#1b4332] text-white transition">+ 采收/完工入库</button>
-          <button type="button" onclick="window.setPalmStockMode('out_loss')" id="palm-btn-out" class="py-1.5 rounded-lg text-stone-600 transition">- 损耗/领用出库</button>
+          <button type="button" onclick="window.setPalmStockMode('in_purchase')" id="palm-btn-in" class="py-1.5 rounded-lg bg-[#1b4332] text-white transition">+ 统一入库 (RK)</button>
+          <button type="button" onclick="window.setPalmStockMode('out_loss')" id="palm-btn-out" class="py-1.5 rounded-lg text-stone-600 transition">- 统一出库 (CK)</button>
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">选择货品（或输入品名/条码搜索）：</label>
+          <label class="block text-stone-600 font-bold mb-1">单据子类型：</label>
+          <select id="palm-wh-subtype" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none"></select>
+        </div>
+
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">选择货品：</label>
           <select id="palm-wh-prod-select" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none"></select>
         </div>
 
@@ -154,7 +201,7 @@
         </div>
 
         <button type="button" onclick="window.submitPalmStockVoucher()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl shadow active:scale-95 transition">
-          ✅ 确认制单入账（生成正式仓库凭单）
+          ✅ 确认制单入账（生成年月日时标准凭单）
         </button>
       </div>
 
@@ -166,24 +213,27 @@
     </main>
 
     <!-- =====================================================================
-         工作区 C：业务员 / 客户经理拜访跟进与上门催收 (sales)
+         工作区 C：业务员 / 客户经理拜访跟进与上门催收 (sales，私海客户隔离)
          ===================================================================== -->
     <main id="pane-sales-stores" class="hidden p-3 flex-1 space-y-3 text-xs">
       <div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl space-y-1">
-        <b class="text-amber-950 block">🤝 客户拜访跟进、GPS定位采集与上门催收</b>
-        <span class="text-[10px] text-amber-900 block">上门催收支持拍照上传转账凭证与掌柜签名留痕，单据自动推给财务核验销账</span>
+        <b class="text-amber-950 block">🤝 我的专属跟单门店、GPS采集与上门催收</b>
+        <span class="text-[10px] text-amber-900 block">仅显示归属您跟进及公海门店；催收支持拍照识别回执金额与掌柜签名留痕，单据自动推给财务核账</span>
       </div>
       <div id="palm-sales-stores-list" class="space-y-2.5"></div>
     </main>
 
     <!-- =====================================================================
-         工作区 D：售后定损 / 质检鉴证工作台 (qc_service)
+         工作区 D：售后定损 / 质检鉴证工作台 (qc_service，写入商号私有账本 DS- 单号)
          ===================================================================== -->
     <main id="pane-qc-service" class="hidden p-3 flex-1 space-y-3 text-xs">
       <div class="bg-stone-50 border border-stone-200 p-4 rounded-3xl space-y-3">
-        <div>
-          <h2 class="text-sm font-bold text-stone-900">🔧 售后上门定损与品质鉴证留痕</h2>
-          <p class="text-[10px] text-stone-400 mt-0.5">针对破损、临期或质量争议进行现场拍照存证、责任判定与双签确认</p>
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">🔧 商号内部 · 实地定损与鉴证单</h2>
+            <p class="text-[10px] text-stone-400 mt-0.5">写入商号私有账本，由大当家/财务核准后直接冲减门店欠款（不惊动平台）</p>
+          </div>
+          <span id="qc-voucher-no" class="font-mono text-[10px] bg-rose-100 text-rose-900 px-2 py-0.5 rounded font-bold">DS-0000000000-0000</span>
         </div>
 
         <div>
@@ -191,19 +241,25 @@
           <select id="qc-store-select" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none"></select>
         </div>
 
-        <div>
-          <label class="block text-stone-600 font-bold mb-1">责任归属与处理定性 *：</label>
-          <select id="qc-verdict-select" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none">
-            <option value="质量/运输问题 · 全额退换冲抵">✅ 源头质量 / 运输破损（准予全额退换冲抵）</option>
-            <option value="门店保管不当 · 协商折价处理">⚖️ 门店存放保管不当（双方协商折价分担）</option>
-            <option value="设备故障已现场修复完好">🛠️ 设备/配件已现场检修调试完好</option>
-          </select>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-stone-600 font-bold mb-1">定损责任归属 *：</label>
+            <select id="qc-verdict-select" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-2 font-bold outline-none">
+              <option value="质量/运输问题 · 全额冲抵">✅ 源头质量/运输破损</option>
+              <option value="门店保管不当 · 折价分担">⚖️ 门店存放不当折价</option>
+              <option value="现场检修完好 · 无需冲账">🛠️ 现场修复完好</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-stone-600 font-bold mb-1">建议冲抵欠款 (元) *：</label>
+            <input type="number" step="0.01" min="0" id="qc-deduct-amount" value="0" placeholder="0.00" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold text-rose-700 outline-none">
+          </div>
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">定损明细与鉴证说明 *：</label>
+          <label class="block text-stone-600 font-bold mb-1">定损货品与破损明细说明 *：</label>
           <div class="flex gap-1.5">
-            <textarea id="qc-detail-input" rows="2" placeholder="描述货品批次、破损数量与定损结论..." class="flex-1 bg-white border border-stone-200 rounded-xl p-2.5 outline-none"></textarea>
+            <textarea id="qc-detail-input" rows="2" placeholder="写明货品名称、批次、破损数量与处理意见..." class="flex-1 bg-white border border-stone-200 rounded-xl p-2.5 outline-none"></textarea>
             <button type="button" onclick="window.startVoiceInput('qc-detail-input')" class="bg-amber-100 text-amber-950 border border-amber-300 px-3 rounded-xl font-bold shrink-0">
               🎤 语音
             </button>
@@ -212,7 +268,7 @@
 
         <div class="bg-white border border-stone-200 p-2.5 rounded-xl space-y-1.5">
           <div class="flex justify-between items-center">
-            <span class="font-bold text-stone-700">📸 现场定损实拍照：</span>
+            <span class="font-bold text-stone-700">📸 现场破损实拍照：</span>
             <label class="cursor-pointer bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold px-2.5 py-1 rounded-lg">
               + 拍照上传
               <input type="file" accept="image/*" onchange="window.handleQcPhotoUpload(event)" class="hidden">
@@ -221,25 +277,41 @@
           <div id="qc-photo-preview" class="flex gap-2 overflow-x-auto no-scrollbar text-[10px] text-stone-400">尚未拍照</div>
         </div>
 
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="font-bold text-stone-700">门店掌柜现场确认签名 *：</label>
+            <button type="button" onclick="window.clearQcSignature()" class="text-[10px] text-rose-600 hover:underline">重签</button>
+          </div>
+          <div class="border border-stone-300 rounded-xl bg-white overflow-hidden">
+            <canvas id="qc-sign-pad" width="300" height="85" class="w-full h-20 touch-none cursor-crosshair"></canvas>
+          </div>
+        </div>
+
         <button type="button" onclick="window.submitQcReport()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-3 rounded-2xl shadow active:scale-95 transition">
-          📜 提交定损鉴证单 · 同步调度中枢存档
+          📜 提交内部定损单 · 推送财务核准冲账
         </button>
       </div>
     </main>
 
     <!-- =====================================================================
-         工作区 E：顺路新店合作登记（送货师傅与业务员共用，支持语音输入与GPS采集）
+         工作区 E：顺路新店合作登记（支持拍照OCR识门头/名片 + 语音输入 + GPS采集）
          ===================================================================== -->
     <main id="pane-explore" class="hidden p-3 flex-1 space-y-3">
       <div class="bg-stone-50 border border-stone-200 p-4 rounded-3xl space-y-3 text-xs">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-wrap justify-between items-center gap-1.5">
           <div>
-            <h2 class="text-sm font-bold text-stone-900">🤝 顺路登记 · 推荐意向合作门店</h2>
-            <p class="text-[10px] text-stone-400 mt-0.5">支持一键采集当前门头 GPS 定位与语音速记，达成合作计引荐实绩</p>
+            <h2 class="text-sm font-bold text-stone-900">🤝 顺路登记 · 意向合作门店</h2>
+            <p class="text-[10px] text-stone-400 mt-0.5">支持拍门头/名片自动识字、采集定位与语音速记</p>
           </div>
-          <button type="button" onclick="window.captureGpsForNewLead()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border border-emerald-300 px-2.5 py-1.5 rounded-xl font-bold text-[10px] shrink-0">
-            📍 采集门头定位
-          </button>
+          <div class="flex items-center gap-1.5">
+            <label class="cursor-pointer bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 px-2.5 py-1.5 rounded-xl font-bold text-[10px]">
+              📸 拍门头识字
+              <input type="file" accept="image/*" onchange="window.ocrScanStoreFront(event)" class="hidden">
+            </label>
+            <button type="button" onclick="window.captureGpsForNewLead()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border border-emerald-300 px-2.5 py-1.5 rounded-xl font-bold text-[10px]">
+              📍 采集定位
+            </button>
+          </div>
         </div>
 
         <div class="space-y-2.5">
@@ -301,14 +373,14 @@
   </div>
 
   <!-- =========================================================================
-       一线掌中宝身份验证登录门禁（与调度台子账号互通，一次登录持久记住）
+       掌中宝身份验证登录门禁（大当家与所有属员通用，一次登录持久记住）
        ========================================================================= -->
   <div id="palm-auth-gate" class="fixed inset-0 bg-[#0c1e16]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-stone-800 shadow-2xl">
       <div class="text-center space-y-1">
         <div class="w-12 h-12 bg-[#1b4332] text-amber-300 rounded-2xl flex items-center justify-center font-bold text-xl mx-auto shadow-md">📱</div>
-        <h2 class="text-base font-bold text-stone-900 pt-1">百工一线掌中宝 · 岗位核身登录</h2>
-        <p class="text-[11px] text-stone-400">输入商号代号与属员子账号口令（如 <code>wh_li:123456</code>），系统自动匹配您的专属岗位视图</p>
+        <h2 class="text-base font-bold text-stone-900 pt-1">百工掌中宝 · 掌柜与一线核身登录</h2>
+        <p class="text-[11px] text-stone-400">大当家输入商号主密钥进入移动指挥舱；属员输入「子账号:密码」如 <code>wh_li:123456</code></p>
       </div>
       <form onsubmit="window.verifyPalmAuthLogin(event)" class="space-y-3 text-xs">
         <div>
@@ -316,18 +388,18 @@
           <input type="text" id="palm-login-tenant" required placeholder="如：NY-FUNIU" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono uppercase font-bold text-stone-900">
         </div>
         <div>
-          <label class="block text-stone-600 font-medium mb-1">属员子账号:密码 或 主密钥 *：</label>
-          <input type="password" id="palm-login-key" required placeholder="如 driver_zhang:123456" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono text-stone-900">
+          <label class="block text-stone-600 font-medium mb-1">主密钥 或 属员子账号:密码 *：</label>
+          <input type="password" id="palm-login-key" required placeholder="主密钥 或 driver_zhang:123456" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono text-stone-900">
         </div>
         <button type="submit" id="btn-palm-login" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
-          核验身份 · 进入岗位工作台
+          核验身份 · 进入移动工作台
         </button>
       </form>
       <div id="palm-auth-error" class="hidden text-rose-600 text-[11px] font-bold text-center"></div>
     </div>
   </div>
 
-  <!-- 业务员上门拜访催收弹窗（掌柜手写签名 + 转账凭证拍照，直通财务点款台） -->
+  <!-- 业务员上门拜访催收弹窗（支持拍转账回执OCR识别金额 + 掌柜手写签名） -->
   <div id="palm-sales-collect-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -339,8 +411,12 @@
       </div>
       <input type="hidden" id="psc-store-id" value="">
 
-      <div class="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-[11px] text-amber-950">
-        <b>双向保护机制：</b>回款凭证提交后直达财务点款台；掌柜当面电子签名存证，防止重复催收。
+      <div class="bg-amber-50 border border-amber-200 p-2.5 rounded-xl flex justify-between items-center gap-2 text-[11px] text-amber-950">
+        <span>拍转账截图可自动识别金额填入：</span>
+        <label class="cursor-pointer bg-white border border-amber-300 px-2.5 py-1 rounded-lg font-bold shrink-0">
+          📸 拍回执识金额
+          <input type="file" accept="image/*" onchange="window.ocrScanReceiptAmount(event)" class="hidden">
+        </label>
       </div>
 
       <div class="space-y-2.5">
@@ -380,7 +456,7 @@
     </div>
   </div>
 
-  <!-- 仓管装车总拣货单弹窗（盲价隔离，仅显示品名、规格、总件数与分店明细） -->
+  <!-- 仓管装车总拣货单弹窗、现场核销签收弹窗、今日收条存根、回库清算、建言堂与智能指引弹窗（100% 完整保留） -->
   <div id="palm-picklist-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[88vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -395,7 +471,6 @@
     </div>
   </div>
 
-  <!-- 现场核销签收弹窗（支持多载具分项清点回收，100%保留） -->
   <div id="collect-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -418,7 +493,7 @@
 
         <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200 space-y-1">
           <div class="flex justify-between items-center">
-            <span class="text-stone-500">本单新配良品：</span>
+            <span class="text-stone-500">本单新配货品：</span>
             <b id="modal-order-amount-text" class="font-mono text-stone-800 font-bold">¥0.00</b>
           </div>
           <div class="flex justify-between items-center text-rose-700">
@@ -442,7 +517,7 @@
 
         <div class="space-y-1.5 bg-stone-50 p-2.5 rounded-2xl border border-stone-200 text-[11px]">
           <div>
-            <b class="text-[10px] text-emerald-800 block">① 应点交新货 (物勒工名正品溯源 · 逐件点清)：</b>
+            <b class="text-[10px] text-emerald-800 block">① 应点交新货 (实名保真溯源 · 逐件点清)：</b>
             <div id="modal-items-order-list" class="text-stone-700 pl-1 space-y-0.5 mt-0.5">无新到品物</div>
           </div>
           <div class="pt-1 border-t border-stone-200">
@@ -455,7 +530,6 @@
           </div>
         </div>
 
-        <!-- 多载具分项清点回收容器 -->
         <div id="multi-carrier-return-box" class="bg-amber-50/80 border border-amber-200 p-2.5 rounded-xl space-y-1.5">
           <div class="flex justify-between items-center text-[11px] font-bold text-amber-950">
             <span>🔄 随车带回收回周转载具（按押金单价抵款）：</span>
@@ -518,7 +592,6 @@
     </div>
   </div>
 
-  <!-- 今日已交割电子收条存根、回库清算、建言堂与智能指引弹窗 -->
   <div id="receipt-history-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[88vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -540,7 +613,7 @@
         <button onclick="window.closeModal('checkout-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
       <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200 text-xs space-y-2">
-        <div class="flex justify-between"><span class="text-stone-500">配送负责人：</span><b id="chk-driver" class="font-bold">老张师傅</b></div>
+        <div class="flex justify-between"><span class="text-stone-500">配送负责人：</span><b id="chk-driver" class="font-bold">张师傅</b></div>
         <div class="flex justify-between"><span class="text-stone-500">实收现钞 (点清交出纳)：</span><b id="chk-cash" class="font-mono text-emerald-800 font-bold">¥0.00</b></div>
         <div class="flex justify-between"><span class="text-stone-500">电子扫码/转账 (出纳对账)：</span><b id="chk-wechat" class="font-mono text-emerald-800 font-bold">¥0.00</b></div>
         <div class="flex justify-between"><span class="text-stone-500">收回周转载具：</span><b id="chk-baskets" class="font-mono text-amber-800 font-bold">0 件</b></div>
