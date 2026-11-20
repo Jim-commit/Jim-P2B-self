@@ -2,8 +2,14 @@ import { supabase } from '../lib/supabase.js';
 import { TOTP } from '../utils/totp.js';
 
 const P_AUTH_SESSION_KEY = 'platform_admin_session_token';
+const PLATFORM_FORBIDDEN_TERMS = [
+  '国家级', '世界级', '最高级', '第一', '绝对', '包治百病', '根治', '神效',
+  '假一赔万', '100%有效', '加微信', '微信号', '私下转账'
+];
+
 let allApplications = [];
 let allTenants = [];
+let allProducts = [];
 let allCategories = [];
 let allSuggestions = [];
 let allAuditLogs = [];
@@ -27,14 +33,14 @@ window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
 
 window.switchTab = function (tabName) {
-  ['apps', 'tenants', 'ecosystem', 'suggestions', 'categories', 'audit'].forEach((t) => {
+  ['apps', 'tenants', 'compliance', 'ecosystem', 'suggestions', 'categories', 'audit'].forEach((t) => {
     document.getElementById(`p-tab-${t}`)?.classList.add('hidden');
     const btn = document.getElementById(`p-tab-btn-${t}`);
-    if (btn) btn.className = 'flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap';
+    if (btn) btn.className = 'flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition flex items-center justify-center gap-1 whitespace-nowrap';
   });
   document.getElementById(`p-tab-${tabName}`)?.classList.remove('hidden');
   const activeBtn = document.getElementById(`p-tab-btn-${tabName}`);
-  if (activeBtn) activeBtn.className = 'flex-1 py-2 px-2 text-center rounded-xl bg-stone-900 text-white transition whitespace-nowrap';
+  if (activeBtn) activeBtn.className = 'flex-1 py-2 px-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1 whitespace-nowrap';
 };
 
 window.syncManualModalDefaults = function () {
@@ -264,9 +270,10 @@ async function recordAuditLog(actionTitle, level, details) {
 // 大盘数据加载与各板块渲染
 // =========================================================================
 window.loadPlatformData = async function () {
-  const [appsRes, tenantsRes, suggsRes, catsRes, auditsRes, plansRes, poolRes, c2bRes, ordersRes] = await Promise.all([
+  const [appsRes, tenantsRes, prodsRes, suggsRes, catsRes, auditsRes, plansRes, poolRes, c2bRes, ordersRes] = await Promise.all([
     supabase.from('tenant_application').select('*').order('id', { ascending: false }),
     supabase.from('platform_tenant').select('*').order('id', { ascending: false }),
+    supabase.from('product').select('*').order('id', { ascending: false }).limit(400),
     supabase
       .from('platform_suggestion_board')
       .select('*')
@@ -296,6 +303,15 @@ window.loadPlatformData = async function () {
   allTenants = tenantsRes.data || [];
   document.getElementById('stat-total-tenants').innerText = `${allTenants.length} 家`;
   renderTenantsTable();
+
+  allProducts = prodsRes.data || [];
+  const flaggedCount = getFlaggedProductsList().length;
+  const compBadge = document.getElementById('badge-compliance-count');
+  if (compBadge) {
+    compBadge.innerText = flaggedCount;
+    compBadge.classList.toggle('hidden', flaggedCount === 0);
+  }
+  window.runPlatformAIComplianceScan();
 
   allSuggestions = suggsRes.data || [];
   const pendingSuggs = allSuggestions.filter((s) => s.reply_status === 'pending');
@@ -328,6 +344,108 @@ window.loadPlatformData = async function () {
   updateAISummaryInsight();
 };
 
+// =========================================================================
+// 商道清朗 · 全网在架良品 AI 合规智能巡检与人工终审温婉整改
+// =========================================================================
+function getFlaggedProductsList() {
+  const activeProds = allProducts.filter((p) => p.status === 'active');
+  const flagged = [];
+
+  activeProds.forEach((p) => {
+    const reasons = [];
+    const summary = p.custom_specs?.summary || p.description || '';
+    const fullText = `${p.name || ''} ${summary}`;
+
+    const hitTerms = PLATFORM_FORBIDDEN_TERMS.filter((w) => fullText.includes(w));
+    if (hitTerms.length > 0) {
+      reasons.push(`文案含广告法慎用词【${hitTerms.join('、')}】`);
+    }
+    if (!p.image_url) {
+      reasons.push('缺少商品实拍照，建议补充实拍以增进买家信任');
+    }
+    if (parseFloat(p.tier_1_price || 0) <= 0) {
+      reasons.push('批发基准价异常（≤0元）');
+    }
+
+    if (reasons.length > 0) {
+      flagged.push({ prod: p, reasons });
+    }
+  });
+  return flagged;
+}
+
+window.runPlatformAIComplianceScan = function () {
+  const listEl = document.getElementById('platform-compliance-list');
+  const sumEl = document.getElementById('platform-compliance-summary');
+  if (!listEl) return;
+
+  const activeProds = allProducts.filter((p) => p.status === 'active');
+  const flagged = getFlaggedProductsList();
+
+  if (sumEl) {
+    sumEl.classList.remove('hidden');
+    sumEl.innerText = `📊 本次共巡检 ${activeProds.length} 款在架良品：${activeProds.length - flagged.length} 款清朗合规，${flagged.length} 款建议提请商号润色完善。`;
+  }
+
+  if (flagged.length === 0) {
+    listEl.innerHTML = '<div class="py-10 text-center text-emerald-800 font-bold">🌿 全网在架良品均图文规范、用语得体，商道清朗！</div>';
+    return;
+  }
+
+  listEl.innerHTML = flagged
+    .map(({ prod, reasons }) => {
+      const tenantObj = allTenants.find((t) => t.tenant_id === prod.tenant_id);
+      const tName = tenantObj ? tenantObj.company_name : prod.tenant_id;
+      return `
+        <div class="py-3 flex flex-wrap justify-between items-center gap-3">
+          <div class="space-y-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-mono text-[10px] bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded font-bold">${prod.tenant_id} · ${tName}</span>
+              <b class="text-stone-900">${prod.name}</b>
+            </div>
+            <div class="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl">
+              💡 AI 巡检建议：${reasons.join('；')}
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button type="button" onclick="window.requestProductRectify(${prod.id}, '${prod.name.replace(/'/g, '')}', '${reasons.join('；').replace(/'/g, '')}')" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold px-3 py-1.5 rounded-xl shadow-2xs transition">
+              📜 温婉提请润色整改
+            </button>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+};
+
+window.requestProductRectify = async function (prodId, prodName, reasonText) {
+  const prod = allProducts.find((p) => Number(p.id) === Number(prodId));
+  const customNote = prompt(
+    `【人工终审确认】将向商号发送温婉整改礼帖并暂缓【${prodName}】公开展示，请确认或补充润色建议：`,
+    `和合商道提示：贵号良品【${prodName}】因（${reasonText}），烦请掌柜于调度台稍作润色补全后重新上架，感谢配合！`
+  );
+  if (!customNote || !customNote.trim()) return;
+
+  const { error } = await supabase
+    .from('product')
+    .update({
+      status: 'rectify_required',
+      remark: customNote.trim()
+    })
+    .eq('id', prodId);
+
+  if (error) return alert('操作失败：' + error.message);
+
+  await recordAuditLog('人工终审提请商品润色整改', 'WARN', {
+    tenant_id: prod?.tenant_id || 'PLATFORM',
+    product_id: prodId,
+    product_name: prodName,
+    reason: reasonText
+  });
+  alert(`✅ 已温婉发函提请商号润色整改，【${prodName}】已暂转为待整改状态。`);
+  await window.loadPlatformData();
+};
+
 function renderEcosystemDashboard() {
   const scheduledPlans = allEcoPlans.filter((p) => p.status === 'scheduled' || p.status === 'fulfilled');
   const matchedPool = allEcoPool.filter((p) => p.status === 'claimed' || p.status === 'completed');
@@ -352,7 +470,6 @@ function renderEcosystemDashboard() {
   const elOrders = document.getElementById('eco-stat-orders');
   if (elOrders) elOrders.innerText = `${deliveredOrders.length} 单`;
 
-  // 供货商协同活跃度排行
   const rankBody = document.getElementById('ecosystem-rank-body');
   if (rankBody) {
     const statsList = allTenants.map((t) => {
@@ -393,7 +510,6 @@ function renderEcosystemDashboard() {
             .join('');
   }
 
-  // 最新公域求购动态
   const c2bListEl = document.getElementById('eco-recent-c2b-list');
   if (c2bListEl) {
     c2bListEl.innerHTML =
@@ -424,7 +540,6 @@ function renderEcosystemDashboard() {
             .join('');
   }
 
-  // 最新同城余缺互调动态
   const poolListEl = document.getElementById('eco-recent-pool-list');
   if (poolListEl) {
     poolListEl.innerHTML =
@@ -461,8 +576,10 @@ function updateAISummaryInsight() {
   const graceCount = allTenants.filter((t) => t.membership_status === 'grace').length;
   const restCount = allTenants.filter((t) => t.membership_status === 'restricted').length;
   const pausedCount = allTenants.filter((t) => !t.is_active || t.membership_status === 'paused').length;
+  const flaggedCount = getFlaggedProductsList().length;
 
   let insight = `当前在册合作社与工坊商号 ${allTenants.length} 家，和合畅运 ${activeCount} 家；全网累计用度计划 ${allEcoPlans.length} 份、同城余缺互调 ${allEcoPool.length} 笔。`;
+  if (flaggedCount > 0) insight += ` 🌿 AI 合规巡检发现 ${flaggedCount} 款在架良品建议提请润色完善（可在「商道清朗巡检」温和发函）；`;
   if (trialCount > 0) insight += ` 尝鲜开席试用中 ${trialCount} 家（转正前请点击查册核对工商存续状态）；`;
   if (graceCount > 0) insight += ` 有 ${graceCount} 家商号处于【春风宽待期】；`;
   if (restCount > 0) insight += ` ${restCount} 家处于【护盘存续】；`;
@@ -603,7 +720,7 @@ function renderSuggestions() {
         <div class="flex justify-between items-center text-xs">
           <div class="flex items-center gap-2">
             <span class="px-2 py-0.5 rounded font-bold ${s.proposer_type === 'driver' ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'}">
-              ${s.proposer_type === 'driver' ? '🚚 送货师傅' : '🏪 合作门店与客商'}
+              ${s.proposer_type === 'driver' ? '🚚 送货师傅' : s.proposer_type === 'qc_damage_report' ? '🔧 定损鉴证' : '🏪 合作门店与客商'}
             </span>
             <b class="text-stone-900">${s.proposer_name}</b>
             <span class="text-stone-400 font-mono text-[10px]">${new Date(s.created_at).toLocaleString()}</span>
