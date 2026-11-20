@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>随车交割 · 送货师傅掌中宝</title>
+  <title>百工一线掌中宝 · 仓配销采全能移动终端</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1b4332">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -17,35 +17,48 @@
   
   <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-xl relative">
     
-    <!-- 顶栏：师傅随车行囊与收款台账 -->
+    <!-- 顶栏：按岗位自适应显示身份与功能入口 -->
     <header class="bg-[#1b4332] text-white p-4 pt-5 rounded-b-3xl shadow-md space-y-3">
-      <div class="space-y-2">
+      <div class="space-y-1.5">
         <div class="flex justify-between items-center gap-2">
           <div class="flex items-center gap-1.5 min-w-0">
-            <h1 class="text-sm sm:text-base font-bold truncate">🚚 随车送达 · 现场点验核销</h1>
-            <span class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 font-mono whitespace-nowrap shrink-0">
-              货畅其流
+            <h1 id="palm-header-title" class="text-sm sm:text-base font-bold truncate">📱 百工一线掌中宝</h1>
+            <span id="palm-role-badge" class="bg-amber-400 text-stone-950 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">
+              校验身份中
             </span>
           </div>
           <div class="flex items-center gap-1 shrink-0">
+            <button onclick="window.openPalmHelpModal()" class="text-[10px] bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-100 border border-emerald-400/30 px-2 py-1 rounded-xl font-bold whitespace-nowrap transition">
+              💡 指引
+            </button>
             <button onclick="window.openSuggestionModal()" class="text-[10px] bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 px-2 py-1 rounded-xl font-bold whitespace-nowrap transition">
               建言堂
             </button>
-            <button onclick="window.switchTenantPrompt()" class="text-[10px] bg-white/10 hover:bg-white/20 text-amber-200 border border-amber-400/30 px-2 py-1 rounded-xl whitespace-nowrap transition">
-              换商号
-            </button>
-            <button onclick="window.switchDriverPrompt()" class="text-[10px] bg-white/10 hover:bg-white/20 text-emerald-100 border border-emerald-400/30 px-2 py-1 rounded-xl whitespace-nowrap transition">
-              换师傅
+            <button onclick="window.logoutPalmTerminal()" class="text-[10px] bg-rose-950/70 hover:bg-rose-800 text-rose-200 border border-rose-700/50 px-2 py-1 rounded-xl whitespace-nowrap transition">
+              退出
             </button>
           </div>
         </div>
-        <div class="text-[11px] text-emerald-200">
-          送货师傅: <b id="driver-name-display" class="text-white">老张师傅</b> · 商号代号: <span id="tenant-display" class="font-mono text-amber-300 font-bold">BJ_SHUNDA</span>
+        <div class="text-[11px] text-emerald-200 flex justify-between items-center">
+          <span>当值执事: <b id="driver-name-display" class="text-white">--</b></span>
+          <span>商号: <b id="tenant-display" class="font-mono text-amber-300">--</b></span>
         </div>
       </div>
 
-      <!-- 随车收款汇总看板（点击可回看今日已交割电子收条） -->
-      <div onclick="window.openReceiptHistoryModal()" class="cursor-pointer bg-[#143628] hover:bg-[#102b20] p-3 rounded-2xl border border-emerald-700/50 flex justify-between items-center text-xs shadow-inner transition">
+      <!-- 大当家专属一线视角切换器（仅 owner 登录时显示） -->
+      <div id="owner-view-switcher" class="hidden bg-[#143628] p-2 rounded-2xl border border-emerald-700/50 flex items-center justify-between gap-2 text-[11px]">
+        <span class="text-amber-300 font-bold shrink-0">👑 大当家巡检视角:</span>
+        <select id="owner-role-preview-select" onchange="window.switchOwnerPreviewRole(this.value)" class="flex-1 bg-[#0c1e16] text-white border border-emerald-600/50 rounded-xl px-2 py-1 font-bold outline-none">
+          <option value="driver">🚚 送货师傅交割视图</option>
+          <option value="warehouse">📦 仓储调度出入库视图</option>
+          <option value="sales">🤝 业务员跟单与催收视图</option>
+          <option value="producer">🌾 产区采收/车间入库视图</option>
+          <option value="qc_service">🔧 售后定损/质检视图</option>
+        </select>
+      </div>
+
+      <!-- 送货师傅随车收款汇总看板（仅 driver / owner 配送视角可见） -->
+      <div id="driver-cash-summary-card" onclick="window.openReceiptHistoryModal()" class="cursor-pointer bg-[#143628] hover:bg-[#102b20] p-3 rounded-2xl border border-emerald-700/50 flex justify-between items-center text-xs shadow-inner transition">
         <div>
           <span class="text-emerald-300 text-[10px] block">今日随车已收款项 (待交财务)</span>
           <b id="today-cash-collected" class="text-amber-300 font-mono text-lg font-bold">¥0.00</b>
@@ -68,20 +81,13 @@
       </button>
     </div>
 
-    <!-- 工作模式切换：随车送货路线 / 顺路合作登记 -->
-    <div class="p-3 pb-0">
-      <div class="bg-stone-100 p-1 rounded-2xl flex gap-1 text-xs font-bold shadow-inner">
-        <button id="tab-btn-deliver" onclick="window.switchWorkTab('deliver')" class="flex-1 py-2 rounded-xl bg-[#1b4332] text-white shadow transition flex items-center justify-center gap-1">
-          <span>🚚</span> 随车送货路线
-        </button>
-        <button id="tab-btn-explore" onclick="window.switchWorkTab('explore')" class="flex-1 py-2 rounded-xl text-stone-600 hover:text-stone-900 transition flex items-center justify-center gap-1">
-          <span>🤝</span> 顺路新店合作登记
-        </button>
-      </div>
-    </div>
+    <!-- 动态岗位功能导航栏（由 JS 根据当前角色最小化权限动态生成） -->
+    <div id="palm-role-nav" class="p-3 pb-0"></div>
 
-    <!-- 配送任务路线 -->
-    <main id="pane-deliver" class="p-3 flex-1 space-y-3">
+    <!-- =====================================================================
+         工作区 A：送货师傅随车交割路线 (driver)
+         ===================================================================== -->
+    <main id="pane-deliver" class="hidden p-3 flex-1 space-y-3">
       <div class="flex justify-between items-center px-1">
         <div class="flex items-center gap-1.5">
           <h2 class="text-xs font-bold text-stone-700">📋 配送合作门店列表</h2>
@@ -93,18 +99,147 @@
           刷新路线
         </button>
       </div>
-
       <div id="route-container" class="space-y-3">
         <div class="p-12 text-center text-stone-400 text-xs">正调阅待配路线...</div>
       </div>
     </main>
 
-    <!-- 顺路新店合作登记面板 -->
+    <!-- =====================================================================
+         工作区 B：仓储调度 & 产区采收移动工作台 (warehouse / producer，严禁显示价格)
+         ===================================================================== -->
+    <main id="pane-warehouse" class="hidden p-3 flex-1 space-y-3 text-xs">
+      <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl flex justify-between items-center">
+        <div>
+          <b class="text-emerald-950 block">📦 移动仓储与产区入库制单（盲价隔离保护）</b>
+          <span class="text-[10px] text-emerald-800">支持扫码或选品直接开具入库单(RK)/出库单(CK)，并查看装车总拣货单</span>
+        </div>
+        <button onclick="window.openPalmPickListModal()" class="bg-[#1b4332] text-white font-bold px-3 py-1.5 rounded-xl text-[11px] shadow active:scale-95 shrink-0">
+          📋 装车总拣货单
+        </button>
+      </div>
+
+      <!-- 快捷开具出入库单卡片 -->
+      <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-3xl space-y-2.5">
+        <div class="flex justify-between items-center">
+          <b class="text-stone-900">✍️ 手机快捷开具仓库单据</b>
+          <span id="palm-wh-voucher-no" class="font-mono text-[10px] bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded font-bold">RK-00000000-0000</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-1.5 bg-stone-200/70 p-1 rounded-xl font-bold text-center">
+          <button type="button" onclick="window.setPalmStockMode('in_purchase')" id="palm-btn-in" class="py-1.5 rounded-lg bg-[#1b4332] text-white transition">+ 采收/完工入库</button>
+          <button type="button" onclick="window.setPalmStockMode('out_loss')" id="palm-btn-out" class="py-1.5 rounded-lg text-stone-600 transition">- 损耗/领用出库</button>
+        </div>
+
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">选择货品（或输入品名/条码搜索）：</label>
+          <select id="palm-wh-prod-select" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none"></select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-stone-600 font-bold mb-1">本次数量 *：</label>
+            <input type="number" id="palm-wh-qty" min="1" placeholder="输入件数" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold text-sm outline-none">
+          </div>
+          <div>
+            <label id="palm-wh-source-lbl" class="block text-stone-600 font-bold mb-1">供货产区/班组 *：</label>
+            <input type="text" id="palm-wh-source" placeholder="如：一组产区/车间" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 outline-none">
+          </div>
+        </div>
+
+        <div class="flex gap-1.5">
+          <input type="text" id="palm-wh-remark" placeholder="批次或事由备注（可点右侧语音输入）..." class="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-2 outline-none">
+          <button type="button" onclick="window.startVoiceInput('palm-wh-remark')" class="bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 px-3 rounded-xl font-bold shrink-0" title="按住语音转文字">
+            🎤 语音
+          </button>
+        </div>
+
+        <button type="button" onclick="window.submitPalmStockVoucher()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl shadow active:scale-95 transition">
+          ✅ 确认制单入账（生成正式仓库凭单）
+        </button>
+      </div>
+
+      <!-- 天街快递直发待打单发货列表（仓管专属） -->
+      <div id="palm-express-orders-box" class="space-y-2">
+        <h3 class="font-bold text-stone-700 px-1">📮 天街快递直发待出库单据</h3>
+        <div id="palm-express-orders-list" class="space-y-2"></div>
+      </div>
+    </main>
+
+    <!-- =====================================================================
+         工作区 C：业务员 / 客户经理拜访跟进与上门催收 (sales)
+         ===================================================================== -->
+    <main id="pane-sales-stores" class="hidden p-3 flex-1 space-y-3 text-xs">
+      <div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl space-y-1">
+        <b class="text-amber-950 block">🤝 客户拜访跟进、GPS定位采集与上门催收</b>
+        <span class="text-[10px] text-amber-900 block">上门催收支持拍照上传转账凭证与掌柜签名留痕，单据自动推给财务核验销账</span>
+      </div>
+      <div id="palm-sales-stores-list" class="space-y-2.5"></div>
+    </main>
+
+    <!-- =====================================================================
+         工作区 D：售后定损 / 质检鉴证工作台 (qc_service)
+         ===================================================================== -->
+    <main id="pane-qc-service" class="hidden p-3 flex-1 space-y-3 text-xs">
+      <div class="bg-stone-50 border border-stone-200 p-4 rounded-3xl space-y-3">
+        <div>
+          <h2 class="text-sm font-bold text-stone-900">🔧 售后上门定损与品质鉴证留痕</h2>
+          <p class="text-[10px] text-stone-400 mt-0.5">针对破损、临期或质量争议进行现场拍照存证、责任判定与双签确认</p>
+        </div>
+
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">涉及合作门店 *：</label>
+          <select id="qc-store-select" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none"></select>
+        </div>
+
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">责任归属与处理定性 *：</label>
+          <select id="qc-verdict-select" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none">
+            <option value="质量/运输问题 · 全额退换冲抵">✅ 源头质量 / 运输破损（准予全额退换冲抵）</option>
+            <option value="门店保管不当 · 协商折价处理">⚖️ 门店存放保管不当（双方协商折价分担）</option>
+            <option value="设备故障已现场修复完好">🛠️ 设备/配件已现场检修调试完好</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">定损明细与鉴证说明 *：</label>
+          <div class="flex gap-1.5">
+            <textarea id="qc-detail-input" rows="2" placeholder="描述货品批次、破损数量与定损结论..." class="flex-1 bg-white border border-stone-200 rounded-xl p-2.5 outline-none"></textarea>
+            <button type="button" onclick="window.startVoiceInput('qc-detail-input')" class="bg-amber-100 text-amber-950 border border-amber-300 px-3 rounded-xl font-bold shrink-0">
+              🎤 语音
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white border border-stone-200 p-2.5 rounded-xl space-y-1.5">
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-stone-700">📸 现场定损实拍照：</span>
+            <label class="cursor-pointer bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold px-2.5 py-1 rounded-lg">
+              + 拍照上传
+              <input type="file" accept="image/*" onchange="window.handleQcPhotoUpload(event)" class="hidden">
+            </label>
+          </div>
+          <div id="qc-photo-preview" class="flex gap-2 overflow-x-auto no-scrollbar text-[10px] text-stone-400">尚未拍照</div>
+        </div>
+
+        <button type="button" onclick="window.submitQcReport()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-3 rounded-2xl shadow active:scale-95 transition">
+          📜 提交定损鉴证单 · 同步调度中枢存档
+        </button>
+      </div>
+    </main>
+
+    <!-- =====================================================================
+         工作区 E：顺路新店合作登记（送货师傅与业务员共用，支持语音输入与GPS采集）
+         ===================================================================== -->
     <main id="pane-explore" class="hidden p-3 flex-1 space-y-3">
       <div class="bg-stone-50 border border-stone-200 p-4 rounded-3xl space-y-3 text-xs">
-        <div>
-          <h2 class="text-sm font-bold text-stone-900">🤝 顺路登记 · 推荐意向合作门店</h2>
-          <p class="text-[10px] text-stone-400 mt-0.5">送货途中顺手记下新店招牌与电话，达成合作计师傅引荐功劳</p>
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">🤝 顺路登记 · 推荐意向合作门店</h2>
+            <p class="text-[10px] text-stone-400 mt-0.5">支持一键采集当前门头 GPS 定位与语音速记，达成合作计引荐实绩</p>
+          </div>
+          <button type="button" onclick="window.captureGpsForNewLead()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border border-emerald-300 px-2.5 py-1.5 rounded-xl font-bold text-[10px] shrink-0">
+            📍 采集门头定位
+          </button>
         </div>
 
         <div class="space-y-2.5">
@@ -137,12 +272,17 @@
             <input type="tel" id="lead-phone-input" maxlength="11" placeholder="11位手机号码" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm font-mono outline-none font-bold">
           </div>
           <div>
-            <label class="block text-stone-600 font-bold mb-1">门市街区地址：</label>
+            <label class="block text-stone-600 font-bold mb-1">门市街区地址（含GPS坐标）：</label>
             <input type="text" id="lead-addr-input" placeholder="如：安居南路与向阳街十字东侧" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
           </div>
           <div>
             <label class="block text-stone-600 font-bold mb-1">需求意向与备忘叮咛：</label>
-            <input type="text" id="lead-note-input" placeholder="例：对压榨食用油与调味料感兴趣，下趟送样品来看看" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
+            <div class="flex gap-1.5">
+              <input type="text" id="lead-note-input" placeholder="例：对压榨食用油感兴趣，下趟送样品来看看" class="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
+              <button type="button" onclick="window.startVoiceInput('lead-note-input')" class="bg-amber-100 text-amber-950 border border-amber-300 px-3 rounded-xl font-bold shrink-0">
+                🎤 语音
+              </button>
+            </div>
           </div>
           <button onclick="window.submitLeadByDriver()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-2xl text-sm shadow active:scale-95 transition">
             登记合作意向 · 存入商号名册
@@ -151,8 +291,8 @@
       </div>
     </main>
 
-    <!-- 底部常驻回库交账按钮 -->
-    <footer class="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 z-20">
+    <!-- 底部常驻回库交账按钮（仅送货师傅显示） -->
+    <footer id="driver-checkout-footer" class="hidden fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 z-20">
       <button onclick="window.openCheckoutSummaryModal()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-3 rounded-2xl text-xs shadow active:scale-95 transition flex justify-center items-center gap-2">
         <span>📦 今日跑车交割完毕 · 生成回库对账单</span>
       </button>
@@ -160,26 +300,102 @@
 
   </div>
 
-  <!-- 新增：今日已交割电子收条存根与重发弹窗 -->
-  <div id="receipt-history-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[88vh] overflow-y-auto no-scrollbar text-xs">
+  <!-- =========================================================================
+       一线掌中宝身份验证登录门禁（与调度台子账号互通，一次登录持久记住）
+       ========================================================================= -->
+  <div id="palm-auth-gate" class="fixed inset-0 bg-[#0c1e16]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+    <div class="bg-white border border-stone-200 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-stone-800 shadow-2xl">
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 bg-[#1b4332] text-amber-300 rounded-2xl flex items-center justify-center font-bold text-xl mx-auto shadow-md">📱</div>
+        <h2 class="text-base font-bold text-stone-900 pt-1">百工一线掌中宝 · 岗位核身登录</h2>
+        <p class="text-[11px] text-stone-400">输入商号代号与属员子账号口令（如 <code>wh_li:123456</code>），系统自动匹配您的专属岗位视图</p>
+      </div>
+      <form onsubmit="window.verifyPalmAuthLogin(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-stone-600 font-medium mb-1">商号代号 (Tenant ID) *：</label>
+          <input type="text" id="palm-login-tenant" required placeholder="如：NY-FUNIU" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono uppercase font-bold text-stone-900">
+        </div>
+        <div>
+          <label class="block text-stone-600 font-medium mb-1">属员子账号:密码 或 主密钥 *：</label>
+          <input type="password" id="palm-login-key" required placeholder="如 driver_zhang:123456" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono text-stone-900">
+        </div>
+        <button type="submit" id="btn-palm-login" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+          核验身份 · 进入岗位工作台
+        </button>
+      </form>
+      <div id="palm-auth-error" class="hidden text-rose-600 text-[11px] font-bold text-center"></div>
+    </div>
+  </div>
+
+  <!-- 业务员上门拜访催收弹窗（掌柜手写签名 + 转账凭证拍照，直通财务点款台） -->
+  <div id="palm-sales-collect-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
-          <h3 class="font-bold text-sm text-stone-900">📜 今日已交割电子收条存根</h3>
-          <p class="text-[10px] text-stone-400">可回看签名存底或一键复制电子收条转发门店掌柜</p>
+          <h3 class="font-bold text-sm text-stone-900" id="psc-store-name">🤝 上门拜访催收与对账留痕</h3>
+          <p class="text-[10px] text-stone-400" id="psc-store-debt">当前在账欠款：¥0.00</p>
         </div>
-        <button onclick="window.closeModal('receipt-history-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
+        <button onclick="window.closeModal('palm-sales-collect-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <input type="hidden" id="psc-store-id" value="">
+
+      <div class="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-[11px] text-amber-950">
+        <b>双向保护机制：</b>回款凭证提交后直达财务点款台；掌柜当面电子签名存证，防止重复催收。
       </div>
 
-      <div id="driver-receipt-history-list" class="space-y-2.5 max-h-96 overflow-y-auto no-scrollbar"></div>
+      <div class="space-y-2.5">
+        <div>
+          <label class="block text-stone-700 font-bold mb-1">本次实收回款金额 (元) *：</label>
+          <input type="number" step="0.01" id="psc-amount" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-base font-bold text-emerald-950 outline-none">
+        </div>
+        <div>
+          <label class="block text-stone-700 font-bold mb-1">收款方式：</label>
+          <select id="psc-method" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 font-bold outline-none">
+            <option value="扫码直转商号收款码">📱 客户已扫码直转商号收款码</option>
+            <option value="业务员代收现钞">💵 业务员代收现钞（回库交财务）</option>
+            <option value="银行公户转账">🏦 银行公户转账</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-stone-700 font-bold mb-1">催收情况备忘：</label>
+          <div class="flex gap-1">
+            <input type="text" id="psc-note" placeholder="如：已核对本月账单，微信已转" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none">
+            <button type="button" onclick="window.startVoiceInput('psc-note')" class="bg-amber-100 text-amber-950 px-2.5 rounded-xl font-bold">🎤</button>
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="font-bold text-stone-700">门店掌柜立信签名 *：</label>
+            <button type="button" onclick="window.clearSalesSignature()" class="text-[10px] text-rose-600 hover:underline">重签</button>
+          </div>
+          <div class="border border-stone-300 rounded-xl bg-stone-50 overflow-hidden">
+            <canvas id="sales-sign-pad" width="300" height="90" class="w-full h-22 touch-none cursor-crosshair"></canvas>
+          </div>
+        </div>
+      </div>
 
-      <button onclick="window.closeModal('receipt-history-modal')" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-2xl text-xs">
-        关闭存根
+      <button type="button" onclick="window.submitPalmSalesCollection()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-2xl shadow active:scale-95">
+        ✅ 提交催收单 · 推送财务核验销账
       </button>
     </div>
   </div>
 
-  <!-- 现场核销签收弹窗 -->
+  <!-- 仓管装车总拣货单弹窗（盲价隔离，仅显示品名、规格、总件数与分店明细） -->
+  <div id="palm-picklist-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[88vh] overflow-y-auto no-scrollbar text-xs">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">📋 本车次装车总拣货单</h3>
+          <p class="text-[10px] text-stone-400">已汇总所有待送货单据，请按总表备齐装车</p>
+        </div>
+        <button onclick="window.closeModal('palm-picklist-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <div id="palm-picklist-body" class="divide-y divide-stone-100 border border-stone-200 rounded-2xl px-3 py-1 bg-stone-50/50 max-h-80 overflow-y-auto no-scrollbar"></div>
+      <button onclick="window.closeModal('palm-picklist-modal')" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-2xl">关闭总单</button>
+    </div>
+  </div>
+
+  <!-- 现场核销签收弹窗（支持多载具分项清点回收，100%保留） -->
   <div id="collect-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -239,12 +455,13 @@
           </div>
         </div>
 
-        <div class="bg-amber-50/80 border border-amber-200 p-2 rounded-xl flex items-center justify-between">
-          <span class="font-bold text-amber-950">带回收回周转载具 (15元/件抵款):</span>
-          <div class="flex items-center gap-1">
-            <input type="number" id="collect-basket-return" value="0" min="0" oninput="window.calcBasketDeduct(); window.updateDeliverBtnText();" class="w-14 bg-white border border-amber-300 rounded-lg px-2 py-1 text-center font-bold font-mono outline-none">
-            <span class="text-amber-800">件</span>
+        <!-- 多载具分项清点回收容器 -->
+        <div id="multi-carrier-return-box" class="bg-amber-50/80 border border-amber-200 p-2.5 rounded-xl space-y-1.5">
+          <div class="flex justify-between items-center text-[11px] font-bold text-amber-950">
+            <span>🔄 随车带回收回周转载具（按押金单价抵款）：</span>
+            <span id="multi-carrier-deduct-total" class="font-mono text-emerald-800">抵 ¥0.00</span>
           </div>
+          <div id="multi-carrier-rows" class="space-y-1.5"></div>
         </div>
 
         <div>
@@ -301,65 +518,58 @@
     </div>
   </div>
 
-  <!-- 回库清算汇总弹窗 -->
+  <!-- 今日已交割电子收条存根、回库清算、建言堂与智能指引弹窗 -->
+  <div id="receipt-history-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[88vh] overflow-y-auto no-scrollbar text-xs">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">📜 今日已交割电子收条存根</h3>
+          <p class="text-[10px] text-stone-400">可回看签名存底或一键复制电子收条转发门店掌柜</p>
+        </div>
+        <button onclick="window.closeModal('receipt-history-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
+      </div>
+      <div id="driver-receipt-history-list" class="space-y-2.5 max-h-96 overflow-y-auto no-scrollbar"></div>
+      <button onclick="window.closeModal('receipt-history-modal')" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-2xl text-xs">关闭存根</button>
+    </div>
+  </div>
+
   <div id="checkout-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <h3 class="font-bold text-sm text-stone-800">🏁 今日跑车清算对账单</h3>
         <button onclick="window.closeModal('checkout-modal')" class="text-stone-400 hover:text-stone-600 text-lg">✕</button>
       </div>
-
       <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200 text-xs space-y-2">
-        <div class="flex justify-between">
-          <span class="text-stone-500">配送负责人：</span>
-          <b id="chk-driver" class="font-bold">老张师傅</b>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-stone-500">实收现钞 (点清交出纳)：</span>
-          <b id="chk-cash" class="font-mono text-emerald-800 font-bold">¥0.00</b>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-stone-500">电子扫码/转账 (出纳对账)：</span>
-          <b id="chk-wechat" class="font-mono text-emerald-800 font-bold">¥0.00</b>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-stone-500">收回周转载具：</span>
-          <b id="chk-baskets" class="font-mono text-amber-800 font-bold">0 件</b>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-stone-500">抹零礼让总计：</span>
-          <b id="chk-discount" class="font-mono text-rose-600">¥0.00</b>
-        </div>
-        <div class="pt-2 border-t border-stone-200 flex justify-between items-center text-sm">
-          <span class="font-bold text-stone-800">交缴实款合计：</span>
-          <b id="chk-total" class="font-mono text-lg font-bold text-emerald-950">¥0.00</b>
-        </div>
+        <div class="flex justify-between"><span class="text-stone-500">配送负责人：</span><b id="chk-driver" class="font-bold">老张师傅</b></div>
+        <div class="flex justify-between"><span class="text-stone-500">实收现钞 (点清交出纳)：</span><b id="chk-cash" class="font-mono text-emerald-800 font-bold">¥0.00</b></div>
+        <div class="flex justify-between"><span class="text-stone-500">电子扫码/转账 (出纳对账)：</span><b id="chk-wechat" class="font-mono text-emerald-800 font-bold">¥0.00</b></div>
+        <div class="flex justify-between"><span class="text-stone-500">收回周转载具：</span><b id="chk-baskets" class="font-mono text-amber-800 font-bold">0 件</b></div>
+        <div class="flex justify-between"><span class="text-stone-500">抹零礼让总计：</span><b id="chk-discount" class="font-mono text-rose-600">¥0.00</b></div>
+        <div class="pt-2 border-t border-stone-200 flex justify-between items-center text-sm"><span class="font-bold text-stone-800">交缴实款合计：</span><b id="chk-total" class="font-mono text-lg font-bold text-emerald-950">¥0.00</b></div>
       </div>
-
-      <p class="text-[10px] text-stone-400 text-center">出纳核对无误后，随车台账清零，安心收工。</p>
-
-      <button onclick="window.finalizeSettlement()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">
-        出纳已清点入库 · 随车台账归零
-      </button>
+      <button onclick="window.finalizeSettlement()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-2xl text-xs shadow active:scale-95 transition">出纳已清点入库 · 随车台账归零</button>
     </div>
   </div>
 
-  <!-- 商道建言堂模态窗 -->
   <div id="modal-suggestion" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">📜 送货师傅 · 呈递商道建言</h3>
+        <h3 class="font-bold text-sm text-stone-900">📜 一线执事 · 呈递商道建言</h3>
         <button onclick="window.closeModal('modal-suggestion')" class="text-stone-400 text-lg">✕</button>
       </div>
-      <p class="text-[11px] text-stone-500 leading-relaxed">
-        行车送货辛苦！对掌中宝操作、随车点验对账或顺路捎带有什么建议，敬请直言：
-      </p>
-      <div>
-        <textarea id="driver-suggestion-text" rows="3" placeholder="写下您的意见或遇到的操作不便..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none text-xs"></textarea>
+      <textarea id="driver-suggestion-text" rows="3" placeholder="写下您的意见或遇到的操作不便..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none text-xs"></textarea>
+      <button onclick="window.submitDriverSuggestion()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">呈达平台总控</button>
+    </div>
+  </div>
+
+  <div id="modal-palm-help" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">💡 掌中宝 · 岗位专属操作指引</h3>
+        <button onclick="window.closeModal('modal-palm-help')" class="text-stone-400 text-lg">✕</button>
       </div>
-      <button onclick="window.submitDriverSuggestion()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
-        呈达平台总控
-      </button>
+      <div id="palm-help-body" class="space-y-2 text-[11px] text-stone-600 leading-relaxed"></div>
+      <button onclick="window.closeModal('modal-palm-help')" class="w-full bg-stone-100 font-bold py-2.5 rounded-xl">关闭指引</button>
     </div>
   </div>
 
