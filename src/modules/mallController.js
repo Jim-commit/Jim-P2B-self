@@ -106,19 +106,20 @@ function calcMallOnlinePrice(prod, qty = 1) {
   const settings = tenant.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
   const onlineBase = parseFloat(prod.tier_2_price || prod.tier_1_price || 0);
 
-  if (settings.onlinePriceEnabled) {
-    const baseRate = parseFloat(settings.onlineDiscountRate || 1.0);
-    const bulkQty = parseInt(settings.onlineBulkQty || 5);
-    const bulkRate = parseFloat(settings.onlineBulkRate || 0.9);
+  if (settings.onlinePriceEnabled && Array.isArray(settings.onlineTiers) && settings.onlineTiers.length > 0) {
+    const sorted = [...settings.onlineTiers].sort((a, b) => parseInt(a.minQty || 1) - parseInt(b.minQty || 1));
+    let matched = sorted[0];
+    sorted.forEach((t) => {
+      if (qty >= parseInt(t.minQty || 1)) matched = t;
+    });
+    const nextTier = sorted.find((t) => parseInt(t.minQty || 1) > qty);
+    const highestTier = sorted[sorted.length - 1];
 
-    let appliedRate = baseRate;
-    let label = baseRate < 1 ? `专柜${(baseRate * 10).toFixed(1)}折` : '网上平准直供价';
-    if (qty >= bulkQty && bulkRate < baseRate) {
-      appliedRate = bulkRate;
-      label = `🔥 满${bulkQty}件享${(bulkRate * 10).toFixed(1)}折`;
-    }
+    const appliedRate = parseFloat(matched?.rate || 1.0);
     const unitPrice = Number((onlineBase * appliedRate).toFixed(2));
-    const bulkUnitPrice = bulkRate < baseRate ? Number((onlineBase * bulkRate).toFixed(2)) : 0;
+    const bulkQty = parseInt(highestTier?.minQty || 5);
+    const bulkRate = parseFloat(highestTier?.rate || 1.0);
+    const bulkUnitPrice = bulkRate < 1 ? Number((onlineBase * bulkRate).toFixed(2)) : 0;
 
     return {
       unitPrice,
@@ -126,8 +127,10 @@ function calcMallOnlinePrice(prod, qty = 1) {
       bulkQty,
       bulkUnitPrice,
       hasDiscount: unitPrice < onlineBase,
-      tierLabel: label,
-      nextTierHint: qty < bulkQty && bulkRate < baseRate ? `再加 ${bulkQty - qty} 件享 ¥${bulkUnitPrice}/件` : ''
+      tierLabel: matched?.label || (appliedRate < 1 ? `专柜${(appliedRate * 10).toFixed(1)}折` : '网上平准直供价'),
+      nextTierHint: nextTier
+        ? `再加 ${parseInt(nextTier.minQty) - qty} 件享 ¥${Number((onlineBase * parseFloat(nextTier.rate || 1)).toFixed(2))}/件`
+        : ''
     };
   }
 
@@ -165,10 +168,18 @@ function setupTianJieMode() {
   document.getElementById('tianjie-quick-counter-pill')?.classList.remove('hidden');
 }
 
+window.copyCounterWechatService = function (wxId) {
+  if (!wxId) return;
+  navigator.clipboard.writeText(wxId).then(() => {
+    alert(`✅ 专柜专属客服微信号【${wxId}】已复制到剪贴板，打开微信添加好友即可直接沟通！`);
+  });
+};
+
 function setupBrandStoreMode(tenantId) {
   const tenant = allTenants.find((t) => (t.tenant_id || '').toUpperCase() === (tenantId || '').toUpperCase());
   const name = tenant ? tenant.company_name : tenantId;
   const settings = tenant?.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
+  const socialLinks = settings.socialLinks && typeof settings.socialLinks === 'object' ? settings.socialLinks : {};
 
   document.getElementById('mall-header-title').innerText = `${name} · 数字专柜`;
   document.getElementById('mall-mode-badge').innerText = '源头专柜';
@@ -182,12 +193,18 @@ function setupBrandStoreMode(tenantId) {
   let heroDesc = tenant?.brand_origin_desc || '村社合作社与匠心工坊 · 按需直配 · 阳光工价';
   if (settings.campaignActive && Array.isArray(settings.promos) && settings.promos.length > 0) {
     heroDesc = `🔥 ${settings.promos[0].title}：${settings.promos[0].rule}`;
+  } else if (settings.harvestAidOn) {
+    heroDesc = '🌾 丰产助农平准认领季 · 源头新鲜直发 · 欢迎邻里拼单';
   }
   document.getElementById('hero-brand-desc').innerText = heroDesc;
   document.getElementById('hero-tenant-id').innerText = tenant ? tenant.tenant_id : tenantId;
 
-  document.getElementById('craft-type-text').innerText =
-    tenant?.business_type === 'factory' ? '村社合作社 / 源头工坊专柜' : '区域平准仓集散专柜';
+  const isInd = tenant?.business_type === 'individual' || String(tenant?.tenant_id || '').startsWith('GR-');
+  document.getElementById('craft-type-text').innerText = isInd
+    ? '实名农户 / 非遗手艺人专柜'
+    : tenant?.business_type === 'factory'
+    ? '村社合作社 / 源头工坊专柜'
+    : '区域平准仓集散专柜';
   document.getElementById('craft-contact-text').innerText = tenant?.contact_person || '专柜当值执事';
   document.getElementById('craft-story-text').innerText =
     tenant?.brand_origin_desc ||
@@ -202,6 +219,35 @@ function setupBrandStoreMode(tenantId) {
     } else {
       mediaBtn.classList.add('hidden');
     }
+  }
+
+  // 动态渲染外部社交平台/官网/公众号/客服微信矩阵卡片
+  const archivePanel = document.getElementById('brand-craft-archive-panel');
+  if (archivePanel) {
+    let matrixEl = document.getElementById('brand-social-matrix-bar');
+    if (!matrixEl) {
+      matrixEl = document.createElement('div');
+      matrixEl.id = 'brand-social-matrix-bar';
+      archivePanel.appendChild(matrixEl);
+    }
+    const btns = [];
+    if (socialLinks.websiteUrl) {
+      btns.push(
+        `<a href="${socialLinks.websiteUrl}" target="_blank" class="bg-white border border-stone-200 text-stone-800 px-2.5 py-1 rounded-xl font-bold text-[10px] hover:border-emerald-700 transition">🌐 商号官网</a>`
+      );
+    }
+    if (socialLinks.wechatOa) {
+      btns.push(
+        `<span class="bg-emerald-50 border border-emerald-200 text-emerald-900 px-2.5 py-1 rounded-xl font-bold text-[10px]">💬 公众号：${socialLinks.wechatOa}</span>`
+      );
+    }
+    if (socialLinks.serviceWx) {
+      btns.push(
+        `<button type="button" onclick="window.copyCounterWechatService('${socialLinks.serviceWx}')" class="bg-amber-100 border border-amber-300 text-amber-950 px-2.5 py-1 rounded-xl font-bold text-[10px] active:scale-95">📋 复制客服微信: ${socialLinks.serviceWx}</button>`
+      );
+    }
+    matrixEl.className = btns.length > 0 ? 'flex flex-wrap gap-1.5 pt-2 border-t border-stone-200/70' : 'hidden';
+    matrixEl.innerHTML = btns.join('');
   }
 
   document.getElementById('brand-hero-section')?.classList.remove('hidden');
@@ -237,9 +283,9 @@ function renderDigitalCountersGrid() {
 
   let list = allTenants;
   if (counterTypeFilter === 'factory') {
-    list = list.filter((t) => t.business_type === 'factory');
+    list = list.filter((t) => t.business_type === 'factory' || t.business_type === 'coop');
   } else if (counterTypeFilter === 'agent') {
-    list = list.filter((t) => t.business_type !== 'factory');
+    list = list.filter((t) => t.business_type !== 'factory' && t.business_type !== 'coop');
   }
 
   if (counterSearchKeyword) {
@@ -260,13 +306,14 @@ function renderDigitalCountersGrid() {
     .map((t) => {
       const tenantProds = allProducts.filter((p) => p.tenant_id === t.tenant_id);
       const sampleProds = tenantProds.slice(0, 3);
+      const isInd = t.business_type === 'individual' || String(t.tenant_id || '').startsWith('GR-');
       return `
         <div class="bg-white border border-stone-200 hover:border-emerald-700 rounded-3xl p-4 shadow-xs transition flex flex-col justify-between space-y-3">
           <div class="space-y-2">
             <div class="flex justify-between items-start gap-2">
               <div>
                 <span class="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-mono font-bold">
-                  ${t.business_type === 'factory' ? '🌾 合作社 / 源头工坊' : '🏢 区域平准仓专柜'}
+                  ${isInd ? '👨‍🌾 实名农户 / 非遗匠人' : t.business_type === 'factory' ? '🏭 源头工坊专柜' : '🌾 合作社 / 集散专柜'}
                 </span>
                 <h3 class="text-sm font-bold text-stone-900 mt-1.5">${t.company_name}</h3>
                 <span class="text-[10px] text-stone-400 font-mono block">专柜编号: ${t.tenant_id}</span>
@@ -447,9 +494,11 @@ function renderGoodsGrid() {
     .map((p) => {
       const tenant = allTenants.find((t) => t.tenant_id === p.tenant_id);
       const tenantName = tenant ? tenant.company_name : p.tenant_id;
+      const settings = tenant?.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
       const tags = Array.isArray(p.tags) ? p.tags : [];
       const isSingleShop = !!currentTenantParam;
       const priceInfo = calcMallOnlinePrice(p, 1);
+      const isHarvestAid = !!settings.harvestAidOn;
       const isStoreRecommended =
         !!referrerStoreObj ||
         tags.some((t) => String(t).includes('直供') || String(t).includes('严选') || String(t).includes('常备'));
@@ -470,7 +519,11 @@ function renderGoodsGrid() {
                   : ''
               }
               ${
-                isStoreRecommended
+                isHarvestAid
+                  ? `<span class="absolute bottom-1.5 left-1.5 bg-emerald-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md">
+                      🌾 丰产平准特惠
+                    </span>`
+                  : isStoreRecommended
                   ? `<span class="absolute bottom-1.5 left-1.5 bg-amber-100/95 text-amber-950 border border-amber-300 text-[8px] font-bold px-1.5 py-0.5 rounded-md">
                       🌾 源头直供
                     </span>`
@@ -522,7 +575,6 @@ function renderGoodsGrid() {
     })
     .join('');
 }
-
 window.openProductDetail = function (prodId) {
   const p = allProducts.find((x) => x.id === prodId);
   if (!p) return;
@@ -542,7 +594,7 @@ window.openProductDetail = function (prodId) {
   document.getElementById('detail-prod-tenant').innerText = tenantName;
   document.getElementById('detail-prod-origin').innerText = p.origin_place || '源头合作社/工坊原产';
   document.getElementById('detail-prod-desc').innerText =
-    p.custom_specs?.summary || p.description || p.handover_note || '产区直发，阳光工价，支持物勒工名溯源验真。';
+    p.custom_specs?.summary || p.description || p.handover_note || '产区直发，阳光工价，支持实名保真溯源验真。';
 
   const tierBox = document.getElementById('detail-tier-prices');
   if (priceInfo.bulkUnitPrice > 0) {
@@ -932,8 +984,19 @@ window.addToCart = function (prodId, qtyToAdd = 1) {
   const p = allProducts.find((x) => x.id === prodId);
   if (!p) return false;
 
+  const tenant = allTenants.find((t) => t.tenant_id === p.tenant_id) || {};
+  const settings = tenant.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
+  const rationLimit = parseInt(settings.rationLimitQty || 0);
+
   const item = cart.find((x) => x.prod.id === prodId);
-  if (item) item.qty += qtyToAdd;
+  const nextQty = (item ? item.qty : 0) + qtyToAdd;
+
+  if (rationLimit > 0 && nextQty > rationLimit) {
+    alert(`🛡️ 常平仓紧缺定额配给提示：\n当前货品处于定额配给期，单笔最多限购 ${rationLimit} ${p.measure_unit || '件'}，防止中间商囤积居奇。`);
+    return false;
+  }
+
+  if (item) item.qty = nextQty;
   else cart.push({ prod: p, qty: qtyToAdd });
 
   persistCart();
@@ -1036,7 +1099,16 @@ window.changeCartQty = function (prodId, delta) {
   const item = cart.find((x) => x.prod.id === prodId);
   if (!item) return;
 
-  item.qty += delta;
+  const tenant = allTenants.find((t) => t.tenant_id === item.prod.tenant_id) || {};
+  const settings = tenant.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
+  const rationLimit = parseInt(settings.rationLimitQty || 0);
+
+  const nextQty = item.qty + delta;
+  if (rationLimit > 0 && nextQty > rationLimit) {
+    return alert(`🛡️ 当前货品处于定额配给期，单笔最多限购 ${rationLimit} ${item.prod.measure_unit || '件'}。`);
+  }
+
+  item.qty = nextQty;
   if (item.qty <= 0) {
     cart = cart.filter((x) => x.prod.id !== prodId);
   }
@@ -1051,7 +1123,17 @@ window.setCartQty = function (prodId, rawVal) {
     cart = cart.filter((x) => x.prod.id !== prodId);
   } else {
     const item = cart.find((x) => x.prod.id === prodId);
-    if (item) item.qty = val;
+    if (item) {
+      const tenant = allTenants.find((t) => t.tenant_id === item.prod.tenant_id) || {};
+      const settings = tenant.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
+      const rationLimit = parseInt(settings.rationLimitQty || 0);
+      if (rationLimit > 0 && val > rationLimit) {
+        alert(`🛡️ 当前货品处于定额配给期，单笔最多限购 ${rationLimit} ${item.prod.measure_unit || '件'}。`);
+        item.qty = rationLimit;
+      } else {
+        item.qty = val;
+      }
+    }
   }
   persistCart();
   updateCartBadge();
