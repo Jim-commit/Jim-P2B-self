@@ -9,6 +9,13 @@ function escapeAttr(str) {
   return String(str || '').replace(/'/g, "\\'").replace(/"/g, '"');
 }
 
+window.copySupplierServiceWechat = function (wxId) {
+  if (!wxId) return;
+  navigator.clipboard.writeText(wxId).then(() => {
+    alert(`✅ 供货方专属客服微信号【${wxId}】已复制到剪贴板，打开微信添加好友即可直接对接！`);
+  });
+};
+
 function renderSampleCard(p) {
   const tags = Array.isArray(p.tags) ? p.tags : [];
   const attrs = p.custom_specs && typeof p.custom_specs === 'object' && p.custom_specs.attrs ? p.custom_specs.attrs : {};
@@ -57,6 +64,33 @@ function renderSuppliers(list) {
   listEl.innerHTML = list
     .map((s) => {
       const isHighlighted = urlTargetTenant && s.tenant_id.toUpperCase() === urlTargetTenant;
+      const isIndividual = s.business_type === 'individual' || String(s.tenant_id || '').startsWith('GR-');
+      const settings = s.custom_settings && typeof s.custom_settings === 'object' ? s.custom_settings : {};
+      const socialLinks = settings.socialLinks && typeof settings.socialLinks === 'object' ? settings.socialLinks : {};
+
+      const verifyBadgeHtml = isIndividual
+        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
+            👨‍🌾 实名农户/手艺人
+          </span>`
+        : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            ✓ 营业执照已核验
+          </span>`;
+
+      const harvestAidBadge = settings.harvestAidOn
+        ? `<span class="px-2 py-0.5 rounded-lg text-[11px] bg-emerald-600 text-white font-bold">🌾 丰产助农平准直供</span>`
+        : '';
+
+      const socialChips = [];
+      if (socialLinks.websiteUrl) {
+        socialChips.push(`<a href="${socialLinks.websiteUrl}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded-lg text-[10px] bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold transition">🌐 官网</a>`);
+      }
+      if (socialLinks.wechatOa) {
+        socialChips.push(`<span class="px-2 py-0.5 rounded-lg text-[10px] bg-emerald-50 text-emerald-900 border border-emerald-200 font-bold">💬 公众号：${socialLinks.wechatOa}</span>`);
+      }
+      if (socialLinks.serviceWx) {
+        socialChips.push(`<button type="button" onclick="window.copySupplierServiceWechat('${escapeAttr(socialLinks.serviceWx)}')" class="px-2 py-0.5 rounded-lg text-[10px] bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold transition">📋 客服微信：${socialLinks.serviceWx}</button>`);
+      }
+
       const samplesHtml =
         s.products.length > 0
           ? `<div class="mt-3.5 pt-3 border-t border-stone-100">
@@ -73,9 +107,8 @@ function renderSuppliers(list) {
             <div class="flex-1">
               <div class="flex flex-wrap items-center gap-2">
                 <h3 class="text-base sm:text-lg font-bold text-stone-900">${s.name}</h3>
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  ✓ 营业执照已核验
-                </span>
+                ${verifyBadgeHtml}
+                ${harvestAidBadge}
                 <span class="px-2 py-0.5 rounded-lg text-[11px] bg-stone-100 text-stone-700 font-mono font-bold">商号：${s.tenant_id}</span>
                 ${s.media_url ? `<a href="${s.media_url}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded-lg text-[11px] bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold transition">🎥 田间/车间实拍</a>` : ''}
               </div>
@@ -88,6 +121,8 @@ function renderSuppliers(list) {
               <p class="text-xs sm:text-sm text-stone-600 mt-2.5 leading-relaxed">
                 ${s.description}
               </p>
+
+              ${socialChips.length > 0 ? `<div class="flex flex-wrap items-center gap-1.5 mt-2">${socialChips.join('')}</div>` : ''}
             </div>
 
             <div class="flex sm:flex-col items-center sm:items-end justify-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
@@ -123,7 +158,7 @@ window.clearDirectFilter = () => {
 
 window.shareSupplierCard = (tenantId, tenantName) => {
   const shareUrl = `${window.location.origin}/suppliers.html?t=${encodeURIComponent(tenantId)}`;
-  const msg = `推荐源头供货方【${tenantName}】（商号：${tenantId}），营业执照已核验，支持免费预约送样到店、先验货后合作：${shareUrl}`;
+  const msg = `推荐源头供货方【${tenantName}】（商号：${tenantId}），支持免费预约送样到店、先验货后合作：${shareUrl}`;
   navigator.clipboard.writeText(msg).then(() => {
     alert(`✅ 已复制【${tenantName}】专属合作名片链接，可直接转发微信好友或同业群！`);
   });
