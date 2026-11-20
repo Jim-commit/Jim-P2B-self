@@ -6,7 +6,7 @@
   <title>百工商道 · 合作社、源头工坊与实名匠人入驻中心</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1b4332">
-  <meta name="description" content="村社合作社、源头工坊、服务商与实名个人匠人入驻通道，零抽佣直连合作门店与百工天街。">
+  <meta name="description" content="村社合作社、源头工坊、工料服务机构与实名农户手艺人入驻通道，一证一户防抢注，零抽佣直连百工百业。">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
@@ -26,7 +26,7 @@
       </div>
       <h1 class="text-xl font-bold text-white tracking-wide">百工商道 · 合作社、工坊与实名匠人入驻中心</h1>
       <p class="text-xs text-stone-400">
-        零交易抽佣 · 7天免费开席 · 营业执照或个人实名均可入驻
+        一证一户防抢注 · 零交易抽佣 · 7天免费开席 · 掌柜自设安家密钥
       </p>
     </header>
 
@@ -40,7 +40,7 @@
       </button>
     </nav>
 
-    <!-- 视图 1：主体入驻表单（支援首次立约 + 退回补件修正 + 个人实名入驻） -->
+    <!-- 视图 1：主体入驻表单（支援首次立约 + 退回补件修正 + 防抢注自动锚定代号） -->
     <form id="join-vendor-form" onsubmit="window.handleVendorRegister(event)" class="space-y-4 text-xs">
       
       <div id="resubmit-banner" class="hidden bg-amber-950/60 border border-amber-500/50 p-3.5 rounded-2xl flex items-center justify-between gap-2 text-amber-200">
@@ -54,22 +54,22 @@
       </div>
       <input type="hidden" id="resubmit-app-id" value="">
 
-      <!-- 先选择主体身份（企业合作社 vs 个人实名匠人） -->
+      <!-- 1. 主体身份（覆盖农、工、商、服、匠五大百业门类） -->
       <div class="bg-[#202023] p-4 rounded-2xl border border-stone-700/80 space-y-2.5">
-        <label class="block text-stone-300 font-bold">1. 选择入驻主体身份：</label>
+        <label class="block text-stone-300 font-bold">1. 选择入驻主体身份（系统按法定身份锁定专属前缀，杜绝恶意抢注）：</label>
         <select id="v-business-type" onchange="window.onBusinessTypeChange(this.value)" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-amber-300 font-bold outline-none focus:border-amber-500">
-          <option value="coop">🌾 村社合作社 / 产区直供站 (营业执照)</option>
-          <option value="factory">🏭 源头工坊 / 生产制造厂 (营业执照)</option>
-          <option value="dealer">🏢 区域平准仓 / 集散商行 (营业执照)</option>
-          <option value="service">🛠️ 工料配件 / 维修农机服务商 (营业执照)</option>
-          <option value="individual">👨‍🌾 个人农户 / 非遗手艺人 / 个体匠人 (实名证件 · 生成GR代号)</option>
+          <option value="coop">🌾 村社合作社 / 产区直供站 (营业执照 · 锁定 HZ- 代号)</option>
+          <option value="factory">🏭 源头工坊 / 生产制造厂 (营业执照 · 锁定 GC- 代号)</option>
+          <option value="dealer">🏢 区域平准仓 / 集散商行 (营业执照 · 锁定 SH- 代号)</option>
+          <option value="service">🛠️ 工料配套 / 专业服务机构 (营业执照 · 锁定 FW- 代号)</option>
+          <option value="individual">👨‍🌾 个人农户 / 手艺人 / 个体匠人 (实名证件 · 锁定 GR- 代号)</option>
         </select>
         <div id="individual-rule-tip" class="hidden bg-amber-950/40 border border-amber-500/30 p-2.5 rounded-xl text-[11px] text-amber-200 leading-relaxed">
-          <b>👨‍🌾 个人实名准入与联保规则：</b>无企业执照的种植大户、手艺人可上传实名身份证件入驻（自动生成 <code>GR-</code> 个人代号）。初始享稳健交易限额保护；若获在册合作社或合作门店担保联名，可解锁更高供货额度。
+          <b>👨‍🌾 个人实名准入与联保规则：</b>无企业执照的种植养殖户、乡村手艺人、个体匠人可凭本人实名证件入驻（自动生成 <code>GR-</code> 个人专属代号）。若获在册合作社或合作门店担保联名，可解锁更高信用供货额度与联保印章。
         </div>
       </div>
 
-      <!-- 执照/实名证件上传与交互式质检区 -->
+      <!-- 2. 资质原件上传与交互式质检区 -->
       <div class="bg-[#202023] p-4 rounded-2xl border border-stone-700/80 space-y-3">
         <div class="flex justify-between items-center">
           <label id="lbl-license-upload" class="text-stone-300 font-bold">2. 营业执照正本 / 副本实拍照 (拍照后自动即时核验) *：</label>
@@ -86,7 +86,7 @@
           <div id="upload-placeholder" class="text-center space-y-1.5 py-5">
             <span class="text-3xl block">📷</span>
             <span id="lbl-upload-main" class="text-stone-200 font-bold block text-sm">点击拍摄或上传营业执照原件</span>
-            <span id="lbl-upload-sub" class="text-[11px] text-stone-400 block">系统将自动识别信用代码，并以【代码后六位】作为预设安家密钥</span>
+            <span id="lbl-upload-sub" class="text-[11px] text-stone-400 block">系统自动核验法定名称与18位代码，自动生成专属商号代号（防抢注冒名）</span>
           </div>
         </div>
 
@@ -114,45 +114,62 @@
         </div>
       </div>
 
-      <!-- 基本信息录入 -->
+      <!-- 3. 基本信息与自设强密码 -->
       <div class="bg-[#202023] p-4 rounded-2xl border border-stone-700/80 space-y-3">
-        <label class="block text-stone-300 font-bold">3. 商号主体登记信息：</label>
+        <label class="block text-stone-300 font-bold">3. 法定主体登记与安家密钥设置：</label>
         
         <div>
-          <label id="lbl-company-name" class="block text-stone-400 mb-1">主体执照全称 (与执照一致) *：</label>
-          <input type="text" id="v-company-name" required placeholder="上传清晰执照自动提取或手动核对填写" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 font-bold outline-none focus:border-amber-500">
+          <label id="lbl-company-name" class="block text-stone-400 mb-1">法定主体全称 (严格与营业执照《名称》一致，不准自起花名) *：</label>
+          <input type="text" id="v-company-name" required placeholder="上传清晰执照自动提取或一字不差填写执照全称" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 font-bold outline-none focus:border-amber-500">
         </div>
 
-        <div>
-          <label id="lbl-credit-code" class="block text-stone-400 mb-1">统一社会信用代码 (18位国标校验 · 后6位即为预设密钥) *：</label>
-          <input type="text" id="v-credit-code" required maxlength="18" oninput="window.syncAccessKeyFromCreditCode(this.value)" placeholder="系统自动提取或手动核对填写 18 位代码" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase text-amber-400 font-bold outline-none focus:border-amber-500">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label id="lbl-credit-code" class="block text-stone-400 mb-1">统一社会信用代码 (18位国标校验) *：</label>
+            <input type="text" id="v-credit-code" required maxlength="18" oninput="window.syncTenantIdFromCreditCode(this.value)" placeholder="输入18位统一社会信用代码" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase text-amber-400 font-bold outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="block text-stone-400 mb-1">专属商号代号 (按组织代码自动锁定 · 不可抢注) *：</label>
+            <input type="text" id="v-tenant-id" required readonly placeholder="录入18位代码后自动生成" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 font-mono uppercase font-bold text-emerald-400 cursor-not-allowed outline-none">
+          </div>
         </div>
 
         <div id="individual-sponsor-box" class="hidden">
-          <label class="block text-stone-400 mb-1">担保合作社 / 联保合作门店名称（选填，有联保可提额）：</label>
+          <label class="block text-stone-400 mb-1">担保村社合作社 / 联保合作门店名称（选填，有联保可亮出联保印章）：</label>
           <input type="text" id="v-sponsor-org" placeholder="如：伏牛山生态农业合作社 / 顺达便民超市" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-emerald-300 outline-none focus:border-amber-500">
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-stone-400 mb-1">商号代号 (全盘唯一标识) *：</label>
-            <input type="text" id="v-tenant-id" required placeholder="如：NY-FUNIU" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase font-bold text-amber-400 outline-none focus:border-amber-500">
-          </div>
-          <div>
             <label class="block text-stone-400 mb-1">当家负责人称呼 *：</label>
             <input type="text" id="v-contact-person" required placeholder="如：王理事长 / 王师傅" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 outline-none focus:border-amber-500">
           </div>
+          <div>
+            <label class="block text-stone-400 mb-1">主联络手机 (核身与找回凭证) *：</label>
+            <input type="tel" id="v-contact-phone" required maxlength="11" placeholder="11位手机号码" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono text-stone-200 outline-none focus:border-amber-500">
+          </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-stone-400 mb-1">联络电话 (查询进度凭证) *：</label>
-            <input type="tel" id="v-contact-phone" required placeholder="11位手机号码" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono text-stone-200 outline-none focus:border-amber-500">
+        <div>
+          <label class="block text-stone-400 mb-1">紧急备用手机号 (防主手机丢失/更换号码，选填)：</label>
+          <input type="tel" id="v-backup-phone" maxlength="11" placeholder="可填监事长或家人11位手机号" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono text-stone-300 outline-none focus:border-amber-500">
+        </div>
+
+        <!-- 掌柜亲自设定初始主密码（支持一键生成顺口强密码） -->
+        <div class="bg-stone-900/90 border border-emerald-700/40 p-3 rounded-2xl space-y-2">
+          <div class="flex justify-between items-center">
+            <label class="text-emerald-300 font-bold">🔐 亲自设定安家主密码 (8位以上“字母+数字”组合) *：</label>
+            <button type="button" onclick="window.fillGeneratedMemorablePwd()" class="bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/40 px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition">
+              🎲 一键生成顺口密码
+            </button>
           </div>
-          <div>
-            <label class="block text-stone-400 mb-1">预设安家密钥 (自动同步后6位) *：</label>
-            <input type="text" id="v-access-key" required placeholder="自动填入后六位" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono uppercase font-bold text-emerald-400 outline-none focus:border-amber-500">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            <input type="text" id="v-access-key" required placeholder="输入8位以上字母+数字（如 FengShou2026）" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 font-mono font-bold text-amber-300 outline-none focus:border-emerald-500">
+            <input type="text" id="v-access-key-confirm" required placeholder="再次输入确认安家主密码" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 font-mono font-bold text-amber-300 outline-none focus:border-emerald-500">
           </div>
+          <p class="text-[10px] text-stone-400">
+            🛡️ 密码经前端 SHA-256 单向加密后存入云端（零明文落库）；首次登录手机端可设置「4位快捷短码」，日常点按即进无需重复敲长密码。
+          </p>
         </div>
       </div>
 
@@ -160,11 +177,11 @@
       <div class="bg-stone-900/90 border border-stone-700 p-3.5 rounded-2xl space-y-2">
         <div class="flex justify-between items-center">
           <b class="text-amber-300 text-xs">📜 《百工百业平台入驻与商道公约》</b>
-          <span class="text-[10px] text-stone-400">零抽佣 · 数字主权归己</span>
+          <span class="text-[10px] text-stone-400">名实相符 · 零抽佣 · 主权归己</span>
         </div>
         <p class="text-[11px] text-stone-400 leading-relaxed">
           1. 平台不抽一分交易佣金、不搞竞价排名；入驻后享 <b>7 天免费开席体验</b>，满意转正成为正式会员后仅需缴纳<b>极少定额公共运维会费</b>以维持服务器与带宽运转。<br/>
-          2. 商号拥有完全独立的私有账本、客户资料与定价主权，平台绝不窥探也不干涉商家内部事务；入驻方承诺实名保真、不作虚假宣传。
+          2. 商号拥有完全独立的私有账本、客户资料与定价主权，平台绝不窥探也不干涉商家内部事务；入驻方承诺严格以法定证件实名立户，不抢注、不冒名、不作虚假宣传。
         </p>
         <label class="flex items-center gap-2 text-stone-200 font-bold cursor-pointer pt-1">
           <input type="checkbox" id="chk-agree-covenant" checked class="w-4 h-4 rounded text-amber-500">
@@ -182,10 +199,10 @@
     <section id="query-status-section" class="hidden space-y-4 text-xs">
       <div class="bg-[#202023] p-5 rounded-2xl border border-stone-700/80 space-y-3">
         <label class="block text-stone-300 font-bold text-sm">🔍 查询入驻审核批示与商号信物</label>
-        <p class="text-[11px] text-stone-400">请输入登记时的「联络手机号码」及「信用代码/证件号后 6 位」进行核身查询：</p>
+        <p class="text-[11px] text-stone-400">请输入登记时的「主联络手机号码」及「18位信用代码/身份证号后 6 位」进行核身查询：</p>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          <input type="tel" id="q-search-phone" placeholder="1. 输入 11 位联络手机号码" class="bg-stone-900 border border-stone-700 rounded-xl px-3.5 py-2.5 font-mono text-white outline-none focus:border-amber-500">
+          <input type="tel" id="q-search-phone" placeholder="1. 输入 11 位主联络手机号码" class="bg-stone-900 border border-stone-700 rounded-xl px-3.5 py-2.5 font-mono text-white outline-none focus:border-amber-500">
           <input type="text" id="q-search-last6" maxlength="6" placeholder="2. 输入代码/证件号后 6 位" class="bg-stone-900 border border-stone-700 rounded-xl px-3.5 py-2.5 font-mono uppercase text-amber-400 font-bold outline-none focus:border-amber-500">
         </div>
 
@@ -199,6 +216,7 @@
 
     <div class="text-center pt-2 border-t border-stone-800 flex justify-center gap-4 text-[11px]">
       <a href="hq.html" class="text-amber-400 hover:text-amber-300 font-bold underline">前往平准调度中枢登录</a>
+      <a href="driver.html" class="text-emerald-400 hover:text-emerald-300 font-bold underline">打开百工掌中宝</a>
       <a href="mall.html" class="text-stone-400 hover:text-stone-200 underline">逛逛百工天街集市</a>
     </div>
 
