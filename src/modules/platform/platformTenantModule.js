@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase.js';
+import { AuthSecurity } from '../../utils/authSecurity.js';
 import {
   platformState,
   formatBusinessTypeLabel,
@@ -103,12 +104,23 @@ export function renderTenantsTable() {
       else if (status === 'restricted') statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">🛡️ 护盘存续</span>';
       else statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">🟢 和合在册</span>';
 
+      const isTimelockPending = t.timelock_status === 'pending';
+      const timelockBadge = isTimelockPending
+        ? `<div class="mt-1 flex items-center gap-1 font-sans">
+             <span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-950 border border-amber-300">⏳ 72h找回观察期</span>
+             <button type="button" onclick="window.expediteTimelockRelease('${t.tenant_id}', '${t.company_name}')" class="text-[10px] bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold px-1.5 py-0.2 rounded shadow-2xs">
+               ⚡ 核验加急放行
+             </button>
+           </div>`
+        : '';
+
       return `
         <tr class="hover:bg-stone-50 transition">
           <td class="p-3 font-bold text-amber-800">${t.tenant_id}</td>
           <td class="p-3 font-sans">
             <div class="font-bold text-stone-900">${t.company_name}</div>
             <div class="text-[10px] font-mono text-stone-400">${t.credit_code || '特邀/实名立户'} · 运维会费: ¥${t.membership_fee || 0}/年</div>
+            ${timelockBadge}
           </td>
           <td class="p-3 font-sans">${formatBusinessTypeLabel(t.business_type)}</td>
           <td class="p-3 font-sans">${t.contact_person || t.contact_name || '-'}</td>
@@ -137,9 +149,42 @@ export function renderTenantsTable() {
 }
 
 export function initPlatformTenantBindings() {
+  window.fillManualStrongPwd = function () {
+    const pwdInp = document.getElementById('m-access-key');
+    if (pwdInp) pwdInp.value = AuthSecurity.generateStrongMasterPassword();
+  };
+
   window.syncManualModalDefaults = function () {
     const ccode = document.getElementById('m-credit-code').value.trim().toUpperCase();
-    if (ccode.length >= 6) document.getElementById('m-access-key').value = ccode.slice(-6);
+    const bType = document.getElementById('m-business-type')?.value || 'coop';
+    const person = document.getElementById('m-contact-person')?.value || '';
+    const tidInp = document.getElementById('m-tenant-id');
+    const pwdInp = document.getElementById('m-access-key');
+
+    if (ccode.length === 18 && tidInp) {
+      const locked = AuthSecurity.generateLockedTenantId(bType, ccode, person);
+      if (locked) tidInp.value = locked;
+    }
+    if (pwdInp && !pwdInp.value.trim()) {
+      pwdInp.value = AuthSecurity.generateStrongMasterPassword();
+    }
+  };
+
+  window.expediteTimelockRelease = function (tenantId, companyName) {
+    window.triggerPlatform2FA(
+      `确认已核验【${companyName} (${tenantId})】法定负责人手持证件原件无误，加急提前放行其「72小时无人值守时间锁」以允许立即重设主密码？`,
+      async () => {
+        const { error } = await supabase
+          .from('platform_tenant')
+          .update({ timelock_status: 'ready', timelock_expires_at: new Date().toISOString() })
+          .eq('tenant_id', tenantId);
+
+        if (error) return alert('❌ 加急放行失败：' + error.message);
+        await recordAuditLog('加急放行72小时安全时间锁', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: companyName });
+        alert(`✅ 已为【${companyName}】加急放行时间锁！请通知掌柜前往调度台登录页重设新主密码。`);
+        await window.loadPlatformData();
+      }
+    );
   };
 
   window.freeGovAuditCheck = function (companyName, creditCode) {
@@ -179,9 +224,10 @@ export function initPlatformTenantBindings() {
     window.triggerPlatform2FA(`您正在为商号【${companyName}】签发专属【自立新约重置信码】。由当家掌柜在调度台自行重置密码，平台不留存也不窥探密码：`, async () => {
       const resetToken = 'CLAIM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
       await supabase.from('platform_tenant').update({ access_key: resetToken, reset_claim_token: resetToken }).eq('tenant_id', tenantId);
+      await supabase.rpc('rpc_bump_session_epoch', { p_tenant_id: tenantId, p_reason: '平台总控签发重置信码并清退旧终端' }).catch(() => {});
 
       recordAuditLog('签发自立新约信码', 'CRITICAL_2FA', { tenant_id: tenantId, claim_token: resetToken });
-      alert(`📜 已为【${companyName}】签发自立新约信码！\n\n• 单次重置信码：${resetToken}\n• 交付说明：请转交该合作社/企业负责人，在 hq.html 凭此信码即可自立新密码。`);
+      alert(`📜 已为【${companyName}】签发自立新约信码（同步清退所有旧终端）！\n\n• 单次重置信码：${resetToken}\n• 交付说明：请转交该合作社/企业负责人，在 hq.html 凭此信码即可自立新密码。`);
       window.loadPlatformData();
     });
   };
@@ -294,13 +340,20 @@ export function initPlatformTenantBindings() {
 
     const app = platformState.allApplications.find((a) => a.id === appId);
     const existingKey = (app?.access_key || '').trim();
-    const defaultLast6Key =
-      existingKey || (app && app.credit_code && app.credit_code.length >= 6 ? app.credit_code.slice(-6).toUpperCase() : `${tenantId.toLowerCase()}@2026`);
+    let storedAccessKey = existingKey;
+    let plainGeneratedPwd = '';
 
-    const initialKey = existingKey
-      ? existingKey
-      : prompt('确认初始安家密码（若申请方已自设则保留原加密凭证）：', defaultLast6Key);
-    if (!initialKey) return;
+    if (!storedAccessKey) {
+      const strongDefault = AuthSecurity.generateStrongMasterPassword();
+      const inputPwd = prompt('请为该商号设定 12 位以上初始安家主密码（含大小写字母+数字+特殊符号）：', strongDefault);
+      if (!inputPwd) return;
+      const check = AuthSecurity.validatePasswordStrength(inputPwd, tenantId, app?.contact_phone || '');
+      if (!check.ok) return alert('⚠️ 密码强度不符：' + check.msg);
+      plainGeneratedPwd = inputPwd.trim();
+      storedAccessKey = await AuthSecurity.hashPassword(plainGeneratedPwd, tenantId);
+    } else if (!storedAccessKey.startsWith('SHA256:')) {
+      storedAccessKey = await AuthSecurity.hashPassword(storedAccessKey, tenantId);
+    }
 
     await supabase
       .from('tenant_application')
@@ -322,16 +375,22 @@ export function initPlatformTenantBindings() {
         contact_person: app ? app.contact_person : '掌柜',
         contact_name: app ? app.contact_person : '掌柜',
         phone: app ? app.contact_phone : '',
-        access_key: initialKey.trim(),
+        access_key: storedAccessKey,
         membership_fee: parseFloat(fee) || 0,
         membership_status: 'active',
         is_active: true
       }
     ]);
 
+    await supabase.rpc('rpc_sync_tenant_vault', {
+      p_tenant_id: tenantId,
+      p_access_key: storedAccessKey,
+      p_backup_phone: null
+    }).catch(() => {});
+
     recordAuditLog('审批激活新会员主体', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: companyName, ops_fee: parseFloat(fee) || 0 });
 
-    alert(`🎉 审核通过并激活立户！\n\n• 主体全称: ${companyName}\n• 商号代号（唯一标识）: ${tenantId}\n• 年度公共运维会费: ¥${parseFloat(fee) || 0}\n• 安家密钥：${existingKey ? '沿用入驻方自设强加密主密码' : initialKey.trim()}`);
+    alert(`🎉 审核通过并激活立户！\n\n• 主体全称: ${companyName}\n• 商号代号（唯一标识）: ${tenantId}\n• 年度公共运维会费: ¥${parseFloat(fee) || 0}\n• 安家密钥：${plainGeneratedPwd || '沿用入驻方自设强加密主密码（云端零明文）'}`);
     window.loadPlatformData();
   };
 
@@ -356,7 +415,10 @@ export function initPlatformTenantBindings() {
     document.getElementById('m-company-name').value = '';
     document.getElementById('m-credit-code').value = '';
     document.getElementById('m-tenant-id').value = '';
-    document.getElementById('m-access-key').value = '';
+    document.getElementById('m-contact-person').value = '';
+    const phoneEl = document.getElementById('m-contact-phone');
+    if (phoneEl) phoneEl.value = '';
+    document.getElementById('m-access-key').value = AuthSecurity.generateStrongMasterPassword();
     window.openModal('manual-tenant-modal');
   };
 
@@ -367,12 +429,18 @@ export function initPlatformTenantBindings() {
     const business_type = document.getElementById('m-business-type').value;
     const service_mode = document.getElementById('m-service-mode').value;
     const contact_person = document.getElementById('m-contact-person').value.trim();
-    const defaultKey = credit_code.length >= 6 ? credit_code.slice(-6) : '888888';
-    const access_key = document.getElementById('m-access-key').value.trim().toUpperCase() || defaultKey;
+    const contact_phone = document.getElementById('m-contact-phone')?.value.trim() || '';
+    const plainPwd = document.getElementById('m-access-key').value.trim();
 
     if (!company_name || !tenant_id) return alert('请完整填写主体全称与商号代号！');
 
-    window.triggerPlatform2FA(`您正在免审核直接为【${company_name}】特邀开立独立账本商号【${tenant_id}】，请核验总控 2FA 凭证：`, async () => {
+    const pwdCheck = AuthSecurity.validatePasswordStrength(plainPwd, tenant_id, contact_phone);
+    if (!pwdCheck.ok) {
+      return alert(`⚠️ 初始安家主密码强度不足：\n${pwdCheck.msg}\n\n请点击「🎲 重新生成14位强密码」或输入 12 位以上（含大小写字母+数字+特殊符号）。`);
+    }
+
+    window.triggerPlatform2FA(`您正在免审核直接为【${company_name}】特邀开立独立账本商号【${tenant_id}】（密码经 SHA-256 单向加密零明文落库），请核验总控 2FA 凭证：`, async () => {
+      const hashedAccessKey = await AuthSecurity.hashPassword(plainPwd, tenant_id);
       const { error } = await supabase.from('platform_tenant').insert([
         {
           tenant_id,
@@ -382,7 +450,8 @@ export function initPlatformTenantBindings() {
           service_mode,
           contact_person,
           contact_name: contact_person,
-          access_key,
+          phone: contact_phone,
+          access_key: hashedAccessKey,
           membership_status: 'active',
           is_active: true
         }
@@ -390,10 +459,23 @@ export function initPlatformTenantBindings() {
 
       if (error) alert('开户失败: ' + error.message);
       else {
+        await supabase.rpc('rpc_sync_tenant_vault', {
+          p_tenant_id: tenant_id,
+          p_access_key: hashedAccessKey,
+          p_backup_phone: null
+        }).catch(() => {});
+
         recordAuditLog('线下特邀直通立户', 'CRITICAL_2FA', { tenant_id, company_name });
-        alert(`🎉 主体【${company_name}】直通立户成功！\n• 商号代号：${tenant_id}\n• 预设安家密钥（后6位）：${access_key}`);
         window.closeModal('manual-tenant-modal');
-        window.loadPlatformData();
+        await window.loadPlatformData();
+
+        AuthSecurity.showVoucherPreviewModal({
+          tenantId: tenant_id,
+          companyName: company_name,
+          legalName: contact_person,
+          phone: contact_phone,
+          accessKeyHint: `${plainPwd}（请转交掌柜妥善保存，云端已单向哈希加密）`
+        });
       }
     });
   };
