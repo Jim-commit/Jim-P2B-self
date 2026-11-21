@@ -49,6 +49,9 @@
 </head>
 <body class="bg-[#f7f5f0] text-stone-800 font-sans p-3 sm:p-4 min-h-screen">
   <div class="max-w-7xl mx-auto space-y-3.5">
+
+    <!-- 全局安全护盘预警横幅挂载点（72小时时间锁观察期预警 / 未绑验证器提示） -->
+    <div id="hq-security-banner-host"></div>
     
     <!-- 顶栏：主体招牌置顶 + 账目归己 + 经营诊断助手 -->
     <header class="bg-gradient-to-r from-[#1b4332] via-[#1f4d3a] to-[#143628] text-white p-4 sm:p-5 rounded-3xl shadow-lg space-y-3 border border-emerald-700/40">
@@ -132,9 +135,12 @@
           </button>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <button id="btn-global-policy" onclick="window.openGlobalPolicyModal('tiers')" class="bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-xs active:scale-95 transition">
             ⚙️ 全局经营策略
+          </button>
+          <button id="btn-top-evict" onclick="window.triggerGlobalDeviceEviction()" class="owner-only-guard bg-rose-900/70 hover:bg-rose-800 text-rose-100 text-xs px-2.5 py-1.5 rounded-xl font-bold border border-rose-500/40 active:scale-95 transition" title="主力手机丢失或怀疑旧电脑忘退时，一键强制踢出除本机外的所有设备">
+            🚨 全网踢人
           </button>
           <button id="btn-top-chg-pwd" onclick="window.openChangePasswordModal()" class="bg-white/5 hover:bg-white/15 text-emerald-200 text-xs px-2.5 py-1.5 rounded-xl font-medium border border-emerald-600/40 active:scale-95 transition">
             🔑 改密
@@ -1792,7 +1798,7 @@
   </div>
 
   <!-- =========================================================================
-       升级版登录门禁：支持「🔑 密钥登录」与「📱 手机扫码免密登录」双模切换 + 紧急挂失/找回
+       升级版登录门禁：支持「🔑 密钥登录」与「📱 手机扫码免密登录」双模切换 + 72小时无人值守时间锁找回
        ========================================================================= -->
   <div id="hq-auth-gate" class="fixed inset-0 bg-[#0c1e16]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-stone-800 shadow-2xl">
@@ -1845,33 +1851,33 @@
 
       <div id="hq-auth-error" class="hidden text-rose-600 text-[11px] font-bold text-center"></div>
 
-      <!-- 底部找回与紧急挂失止付入口 -->
+      <!-- 底部找回与 72 小时无人值守安全找回入口 -->
       <div class="pt-2 border-t border-stone-100 space-y-1.5 text-[10px]">
         <div class="flex justify-between items-center">
           <a href="join.html" class="text-emerald-800 font-bold hover:underline">尚未入驻 / 查审核进度 ➔</a>
           <button type="button" onclick="window.openModal('modal-self-recover-pwd')" class="text-stone-600 hover:text-emerald-900 font-bold underline">
-            🔄 忘记商号 / 自助重设密码
+            🔄 凭验证器/恢复码秒设新密
           </button>
         </div>
         <div class="text-center pt-1">
-          <button type="button" onclick="window.openModal('modal-emergency-freeze')" class="text-rose-600 hover:text-rose-700 font-bold underline">
-            🚨 账号被盗 / 权属争议 · 一键紧急挂失冻结保护账本
+          <button type="button" onclick="window.openModal('modal-emergency-freeze')" class="text-amber-800 hover:text-amber-950 font-bold underline">
+            ⏳ 手机与验证器全丢 · 72小时无人值守安全找回（不锁送货接单）
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 自助重设密码弹窗（凭主手机号 + 18位证件全号 + 验证器6位动态码） -->
+  <!-- 自助重设密码弹窗（凭主/备手机号 + 18位证件全号 + 验证器6位动态码或8位恢复码） -->
   <div id="modal-self-recover-pwd" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[115] flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">🔄 遗忘商号或密码 · 三重核身自助重设</h3>
+        <h3 class="font-bold text-sm text-stone-900">🔄 遗忘商号或密码 · 三重核身秒设新密</h3>
         <button onclick="window.closeModal('modal-self-recover-pwd')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="space-y-2">
         <div>
-          <label class="block text-stone-600 font-bold mb-1">1. 入驻登记的主联络手机号 *：</label>
+          <label class="block text-stone-600 font-bold mb-1">1. 入驻登记的主联络手机号或备用手机号 *：</label>
           <input type="tel" id="rec-phone" maxlength="11" placeholder="11位手机号码" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono">
         </div>
         <div>
@@ -1879,8 +1885,8 @@
           <input type="text" id="rec-credit-code" maxlength="18" placeholder="18位法定证件全号" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono uppercase">
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">3. 手机验证器 6 位动态码（未绑验证器请点紧急挂失转总控） *：</label>
-          <input type="text" id="rec-totp-code" maxlength="6" placeholder="000000" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base">
+          <label class="block text-stone-600 font-bold mb-1">3. 手机验证器 6 位动态码 或 1 组 8 位应急恢复码 *：</label>
+          <input type="text" id="rec-totp-code" maxlength="16" placeholder="6位数字 或 BG-XXXX-XXXX" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base uppercase">
         </div>
         <div>
           <label class="block text-stone-600 font-bold mb-1">4. 设定新的安家主密码 (8位以上字母+数字) *：</label>
@@ -1893,15 +1899,15 @@
     </div>
   </div>
 
-  <!-- 账号被盗/争议一键紧急挂失冻结弹窗 -->
+  <!-- 门外零误伤通道：72 小时无人值守时间锁安全找回弹窗（替代原本危险的“立即冻结”） -->
   <div id="modal-emergency-freeze" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[115] flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-rose-700">🚨 账号被盗 / 内部争议紧急挂失冻结</h3>
+        <h3 class="font-bold text-sm text-amber-900">⏳ 72 小时无人值守时间锁 · 安全找回</h3>
         <button onclick="window.closeModal('modal-emergency-freeze')" class="text-stone-400 text-lg">✕</button>
       </div>
-      <div class="bg-rose-50 border border-rose-200 p-3 rounded-2xl text-[11px] text-rose-950 leading-relaxed">
-        <b>紧急止付保护机制：</b>核对 18 位法定证件全号与法人/本人真实姓名一致后，系统立即将该商号切入<b>「🛡️ 护盘冻结态」</b>，锁死改密、锁死资金销账与删改商品，保住账本不被破坏；随后凭加盖实体公章申明书联系平台总控签发重置信码。
+      <div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-[11px] text-amber-950 leading-relaxed">
+        <b>零误伤护盘机制：</b>手机与验证器全丢时，核对 18 位证件全号与登记的主/备手机号后，系统自动启动 <b>72 小时观察期</b>（观察期内<b>合作门店下单与送货照常运行</b>，仅锁死改密、删账与改底价；72 小时到期后自动放行重设新密码，半夜周末全自动无需等人工）。
       </div>
       <div class="space-y-2">
         <div>
@@ -1909,12 +1915,12 @@
           <input type="text" id="frz-credit-code" maxlength="18" placeholder="输入18位证件全号" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono uppercase">
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">法定代表人 / 实名入驻人真实姓名 *：</label>
-          <input type="text" id="frz-person-name" placeholder="输入登记时的负责人姓名" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
+          <label class="block text-stone-600 font-bold mb-1">入驻登记的主联络手机号 或 紧急备用手机号 *：</label>
+          <input type="tel" id="frz-person-name" maxlength="11" placeholder="输入11位登记手机号" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold">
         </div>
       </div>
-      <button type="button" onclick="window.submitEmergencyFreezeAccount()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl shadow">
-        🛡️ 立即紧急冻结保护商号账本
+      <button type="button" onclick="window.submitEmergencyFreezeAccount()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl shadow">
+        ⏳ 立即启动 72 小时安全观察期找回
       </button>
     </div>
   </div>
@@ -1928,7 +1934,7 @@
       </div>
       <div class="space-y-2.5">
         <div>
-          <label class="block text-stone-600 mb-1">原访问密钥 *：</label>
+          <label class="block text-stone-600 mb-1">原访问密钥 或 重置信码 *：</label>
           <input type="password" id="chg-old-key" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
         </div>
         <div>
@@ -1940,22 +1946,22 @@
           <input type="password" id="chg-confirm-key" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
         </div>
         <div>
-          <label class="block text-stone-600 mb-1 font-bold">手机验证器 6 位动态码 *：</label>
-          <input type="text" id="chg-totp-code" maxlength="6" placeholder="000000" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base outline-none">
+          <label class="block text-stone-600 mb-1 font-bold">手机验证器 6 位动态码 或 8 位恢复码 *：</label>
+          <input type="text" id="chg-totp-code" maxlength="16" placeholder="000000 或 BG-XXXX-XXXX" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base uppercase outline-none">
         </div>
       </div>
-      <button onclick="window.submitChangePassword()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow">立约存盘生效</button>
+      <button onclick="window.submitChangePassword()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow">立约存盘生效（并踢出旧设备）</button>
     </div>
   </div>
 
   <div id="modal-2fa-verify" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-xs rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <b class="text-stone-900 text-xs">🛡️ TOTP 2FA 二次核身</b>
+        <b class="text-stone-900 text-xs">🛡️ 二因子安全核身</b>
         <button type="button" onclick="window.close2FAModal()" class="text-stone-400 text-lg">✕</button>
       </div>
-      <p class="text-[11px] text-stone-500 leading-relaxed" id="modal-2fa-desc">请输入手机身份验证器 6 位动态口令。</p>
-      <input type="text" id="input-2fa-code" maxlength="6" placeholder="000000" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-xl tracking-widest outline-none">
+      <p class="text-[11px] text-stone-500 leading-relaxed" id="modal-2fa-desc">请输入手机验证器 6 位动态口令，或输入 1 组 8 位一次性应急恢复码。</p>
+      <input type="text" id="input-2fa-code" maxlength="16" placeholder="6位数字 或 BG-XXXX-XXXX" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-lg tracking-wider uppercase outline-none">
       <button type="button" onclick="window.submit2FAVerification()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow">核验口令 · 授权放行</button>
     </div>
   </div>
@@ -1965,7 +1971,7 @@
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
           <h3 class="font-bold text-sm text-stone-800">🛡️ 手机身份验证器绑定</h3>
-          <p class="text-[10px] text-stone-400">支持微信「腾讯身份验证器」小程序 / Google / Microsoft Authenticator</p>
+          <p class="text-[10px] text-stone-400">绑定后同步签发《6组一次性保命应急恢复码》</p>
         </div>
         <button onclick="window.closeModal('modal-totp-setup')" class="text-stone-400 text-lg">✕</button>
       </div>
@@ -1980,7 +1986,7 @@
         </div>
       </div>
       <input type="text" id="totp-test-code" maxlength="6" placeholder="输入验证器显示的 6 位动态码" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base outline-none focus:border-emerald-700">
-      <button type="button" onclick="window.verifyAndSaveTotp()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">验证并储存绑定</button>
+      <button type="button" onclick="window.verifyAndSaveTotp()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">验证绑定并生成《6组保命恢复码卡》</button>
     </div>
   </div>
 
