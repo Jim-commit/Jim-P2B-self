@@ -139,8 +139,8 @@
           <button id="btn-global-policy" onclick="window.openGlobalPolicyModal('tiers')" class="bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-xs active:scale-95 transition">
             ⚙️ 全局经营策略
           </button>
-          <button id="btn-top-evict" onclick="window.triggerGlobalDeviceEviction()" class="owner-only-guard bg-rose-900/70 hover:bg-rose-800 text-rose-100 text-xs px-2.5 py-1.5 rounded-xl font-bold border border-rose-500/40 active:scale-95 transition" title="主力手机丢失或怀疑旧电脑忘退时，一键强制踢出除本机外的所有设备">
-            🚨 全网踢人
+          <button id="btn-top-evict" onclick="window.revokeOtherTerminals()" class="owner-only-guard bg-rose-900/70 hover:bg-rose-800 text-rose-100 text-xs px-2.5 py-1.5 rounded-xl font-bold border border-rose-500/40 active:scale-95 transition" title="主力手机遗失或怀疑旧电脑忘退时，一键清退除本机外的所有登录终端">
+            🛡️ 终端清退
           </button>
           <button id="btn-top-chg-pwd" onclick="window.openChangePasswordModal()" class="bg-white/5 hover:bg-white/15 text-emerald-200 text-xs px-2.5 py-1.5 rounded-xl font-medium border border-emerald-600/40 active:scale-95 transition">
             🔑 改密
@@ -1889,8 +1889,8 @@
           <input type="text" id="rec-totp-code" maxlength="16" placeholder="6位数字 或 BG-XXXX-XXXX" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base uppercase">
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">4. 设定新的安家主密码 (8位以上字母+数字) *：</label>
-          <input type="text" id="rec-new-pwd" placeholder="如 FengShou2026" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold text-emerald-950">
+          <label class="block text-stone-600 font-bold mb-1">4. 设定新的安家主密码 (12位以上含大小写/数字/特殊符号) *：</label>
+          <input type="text" id="rec-new-pwd" minlength="12" placeholder="12位以上含大小写/数字/特殊符号，如 FengShou@2026#" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold text-emerald-950">
         </div>
       </div>
       <button type="button" onclick="window.submitSelfRecoverPassword()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow">
@@ -1938,8 +1938,8 @@
           <input type="password" id="chg-old-key" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
         </div>
         <div>
-          <label class="block text-stone-600 mb-1">新立访问密钥 (8位以上字母+数字) *：</label>
-          <input type="password" id="chg-new-key" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
+          <label class="block text-stone-600 mb-1">新立访问密钥 (12位以上含大小写/数字/特殊符号) *：</label>
+          <input type="password" id="chg-new-key" minlength="12" placeholder="12位以上含大小写/数字/特殊符号，如 FengShou@2026#" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono">
         </div>
         <div>
           <label class="block text-stone-600 mb-1">确认新密钥 *：</label>
@@ -1950,7 +1950,7 @@
           <input type="text" id="chg-totp-code" maxlength="16" placeholder="000000 或 BG-XXXX-XXXX" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono text-center font-bold text-base uppercase outline-none">
         </div>
       </div>
-      <button onclick="window.submitChangePassword()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow">立约存盘生效（并踢出旧设备）</button>
+      <button onclick="window.submitChangePassword()" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl shadow">立约存盘生效（并清退旧终端）</button>
     </div>
   </div>
 
