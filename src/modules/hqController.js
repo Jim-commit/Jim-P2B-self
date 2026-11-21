@@ -3,10 +3,6 @@ import { TOTP } from '../utils/totp.js';
 import { compressImageFile, uploadBlobToStorage, downloadCSV } from '../utils/storage.js';
 import { HQService } from '../services/hqService.js';
 import { AuthSecurity } from '../utils/authSecurity.js';
-import { supabase } from '../lib/supabase.js';
-import { TOTP } from '../utils/totp.js';
-import { compressImageFile, uploadBlobToStorage, downloadCSV } from '../utils/storage.js';
-import { HQService } from '../services/hqService.js';
 
 function isDirectoryLead(o) {
   return (
@@ -74,10 +70,10 @@ const DEFAULT_GLOBAL_POLICY = {
   allowStoreReturn: true,
   slipHeaderSub: '源头平准直供 · 诚信相照 · 货畅其流',
   slipFooterNote: '请当面点清数量与效期，签字后即作为往来对账依据。',
-  slipStampText: '调度专用章'
+  slipStampText: '调度专用章',
+  seasonalPause: { isPaused: false, reason: '', resumeDate: '' }
 };
 
-// AI 广告法与商业规范慎用词库（发布前温和提示润色）
 const FORBIDDEN_WORDS = ['国家级', '世界级', '最高级', '第一', '绝对', '包治百病', '根治', '神效', '假一赔万', '100%有效', '加微信', '微信号'];
 
 let currentAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
@@ -114,6 +110,7 @@ let currentStockOpsMode = 'in_purchase';
 let currentVoucherNo = '';
 let pending2FACallback = null;
 let currentTraceCardText = '';
+let hqQrPollTimer = null;
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
@@ -161,9 +158,6 @@ function calcStoreCreditScore(store) {
   return Math.max(50, Math.min(100, score));
 }
 
-// =========================================================================
-// 极简单据编码生成器：[类别]-[YYYYMMDDHH]-[4位流水]
-// =========================================================================
 function generateUnifiedVoucherNo(prefix) {
   const now = new Date();
   const y = now.getFullYear();
@@ -174,9 +168,6 @@ function generateUnifiedVoucherNo(prefix) {
   return `${prefix}-${y}${m}${d}${h}-${rand4}`;
 }
 
-// =========================================================================
-// 统一门店价格计算引擎（严格遵循全局启用开关 + 单店特价/备注优先）
-// =========================================================================
 function calcStoreEffectivePrice(store, prod) {
   const basePrice = parseFloat(prod?.tier_1_price || 0);
   if (!store) return { price: basePrice, badge: '批发基准', note: '' };
@@ -211,9 +202,6 @@ function calcStoreEffectivePrice(store, prod) {
   return { price: effectiveBase, badge: '批发基准', note };
 }
 
-// =========================================================================
-// 0. 动态经营诊断与操作指引 + 品质溯源卡 + 建言堂
-// =========================================================================
 window.openContextualHelpModal = function () {
   const roleNames = {
     owner: '大当家主账号',
@@ -255,7 +243,7 @@ window.openContextualHelpModal = function () {
   const draftProds = allProducts.filter((p) => p.status === 'draft');
   if (!isWarehouseBlindPrice() && draftProds.length > 0) {
     diagnostics.push({
-      title: `📝 待定价草稿：有 ${draftProds.length} 款货品等待定价格并正式上架`,
+      title: `📝 待定价草稿：有 ${draftProds.length} 款货品草稿等待定价格并正式上架`,
       desc: '仓管已录好实物规格与库存，点击即可设置批发价与网上零售价并完成合规自检。',
       btnText: '去定价格上架 ➔',
       action: `window.closeModal('modal-contextual-help'); window.switchTab('products'); onlyDraftFilter = true; renderProductTable();`
@@ -351,9 +339,6 @@ window.submitHqSuggestion = async function () {
   window.closeModal('modal-hq-suggestion');
 };
 
-// =========================================================================
-// 0.0 商号内部私有定损单（DS-）核准冲账闭环（不惊动平台）
-// =========================================================================
 window.approveInternalDamageClaim = async function (logId) {
   if (isAuditorReadOnly() || isWarehouseBlindPrice() || currentRoleCode === 'sales') {
     return alert('⚠️ 仅大当家或账房财务有权核准定损单并冲减门店欠款。');
@@ -389,9 +374,6 @@ window.approveInternalDamageClaim = async function (logId) {
   window.loadHQData();
 };
 
-// =========================================================================
-// 0.1 业务员上门拜访催收登记（提交财务点验队列）
-// =========================================================================
 window.openSalesCollectModal = function (storeId) {
   if (isAuditorReadOnly()) return alert('🔍 独立稽核账号仅限只读查验。');
   const s = allStores.find((x) => Number(x.id) === Number(storeId));
@@ -443,9 +425,6 @@ window.submitSalesVisitCollection = async function () {
   window.loadHQData();
 };
 
-// =========================================================================
-// 0.2 三流晴雨表精准跳转 & 消息待办中心
-// =========================================================================
 window.jumpToDriverCashPanel = function () {
   if (isWarehouseBlindPrice()) return;
   window.switchTab('settle');
@@ -626,9 +605,7 @@ window.openNotificationDrawer = function () {
 
   window.openModal('modal-hq-notifications');
 };
-// =========================================================================
-// 0.3 商号全局自定义策略中心（旧价盘名自动迁移 + 常平仓丰歉调节 + 自定义模板）
-// =========================================================================
+
 function renderActivePolicyBadgesBar() {
   const bar = document.getElementById('active-policy-badges-bar');
   if (!bar) return;
@@ -705,6 +682,7 @@ function loadGlobalPolicyFromTenant(tenant) {
   localStorage.setItem('hq_carrier_label_' + currentAgent, carrierLabel);
 
   renderActivePolicyBadgesBar();
+  syncSeasonalPauseBannerUI();
 
   const th1 = document.getElementById('th-tier1-label');
   const th2 = document.getElementById('th-tier2-label');
@@ -721,7 +699,6 @@ function loadGlobalPolicyFromTenant(tenant) {
   if (opt1) opt1.innerText = globalPolicy.tier1Name;
   if (opt2) opt2.innerText = globalPolicy.tier2Name;
 }
-
 function renderCustomPresetsBar() {
   const bar = document.getElementById('policy-presets-bar');
   if (!bar) return;
@@ -1256,9 +1233,6 @@ window.saveGlobalPolicySettings = async function () {
   }
 };
 
-// =========================================================================
-// 0.5 产区工艺档案与外部平台社交矩阵联动配置
-// =========================================================================
 window.openCounterProfileModal = function () {
   document.getElementById('counter-origin-desc-input').value = currentTenantData?.brand_origin_desc || '';
   document.getElementById('counter-media-url-input').value = currentTenantData?.media_url || '';
@@ -1299,9 +1273,6 @@ window.saveCounterProfile = async function () {
   }
 };
 
-// =========================================================================
-// 1. 群机器人 Webhook 自动报单提醒配置
-// =========================================================================
 window.openWebhookModal = function () {
   document.getElementById('webhook-url-input').value = currentTenantData?.webhook_url || '';
   window.openModal('modal-webhook-setup');
@@ -1356,9 +1327,6 @@ function updateTotpStatusBadge(isEnabled) {
   }
 }
 
-// =========================================================================
-// 最小化权限与视图隔离执行器
-// =========================================================================
 function applyRoleViewExperience(roleCode, operatorName) {
   const displayEl = document.getElementById('hq-operator-role-display');
   const roleLabels = {
@@ -1409,9 +1377,6 @@ function applyRoleViewExperience(roleCode, operatorName) {
   }
 }
 
-// =========================================================================
-// 2. 极简统一单据制单引擎（RK 入库单 / CK 出库单 / 盘点校准 · 物理盲价隔离）
-// =========================================================================
 window.openStockOpsModal = function (prodId) {
   if (isAuditorReadOnly()) return alert('🔍 独立稽核账号仅限只读查验单据，不可制单改动库存。');
   if (currentRoleCode === 'finance' || currentRoleCode === 'sales') {
@@ -1525,7 +1490,6 @@ window.submitStockOperation = async function () {
     if (uErr) return alert('更新库存失败：' + uErr.message);
 
     const voucherNo = currentVoucherNo || generateUnifiedVoucherNo(deltaQty >= 0 ? 'RK' : 'CK');
-    // 物理盲价隔离：数据库中严禁写入任何核算货值明文
     const fullRemark = `[单号:${voucherNo}] [${subType} · ${sourceParty}] ${remark}`.trim();
 
     await HQService.recordInventoryChange(currentAgent, {
@@ -1648,7 +1612,7 @@ function renderInventoryLogs() {
     .map((l) => {
       const origIdx = allInventoryLogs.indexOf(l);
       const isDamageClaim = l.action_type === 'qc_damage_claim';
-      const isPlus = parseInt(l.delta_qty) >= 0;
+      const isPlus = parseInt(l.delta_qty || 0) >= 0;
       const typeLabel = isDamageClaim ? 'DS-内部定损单' : isPlus ? 'RK-统一入库单' : 'CK-统一出库单';
       const { voucherNo, sourceParty, goodsValue, cleanNote } = extractVoucherMeta(l);
 
@@ -1857,9 +1821,6 @@ window.exportInventoryLogsCSV = function () {
   downloadCSV(`${currentAgent}_极简单据台账_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
 };
 
-// =========================================================================
-// 3. 百业自定义属性 & 一店一约规则行
-// =========================================================================
 window.addCustomAttrRow = function (keyVal = '', valStr = '') {
   const box = document.getElementById('custom-attrs-container');
   const row = document.createElement('div');
@@ -1909,9 +1870,6 @@ window.addCustomPriceRuleRow = function (prodId = '', specialPrice = '') {
   box.appendChild(row);
 };
 
-// =========================================================================
-// 4. 三流晴雨表 & 经营参谋渲染
-// =========================================================================
 function renderThreeFlowsAndAIAdvisor() {
   const defaultMin = parseInt(globalPolicy.defaultMinStock ?? 10);
   const goodsValue = allProducts.reduce((sum, p) => sum + parseFloat(p.tier_1_price || 0) * parseInt(p.stock ?? 0), 0);
@@ -2111,9 +2069,6 @@ function renderThreeFlowsAndAIAdvisor() {
     .join('');
 }
 
-// =========================================================================
-// 5. 正式《随车送货交割单》打印预览与执行 & 退货质检验收入库
-// =========================================================================
 window.restockReturnedItems = async function (orderId) {
   if (isAuditorReadOnly()) return alert('🔍 独立稽核账号仅限只读查验。');
   const o = allOrders.find((x) => Number(x.id) === Number(orderId));
@@ -2263,9 +2218,6 @@ window.executeSingleDeliverySlipPrint = function () {
   }, 500);
 };
 
-// =========================================================================
-// 5.2 合作门店周期电子对账单与回款销账清算中心
-// =========================================================================
 window.openStoreStatementModal = function (preselectStoreId = null) {
   if (isWarehouseBlindPrice()) return;
   const visibleStores = getVisibleStoresForCurrentRole();
@@ -2469,9 +2421,6 @@ window.submitStoreStatementSettle = async function () {
   }
 };
 
-// =========================================================================
-// 5.5 产销排产汇总总单、装车总拣货单、对账单导出 & 合作名片码
-// =========================================================================
 function buildAggregatedPlanItems() {
   const activePlans = allDemandPlans.filter((p) => p.status === 'submitted' || p.status === 'scheduled');
   const map = {};
@@ -2669,13 +2618,10 @@ window.openPromoQrModal = function () {
 
 window.copyPromoLink = function () {
   const promoUrl = `${window.location.origin}/suppliers.html?t=${encodeURIComponent(currentAgent)}`;
-  const shareText = `【${currentTenantData?.company_name || currentAgent}】源头合作社与匠心工坊直供，营业执照已核验，支持预约送货师傅上门送样、先验货后合作！点击预约：${promoUrl}`;
+  const shareText = `【${currentTenantData?.company_name || currentAgent}】源头合作社与匠心工坊直供，实名资质已核验，支持预约送货师傅上门送样、先验货后合作！点击预约：${promoUrl}`;
   navigator.clipboard.writeText(shareText).then(() => alert('✅ 专属合作文案与链接已复制！'));
 };
 
-// =========================================================================
-// 6. TOTP 2FA 绑定、自助改密与双模登录门禁
-// =========================================================================
 window.openTotpSetupModal = async function () {
   const { data: tenant, error } = await HQService.fetchTenant(currentAgent);
   if (error) return alert('读取商号信息失败：' + error.message);
@@ -2738,20 +2684,25 @@ window.submitChangePassword = async function () {
   if (newKey !== confirmKey) return alert('两次输入的新密码不一致！');
   if (!totpCode || totpCode.length !== 6) return alert('请输入手机验证器 6 位动态码！');
 
+  const pwdCheck = AuthSecurity.validatePasswordStrength(newKey, currentAgent, '');
+  if (!pwdCheck.ok) return alert('⚠️ 新密码强度提示：' + pwdCheck.msg);
+
   const { data: tenant } = await HQService.fetchTenant(currentAgent);
   if (!tenant) return;
-  const isOldKeyMatch = oldKey === tenant.access_key || oldKey.toUpperCase() === (tenant.access_key || '').toUpperCase();
+  const isOldKeyMatch = await AuthSecurity.verifyPassword(oldKey, tenant.access_key, currentAgent);
   const isTokenMatch = tenant.reset_claim_token && oldKey.toUpperCase() === tenant.reset_claim_token.toUpperCase();
   if (!isOldKeyMatch && !isTokenMatch) return alert('⚠️ 原访问密钥不正确！');
 
   const isTotpValid = await TOTP.verifyTOTP(tenant.totp_secret || 'JBSWY3DPEHPK3PXP', totpCode, 2);
   if (!isTotpValid) return alert('⚠️ 验证器 6 位动态码错误！');
 
+  const hashedNewKey = await AuthSecurity.hashPassword(newKey, currentAgent);
+
   try {
-    await HQService.updateTenantWithVerify(currentAgent, { access_key: newKey, reset_claim_token: null });
-    sessionStorage.setItem('hq_tenant_session_' + currentAgent, newKey);
+    await HQService.updateTenantWithVerify(currentAgent, { access_key: hashedNewKey, reset_claim_token: null });
+    sessionStorage.setItem('hq_tenant_session_' + currentAgent, hashedNewKey);
     document.getElementById('hq-default-pwd-banner')?.classList.add('hidden');
-    alert('🎉 新密钥已写入云端并生效存盘！');
+    alert('🎉 新密钥已哈希加密写入云端并生效存盘！');
     window.closeModal('modal-change-password');
   } catch (err) {
     alert('⚠️ 修改密码写入云端被拦截：' + err.message);
@@ -2788,6 +2739,13 @@ window.verifyHQAuthPwd = async function (e) {
   const errBox = document.getElementById('hq-auth-error');
   const btn = document.getElementById('btn-hq-pwd');
 
+  const lockInfo = AuthSecurity.checkLoginLockout(`HQ_${tenantId}`);
+  if (lockInfo.locked) {
+    errBox.innerText = `🛡️ 安全保护：该商号连续输错次数过多，请 ${lockInfo.remainMins} 分钟后再试。`;
+    errBox.classList.remove('hidden');
+    return;
+  }
+
   btn.disabled = true;
   btn.innerText = '核对中...';
   errBox.classList.add('hidden');
@@ -2796,6 +2754,7 @@ window.verifyHQAuthPwd = async function (e) {
     const [subAcc, subPwd] = rawKey.split(/[:：]/).map((s) => s.trim());
     const { data: tenantList } = await supabase.from('platform_tenant').select('*').eq('tenant_id', tenantId).eq('is_active', true).limit(1);
     if (!tenantList || tenantList.length === 0) {
+      AuthSecurity.recordLoginFailure(`HQ_${tenantId}`);
       btn.disabled = false;
       btn.innerText = '核验密钥 · 登录调度台';
       errBox.innerText = '⚠️ 商号代号不存在或已暂歇！';
@@ -2807,18 +2766,24 @@ window.verifyHQAuthPwd = async function (e) {
       .select('*')
       .eq('tenant_id', tenantId)
       .eq('account_name', subAcc)
-      .eq('password_hash', subPwd)
       .eq('is_active', true)
       .limit(1);
 
-    if (!subList || subList.length === 0) {
+    let subValid = false;
+    if (subList && subList.length > 0) {
+      subValid = await AuthSecurity.verifyPassword(subPwd, subList[0].password_hash, tenantId);
+    }
+
+    if (!subValid) {
+      const failRec = AuthSecurity.recordLoginFailure(`HQ_${tenantId}`);
       btn.disabled = false;
       btn.innerText = '核验密钥 · 登录调度台';
-      errBox.innerText = '⚠️ 属员子账号或密码不正确！';
+      errBox.innerText = `⚠️ 属员子账号或密码不正确（还可尝试 ${Math.max(0, 5 - failRec.count)} 次）！`;
       errBox.classList.remove('hidden');
       return;
     }
 
+    AuthSecurity.clearLoginFailure(`HQ_${tenantId}`);
     currentAgent = tenantId;
     currentRoleCode = subList[0].role_code;
     currentAccountCode = subList[0].account_name;
@@ -2839,13 +2804,18 @@ window.verifyHQAuthPwd = async function (e) {
     .from('platform_tenant')
     .select('*')
     .eq('tenant_id', tenantId)
-    .or(`access_key.eq.${rawKey},access_key.eq.${rawKey.toUpperCase()}`)
     .limit(1);
 
-  if (error || !data || data.length === 0) {
+  let ownerMatched = false;
+  if (!error && data && data.length > 0) {
+    ownerMatched = await AuthSecurity.verifyPassword(rawKey, data[0].access_key, tenantId);
+  }
+
+  if (!ownerMatched) {
+    const failRec = AuthSecurity.recordLoginFailure(`HQ_${tenantId}`);
     btn.disabled = false;
     btn.innerText = '核验密钥 · 登录调度台';
-    errBox.innerText = '⚠️ 商号代号不存在或安家访问密钥不符！';
+    errBox.innerText = `⚠️ 商号代号不存在或安家访问密钥不符（还可尝试 ${Math.max(0, 5 - failRec.count)} 次）！`;
     errBox.classList.remove('hidden');
     return;
   }
@@ -2857,6 +2827,7 @@ window.verifyHQAuthPwd = async function (e) {
     return;
   }
 
+  AuthSecurity.clearLoginFailure(`HQ_${tenantId}`);
   sessionStorage.setItem('hq_tenant_session_' + tenantId, data[0].access_key);
   sessionStorage.setItem('hq_active_authed_tenant', tenantId);
   sessionStorage.removeItem('hq_sub_role_' + tenantId);
@@ -2908,6 +2879,7 @@ async function checkHQAuthStatus() {
 }
 
 window.logoutHQ = function () {
+  if (hqQrPollTimer) clearInterval(hqQrPollTimer);
   sessionStorage.removeItem('hq_tenant_session_' + currentAgent);
   sessionStorage.removeItem('hq_active_authed_tenant');
   document.getElementById('hq-auth-gate').classList.remove('hidden');
@@ -2918,7 +2890,7 @@ window.switchEntityType = function (type) {
   const titles = {
     coop: '村社合作社 · 产区直供与城乡调度台',
     factory: '源头工坊 · 生产制造与按需直配台',
-    service: '工料配件商 · 仓储配发与工程对账台',
+    service: '工料配套 · 专业服务与仓储对账台',
     dealer: '区域平准仓 · 集散调度与供需平衡台'
   };
   document.getElementById('hq-title').innerText = titles[type] || titles.dealer;
@@ -2943,9 +2915,6 @@ window.switchTab = function (tabName) {
   }
 };
 
-// =========================================================================
-// 7. 全盘数据加载与工作台渲染
-// =========================================================================
 window.loadHQData = async function () {
   const { data: curTenant, error: tErr } = await HQService.fetchTenant(currentAgent);
   if (tErr || !curTenant || !curTenant.is_active) {
@@ -3506,9 +3475,6 @@ window.saveStorePolicySettings = async function () {
   }
 };
 
-// =========================================================================
-// 专供品道弹窗（实时算价 + 铅笔快捷改价 + 单品专属协议备注）
-// =========================================================================
 window.openVisibilityModal = function (storeId) {
   const s = allStores.find((x) => Number(x.id) === Number(storeId));
   if (!s) return;
@@ -3851,9 +3817,6 @@ window.deleteProduct = function (id, name) {
   }
 };
 
-// =========================================================================
-// 8. 订单履约、用度计划、余缺互调、天街求购 & 财务点款
-// =========================================================================
 window.updateDemandPlanStatus = async function (planId, nextStatus) {
   if (isAuditorReadOnly()) return alert('🔍 独立稽核账号仅限只读查验。');
   const label = nextStatus === 'scheduled' ? '已纳入产区排产' : '已履约配发';
@@ -3976,14 +3939,11 @@ function renderOrderFulfillmentList() {
                 ${isSubmitted ? '⏳ 待纳入排产' : isScheduled ? '✅ 已纳入产区排产' : '📦 已履约配发'}
               </span>
             </div>
-
             <div class="bg-stone-50 p-2.5 rounded-2xl border border-emerald-200/70">
               <div class="text-[10px] text-stone-400 mb-1">预估真实用度明细（期望到店日期：<b class="text-stone-800 font-mono">${p.expected_date || '近期'}</b>）：</div>
               <div>${itemsHtml || '无明细'}</div>
             </div>
-
             ${p.note ? `<div class="text-[11px] text-stone-600">💬 门店叮咛：${p.note}</div>` : ''}
-
             <div class="flex flex-wrap justify-between items-center gap-2 pt-1 border-t border-emerald-200/50 text-[11px]">
               <span class="text-stone-400 font-mono">提报时间：${new Date(p.created_at).toLocaleString()}</span>
               <div class="flex flex-wrap gap-1.5">
@@ -4035,15 +3995,12 @@ function renderOrderFulfillmentList() {
                 ${isOpen ? '🟢 挂池待认领' : isClaimed ? '🚚 已认领待顺路捎带' : isCompleted ? '✅ 已交割平账' : '已撤回'}
               </span>
             </div>
-
             <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-white p-2.5 rounded-2xl border border-cyan-100 text-[11px]">
               <div>调出门店：<b>${item.from_store_name}</b></div>
               <div>调入门店：<b class="text-emerald-900">${item.to_store_name || '等待同行认领'}</b></div>
               <div class="font-mono">调剂让利总值：<b class="text-rose-700">${blindPrice ? '***' : `¥${totalVal}`}</b></div>
             </div>
-
             ${item.reason ? `<div class="text-[11px] text-stone-600">💬 调剂缘由：${item.reason}</div>` : ''}
-
             <div class="flex justify-between items-center pt-1 border-t border-cyan-200/50 text-[11px]">
               <span class="text-stone-400 font-mono">挂池时间：${new Date(item.created_at).toLocaleString()}</span>
               ${
@@ -4378,9 +4335,6 @@ window.confirmLogSettled = function (logId, amount, storeId = 0, collectType = '
   }
 };
 
-// =========================================================================
-// 9. 内部属员实绩考核 & 外部推客分润与门店多档返利核算引擎
-// =========================================================================
 function calcStoreRebateBonus(b2bTotal) {
   if (globalPolicy.rebateEnabled === false) return { bonus: 0, rate: 0 };
   const tiers = Array.isArray(globalPolicy.rebateTiers) ? [...globalPolicy.rebateTiers] : [];
@@ -4514,9 +4468,6 @@ window.exportPerformanceCSV = function () {
   }
 };
 
-// =========================================================================
-// 10. 属员授任与自定义岗位互斥检查（内置四权分立防舞弊锁）
-// =========================================================================
 window.onSubRoleTemplateChange = function (roleCode) {
   const presetTitles = {
     sales: '业务员 / 客户经理',
@@ -4602,12 +4553,13 @@ window.saveSubUser = async function () {
   }
 
   const storedPhoneAndTitle = `${phone}|${customTitle}`;
+  const hashedSubPwd = await AuthSecurity.hashPassword(pwd, currentAgent);
   const { error } = await supabase
     .from('tenant_sub_user')
-    .insert([{ tenant_id: currentAgent, account_name, real_name, role_code, password_hash: pwd, phone: storedPhoneAndTitle, is_active: true }]);
+    .insert([{ tenant_id: currentAgent, account_name, real_name, role_code, password_hash: hashedSubPwd, phone: storedPhoneAndTitle, is_active: true }]);
   if (error) alert('授任失败: ' + error.message);
   else {
-    alert(`🎉 已授任【${real_name}】（${customTitle}），电脑端与掌中宝均可使用 ${account_name}:${pwd} 登录！`);
+    alert(`🎉 已授任【${real_name}】（${customTitle}），电脑端与掌中宝均可使用 ${account_name}:${pwd} 登录（密码已哈希加密保护）！`);
     window.closeModal('modal-add-subuser');
     window.loadHQData();
   }
@@ -4776,6 +4728,207 @@ window.stopBarcodeScan = () => window.closeModal('scanner-modal');
 window.previewFullImage = function (url) {
   const w = window.open('');
   w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
+};
+
+// =========================================================================
+// 电脑端手机扫码免密登录 + 自助找回 + 紧急挂失 + 农忙休息 + 全量账本备份
+// =========================================================================
+window.switchHQLoginMode = function (mode) {
+  const pwdForm = document.getElementById('pane-login-pwd');
+  const qrPane = document.getElementById('pane-login-qr');
+  const tabPwd = document.getElementById('hq-login-tab-pwd');
+  const tabQr = document.getElementById('hq-login-tab-qr');
+
+  if (mode === 'qr') {
+    pwdForm?.classList.add('hidden');
+    qrPane?.classList.remove('hidden');
+    if (tabQr) tabQr.className = 'py-2 rounded-xl bg-[#1b4332] text-white shadow transition';
+    if (tabPwd) tabPwd.className = 'py-2 rounded-xl text-stone-600 hover:text-stone-900 transition';
+    window.initHQScanQrSession();
+  } else {
+    if (hqQrPollTimer) clearInterval(hqQrPollTimer);
+    qrPane?.classList.add('hidden');
+    pwdForm?.classList.remove('hidden');
+    if (tabPwd) tabPwd.className = 'py-2 rounded-xl bg-[#1b4332] text-white shadow transition';
+    if (tabQr) tabQr.className = 'py-2 rounded-xl text-stone-600 hover:text-stone-900 transition';
+  }
+};
+
+window.initHQScanQrSession = async function () {
+  if (hqQrPollTimer) clearInterval(hqQrPollTimer);
+  document.getElementById('hq-scan-qr-expired')?.classList.add('hidden');
+
+  const sessionToken = 'SCAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+  document.getElementById('hq-scan-token-text').innerText = sessionToken;
+  document.getElementById('hq-scan-status-text').innerText = '等待手机扫码授权...';
+
+  const qrTargetUrl = `${window.location.origin}/driver.html?qr_token=${encodeURIComponent(sessionToken)}`;
+  document.getElementById('hq-scan-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrTargetUrl)}`;
+
+  try {
+    await supabase.from('login_qr_session').insert([{ session_token: sessionToken, status: 'waiting' }]);
+  } catch (e) {}
+
+  let elapsedSec = 0;
+  hqQrPollTimer = setInterval(async () => {
+    elapsedSec += 2;
+    if (elapsedSec >= 90) {
+      clearInterval(hqQrPollTimer);
+      document.getElementById('hq-scan-qr-expired')?.classList.remove('hidden');
+      document.getElementById('hq-scan-status-text').innerText = '二维码已过期';
+      return;
+    }
+
+    const { data } = await supabase
+      .from('login_qr_session')
+      .select('*')
+      .eq('session_token', sessionToken)
+      .eq('status', 'approved')
+      .limit(1);
+
+    if (data && data.length > 0 && data[0].tenant_id) {
+      clearInterval(hqQrPollTimer);
+      const approvedTid = data[0].tenant_id;
+      const { data: tenantRows } = await supabase
+        .from('platform_tenant')
+        .select('*')
+        .eq('tenant_id', approvedTid)
+        .eq('is_active', true)
+        .limit(1);
+
+      if (tenantRows && tenantRows.length > 0) {
+        sessionStorage.setItem('hq_tenant_session_' + approvedTid, tenantRows[0].access_key);
+        sessionStorage.setItem('hq_active_authed_tenant', approvedTid);
+        sessionStorage.removeItem('hq_sub_role_' + approvedTid);
+        sessionStorage.removeItem('hq_sub_account_' + approvedTid);
+        sessionStorage.removeItem('hq_sub_name_' + approvedTid);
+
+        currentAgent = approvedTid;
+        currentRoleCode = 'owner';
+        currentAccountCode = '';
+        currentOperatorName = data[0].operator_name || '大当家主账号';
+
+        document.getElementById('hq-auth-gate')?.classList.add('hidden');
+        applyRoleViewExperience('owner', currentOperatorName);
+        window.loadHQData();
+      }
+    }
+  }, 2000);
+};
+
+window.submitSelfRecoverPassword = async function () {
+  const phone = document.getElementById('rec-phone').value.trim();
+  const creditCode = document.getElementById('rec-credit-code').value.trim().toUpperCase();
+  const totpCode = document.getElementById('rec-totp-code').value.trim();
+  const newPwd = document.getElementById('rec-new-pwd').value.trim();
+
+  if (phone.length !== 11 || creditCode.length !== 18) {
+    return alert('请完整填写 11 位登记手机号与 18 位信用代码/身份证全号！');
+  }
+  if (totpCode.length !== 6) {
+    return alert('请输入手机验证器 6 位动态码（若手机一并丢失，请使用「紧急挂失冻结」并联系平台总控核发重置信码）。');
+  }
+
+  const { data: rows } = await supabase.from('platform_tenant').select('*').eq('credit_code', creditCode).limit(1);
+  if (!rows || rows.length === 0) return alert('⚠️ 未找到该 18 位信用代码/身份证号对应的入驻档案。');
+
+  const tenant = rows[0];
+  if (tenant.phone !== phone && tenant.backup_phone !== phone) {
+    return alert('⚠️ 输入的手机号码与登记的主联络手机或备用紧急手机号不符！');
+  }
+
+  const pwdCheck = AuthSecurity.validatePasswordStrength(newPwd, tenant.tenant_id, phone);
+  if (!pwdCheck.ok) return alert('⚠️ 新密码强度提示：' + pwdCheck.msg);
+
+  const isTotpOk = await TOTP.verifyTOTP(tenant.totp_secret || 'JBSWY3DPEHPK3PXP', totpCode, 2);
+  if (!isTotpOk) return alert('⚠️ 手机验证器 6 位动态码验证未通过！');
+
+  const hashedNew = await AuthSecurity.hashPassword(newPwd, tenant.tenant_id);
+  await HQService.updateTenantWithVerify(tenant.tenant_id, { access_key: hashedNew, reset_claim_token: null });
+
+  alert(`🎉 核身找回成功！您的商号代号为【${tenant.tenant_id}】，新密码已加密生效！`);
+  window.closeModal('modal-self-recover-pwd');
+  document.getElementById('hq-login-tenant').value = tenant.tenant_id;
+};
+
+window.submitEmergencyFreezeAccount = async function () {
+  const creditCode = document.getElementById('frz-credit-code').value.trim().toUpperCase();
+  const personName = document.getElementById('frz-person-name').value.trim();
+  if (creditCode.length !== 18 || !personName) return alert('请完整填写 18 位证件全号与登记时的负责人真实姓名！');
+
+  const { data: rows } = await supabase.from('platform_tenant').select('*').eq('credit_code', creditCode).limit(1);
+  if (!rows || rows.length === 0) return alert('未找到该证件号对应的在册商号档案。');
+
+  const tenant = rows[0];
+  const recordedPerson = (tenant.contact_person || tenant.contact_name || '').trim();
+  if (recordedPerson && !recordedPerson.includes(personName) && !personName.includes(recordedPerson)) {
+    return alert('⚠️ 负责人姓名与立户登记档案不符，无法执行挂失冻结！');
+  }
+
+  await supabase.from('platform_tenant').update({ membership_status: 'restricted' }).eq('tenant_id', tenant.tenant_id);
+  alert(`🛡️ 已对商号【${tenant.company_name} (${tenant.tenant_id})】启动【护盘冻结保护】！请凭实体公章申明书联系平台总控核发重置信码。`);
+  window.closeModal('modal-emergency-freeze');
+};
+
+window.openSeasonalPauseModal = function () {
+  const sp = globalPolicy.seasonalPause || { isPaused: false, reason: '产区农忙采收集中加工中', resumeDate: '' };
+  document.getElementById('sp-is-paused').checked = !!sp.isPaused;
+  document.getElementById('sp-reason').value = sp.reason || '';
+  document.getElementById('sp-resume-date').value = sp.resumeDate || '';
+  window.openModal('modal-seasonal-pause');
+};
+
+window.saveSeasonalPauseSettings = async function () {
+  const isPaused = document.getElementById('sp-is-paused').checked;
+  const reason = document.getElementById('sp-reason').value.trim() || '产区农忙/仓库盘点暂歇';
+  const resumeDate = document.getElementById('sp-resume-date').value || '';
+
+  globalPolicy.seasonalPause = { isPaused, reason, resumeDate };
+  localStorage.setItem('hq_global_policy_' + currentAgent, JSON.stringify(globalPolicy));
+
+  try {
+    await HQService.updateTenantWithVerify(currentAgent, { custom_settings: globalPolicy });
+    if (currentTenantData) currentTenantData.custom_settings = globalPolicy;
+  } catch (e) {}
+
+  syncSeasonalPauseBannerUI();
+  window.closeModal('modal-seasonal-pause');
+  alert(isPaused ? `🍵 已挂出【暂歇接单】告示（${reason}），门店订货台与天街专柜已同步显示！` : '🟢 已解除暂歇告示，恢复正常接单营业！');
+};
+
+function syncSeasonalPauseBannerUI() {
+  const sp = globalPolicy.seasonalPause;
+  const banner = document.getElementById('hq-seasonal-pause-banner');
+  const textEl = document.getElementById('hq-seasonal-pause-text');
+  if (!banner || !textEl) return;
+  if (sp && sp.isPaused) {
+    banner.classList.remove('hidden');
+    textEl.innerText = `🍵 当前处于【暂歇接单】状态：${sp.reason || '农忙/盘点中'}${sp.resumeDate ? `（预计 ${sp.resumeDate} 恢复接单）` : ''}`;
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+window.exportFullTenantBackup = function () {
+  const backupBundle = {
+    exportedAt: new Date().toISOString(),
+    platform: '百工百业数字协作平台 · 商号独立私有账本全量备份',
+    tenant: { tenant_id: currentAgent, company_name: currentTenantData?.company_name || currentAgent, globalPolicy },
+    products: allProducts,
+    stores: allStores,
+    orders: allOrders,
+    inventoryLogs: allInventoryLogs
+  };
+  const blob = new Blob([JSON.stringify(backupBundle, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${currentAgent}_全套私有账本备份_${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  alert(`💾 本店全套私有账本备份已下载到您的电脑（含 ${allProducts.length} 款货品、${allStores.length} 家门店、${allOrders.length} 笔单据）！`);
 };
 
 export async function initHQController() {
