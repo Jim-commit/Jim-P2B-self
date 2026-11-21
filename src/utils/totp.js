@@ -1,6 +1,6 @@
 /**
  * 百工天街 · 纯浏览器端 RFC-6238 TOTP 动态口令与一次性应急恢复码工具
- * - 兼容导出 `TOTP` 聚合对象及独立具名函数
+ * - 兼容导出 `TOTP` 聚合对象及独立具名函数（含 platformAuthModule 与 hqAuthModule 全量别名）
  * - 支持县域/乡镇手机时钟偏差容错（window = ±4，即前后 2 分钟内动态码均有效）
  * - 支持生成 6 组 8 位一次性应急恢复码及其 SHA-256 单向哈希摘要
  */
@@ -74,7 +74,7 @@ async function computeHotp(secretBase32, counter) {
  * 校验 6 位 TOTP 动态口令
  * @param {string} secretBase32
  * @param {string} token
- * @param {number} windowSteps 默认 ±4 步长（前后 2 分钟容错）
+ * @param {number} windowSteps 默认 ±4 步长（前后 2 分钟容错，防手机未开启自动对时）
  */
 export async function verifyTotpCode(secretBase32, token, windowSteps = 4) {
   const cleanToken = String(token || '').replace(/\s+/g, '');
@@ -124,10 +124,11 @@ export async function generateRecoveryCodeBundle(count = 6) {
 }
 
 /**
- * 兼容 hqAuthModule.js 与 platformAuthModule.js 的聚合导出对象
+ * 兼容 hqAuthModule.js 与 platformAuthModule.js 的全量聚合导出对象
  */
 export const TOTP = {
   generateSecret: generateBase32Secret,
+  generateRandomSecret: generateBase32Secret,
   generateBase32Secret,
   getOtpAuthUri(secret, accountName, issuer = '百工天街平准网') {
     if (typeof secret === 'object' && secret !== null) {
@@ -136,7 +137,12 @@ export const TOTP = {
     return buildOtpAuthUri({ secret, accountName, issuer });
   },
   buildOtpAuthUri,
+  buildQrImageUrl(issuer, accountName, secret) {
+    const uri = buildOtpAuthUri({ secret, accountName, issuer });
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(uri)}`;
+  },
   verify: verifyTotpCode,
+  verifyTOTP: verifyTotpCode,
   verifyTotpCode,
   sha256Hex,
   generateRecoveryCodeBundle
