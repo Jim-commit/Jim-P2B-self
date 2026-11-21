@@ -51,7 +51,7 @@ export const FORBIDDEN_WORDS = [
   '假一赔万', '100%有效', '加微信', '微信号'
 ];
 
-const initAgent = localStorage.getItem('hq_active_agent') || 'BJ_SHUNDA';
+const initAgent = localStorage.getItem('hq_active_agent') || '';
 
 export const hqState = {
   currentAgent: initAgent,
