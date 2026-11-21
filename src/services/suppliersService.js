@@ -1,5 +1,8 @@
 import { supabase } from '../lib/supabase.js';
 
+const PUBLIC_SUPPLIER_TENANT_FIELDS =
+  'tenant_id, company_name, business_type, service_mode, permit_brick_and_mortar, permit_ecommerce, brand_origin_desc, media_url, is_active';
+
 export const DEMO_SUPPLIERS = [
   {
     tenant_id: 'DEMO-HX888',
@@ -45,7 +48,7 @@ export const SuppliersService = {
 
     const { data: tenants, error: tErr } = await supabase
       .from('platform_tenant')
-      .select('*')
+      .select(PUBLIC_SUPPLIER_TENANT_FIELDS)
       .eq('is_active', true)
       .order('id', { ascending: false });
 
@@ -90,27 +93,25 @@ export const SuppliersService = {
     return validTenants.map((t) => {
       const prods = productMap[t.tenant_id] || [];
       const cats = Array.from(new Set(prods.map((p) => p.category_main).filter(Boolean)));
-      const rawType = t.business_type || t.business_scope || '';
+      const rawType = t.business_type || '';
       const displayCategory = TYPE_LABEL_MAP[rawType] || rawType || (cats.length > 0 ? cats.join(' · ') : '合作门店全品类直供');
 
       return {
         tenant_id: t.tenant_id,
         name: t.company_name || t.tenant_id,
         category: displayCategory,
-        city: t.region || t.address || '本地仓储配送覆盖',
+        city: '本地仓储配送覆盖',
         description:
           t.brand_origin_desc ||
-          t.intro ||
           `源头合作社与正规工坊（商号：${t.tenant_id}），营业执照与资质已核验，支持合作门店定期配送、电子签收与信用往来对账。`,
-        media_url: t.media_url || t.video_url || '',
+        media_url: t.media_url || '',
         hasCounter: !!counterEnabledMap[t.tenant_id] || t.permit_ecommerce !== false,
-        products: prods,
-        webhook_url: t.webhook_url || ''
+        products: prods
       };
     });
   },
 
-  async submitSampleInquiry({ tenantId, storeName, contactName, phone, address, note, referrer, webhookUrl }) {
+  async submitSampleInquiry({ tenantId, storeName, contactName, phone, address, note, referrer }) {
     if (!supabase || tenantId.startsWith('DEMO-')) return;
 
     const orderNo = `LEAD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -177,15 +178,5 @@ export const SuppliersService = {
     }
 
     if (error) throw error;
-
-    if (webhookUrl && webhookUrl.startsWith('http')) {
-      const msg = `🤝【新店合作意向提醒】\n意向门店：${storeName}\n联系人：${contactName} (${phone})\n地址：${address}${refTag}\n请及时联系送样并一键建档立户！`;
-      fetch(webhookUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ msgtype: 'text', text: { content: msg }, content: { text: msg } })
-      }).catch(() => {});
-    }
   }
 };
