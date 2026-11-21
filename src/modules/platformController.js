@@ -26,8 +26,8 @@ function formatBusinessTypeLabel(type) {
     coop: '🌾 村社合作社 / 产区直供',
     factory: '🏭 源头工坊 / 生产制造',
     dealer: '🏢 区域平准仓 / 集散商行',
-    service: '🛠️ 工料配件 / 综合服务',
-    individual: '👨‍🌾 个人农户 / 非遗匠人 (GR)'
+    service: '🛠️ 工料配套 / 专业服务机构',
+    individual: '👨‍🌾 个人农户 / 手艺人 / 个体匠人 (GR)'
   };
   return map[type] || '🏢 区域平准仓 / 集散商行';
 }
@@ -94,7 +94,7 @@ window.savePlatformGovernancePrefs = function () {
 };
 
 // =========================================================================
-// 总控 TOTP 验证器绑定与 2FA 核身（100% 保留原有逻辑）
+// 总控 TOTP 验证器绑定与 2FA 核身
 // =========================================================================
 window.openPlatformTotpSetup = async function () {
   const account = sessionStorage.getItem('p_auth_account') || 'admin';
@@ -380,7 +380,7 @@ window.loadPlatformData = async function () {
 };
 
 // =========================================================================
-// 商道清朗 · 全网在架良品 AI 合规巡检（常规琐事 AI 自动提示 · 高风险人工终审）
+// 商道清朗 · 全网在架良品 AI 合规巡检
 // =========================================================================
 function getFlaggedProductsList() {
   const activeProds = allProducts.filter((p) => p.status === 'active');
@@ -424,7 +424,6 @@ window.runPlatformAIComplianceScan = function () {
   const severeCount = allFlagged.filter((x) => x.isSevere).length;
   const minorCount = allFlagged.filter((x) => !x.isSevere).length;
 
-  // 若开启“涉违底线保留人工终审”，常规缺图琐事可一键由 AI 自动处理，不刷屏干扰管理员
   const displayList = prefs.humanSevereOnly ? allFlagged.filter((x) => x.isSevere || !x.alreadyNotified) : allFlagged;
 
   if (sumEl) {
@@ -482,7 +481,6 @@ window.batchAutoNotifyMinorIssues = async function () {
       ai_minor_notified: true,
       rectify_note: `AI 参谋温馨提示：贵号【${item.prod.name}】建议补充一张清晰实拍照，有助于邻里与合作门店更直观了解实物品质！`
     };
-    // 绝不篡改商号内部的 remark 字段，仅写入公开规范提示字段
     await supabase.from('product').update({ custom_specs: nextSpecs }).eq('id', item.prod.id);
   }
 
@@ -505,7 +503,6 @@ window.requestProductRectify = async function (prodId, prodName, reasonText, isS
     rectify_note: customNote.trim()
   };
 
-  // 绝不修改商号内部 remark；仅高风险违规才暂缓公开展示，常规提醒不中断经营
   const updatePayload = isSevere
     ? { status: 'rectify_required', custom_specs: nextSpecs }
     : { custom_specs: nextSpecs };
@@ -524,7 +521,7 @@ window.requestProductRectify = async function (prodId, prodName, reasonText, isS
 };
 
 // =========================================================================
-// 🧭 平台自身自省与健康度体检（正人先正己 · 非抽佣 · 数字主权 · 审计链完整）
+// 🧭 平台自身自省与健康度体检
 // =========================================================================
 window.renderPlatformSelfCheck = function () {
   const grid = document.getElementById('platform-selfcheck-grid');
@@ -549,9 +546,9 @@ window.renderPlatformSelfCheck = function () {
       desc: '各入驻合作社、工坊与门店拥有独立私有账本与定价主权；商号内部定损单（DS-）与仓储备注已实现物理隔离，平台绝不窥探也不干涉商家家务事。'
     },
     {
-      title: '③ 百工多元主体包容度自查',
-      status: '✅ 共生共育',
-      desc: `当前在册合作社/工坊/服务商 ${coopFactoryCount} 家，实名个人农户/手艺人（GR-） ${individualCount} 户，老店与合作社担保联名机制运转正常。`
+      title: '③ 百工多元主体包容度与防抢注自查',
+      status: '✅ 名实相符',
+      desc: `当前在册合作社/工坊/服务机构 ${coopFactoryCount} 家，实名个人农户/手艺人/个体匠人（GR-） ${individualCount} 户，严格执行一证一户与法定字号立户。`
     },
     {
       title: '④ 天道明鉴审计链与内容清朗度自查',
@@ -576,7 +573,7 @@ window.renderPlatformSelfCheck = function () {
 };
 
 // =========================================================================
-// 其余板块（全域供需大盘、AI参谋简报、入驻审核、主体名册、建言堂、品类、审计）100% 完整保留
+// 全域供需大盘 & 入驻审核（含「🏷️ 名实不符退回」防抢注批示）
 // =========================================================================
 function renderEcosystemDashboard() {
   const scheduledPlans = allEcoPlans.filter((p) => p.status === 'scheduled' || p.status === 'fulfilled');
@@ -714,6 +711,26 @@ function updateAISummaryInsight() {
   document.getElementById('ai-adviser-text').innerText = insight;
 }
 
+window.rejectApplicationNameMismatch = async function (appId) {
+  const defaultReason =
+    '【名实不符退回】平台恪守“物勒工名、名实相符”商道，严禁抢注公共产区名或未在营业执照上体现的品牌字号。请严格按照营业执照《名称》一栏（或本人真实姓名+镇村/行当）修改后重新提交。';
+  const reason = prompt('确认以【名实不符】退回该申请（可微调批示说明）：', defaultReason);
+  if (!reason) return;
+
+  await supabase
+    .from('tenant_application')
+    .update({
+      application_status: 'rejected',
+      review_note: reason.trim(),
+      reviewed_at: new Date().toISOString()
+    })
+    .eq('id', appId);
+
+  await recordAuditLog('名实不符退回入驻申请', 'WARN', { application_id: appId, reason: reason.trim() });
+  alert('已按【名实不符】退回修润！申请方查进度时将看到该商道规范批示。');
+  window.loadPlatformData();
+};
+
 function renderApplications() {
   const container = document.getElementById('applications-list');
   if (allApplications.length === 0) {
@@ -776,9 +793,12 @@ function renderApplications() {
           ${
             isPending
               ? `
-            <div class="flex gap-2 justify-end pt-2 border-t border-stone-200/60">
+            <div class="flex flex-wrap gap-2 justify-end pt-2 border-t border-stone-200/60">
+              <button onclick="window.rejectApplicationNameMismatch(${a.id})" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-3 py-1.5 rounded-xl transition">
+                🏷️ 名实不符退回
+              </button>
               <button onclick="window.rejectApplication(${a.id})" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-1.5 rounded-xl transition">
-                退回商榷修润 (通知补件)
+                退回补件修正
               </button>
               <button onclick="window.approveApplication(${a.id}, '${a.tenant_id}', '${a.company_name}')" class="text-xs bg-stone-900 hover:bg-stone-800 text-white font-bold px-4 py-1.5 rounded-xl shadow active:scale-95 transition">
                 ✅ 终审合格 · 正式开席激活
@@ -1085,9 +1105,13 @@ window.approveApplication = async function (appId, tenantId, companyName) {
   if (fee === null) return;
 
   const app = allApplications.find((a) => a.id === appId);
-  const defaultLast6Key = app && app.credit_code && app.credit_code.length >= 6 ? app.credit_code.slice(-6).toUpperCase() : `${tenantId.toLowerCase()}@2026`;
+  const existingKey = (app?.access_key || '').trim();
+  const defaultLast6Key =
+    existingKey || (app && app.credit_code && app.credit_code.length >= 6 ? app.credit_code.slice(-6).toUpperCase() : `${tenantId.toLowerCase()}@2026`);
 
-  const initialKey = prompt('确认初始安家密码（默认为执照信用代码或证件号后 6 位）：', defaultLast6Key);
+  const initialKey = existingKey
+    ? existingKey
+    : prompt('确认初始安家密码（若申请方已自设则保留原加密凭证）：', defaultLast6Key);
   if (!initialKey) return;
 
   await supabase
@@ -1119,7 +1143,7 @@ window.approveApplication = async function (appId, tenantId, companyName) {
 
   recordAuditLog('审批激活新会员主体', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: companyName, ops_fee: parseFloat(fee) || 0 });
 
-  alert(`🎉 审核通过并激活立户！\n\n• 主体全称: ${companyName}\n• 商号代号（唯一标识）: ${tenantId}\n• 年度公共运维会费: ¥${parseFloat(fee) || 0}\n• 初始安家密码（后6位）: ${initialKey.trim()}`);
+  alert(`🎉 审核通过并激活立户！\n\n• 主体全称: ${companyName}\n• 商号代号（唯一标识）: ${tenantId}\n• 年度公共运维会费: ¥${parseFloat(fee) || 0}\n• 安家密钥：${existingKey ? '沿用入驻方自设强加密主密码' : initialKey.trim()}`);
   window.loadPlatformData();
 };
 
