@@ -4,6 +4,9 @@ import { HQService } from '../../services/hqService.js';
 import { AuthSecurity } from '../../utils/authSecurity.js';
 import { hqState } from './hqState.js';
 
+let _sessionEpochTimer = null;
+let _pendingRecoveryCodesForSave = [];
+
 export function updateTotpStatusBadge(isEnabled) {
   const totpBtn = document.getElementById('btn-top-totp');
   if (!totpBtn) return;
@@ -14,6 +17,108 @@ export function updateTotpStatusBadge(isEnabled) {
     totpBtn.innerHTML = '🛡️ 验证器';
     totpBtn.className = 'bg-white/5 hover:bg-white/15 text-emerald-200 text-xs px-2.5 py-1.5 rounded-xl font-medium border border-emerald-600/40 active:scale-95 transition';
   }
+}
+
+/**
+ * 渲染全局安全护盘预警横幅（72小时时间锁观察期红框 / 未绑验证器温馨提示）
+ */
+export function renderHQSecurityBanner(tenantRow) {
+  let host = document.getElementById('hq-security-banner-host');
+  if (!host) {
+    const mainContainer = document.querySelector('main') || document.body;
+    host = document.createElement('div');
+    host.id = 'hq-security-banner-host';
+    host.className = 'max-w-7xl mx-auto px-3 sm:px-6 pt-3';
+    mainContainer.insertBefore(host, mainContainer.firstChild);
+  }
+  if (!tenantRow) {
+    host.innerHTML = '';
+    return;
+  }
+
+  // 1. 最高优先级：处于 72 小时无人值守时间锁观察期
+  if (tenantRow.timelock_status === 'pending' || tenantRow.timelock_status === 'ready') {
+    const expText = tenantRow.timelock_expires_at
+      ? new Date(tenantRow.timelock_expires_at).toLocaleString('zh-CN', { hour12: false })
+      : '72小时后';
+    host.innerHTML = `
+      <div class="bg-rose-900 text-white p-3.5 rounded-2xl shadow-lg border border-rose-500/50 flex flex-wrap items-center justify-between gap-3 mb-2">
+        <div class="text-xs sm:text-sm leading-relaxed">
+          <div class="font-bold text-amber-200">🚨【72小时安全找回观察期 · 账本写保护已激活】</div>
+          <div>有人正通过门外通道申请重置本商号主密码（预计 <strong>${expText}</strong> 自动生效）。当前一线接单与送货照常运行，已自动锁死改密与删账。如非本人操作，请立即核身驳回！</div>
+        </div>
+        <button type="button" onclick="window.rejectTimelockRecovery()" class="bg-white text-rose-900 hover:bg-rose-50 text-xs font-extrabold px-4 py-2 rounded-xl shadow active:scale-95 transition shrink-0">
+          🛡️ 我是当家 · 立即核身驳回
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  // 2. 次优先级：尚未绑定 TOTP 动态验证器
+  if (!tenantRow.totp_enabled && hqState.currentRoleCode === 'owner') {
+    host.innerHTML = `
+      <div class="bg-amber-50 border border-amber-300 text-amber-950 px-4 py-2.5 rounded-2xl flex flex-wrap items-center justify-between gap-2 mb-2 text-xs">
+        <div>
+          <strong>🛡️ 账本护航提示：</strong>当前商号尚未绑定手机动态验证器（TOTP）与 6 组保命恢复码，建议花 30 秒开启防护，防范盗号与内部误删账。
+        </div>
+        <button type="button" onclick="window.openTotpSetupModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg transition shrink-0">
+          立即 30 秒加固
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  host.innerHTML = '';
+}
+
+/**
+ * 启动全网会话版本号（session_epoch）心跳巡检（每 45 秒轮询）
+ * 一旦其他信任设备触发了“全网踢人”或修改主密码，旧浏览器 45 秒内自动失效下线
+ */
+export function startSessionEpochHeartbeat(tenantId) {
+  if (_sessionEpochTimer) clearInterval(_sessionEpochTimer);
+  if (!tenantId) return;
+
+  const checkEpoch = async () => {
+    if (!hqState.currentAgent || hqState.currentAgent !== tenantId) return;
+    const { data } = await supabase
+      .from('platform_tenant')
+      .select('session_epoch, timelock_status, timelock_expires_at, totp_enabled, is_active')
+      .eq('tenant_id', tenantId)
+      .limit(1);
+
+    if (!data || data.length === 0) return;
+    const remote = data[0];
+
+    if (!remote.is_active) {
+      clearInterval(_sessionEpochTimer);
+      alert('🚫 当前商号状态已变更为暂歇，系统将自动退出登录。');
+      window.logoutHQ();
+      return;
+    }
+
+    const localEpoch = Number(sessionStorage.getItem('hq_session_epoch_' + tenantId) || 1);
+    const remoteEpoch = Number(remote.session_epoch || 1);
+
+    if (remoteEpoch > localEpoch) {
+      clearInterval(_sessionEpochTimer);
+      alert('🛡️【安全会话已失效】\n当前商号已在其他设备执行了“全网踢出旧设备”或修改了安家主密码。\n为保护账本安全，本机已自动下线，请重新核身登录！');
+      window.logoutHQ();
+      return;
+    }
+
+    if (hqState.currentTenantData) {
+      hqState.currentTenantData.timelock_status = remote.timelock_status;
+      hqState.currentTenantData.timelock_expires_at = remote.timelock_expires_at;
+      hqState.currentTenantData.totp_enabled = remote.totp_enabled;
+    }
+    renderHQSecurityBanner(remote);
+  };
+
+  checkEpoch();
+  _sessionEpochTimer = setInterval(checkEpoch, 45000);
 }
 
 export function applyRoleViewExperience(roleCode, operatorName) {
@@ -89,12 +194,26 @@ export async function checkHQAuthStatus() {
     .limit(1);
 
   if (data && data.length > 0) {
+    const tenantRow = data[0];
+    const localEpoch = Number(sessionStorage.getItem('hq_session_epoch_' + authedTenant) || tenantRow.session_epoch || 1);
+    const remoteEpoch = Number(tenantRow.session_epoch || 1);
+    if (remoteEpoch > localEpoch) {
+      sessionStorage.removeItem('hq_tenant_session_' + authedTenant);
+      sessionStorage.removeItem('hq_active_authed_tenant');
+      document.getElementById('hq-auth-gate')?.classList.remove('hidden');
+      return false;
+    }
+
+    sessionStorage.setItem('hq_session_epoch_' + authedTenant, String(remoteEpoch));
     hqState.currentAgent = authedTenant;
+    hqState.currentTenantData = tenantRow;
     hqState.currentRoleCode = sessionStorage.getItem('hq_sub_role_' + authedTenant) || 'owner';
     hqState.currentAccountCode = sessionStorage.getItem('hq_sub_account_' + authedTenant) || '';
     hqState.currentOperatorName = sessionStorage.getItem('hq_sub_name_' + authedTenant) || '大当家主账号';
     document.getElementById('hq-auth-gate')?.classList.add('hidden');
     applyRoleViewExperience(hqState.currentRoleCode, hqState.currentOperatorName);
+    renderHQSecurityBanner(tenantRow);
+    startSessionEpochHeartbeat(authedTenant);
     return true;
   } else {
     sessionStorage.removeItem('hq_tenant_session_' + authedTenant);
@@ -128,7 +247,7 @@ export function renderSubUsersTable() {
           <td class="p-2.5 font-medium text-emerald-950">${customTitle}</td>
           <td class="p-2.5 font-mono text-stone-500">${purePhone}</td>
           <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${u.is_active ? '在册当值' : '停用'}</span></td>
-          <td class="p-2.5 text-right"><button onclick="window.toggleSubUserActive(${u.id}, ${u.is_active})" class="text-[11px] font-bold text-stone-600 hover:underline">${u.is_active ? '停职' : '复职'}</button></td>
+          <td class="p-2.5 text-right"><button onclick="window.toggleSubUserActive(${u.id}, ${u.is_active})" class="text-[11px] font-bold text-stone-600 hover:underline">${u.is_active ? '停职并秒踢' : '复职'}</button></td>
         </tr>
       `;
     })
@@ -200,19 +319,24 @@ export function initAuthBindings() {
           .limit(1);
 
         if (tenantRows && tenantRows.length > 0) {
-          sessionStorage.setItem('hq_tenant_session_' + approvedTid, tenantRows[0].access_key);
+          const tenantRow = tenantRows[0];
+          sessionStorage.setItem('hq_tenant_session_' + approvedTid, tenantRow.access_key);
           sessionStorage.setItem('hq_active_authed_tenant', approvedTid);
+          sessionStorage.setItem('hq_session_epoch_' + approvedTid, String(tenantRow.session_epoch || 1));
           sessionStorage.removeItem('hq_sub_role_' + approvedTid);
           sessionStorage.removeItem('hq_sub_account_' + approvedTid);
           sessionStorage.removeItem('hq_sub_name_' + approvedTid);
 
           hqState.currentAgent = approvedTid;
+          hqState.currentTenantData = tenantRow;
           hqState.currentRoleCode = 'owner';
           hqState.currentAccountCode = '';
           hqState.currentOperatorName = data[0].operator_name || '大当家主账号';
 
           document.getElementById('hq-auth-gate')?.classList.add('hidden');
           applyRoleViewExperience('owner', hqState.currentOperatorName);
+          renderHQSecurityBanner(tenantRow);
+          startSessionEpochHeartbeat(approvedTid);
           window.loadHQData();
         }
       }
@@ -271,18 +395,23 @@ export function initAuthBindings() {
       }
 
       AuthSecurity.clearLoginFailure(`HQ_${tenantId}`);
+      const tenantRow = tenantList[0];
       hqState.currentAgent = tenantId;
+      hqState.currentTenantData = tenantRow;
       hqState.currentRoleCode = subList[0].role_code;
       hqState.currentAccountCode = subList[0].account_name;
       hqState.currentOperatorName = subList[0].real_name;
-      sessionStorage.setItem('hq_tenant_session_' + tenantId, tenantList[0].access_key);
+      sessionStorage.setItem('hq_tenant_session_' + tenantId, tenantRow.access_key);
       sessionStorage.setItem('hq_active_authed_tenant', tenantId);
+      sessionStorage.setItem('hq_session_epoch_' + tenantId, String(tenantRow.session_epoch || 1));
       sessionStorage.setItem('hq_sub_role_' + tenantId, hqState.currentRoleCode);
       sessionStorage.setItem('hq_sub_account_' + tenantId, hqState.currentAccountCode);
       sessionStorage.setItem('hq_sub_name_' + tenantId, hqState.currentOperatorName);
 
       document.getElementById('hq-auth-gate').classList.add('hidden');
       applyRoleViewExperience(hqState.currentRoleCode, hqState.currentOperatorName);
+      renderHQSecurityBanner(tenantRow);
+      startSessionEpochHeartbeat(tenantId);
       window.loadHQData();
       return;
     }
@@ -309,74 +438,181 @@ export function initAuthBindings() {
       return;
     }
 
+    const tenantRow = data[0];
     AuthSecurity.clearLoginFailure(`HQ_${tenantId}`);
-    sessionStorage.setItem('hq_tenant_session_' + tenantId, data[0].access_key);
+    sessionStorage.setItem('hq_tenant_session_' + tenantId, tenantRow.access_key);
     sessionStorage.setItem('hq_active_authed_tenant', tenantId);
+    sessionStorage.setItem('hq_session_epoch_' + tenantId, String(tenantRow.session_epoch || 1));
     sessionStorage.removeItem('hq_sub_role_' + tenantId);
     sessionStorage.removeItem('hq_sub_account_' + tenantId);
     sessionStorage.removeItem('hq_sub_name_' + tenantId);
     hqState.currentAgent = tenantId;
+    hqState.currentTenantData = tenantRow;
     hqState.currentRoleCode = 'owner';
     hqState.currentAccountCode = '';
     hqState.currentOperatorName = '大当家主账号';
     document.getElementById('hq-auth-gate').classList.add('hidden');
     applyRoleViewExperience('owner', '大当家主账号');
+    renderHQSecurityBanner(tenantRow);
+    startSessionEpochHeartbeat(tenantId);
     window.loadHQData();
   };
 
   window.logoutHQ = function () {
     if (hqState.hqQrPollTimer) clearInterval(hqState.hqQrPollTimer);
+    if (_sessionEpochTimer) clearInterval(_sessionEpochTimer);
     sessionStorage.removeItem('hq_tenant_session_' + hqState.currentAgent);
     sessionStorage.removeItem('hq_active_authed_tenant');
     document.getElementById('hq-auth-gate')?.classList.remove('hidden');
   };
 
+  /**
+   * 凭手机验证器 6 位动态码（或一次性应急恢复码）立即自助重设主密码
+   */
   window.submitSelfRecoverPassword = async function () {
     const phone = document.getElementById('rec-phone').value.trim();
     const creditCode = document.getElementById('rec-credit-code').value.trim().toUpperCase();
-    const totpCode = document.getElementById('rec-totp-code').value.trim();
+    const totpOrRecovery = document.getElementById('rec-totp-code').value.trim();
     const newPwd = document.getElementById('rec-new-pwd').value.trim();
 
-    if (phone.length !== 11 || creditCode.length !== 18) return alert('请完整填写 11 位登记手机号与 18 位信用代码/身份证全号！');
-    if (totpCode.length !== 6) return alert('请输入手机验证器 6 位动态码（若手机一并丢失，请使用「紧急挂失冻结」并联系平台总控核发重置信码）。');
+    if (phone.length !== 11 || creditCode.length !== 18) {
+      return alert('请完整填写 11 位登记手机号与 18 位信用代码/身份证全号！');
+    }
+    if (!totpOrRecovery) {
+      return alert('请输入手机验证器 6 位动态码或 1 组 8 位应急恢复码（若全设备均已遗失，请点击「72小时无人值守安全找回」）。');
+    }
 
     const { data: rows } = await supabase.from('platform_tenant').select('*').eq('credit_code', creditCode).limit(1);
     if (!rows || rows.length === 0) return alert('⚠️ 未找到该 18 位信用代码/身份证号对应的入驻档案。');
 
     const tenant = rows[0];
-    if (tenant.phone !== phone && tenant.backup_phone !== phone) return alert('⚠️ 输入的手机号码与登记的主联络手机或备用紧急手机号不符！');
+    if (tenant.phone !== phone && tenant.backup_phone !== phone) {
+      return alert('⚠️ 输入的手机号码与登记的主联络手机或备用紧急手机号不符！');
+    }
 
     const pwdCheck = AuthSecurity.validatePasswordStrength(newPwd, tenant.tenant_id, phone);
     if (!pwdCheck.ok) return alert('⚠️ 新密码强度提示：' + pwdCheck.msg);
 
-    const isTotpOk = await TOTP.verifyTOTP(tenant.totp_secret || 'JBSWY3DPEHPK3PXP', totpCode, 2);
-    if (!isTotpOk) return alert('⚠️ 手机验证器 6 位动态码验证未通过！');
+    let verified = false;
+    if (/^\d{6}$/.test(totpOrRecovery)) {
+      verified = await TOTP.verify(tenant.totp_secret || 'JBSWY3DPEHPK3PXP', totpOrRecovery, 4);
+    } else {
+      const codeHash = await TOTP.sha256Hex(totpOrRecovery);
+      const { data: recRes } = await supabase.rpc('rpc_consume_recovery_code', {
+        p_tenant_id: tenant.tenant_id,
+        p_code_hash: codeHash
+      });
+      verified = Boolean(recRes?.ok);
+    }
+
+    if (!verified) return alert('⚠️ 动态口令或一次性应急恢复码核验未通过！');
 
     const hashedNew = await AuthSecurity.hashPassword(newPwd, tenant.tenant_id);
     await HQService.updateTenantWithVerify(tenant.tenant_id, { access_key: hashedNew, reset_claim_token: null });
+    await supabase.rpc('rpc_bump_session_epoch', { p_tenant_id: tenant.tenant_id, p_reason: '自助核身重设主密码' });
 
-    alert(`🎉 核身找回成功！您的商号代号为【${tenant.tenant_id}】，新密码已加密生效！`);
+    alert(`🎉 核身找回成功！您的商号代号为【${tenant.tenant_id}】，新密码已加密生效并自动踢出所有旧设备！`);
     window.closeModal('modal-self-recover-pwd');
     document.getElementById('hq-login-tenant').value = tenant.tenant_id;
   };
 
+  /**
+   * 门外零误伤通道：取代原本高危的“未登录立即冻结”
+   * 改为发起【72 小时无人值守时间锁】（观察期仅锁改密与删账，绝不阻断正常接单送货）
+   */
   window.submitEmergencyFreezeAccount = async function () {
     const creditCode = document.getElementById('frz-credit-code').value.trim().toUpperCase();
-    const personName = document.getElementById('frz-person-name').value.trim();
-    if (creditCode.length !== 18 || !personName) return alert('请完整填写 18 位证件全号与登记时的负责人真实姓名！');
+    const phoneOrName = document.getElementById('frz-person-name').value.trim();
+    if (creditCode.length !== 18 || !phoneOrName) {
+      return alert('请完整填写 18 位证件全号与登记的主/备手机号！');
+    }
 
     const { data: rows } = await supabase.from('platform_tenant').select('*').eq('credit_code', creditCode).limit(1);
     if (!rows || rows.length === 0) return alert('未找到该证件号对应的在册商号档案。');
-
     const tenant = rows[0];
-    const recordedPerson = (tenant.contact_person || tenant.contact_name || '').trim();
-    if (recordedPerson && !recordedPerson.includes(personName) && !personName.includes(recordedPerson)) {
-      return alert('⚠️ 负责人姓名与立户登记档案不符，无法执行挂失冻结！');
+
+    const { data: rpcRes, error } = await supabase.rpc('rpc_initiate_timelock_recovery', {
+      p_tenant_id: tenant.tenant_id,
+      p_credit_code: creditCode,
+      p_phone: phoneOrName
+    });
+
+    if (error || !rpcRes?.ok) {
+      return alert(`⚠️ 无法启动 72 小时安全找回：${rpcRes?.error || error?.message || '请核对登记的主联系手机号或紧急备用手机号'}`);
     }
 
-    await supabase.from('platform_tenant').update({ membership_status: 'restricted' }).eq('tenant_id', tenant.tenant_id);
-    alert(`🛡️ 已对商号【${tenant.company_name} (${tenant.tenant_id})】启动【护盘冻结保护】！请凭实体公章申明书联系平台总控核发重置信码。`);
+    const expStr = new Date(rpcRes.expires_at).toLocaleString('zh-CN', { hour12: false });
+    alert(
+      `⏳ 已为商号【${rpcRes.company_name} (${rpcRes.tenant_id})】启动【72小时无人值守时间锁】！\n\n` +
+      `· 观察期写保护已生效：一线接单与送货照常运行，已自动锁死改密、删账与改底价；\n` +
+      `· 预计解锁时间：${expStr}（到期后可在此直接设定新主密码，全程无需等待人工）；\n` +
+      `· 若赶上抢收急用，可联系平台总控凭手持证件加急提前放行。`
+    );
     window.closeModal('modal-emergency-freeze');
+  };
+
+  /**
+   * 核身驳回进行中的 72 小时时间锁（并激活 7 天防骚扰冷却期）
+   */
+  window.rejectTimelockRecovery = async function () {
+    const proof = prompt(
+      '🛡️【核身驳回 72 小时找回申请】\n\n为防盗号者反向拦截真老板，请输入以下任一凭证：\n· 手机验证器 6 位动态口令\n· 1 组 8 位一次性应急恢复码\n· 登记的紧急备用手机号'
+    );
+    if (!proof || !proof.trim()) return;
+
+    const clean = proof.trim();
+    const { data: tenant } = await HQService.fetchTenant(hqState.currentAgent);
+    if (!tenant) return;
+
+    let valid = false;
+    if (/^\d{6}$/.test(clean)) {
+      valid = await TOTP.verify(tenant.totp_secret || '', clean, 4);
+    } else if (tenant.backup_phone && clean === tenant.backup_phone.trim()) {
+      valid = true;
+    } else {
+      const codeHash = await TOTP.sha256Hex(clean);
+      const { data: recRes } = await supabase.rpc('rpc_consume_recovery_code', {
+        p_tenant_id: tenant.tenant_id,
+        p_code_hash: codeHash
+      });
+      valid = Boolean(recRes?.ok);
+    }
+
+    if (!valid) {
+      return alert('⚠️ 核身凭证验证未通过！请确认输入了正确的 TOTP 动态码、应急恢复码或备用手机号。');
+    }
+
+    const fp = AuthSecurity.getDeviceFingerprint();
+    await supabase.rpc('rpc_reject_timelock_recovery', {
+      p_tenant_id: tenant.tenant_id,
+      p_verify_proof: fp.summary
+    });
+
+    if (hqState.currentTenantData) {
+      hqState.currentTenantData.timelock_status = 'none';
+      hqState.currentTenantData.timelock_expires_at = null;
+    }
+    renderHQSecurityBanner(hqState.currentTenantData);
+    alert('✅ 已成功驳回该找回申请，并开启【7 天防骚扰冷却期】！');
+  };
+
+  /**
+   * 一键全网踢出所有其他设备（session_epoch + 1）
+   */
+  window.triggerGlobalDeviceEviction = async function () {
+    if (!confirm('🚨【一键全网踢出所有其他设备】\n\n除当前这台设备外，其他所有电脑和手机的登录态将在 45 秒内全部强制下线！\n确定立即执行吗？')) {
+      return;
+    }
+    const fp = AuthSecurity.getDeviceFingerprint();
+    const { data, error } = await supabase.rpc('rpc_bump_session_epoch', {
+      p_tenant_id: hqState.currentAgent,
+      p_reason: `当家一键全网踢人 (${fp.summary})`
+    });
+    if (error || !data?.ok) {
+      return alert('全网踢人指令执行失败，请稍后重试。');
+    }
+    sessionStorage.setItem('hq_session_epoch_' + hqState.currentAgent, String(data.session_epoch));
+    alert(`✅ 全网踢人已生效（安全纪元 v${data.session_epoch}）！本机保留在线，其他旧设备已全部踢出。`);
   };
 
   window.openTotpSetupModal = async function () {
@@ -385,7 +621,7 @@ export function initAuthBindings() {
 
     let secret = (tenant?.totp_secret || '').trim();
     if (!secret) {
-      secret = TOTP.generateRandomSecret();
+      secret = TOTP.generateSecret(20);
       try {
         await HQService.updateTenantWithVerify(hqState.currentAgent, { totp_secret: secret, totp_enabled: true });
       } catch (upErr) {
@@ -395,7 +631,8 @@ export function initAuthBindings() {
 
     document.getElementById('totp-secret-display').innerText = secret;
     document.getElementById('totp-test-code').value = '';
-    document.getElementById('totp-setup-qr').src = TOTP.buildQrImageUrl('SupplyChainHQ', hqState.currentAgent, secret);
+    const otpUri = TOTP.getOtpAuthUri(secret, `${tenant?.company_name || hqState.currentAgent}(${hqState.currentAgent})`);
+    document.getElementById('totp-setup-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpUri)}`;
     window.openModal('modal-totp-setup');
   };
 
@@ -408,20 +645,41 @@ export function initAuthBindings() {
     const secret = document.getElementById('totp-secret-display').innerText.trim();
     if (!code || code.length !== 6) return alert('请输入验证器中显示的 6 位动态口令！');
 
-    const isValid = await TOTP.verifyTOTP(secret, code, 2);
+    const isValid = await TOTP.verify(secret, code, 4);
     if (!isValid) {
       return alert('⚠️ 动态口令验证未通过！\n1. 请确认手机「自动设置时间」已开启；\n2. 若扫码异常，请点击「复制密钥」，在手机验证器选择「手动输入密钥」添加（时间基准）。');
     }
 
     try {
+      // 同步生成 6 组 SHA-256 一次性应急恢复码并写入安全保险箱
+      const recoveryBundle = await TOTP.generateRecoveryCodeBundle(6);
+      const { data: tenant } = await HQService.fetchTenant(hqState.currentAgent);
+
       await HQService.updateTenantWithVerify(hqState.currentAgent, { totp_secret: secret, totp_enabled: true });
+      await supabase.rpc('rpc_bind_totp_and_recovery', {
+        p_tenant_id: hqState.currentAgent,
+        p_access_key: tenant?.access_key || '',
+        p_totp_secret: secret,
+        p_recovery_hashes: recoveryBundle.hashedCodes
+      });
+
       if (hqState.currentTenantData) {
         hqState.currentTenantData.totp_secret = secret;
         hqState.currentTenantData.totp_enabled = true;
       }
       updateTotpStatusBadge(true);
-      alert('🎉 身份验证器已写入云端并绑定成功！');
+      renderHQSecurityBanner(hqState.currentTenantData);
       window.closeModal('modal-totp-setup');
+
+      // 阅后即焚：立即弹出带 6 组一次性恢复码的高清《安家立户凭证卡》（支持微信长按保存）
+      AuthSecurity.showVoucherPreviewModal({
+        tenantId: hqState.currentAgent,
+        companyName: tenant?.company_name || hqState.currentAgent,
+        legalName: tenant?.contact_person || tenant?.contact_name || '',
+        phone: tenant?.phone || '',
+        backupPhone: tenant?.backup_phone || '',
+        recoveryCodes: recoveryBundle.plainCodes
+      });
     } catch (err) {
       alert('⚠️ 数据库写入被拦截：' + err.message);
     }
@@ -439,7 +697,7 @@ export function initAuthBindings() {
     const totpCode = document.getElementById('chg-totp-code').value.trim();
     if (!oldKey || !newKey) return alert('请填全原密码与新密码！');
     if (newKey !== confirmKey) return alert('两次输入的新密码不一致！');
-    if (!totpCode || totpCode.length !== 6) return alert('请输入手机验证器 6 位动态码！');
+    if (!totpCode) return alert('请输入手机验证器 6 位动态码或 1 组 8 位应急恢复码！');
 
     const pwdCheck = AuthSecurity.validatePasswordStrength(newKey, hqState.currentAgent, '');
     if (!pwdCheck.ok) return alert('⚠️ 新密码强度提示：' + pwdCheck.msg);
@@ -450,15 +708,32 @@ export function initAuthBindings() {
     const isTokenMatch = tenant.reset_claim_token && oldKey.toUpperCase() === tenant.reset_claim_token.toUpperCase();
     if (!isOldKeyMatch && !isTokenMatch) return alert('⚠️ 原访问密钥不正确！');
 
-    const isTotpValid = await TOTP.verifyTOTP(tenant.totp_secret || 'JBSWY3DPEHPK3PXP', totpCode, 2);
-    if (!isTotpValid) return alert('⚠️ 验证器 6 位动态码错误！');
+    let isTotpValid = false;
+    if (/^\d{6}$/.test(totpCode)) {
+      isTotpValid = await TOTP.verify(tenant.totp_secret || 'JBSWY3DPEHPK3PXP', totpCode, 4);
+    } else {
+      const codeHash = await TOTP.sha256Hex(totpCode);
+      const { data: recRes } = await supabase.rpc('rpc_consume_recovery_code', {
+        p_tenant_id: hqState.currentAgent,
+        p_code_hash: codeHash
+      });
+      isTotpValid = Boolean(recRes?.ok);
+    }
+    if (!isTotpValid) return alert('⚠️ 验证器动态码或应急恢复码核验未通过！');
 
     const hashedNewKey = await AuthSecurity.hashPassword(newKey, hqState.currentAgent);
     try {
       await HQService.updateTenantWithVerify(hqState.currentAgent, { access_key: hashedNewKey, reset_claim_token: null });
+      const { data: epochRes } = await supabase.rpc('rpc_bump_session_epoch', {
+        p_tenant_id: hqState.currentAgent,
+        p_reason: '大当家修改安家主密码'
+      });
       sessionStorage.setItem('hq_tenant_session_' + hqState.currentAgent, hashedNewKey);
+      if (epochRes?.session_epoch) {
+        sessionStorage.setItem('hq_session_epoch_' + hqState.currentAgent, String(epochRes.session_epoch));
+      }
       document.getElementById('hq-default-pwd-banner')?.classList.add('hidden');
-      alert('🎉 新密钥已哈希加密写入云端并生效存盘！');
+      alert('🎉 新密钥已哈希加密写入云端并生效存盘，其他旧设备已自动踢出！');
       window.closeModal('modal-change-password');
     } catch (err) {
       alert('⚠️ 修改密码写入云端被拦截：' + err.message);
@@ -466,6 +741,13 @@ export function initAuthBindings() {
   };
 
   window.trigger2FAAction = function (actionDesc, onVerifiedCallback) {
+    // 1. 先检查是否处于 72 小时观察期写保护
+    const guard = AuthSecurity.guardWriteOperation(hqState.currentTenantData, 'high_risk');
+    if (!guard.allowed) {
+      alert(guard.reason);
+      return;
+    }
+
     document.getElementById('modal-2fa-desc').innerText = actionDesc;
     document.getElementById('input-2fa-code').value = '';
     hqState.pending2FACallback = onVerifiedCallback;
@@ -480,10 +762,26 @@ export function initAuthBindings() {
 
   window.submit2FAVerification = async function () {
     const code = document.getElementById('input-2fa-code').value.trim();
-    if (!code || code.length !== 6) return alert('⚠️ 请输入 6 位动态码！');
+    if (!code) return alert('⚠️ 请输入 6 位动态口令或 1 组 8 位应急恢复码！');
+
     const { data: tenant } = await HQService.fetchTenant(hqState.currentAgent);
-    const isValid = await TOTP.verifyTOTP(tenant?.totp_secret || 'JBSWY3DPEHPK3PXP', code, 2);
-    if (!isValid) return alert('⚠️ 动态口令验证失败！');
+    let isValid = false;
+
+    if (/^\d{6}$/.test(code)) {
+      isValid = await TOTP.verify(tenant?.totp_secret || 'JBSWY3DPEHPK3PXP', code, 4);
+    } else {
+      const codeHash = await TOTP.sha256Hex(code);
+      const { data: recRes } = await supabase.rpc('rpc_consume_recovery_code', {
+        p_tenant_id: hqState.currentAgent,
+        p_code_hash: codeHash
+      });
+      isValid = Boolean(recRes?.ok);
+      if (isValid) {
+        alert(`✅ 一次性应急恢复码核销成功（剩余 ${recRes.remaining}/6 组）！`);
+      }
+    }
+
+    if (!isValid) return alert('⚠️ 动态口令或一次性恢复码验证失败！');
     window.close2FAModal();
     if (typeof hqState.pending2FACallback === 'function') hqState.pending2FACallback();
   };
@@ -557,7 +855,15 @@ export function initAuthBindings() {
   };
 
   window.toggleSubUserActive = async function (id, curState) {
-    await supabase.from('tenant_sub_user').update({ is_active: !curState }).eq('id', id);
+    const nextState = !curState;
+    await supabase.from('tenant_sub_user').update({ is_active: nextState }).eq('id', id);
+    if (!nextState) {
+      // 停职离职员工时，同步递增 session_epoch 强制踢出前员工所有设备
+      await supabase.rpc('rpc_bump_session_epoch', {
+        p_tenant_id: hqState.currentAgent,
+        p_reason: `停职属员账号(ID:${id})触发全网秒踢`
+      });
+    }
     window.loadHQData();
   };
 }
