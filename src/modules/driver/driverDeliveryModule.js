@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase.js';
 import { compressImageFile, uploadBlobToStorage } from '../../utils/storage.js';
+import { AuthSecurity } from '../../utils/authSecurity.js';
 import { DriverService } from '../../services/driverService.js';
 import {
   driverState,
@@ -9,6 +10,17 @@ import {
 } from './driverState.js';
 
 const deliverySignPad = createSignatureController('sign-pad');
+let isSubmittingCollection = false;
+
+function buildClientTxUuid(tenantId, orderId, storeId) {
+  const rnd = new Uint8Array(4);
+  crypto.getRandomValues(rnd);
+  const hex = Array.from(rnd)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
+  return `TX-${String(tenantId || 'HQ').toUpperCase()}-${orderId || storeId || 0}-${Date.now()}-${hex}`;
+}
 
 function renderProofStrip() {
   const box = document.getElementById('proof-preview-strip');
@@ -384,6 +396,8 @@ export function initDeliveryBindings() {
   };
 
   window.submitCollection = async function () {
+    if (isSubmittingCollection) return;
+
     const storeId = parseInt(document.getElementById('modal-store-id').value);
     const orderId = parseInt(document.getElementById('modal-order-id').value);
     const storeName = document.getElementById('modal-shop-title').innerText;
@@ -445,6 +459,10 @@ export function initDeliveryBindings() {
       return;
     }
 
+    // 生成全局唯一幂等事务号 + 设备终端存证，杜绝弱网连点或离线重传导致重复扣款
+    const clientTxUuid = buildClientTxUuid(driverState.currentAgent, orderId, storeId);
+    const deviceFp = AuthSecurity.getDeviceFingerprint();
+
     const signDataUrl = deliverySignPad.toDataURL();
     const deliveryPayload = {
       tenantId: driverState.currentAgent,
@@ -461,14 +479,24 @@ export function initDeliveryBindings() {
       newDebt,
       newBaskets,
       signDataUrl,
-      proofImages: driverState.proofImagesList
+      proofImages: driverState.proofImagesList,
+      clientTxUuid,
+      deviceSummary: deviceFp.summary
     };
+
+    const submitBtn = document.getElementById('btn-submit-collection');
+    isSubmittingCollection = true;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerText = '⏳ 正在安全核销入账...';
+    }
 
     try {
       await DriverService.completeDelivery(deliveryPayload);
 
       alert(
         `✅ 交割核销圆满完成！\n` +
+          `• 电子凭单流水: ${clientTxUuid.slice(-12)}\n` +
           `• 本次实收款: ¥${payAmt.toFixed(2)} (${method})\n` +
           `• 收回周转载具: ${basketReturn} 件 (折抵 ¥${basketDeductAmt.toFixed(2)})\n` +
           `• 门店最新在账: ¥${newDebt.toFixed(2)}`
@@ -478,19 +506,28 @@ export function initDeliveryBindings() {
       await window.loadDriverTasks();
     } catch (err) {
       const offlineQueue = getOfflineQueue();
-      offlineQueue.push({
-        id: Date.now(),
-        createdAt: new Date().toISOString(),
-        payload: deliveryPayload
-      });
-      saveOfflineQueue(offlineQueue);
+      const alreadyQueued = offlineQueue.some((q) => q.payload?.clientTxUuid === clientTxUuid || (orderId > 0 && Number(q.payload?.orderId) === orderId));
+      if (!alreadyQueued) {
+        offlineQueue.push({
+          id: Date.now(),
+          createdAt: new Date().toISOString(),
+          payload: deliveryPayload
+        });
+        saveOfflineQueue(offlineQueue);
+      }
 
       alert(
-        `📡 当前信号较弱（如地下室或偏远村社），本笔签收凭单已自动加密暂存至本地防丢队列！\n` +
-          `出库恢复信号后，点击顶栏「立即同步回库」即可上传总账。`
+        `📡 当前信号较弱（如地下室或偏远村社），本笔签收凭单已按唯一流水号加密锁存至本地防丢队列！\n` +
+          `出库恢复信号后，点击顶栏「立即同步回库」即可上传总账（绝不重复扣款）。`
       );
       window.closeModal('collect-modal');
       renderRoute();
+    } finally {
+      isSubmittingCollection = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        window.updateDeliverBtnText();
+      }
     }
   };
 
