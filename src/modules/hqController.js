@@ -155,7 +155,7 @@ function renderPerformanceAndCommissions() {
               <span class="px-2.5 py-1 rounded-xl border ${rebateBonus > 0 ? 'bg-emerald-50 text-emerald-900 border-emerald-300 font-bold' : 'bg-stone-50 text-stone-400 border-stone-200'}">
                 ${hqState.globalPolicy.rebateEnabled !== false ? `阶梯返利(${matchedRebateRate}%): ¥${rebateBonus.toFixed(2)}` : '进货返利已停用'}
               </span>
-              <span class="px-2.5 py-1 rounded-xl ${promoterEnabled ? 'bg-amber-50 text-amber-950 border border-amber-300 font-bold' : 'bg-stone-50 text-stone-400 border border-stone-200'}">
+              <span class="px-2.5 py-1 rounded-xl ${promoterEnabled ? 'bg-amber-50 text-amber-950 border border-amber-300 font-bold' : 'bg-stone-50 text-stone-400 border-stone-200'}">
                 ${promoterEnabled ? `天街推客润利(${promoterRate}%): ¥${promoterCommission.toFixed(2)}` : '推客润利已停用'}
               </span>
             </div>
@@ -199,19 +199,19 @@ function renderThreeFlowsAndAIAdvisor() {
     aiTips.push({ level: 'rose', icon: '🔧', title: `内部定损待核：有 ${pendingClaims.length} 笔《实地定损鉴证单》待裁定冲账`, desc: `最新来自【${meta.sourceParty}】（单号 ${meta.voucherNo}）：${meta.cleanNote}`, btnText: '立即核准冲账 ➔', action: `window.approveInternalDamageClaim(${firstClaim.id});` });
   }
   if (!isWarehouseBlindPrice() && draftProds.length > 0) {
-    aiTips.push({ level: 'amber', icon: '📝', title: `分段上架待定策：有 ${draftProds.length} 款货品草稿待定基准价并合规上架`, desc: '仓管已录好实物规格与库存，点击即可设定批发与网上零售基准价。', btnText: '立即定价上架 ➔', action: `window.switchTab('products'); window.toggleDraftOnlyFilter();` });
+    aiTips.push({ level: 'amber', icon: '📝', title: `分段上架待定策：有 ${draftProds.length} 款货品草稿待定基准价并合规上架`, desc: '仓管已录好实物规格与库存，点击即可设定批发与网上零售基准价并通过AI违禁词核验正式上架。', btnText: '立即定价上架 ➔', action: `window.switchTab('products'); window.toggleDraftOnlyFilter();` });
   }
   if (pendingPlans.length > 0) {
-    aiTips.push({ level: 'emerald', icon: '📅', title: `真实用度计划：有 ${pendingPlans.length} 份合作门店用度计划待纳入排产`, desc: '门店已提前提报未来周期真实用度预估量，查看「采收排产汇总单」合并总量。', btnText: '查看排产总单 ➔', action: 'window.openPlanAggregateModal();' });
+    aiTips.push({ level: 'emerald', icon: '📅', title: `真实用度计划：有 ${pendingPlans.length} 份合作门店用度计划待纳入排产`, desc: '门店已提前提报未来周期真实用度预估量，可先查看「采收排产汇总单」合并总量，再按需采收排产。', btnText: '查看排产总单 ➔', action: 'window.openPlanAggregateModal();' });
   }
   if (activePoolItems.length > 0) {
-    aiTips.push({ level: 'amber', icon: '🔄', title: `同城余缺互调池：当前有 ${activePoolItems.length} 笔门店余货正在互调流通`, desc: '合作门店挂出的富余货品正进行同城平价调剂，可安排送货师傅顺路捎带交割。', btnText: '查看互调动态 ➔', action: `window.switchTab('settle'); window.filterOrderStatus('local_pool');` });
+    aiTips.push({ level: 'amber', icon: '🔄', title: `同城余缺互调池：当前有 ${activePoolItems.length} 笔门店余货正在互调流通`, desc: '合作门店挂出的富余货品正进行同城平价调剂，可安排送货师傅顺路捎带交割，减少终端损耗。', btnText: '查看互调动态 ➔', action: `window.switchTab('settle'); window.filterOrderStatus('local_pool');` });
   }
   if (openDemands.length > 0) {
-    aiTips.push({ level: 'amber', icon: '📢', title: `天街新需求：有 ${openDemands.length} 条门店/抱团求购榜待回应`, desc: '百工天街买家与门店已发起真实用度求购需求，按阳光工价给出报价即可锁定排产。', btnText: '立即报工价接单 ➔', action: `window.switchTab('settle'); window.filterOrderStatus('c2b_demands');` });
+    aiTips.push({ level: 'amber', icon: '📢', title: `天街新需求：有 ${openDemands.length} 条门店/抱团求购榜待回应`, desc: '百工天街买家与门店已发起真实用度求购或定制聚量需求，按阳光工价给出直供报价即可锁定产销计划。', btnText: '立即报工价接单 ➔', action: `window.switchTab('settle'); window.filterOrderStatus('c2b_demands');` });
   }
   lowStockProds.forEach((p) => {
-    aiTips.push({ level: 'rose', icon: '📦', title: `库存紧缺预警：【${p.name}】仅剩 ${p.stock ?? 0}${p.measure_unit || '件'}`, desc: '已低于安全预警线，建议立即开具采收/完工入库单备货。', btnText: '+ 立即开入库单', action: `window.openStockOpsModal(${p.id})` });
+    aiTips.push({ level: 'rose', icon: '📦', title: `库存紧缺预警：【${p.name}】仅剩 ${p.stock ?? 0}${p.measure_unit || '件'}`, desc: '已低于安全预警线，建议立即开具采收/完工入库单备货，保障门店日常不断供。', btnText: '+ 立即开入库单', action: `window.openStockOpsModal(${p.id})` });
   });
 
   const warnDays = parseInt(hqState.globalPolicy.expiryWarnDays ?? 30);
@@ -224,7 +224,7 @@ function renderThreeFlowsAndAIAdvisor() {
       const expTs = new Date(`${expStr}T23:59:59`).getTime();
       const diffDays = Math.ceil((expTs - nowTs) / (24 * 3600 * 1000));
       if (expTs - nowTs <= warnMs) {
-        aiTips.push({ level: diffDays <= 7 ? 'rose' : 'amber', icon: '⏳', title: `${diffDays <= 0 ? '批次已到期提醒' : `临期预警（余 ${diffDays} 天）`}：【${p.name}】在库 ${p.stock}${p.measure_unit || '件'}`, desc: `到期日为 ${expStr}，建议优先安排配发或标注余缺调剂。`, btnText: '📦 安排优先配发', action: 'window.openPushOrderModal()' });
+        aiTips.push({ level: diffDays <= 7 ? 'rose' : 'amber', icon: '⏳', title: `${diffDays <= 0 ? '批次已到期提醒' : `临期预警（余 ${diffDays} 天）`}：【${p.name}】在库 ${p.stock}${p.measure_unit || '件'}`, desc: `到期日为 ${expStr}（已进入设定的 ${warnDays} 天预警窗），建议优先安排配发或标注余缺调剂。`, btnText: '📦 安排优先配发', action: 'window.openPushOrderModal()' });
       }
     });
   }
@@ -235,27 +235,27 @@ function renderThreeFlowsAndAIAdvisor() {
       const limit = parseFloat(s.credit_limit || 2000);
       const baskets = parseInt(s.carrier_hold_count || s.basket_count || 0);
       if (debt > limit * 0.85 && debt > 0) {
-        aiTips.push({ level: 'amber', icon: '💰', title: `信用账款提醒：【${s.name}】在账 ¥${debt.toFixed(2)}（接近周转额度 ¥${limit}）`, desc: '建议生成周期电子对账单核对回款平账，或安排业务员上门拜访催收。', btnText: '🤝 拜访催收/对账', action: `window.openSalesCollectModal(${s.id});` });
+        aiTips.push({ level: 'amber', icon: '💰', title: `信用账款提醒：【${s.name}】在账 ¥${debt.toFixed(2)}（接近周转额度 ¥${limit}）`, desc: '建议生成周期电子对账单发给掌柜核对回款平账，或安排业务员上门拜访催收。', btnText: '🤝 拜访催收/对账', action: `window.openSalesCollectModal(${s.id});` });
       }
       if (baskets >= 15) {
-        aiTips.push({ level: 'amber', icon: '🔄', title: `${hqState.carrierLabel}循环提醒：【${s.name}】借用 ${baskets} 件未归还`, desc: '建议提醒送货师傅本趟回程顺路清点带回。', btnText: '🏪 查看门店档案', action: `window.switchTab('stores');` });
+        aiTips.push({ level: 'amber', icon: '🔄', title: `${hqState.carrierLabel}循环提醒：【${s.name}】借用 ${baskets} 件未归还`, desc: '在外周转载具较多，建议提醒送货师傅本趟回程顺路清点带回，物尽其用。', btnText: '🏪 查看门店档案', action: `window.switchTab('stores');` });
       }
     });
   }
 
   if (leadsList.length > 0) {
-    aiTips.push({ level: 'emerald', icon: '🤝', title: `新店合作意向：有 ${leadsList.length} 家意向门店申请上门送样洽谈`, desc: '意向门店已提交联系方式，及时联系送样并一键立户。', btnText: '立即承接立户 ➔', action: `window.switchTab('settle'); window.filterOrderStatus('directory_leads');` });
+    aiTips.push({ level: 'emerald', icon: '🤝', title: `新店合作意向：有 ${leadsList.length} 家意向门店申请上门送样洽谈`, desc: '意向门店已提交联系方式，及时联系送样并一键立户可共同完善城乡供需网络。', btnText: '立即承接立户 ➔', action: `window.switchTab('settle'); window.filterOrderStatus('directory_leads');` });
   }
 
   if (aiTips.length === 0) {
-    aiTips.push({ level: 'emerald', icon: '🌿', title: '经营运转平稳：供需平衡、账目清白、货畅其流', desc: '当前所有在供良品库存充足，合作门店往来健康。', btnText: '📲 分享合作名片', action: 'window.openPromoQrModal()' });
+    aiTips.push({ level: 'emerald', icon: '🌿', title: '经营运转平稳：供需平衡、账目清白、货畅其流', desc: '当前所有在供良品库存充足，合作门店往来健康。可点击上方「📲 合作名片码」与更多门店和合作社建立直供联系。', btnText: '📲 分享合作名片', action: 'window.openPromoQrModal()' });
   }
 
   document.getElementById('flow-info-ai').innerText = `${aiTips.length} 条`;
   document.getElementById('ai-advisor-cards').innerHTML = aiTips
     .map((t) => {
       const colorCls = t.level === 'rose' ? 'bg-rose-50/70 border-rose-200 text-rose-950' : t.level === 'amber' ? 'bg-amber-50/70 border-amber-200 text-amber-950' : 'bg-emerald-50/70 border-emerald-200 text-emerald-950';
-      return `<div class="p-3.5 rounded-2xl border ${colorCls} flex flex-col justify-between gap-2.5"><div><div class="font-bold text-xs flex items-center gap-1.5"><span>${t.icon}</span><span>${t.title}</span></div><p class="text-[11px] opacity-85 mt-1 leading-relaxed">${t.desc}</p></div><div class="text-right"><button onclick="${t.action}" class="bg-white hover:bg-stone-50 text-stone-900 border border-stone-200 px-3 py-1 rounded-xl font-bold text-[11px] shadow-xs">${t.btnText}</button></div></div>`;
+      return `<div class="p-3.5 rounded-2xl border ${colorCls} flex flex-col justify-between gap-2.5"><div><div class="font-bold text-xs flex items-center gap-1.5"><span>${t.icon}</span><span>${t.title}</span></div><p class="text-[11px] opacity-85 mt-1 leading-relaxed">${t.desc}</p></div><div class="text-right"><button onclick="${t.action}" class="bg-white hover:bg-stone-50 text-stone-900 border border-stone-200 px-3 py-1 rounded-xl font-bold text-[11px] shadow-xs active:scale-95 transition">${t.btnText}</button></div></div>`;
     })
     .join('');
 }
@@ -276,6 +276,13 @@ window.loadHQData = async function () {
 
   const guideEl = document.getElementById('hq-onboarding-guide');
   if (guideEl) guideEl.classList.toggle('hidden', localStorage.getItem('hq_onboarding_dismissed_' + hqState.currentAgent) === '1');
+
+  const defaultBanner = document.getElementById('hq-default-pwd-banner');
+  if (hqState.currentRoleCode === 'owner' && curTenant.credit_code && curTenant.credit_code.length >= 6) {
+    const last6 = curTenant.credit_code.slice(-6).toUpperCase();
+    if ((curTenant.access_key || '').toUpperCase() === last6) defaultBanner?.classList.remove('hidden');
+    else defaultBanner?.classList.add('hidden');
+  }
 
   const [dashData, plansRes, poolRes] = await Promise.all([
     HQService.fetchFullDashboardData(hqState.currentAgent),
@@ -371,12 +378,77 @@ export async function initHQController() {
   initOrderStoreBindings();
 
   window.openContextualHelpModal = function () {
+    const roleNames = {
+      owner: '大当家主账号',
+      warehouse: '仓储调度',
+      finance: '账房财务',
+      sales: '业务员/客户经理',
+      driver: '送货师傅',
+      producer: '产区采收/班组长',
+      qc_service: '售后定损/质检',
+      auditor: '独立稽核'
+    };
+
     const subEl = document.getElementById('help-context-subtitle');
-    if (subEl) subEl.innerText = `当值岗位：【${hqState.currentOperatorName}】 · 实时经营体检`;
+    if (subEl) {
+      subEl.innerText = `当值岗位：【${roleNames[hqState.currentRoleCode] || hqState.currentOperatorName}】 · 实时经营体检`;
+    }
+
+    const diagnostics = [];
+
+    if (hqState.currentRoleCode === 'owner' && !(hqState.currentTenantData?.totp_enabled && hqState.currentTenantData?.totp_secret)) {
+      diagnostics.push({
+        title: '🛡️ 安全体检：尚未绑定手机身份验证器 (2FA)',
+        desc: '绑定微信「腾讯身份验证器」后，大额销账、大幅降价与删品均受动态口令护航，守住自家账本安全。',
+        btnText: '立即绑定验证器 ➔',
+        action: `window.closeModal('modal-contextual-help'); window.openTotpSetupModal();`
+      });
+    }
+
+    const pendingClaims = hqState.allInventoryLogs.filter((l) => l.action_type === 'qc_damage_claim' && !String(l.remark || '').includes('[已核准冲账]'));
+    if (!isWarehouseBlindPrice() && pendingClaims.length > 0) {
+      diagnostics.push({
+        title: `🔧 内部定损待核：有 ${pendingClaims.length} 笔《实地定损鉴证单》待裁定冲账`,
+        desc: '售后定损员已提交现场实拍照与门店掌柜签名，核准后将自动冲减对应门店欠款。',
+        btnText: '去核准定损单 ➔',
+        action: `window.closeModal('modal-contextual-help'); window.switchTab('advisor');`
+      });
+    }
+
+    const draftProds = hqState.allProducts.filter((p) => p.status === 'draft');
+    if (!isWarehouseBlindPrice() && draftProds.length > 0) {
+      diagnostics.push({
+        title: `📝 待定价草稿：有 ${draftProds.length} 款货品草稿等待定价格并正式上架`,
+        desc: '仓管已录好实物规格与库存，点击即可设置批发价与网上零售价并完成合规自检。',
+        btnText: '去定价格上架 ➔',
+        action: `window.closeModal('modal-contextual-help'); window.switchTab('products'); window.toggleDraftOnlyFilter();`
+      });
+    }
+
+    diagnostics.push({
+      title: '📖 当前岗位操作要领与常见问题',
+      desc: '• 仓管/产区岗：点击「当前库存」即可开具 RK 入库单或 CK 出库单，全程物理盲价隔离；\n• 业务员：在「合作门店」中仅见名下私海与公海门店，拜访催收后单据自动推送财务核销；\n• 财务岗：点清回款与定损单后销账，大额操作自动校验 2FA。',
+      btnText: '查看极简单据台账 ➔',
+      action: `window.closeModal('modal-contextual-help'); window.switchTab('advisor');`
+    });
+
     const box = document.getElementById('help-guidance-cards');
     if (box) {
-      box.innerHTML = `<div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5"><b class="text-emerald-950 block">📖 当前岗位操作要领</b><p class="text-[11px] text-stone-600 leading-relaxed">• 仓管/产区岗：点击「当前库存」开具 RK/CK 单据；<br>• 业务员：拜访催收后单据直推财务核销；<br>• 财务岗：点清回款与定损单后销账。</p></div>`;
+      box.innerHTML = diagnostics
+        .map(
+          (d) => `
+          <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
+            <b class="text-emerald-950 block">${d.title}</b>
+            <p class="text-[11px] text-stone-600 whitespace-pre-line leading-relaxed">${d.desc}</p>
+            <div class="text-right">
+              <button type="button" onclick="${d.action}" class="bg-[#1b4332] text-white font-bold px-3 py-1 rounded-xl text-[11px]">${d.btnText}</button>
+            </div>
+          </div>
+        `
+        )
+        .join('');
     }
+
     window.openModal('modal-contextual-help');
   };
 
@@ -385,6 +457,7 @@ export async function initHQController() {
     if (!listEl) return;
     const msgs = [];
     const draftProds = hqState.allProducts.filter((p) => p.status === 'draft');
+    const rectifyProds = hqState.allProducts.filter((p) => p.status === 'rectify_required');
     const pendingClaims = hqState.allInventoryLogs.filter((l) => l.action_type === 'qc_damage_claim' && !String(l.remark || '').includes('[已核准冲账]'));
     const normalPending = hqState.allOrders.filter((o) => o.order_status === 'pending_confirm' && !isDirectoryLead(o));
     const overCredits = hqState.allOrders.filter((o) => o.order_status === 'over_credit_pending');
@@ -397,19 +470,27 @@ export async function initHQController() {
         const meta = extractVoucherMeta(c);
         msgs.push({ badge: '🔧 内部定损单', badgeCls: 'bg-rose-600 text-white', title: `【${meta.sourceParty}】定损单 ${meta.voucherNo} 待核准冲账`, desc: meta.cleanNote, action: `window.closeModal('modal-hq-notifications'); window.approveInternalDamageClaim(${c.id});` });
       });
-      if (draftProds.length > 0) msgs.push({ badge: '📝 待定价草稿', badgeCls: 'bg-amber-500 text-stone-950', title: `有 ${draftProds.length} 款新货品草稿待定价上架`, desc: draftProds.map((d) => d.name).join('、'), action: `window.closeModal('modal-hq-notifications'); window.switchTab('products'); window.toggleDraftOnlyFilter();` });
-      overCredits.forEach((o) => msgs.push({ badge: '🚨 超信特批', badgeCls: 'bg-rose-600 text-white', title: `【${o.store_name}】申请超授信额度 ¥${o.over_credit_amount || 0} 放行`, desc: `单号 #${o.order_no || o.id}`, action: `window.closeModal('modal-hq-notifications'); window.switchTab('settle'); window.filterOrderStatus('over_credit_pending');` }));
+      if (rectifyProds.length > 0) {
+        msgs.push({ badge: '📜 礼貌润色提醒', badgeCls: 'bg-amber-500 text-stone-950', title: `有 ${rectifyProds.length} 款货品收到平台规范润色提示`, desc: rectifyProds.map((r) => r.name).join('、'), action: `window.closeModal('modal-hq-notifications'); window.switchTab('products');` });
+      }
+      if (draftProds.length > 0) {
+        msgs.push({ badge: '📝 待定价草稿', badgeCls: 'bg-amber-500 text-stone-950', title: `仓管提交了 ${draftProds.length} 款新货品草稿等待定基准价并上架`, desc: draftProds.map((d) => d.name).join('、'), action: `window.closeModal('modal-hq-notifications'); window.switchTab('products'); window.toggleDraftOnlyFilter();` });
+      }
+      overCredits.forEach((o) => msgs.push({ badge: '🚨 超信特批', badgeCls: 'bg-rose-600 text-white', title: `【${o.store_name}】申请超授信额度 ¥${o.over_credit_amount || 0} 放行`, desc: `单号 #${o.order_no || o.id} · 净结 ¥${parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2)}`, action: `window.closeModal('modal-hq-notifications'); window.switchTab('settle'); window.filterOrderStatus('over_credit_pending');` }));
       if (hqState.pendingCashLogsCache.length > 0) {
         const sumCash = hqState.pendingCashLogsCache.reduce((s, x) => s + parseFloat(x.amount || 0), 0);
-        msgs.push({ badge: '💵 随车/催收待点款', badgeCls: 'bg-amber-700 text-white', title: `有 ${hqState.pendingCashLogsCache.length} 笔回款待点清（合计 ¥${sumCash.toFixed(2)}）`, desc: '包含随车收款与业务员拜访催收留痕', action: `window.closeModal('modal-hq-notifications'); window.jumpToDriverCashPanel();` });
+        msgs.push({ badge: '💵 随车/催收待点款', badgeCls: 'bg-amber-700 text-white', title: `有 ${hqState.pendingCashLogsCache.length} 笔回款/收款待财务点清入库（合计 ¥${sumCash.toFixed(2)}）`, desc: '包含送货师傅随车收款与业务员上门拜访催收留痕', action: `window.closeModal('modal-hq-notifications'); window.jumpToDriverCashPanel();` });
       }
     }
-    normalPending.forEach((o) => msgs.push({ badge: '📥 门店补货单', badgeCls: 'bg-emerald-800 text-white', title: `【${o.store_name}】发来新补货单`, desc: `单号 #${o.order_no || o.id}`, action: `window.closeModal('modal-hq-notifications'); window.switchTab('settle'); window.filterOrderStatus('pending_confirm');` }));
-    submittedPlans.forEach((p) => msgs.push({ badge: '📅 真实用度计划', badgeCls: 'bg-amber-500 text-stone-950', title: `【${p.store_name}】提报 ${p.plan_cycle} 用度计划`, desc: `期望到店：${p.expected_date || '近期'}`, action: `window.closeModal('modal-hq-notifications'); window.switchTab('settle'); window.filterOrderStatus('demand_plans');` }));
-    leads.forEach((l) => msgs.push({ badge: '🤝 新店意向', badgeCls: 'bg-amber-200 text-amber-950', title: `意向门店【${l.store_name}】预约上门送样`, desc: l.note || '', action: `window.closeModal('modal-hq-notifications'); window.switchTab('settle'); window.filterOrderStatus('directory_leads');` }));
-    openDemands.forEach((d) => msgs.push({ badge: '📢 天街求购', badgeCls: 'bg-indigo-700 text-white', title: '天街买家发布求购需求待回应', desc: d.proposer_name || '', action: `window.closeModal('modal-hq-notifications'); window.switchTab('settle'); window.filterOrderStatus('c2b_demands');` }));
+    normalPending.forEach((o) => {
+      const amtText = isWarehouseBlindPrice() ? `共 ${(o.items || []).length} 品项` : `¥${parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2)}`;
+      msgs.push({ badge: '📥 门店补货单', badgeCls: 'bg-emerald-800 text-white', title: `【${o.store_name}】发来新补货单（${amtText}）`, desc: `单号 #${o.order_no || o.id} · 交割方式：${o.settlement_type}`, action: `window.closeModal('modal-hq-notifications'); window.switchTab('settle'); window.filterOrderStatus('pending_confirm');` });
+    });
+    submittedPlans.forEach((p) => msgs.push({ badge: '📅 真实用度计划', badgeCls: 'bg-amber-500 text-stone-950', title: `【${p.store_name}】提报 ${p.plan_cycle} 用度计划`, desc: `期望到店：${p.expected_date || '近期'} · 共 ${(p.items || []).length} 项货品`, action: `window.closeModal('modal-hq-notifications'); window.switchTab('settle'); window.filterOrderStatus('demand_plans');` }));
+    leads.forEach((l) => msgs.push({ badge: '🤝 新店意向', badgeCls: 'bg-amber-200 text-amber-950', title: `意向门店【${l.store_name}】预约上门送样`, desc: l.note || '申请合作洽谈', action: `window.closeModal('modal-hq-notifications'); window.switchTab('settle'); window.filterOrderStatus('directory_leads');` }));
+    openDemands.forEach((d) => msgs.push({ badge: '📢 天街求购', badgeCls: 'bg-indigo-700 text-white', title: '天街买家发布求购需求待回应', desc: `发起人：${d.proposer_name || '天街买家'}`, action: `window.closeModal('modal-hq-notifications'); window.switchTab('settle'); window.filterOrderStatus('c2b_demands');` }));
 
-    listEl.innerHTML = msgs.length === 0 ? '<div class="py-10 text-center text-stone-400">🌿 当前无待办提醒。</div>' : msgs.map((m) => `<div onclick="${m.action}" class="cursor-pointer p-3 bg-stone-50 hover:bg-emerald-50/60 border border-stone-200 rounded-2xl flex justify-between items-center gap-2"><div><span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${m.badgeCls}">${m.badge}</span> <b class="text-stone-900">${m.title}</b><p class="text-[11px] text-stone-500 mt-0.5">${m.desc}</p></div><span class="text-emerald-800 font-bold shrink-0">去处理 ➔</span></div>`).join('');
+    listEl.innerHTML = msgs.length === 0 ? '<div class="py-10 text-center text-stone-400">🌿 当前所有往来单据均已处理完毕，无待办提醒。</div>' : msgs.map((m) => `<div onclick="${m.action}" class="cursor-pointer p-3 bg-stone-50 hover:bg-emerald-50/60 border border-stone-200 rounded-2xl flex justify-between items-center gap-2 transition"><div><div class="flex items-center gap-1.5"><span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${m.badgeCls}">${m.badge}</span><b class="text-stone-900">${m.title}</b></div><p class="text-[11px] text-stone-500 mt-0.5">${m.desc}</p></div><span class="text-emerald-800 font-bold shrink-0">去处理 ➔</span></div>`).join('');
     window.openModal('modal-hq-notifications');
   };
 
@@ -421,12 +502,12 @@ export async function initHQController() {
     const origin = p.origin_place || '源头合作社/工坊原产';
     const summary = p.custom_specs?.summary || '顺应时令采收/匠心制造，实名保真直供';
     const exp = p.custom_specs?.expiry_date || '见包装喷码';
-    hqState.currentTraceCardText = `【实名保真 · 品质溯源卡】\n货品全称：${p.name}\n溯源编码：${traceCode}\n生产/直供主体：${company}\n产地/工坊：${origin}\n包装规格：${p.spec || '整装'} / ${p.measure_unit || '件'}\n保质期限：${exp}\n品质说明：${summary}`;
+    hqState.currentTraceCardText = `【实名保真 · 品质溯源卡】\n货品全称：${p.name}\n溯源编码：${traceCode}\n生产/直供主体：${company}（执照已核验）\n产地/工坊：${origin}\n包装规格：${p.spec || '整装'} / ${p.measure_unit || '件'}\n保质期限：${exp}\n品质说明：${summary}`;
     const body = document.getElementById('trace-card-body');
-    if (body) body.innerHTML = `<div class="flex justify-between items-center border-b border-stone-200 pb-2"><b class="text-sm text-stone-900">${p.name}</b><span class="font-mono text-[10px] bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded font-bold">${traceCode}</span></div><div class="space-y-1 text-[11px] text-stone-700"><div>直供主体：<b>${company}</b></div><div>产地工坊：<b>${origin}</b></div><div>包装规格：<b>${p.spec || '整装'} / ${p.measure_unit || '件'}</b> · 效期：<b>${exp}</b></div><div>品质说明：<span>${summary}</span></div></div>`;
+    if (body) body.innerHTML = `<div class="flex justify-between items-center border-b border-stone-200 pb-2"><b class="text-sm text-stone-900">${p.name}</b><span class="font-mono text-[10px] bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded font-bold">${traceCode}</span></div><div class="space-y-1 text-[11px] text-stone-700"><div>直供主体：<b>${company}</b> <span class="text-emerald-700 text-[10px]">(营业执照已核验)</span></div><div>产地工坊：<b>${origin}</b></div><div>包装规格：<b>${p.spec || '整装'} / ${p.measure_unit || '件'}</b> · 效期：<b>${exp}</b></div><div>品质说明：<span>${summary}</span></div></div>`;
     window.openModal('modal-trace-card');
   };
-  window.copyTraceCardText = () => navigator.clipboard.writeText(hqState.currentTraceCardText).then(() => alert('✅ 品质溯源卡信息已复制！'));
+  window.copyTraceCardText = () => navigator.clipboard.writeText(hqState.currentTraceCardText).then(() => alert('✅ 品质溯源卡信息已复制，可直接发送微信给客户查验！'));
   window.openHqSuggestionModal = () => {
     document.getElementById('hq-suggestion-text').value = '';
     window.openModal('modal-hq-suggestion');
@@ -460,7 +541,7 @@ export async function initHQController() {
   };
   window.copyPromoLink = () => {
     const promoUrl = `${window.location.origin}/suppliers.html?t=${encodeURIComponent(hqState.currentAgent)}`;
-    const shareText = `【${hqState.currentTenantData?.company_name || hqState.currentAgent}】源头合作社与匠心工坊直供，实名资质已核验，支持预约送货师傅上门送样！点击预约：${promoUrl}`;
+    const shareText = `【${hqState.currentTenantData?.company_name || hqState.currentAgent}】源头合作社与匠心工坊直供，实名资质已核验，支持预约送货师傅上门送样、先验货后合作！点击预约：${promoUrl}`;
     navigator.clipboard.writeText(shareText).then(() => alert('✅ 专属合作文案与链接已复制！'));
   };
   window.exportPerformanceCSV = () => {
