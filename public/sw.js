@@ -1,8 +1,8 @@
-const CACHE_VERSION = 'baigong-pwa-v2026-11';
+const CACHE_VERSION = 'baigong-pwa-v2026-12-modular';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
-// 核心页面入口兜底预缓存
+// 核心页面入口兜底预缓存（所有拆分后的 JS/CSS 模块由下方 Network-First 运行时缓存自动接管）
 const PRECACHE_URLS = [
   '/',
   '/index.html',
@@ -11,6 +11,7 @@ const PRECACHE_URLS = [
   '/mall.html',
   '/suppliers.html',
   '/join.html',
+  '/platform.html',
   '/manifest.json'
 ];
 
