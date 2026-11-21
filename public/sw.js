@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'baigong-pwa-v2026-12-modular';
+const CACHE_VERSION = 'baigong-pwa-v2026-12-sec-hardened';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -42,10 +42,12 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // 1. 跳过 Supabase 实时数据接口与外部统计，确保账本/库存/订单永远实时
+  // 1. 跳过跨域请求、Supabase 实时数据与 RPC 安全调用，确保账本/库存/核身永远实时
   if (
+    url.origin !== self.location.origin ||
     url.hostname.includes('supabase.co') ||
     url.pathname.startsWith('/rest/') ||
+    url.pathname.startsWith('/rpc/') ||
     url.pathname.startsWith('/auth/') ||
     url.pathname.startsWith('/storage/')
   ) {
