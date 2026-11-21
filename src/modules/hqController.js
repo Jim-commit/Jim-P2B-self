@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase.js';
 import { downloadCSV } from '../utils/storage.js';
+import { AuthSecurity } from '../utils/authSecurity.js';
 import { HQService } from '../services/hqService.js';
 import {
   hqState,
@@ -11,6 +12,8 @@ import {
   checkHQAuthStatus,
   updateTotpStatusBadge,
   renderSubUsersTable,
+  renderHQSecurityBanner,
+  startSessionEpochHeartbeat,
   initAuthBindings
 } from './hq/hqAuthModule.js';
 import {
@@ -273,6 +276,14 @@ window.loadHQData = async function () {
   loadGlobalPolicyFromTenant(curTenant);
   updateWebhookStatusBadge(curTenant.webhook_url || '');
   updateTotpStatusBadge(!!(curTenant.totp_enabled && curTenant.totp_secret));
+  renderHQSecurityBanner(curTenant);
+
+  // 确保当前商号同步纳管至私有安全保险箱（兼容历史老商号与新入驻商号）
+  supabase.rpc('rpc_sync_tenant_vault', {
+    p_tenant_id: curTenant.tenant_id,
+    p_access_key: curTenant.access_key || '',
+    p_backup_phone: curTenant.backup_phone || null
+  }).catch(() => {});
 
   const guideEl = document.getElementById('hq-onboarding-guide');
   if (guideEl) guideEl.classList.toggle('hidden', localStorage.getItem('hq_onboarding_dismissed_' + hqState.currentAgent) === '1');
@@ -399,7 +410,7 @@ export async function initHQController() {
     if (hqState.currentRoleCode === 'owner' && !(hqState.currentTenantData?.totp_enabled && hqState.currentTenantData?.totp_secret)) {
       diagnostics.push({
         title: '🛡️ 安全体检：尚未绑定手机身份验证器 (2FA)',
-        desc: '绑定微信「腾讯身份验证器」后，大额销账、大幅降价与删品均受动态口令护航，守住自家账本安全。',
+        desc: '绑定微信「腾讯身份验证器」后，大额销账、大幅降价与删品均受动态口令护航，并签发 6 组一次性应急恢复码。',
         btnText: '立即绑定验证器 ➔',
         action: `window.closeModal('modal-contextual-help'); window.openTotpSetupModal();`
       });
@@ -546,6 +557,15 @@ export async function initHQController() {
   };
   window.exportPerformanceCSV = () => {
     const execExport = () => {
+      const fp = AuthSecurity.getDeviceFingerprint();
+      supabase.from('audit_immutable_log').insert([{
+        tenant_id: hqState.currentAgent,
+        operator_name: `${hqState.currentOperatorName} (${fp.summary})`,
+        action_level: 'INFO',
+        action_title: '导出绩效与分润核算表 (CSV)',
+        action_details: { device_id: fp.deviceId }
+      }]).catch(() => {});
+
       const promoterRate = parseFloat(hqState.globalPolicy.promoterRate ?? 8.0);
       const headers = ['合作门店', '累计批发进货额(元)', '阶梯进货返利(元)', '天街带货额(元)', '推客服务润利(元)', '合计应结奖励(元)'];
       const rows = hqState.allStores.map((s) => {
@@ -557,7 +577,7 @@ export async function initHQController() {
       });
       downloadCSV(`${hqState.currentAgent}_门店返利与推客分润核算表_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
     };
-    if (hqState.globalPolicy.twoFaExportOn) window.trigger2FAAction('导出绩效与推客分润核算表 (CSV)，请输入验证器 6 位动态码授权：', execExport);
+    if (hqState.globalPolicy.twoFaExportOn) window.trigger2FAAction('导出绩效与推客分润核算表 (CSV)，请输入验证器 6 位动态码或 8 位应急恢复码授权：', execExport);
     else execExport();
   };
   window.triggerBarcodeScan = () => {
@@ -572,6 +592,7 @@ export async function initHQController() {
 
   const isAuthed = await checkHQAuthStatus();
   if (isAuthed) {
+    startSessionEpochHeartbeat(hqState.currentAgent);
     window.loadHQData();
   }
 }
