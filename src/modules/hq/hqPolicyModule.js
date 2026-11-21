@@ -1,4 +1,3 @@
-import { supabase } from '../../lib/supabase.js';
 import { HQService } from '../../services/hqService.js';
 import { hqState, DEFAULT_GLOBAL_POLICY } from './hqState.js';
 
@@ -218,9 +217,9 @@ export function initPolicyBindings(callbacks) {
     row.className = 'grid grid-cols-12 gap-1.5 items-center bg-stone-50 p-2 rounded-xl border border-stone-200 gp-tier-row';
     row.innerHTML = `
       <input type="text" placeholder="分级名称(如LV1核心店)" value="${name}" class="gp-t-name col-span-4 bg-white border border-stone-200 rounded-lg px-2 py-1 font-bold outline-none">
-      <input type="number" placeholder="信用额度" value="${credit}" class="gp-t-credit col-span-3 bg-white border border-stone-200 rounded-lg px-2 py-1 font-mono outline-none">
-      <input type="number" step="0.01" placeholder="折扣系数" value="${rate}" class="gp-t-rate col-span-3 bg-white border border-stone-200 rounded-lg px-2 py-1 font-mono outline-none">
-      <input type="number" placeholder="免批退货额" value="${retQuota}" class="gp-t-ret col-span-2 bg-white border border-stone-200 rounded-lg px-2 py-1 font-mono outline-none">
+      <input type="number" placeholder="信用额度" value="${credit}" title="默认信用额度(元)" class="gp-t-credit col-span-3 bg-white border border-stone-200 rounded-lg px-2 py-1 font-mono outline-none">
+      <input type="number" step="0.01" placeholder="折扣系数" value="${rate}" title="协议折扣系数(0.95=95折)" class="gp-t-rate col-span-3 bg-white border border-stone-200 rounded-lg px-2 py-1 font-mono outline-none">
+      <input type="number" placeholder="免批退货额" value="${retQuota}" title="月度免批退货额度(元)" class="gp-t-ret col-span-2 bg-white border border-stone-200 rounded-lg px-2 py-1 font-mono outline-none">
     `;
     box.appendChild(row);
   };
@@ -230,7 +229,7 @@ export function initPolicyBindings(callbacks) {
     if (!box) return;
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 bg-stone-50 p-2 rounded-xl border border-stone-200 gp-store-field-row';
-    row.innerHTML = `<input type="text" placeholder="信息栏名称" value="${fieldName}" class="gp-sf-name flex-1 bg-white border border-stone-200 rounded-lg px-2.5 py-1 font-bold outline-none">`;
+    row.innerHTML = `<input type="text" placeholder="信息栏名称(如:施工工地名称 / 冷库容量 / 开票税号)" value="${fieldName}" class="gp-sf-name flex-1 bg-white border border-stone-200 rounded-lg px-2.5 py-1 font-bold outline-none">`;
     box.appendChild(row);
   };
 
@@ -249,7 +248,7 @@ export function initPolicyBindings(callbacks) {
         <span class="text-[10px] text-stone-500">系数</span>
         <input type="number" step="0.01" min="0.1" max="2" value="${rate}" class="gp-ot-rate w-full bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 font-bold text-center outline-none">
       </div>
-      <input type="text" placeholder="标签" value="${label}" class="gp-ot-label col-span-4 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 outline-none">
+      <input type="text" placeholder="标签(如满5件9.5折)" value="${label}" class="gp-ot-label col-span-4 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 outline-none">
     `;
     box.appendChild(row);
   };
@@ -275,8 +274,8 @@ export function initPolicyBindings(callbacks) {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 bg-white p-2 rounded-xl border border-stone-200 gp-promo-row';
     row.innerHTML = `
-      <input type="text" placeholder="活动名称" value="${title}" class="gp-pr-title w-1/3 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 font-bold outline-none">
-      <input type="text" placeholder="优惠规则说明" value="${rule}" class="gp-pr-rule flex-1 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 outline-none">
+      <input type="text" placeholder="活动名称(如:金秋订货节)" value="${title}" class="gp-pr-title w-1/3 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 font-bold outline-none">
+      <input type="text" placeholder="优惠规则说明(如:满20件送1件 / 满500减30)" value="${rule}" class="gp-pr-rule flex-1 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 outline-none">
     `;
     box.appendChild(row);
   };
@@ -287,9 +286,9 @@ export function initPolicyBindings(callbacks) {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 bg-stone-50 p-2 rounded-xl border border-stone-200 gp-carrier-row';
     row.innerHTML = `
-      <input type="text" placeholder="载具名称" value="${name}" class="gp-c-name flex-1 bg-white border border-stone-200 rounded-lg px-2.5 py-1 font-bold outline-none">
+      <input type="text" placeholder="载具名称(如:塑料周转筐/木托盘/气瓶)" value="${name}" class="gp-c-name flex-1 bg-white border border-stone-200 rounded-lg px-2.5 py-1 font-bold outline-none">
       <span class="text-stone-500">押金单价 ¥</span>
-      <input type="number" step="1" value="${deposit}" class="gp-c-deposit w-24 bg-white border border-stone-200 rounded-lg px-2 py-1 font-mono font-bold outline-none">
+      <input type="number" step="1" placeholder="15" value="${deposit}" class="gp-c-deposit w-24 bg-white border border-stone-200 rounded-lg px-2 py-1 font-mono font-bold outline-none">
     `;
     box.appendChild(row);
   };
@@ -377,38 +376,190 @@ export function initPolicyBindings(callbacks) {
   window.applyGlobalPreset = function (presetKey) {
     const presets = {
       coop: {
-        ...DEFAULT_GLOBAL_POLICY,
+        storeTierEnabled: true,
+        storeTiers: [
+          { name: 'LV1 核心连锁生鲜店', creditLimit: 5000, discountRate: 0.95, returnQuota: 1000 },
+          { name: 'LV2 社区便民店', creditLimit: 2000, discountRate: 1.0, returnQuota: 500 },
+          { name: 'LV3 村社自提服务点', creditLimit: 3000, discountRate: 0.96, returnQuota: 800 }
+        ],
+        storeCustomFields: ['冷库/保鲜柜容量', '食品经营许可证号'],
         harvestAidOn: true,
+        rationLimitQty: 0,
         onlinePriceEnabled: true,
+        onlineTiers: [
+          { minQty: 1, rate: 1.0, label: '单件零售正价' },
+          { minQty: 5, rate: 0.95, label: '满5件享9.5折' },
+          { minQty: 20, rate: 0.88, label: '满20件抱团8.8折' }
+        ],
+        rebateEnabled: true,
+        rebateTiers: [
+          { threshold: 10000, rate: 3.0 },
+          { threshold: 30000, rate: 5.0 }
+        ],
+        promoterEnabled: true,
+        promoterRate: 8.0,
+        referralBonus: 100,
         campaignActive: true,
-        slipHeaderSub: '村社合作社源头直供 · 新鲜直达 · 诚信相照'
+        promos: [{ title: '产区丰收季直供惠', rule: '合作门店单笔订满 20 件赠同款 1 件' }],
+        carriers: [{ name: '塑料周转筐', deposit: 15 }],
+        tier1Name: '批发平准基准价',
+        tier2Name: '网上平准零售基准价',
+        twoFaCashOn: true,
+        twoFaThreshold: 3000,
+        twoFaPriceOn: true,
+        twoFaPricePct: 15,
+        twoFaCreditOn: true,
+        twoFaDeleteOn: true,
+        twoFaLimitOn: true,
+        twoFaStockAuditOn: false,
+        twoFaPolicyOn: false,
+        twoFaExportOn: false,
+        defaultMinStock: 15,
+        expiryWarnDays: 7,
+        allowStoreReturn: true,
+        slipHeaderSub: '村社合作社源头直供 · 新鲜直达 · 诚信相照',
+        slipFooterNote: '生鲜农产请当面验货签收，周转筐随车清点回收。',
+        slipStampText: '合作社调度专用章',
+        seasonalPause: hqState.globalPolicy.seasonalPause || { isPaused: false, reason: '', resumeDate: '' }
       },
       factory: {
-        ...DEFAULT_GLOBAL_POLICY,
+        storeTierEnabled: true,
+        storeTiers: [
+          { name: '一级区域总代', creditLimit: 20000, discountRate: 0.9, returnQuota: 2000 },
+          { name: '二级签约经销商', creditLimit: 8000, discountRate: 0.95, returnQuota: 800 },
+          { name: '直供终端门店', creditLimit: 3000, discountRate: 1.0, returnQuota: 300 }
+        ],
+        storeCustomFields: ['企业开票税号', '指定物流专线/卸货仓'],
+        harvestAidOn: false,
+        rationLimitQty: 0,
+        onlinePriceEnabled: true,
+        onlineTiers: [
+          { minQty: 1, rate: 1.0, label: '专柜零售正价' },
+          { minQty: 10, rate: 0.85, label: '满10件整批8.5折' }
+        ],
+        rebateEnabled: true,
+        rebateTiers: [
+          { threshold: 50000, rate: 4.0 },
+          { threshold: 100000, rate: 6.0 }
+        ],
+        promoterEnabled: true,
+        promoterRate: 6.0,
+        referralBonus: 200,
+        campaignActive: false,
+        promos: [],
         carriers: [{ name: '标准木托盘', deposit: 80 }],
+        tier1Name: '批发平准基准价',
+        tier2Name: '网上平准零售基准价',
+        twoFaCashOn: true,
         twoFaThreshold: 5000,
+        twoFaPriceOn: true,
+        twoFaPricePct: 10,
+        twoFaCreditOn: true,
+        twoFaDeleteOn: true,
+        twoFaLimitOn: true,
         twoFaStockAuditOn: true,
         twoFaPolicyOn: true,
-        slipHeaderSub: '源头工坊直发 · 实名保真 · 品质溯源'
+        twoFaExportOn: false,
+        defaultMinStock: 30,
+        expiryWarnDays: 45,
+        allowStoreReturn: true,
+        slipHeaderSub: '源头工坊直发 · 实名保真 · 品质溯源',
+        slipFooterNote: '整托发运请核对封签批号，标准木托盘循环计账。',
+        slipStampText: '工坊出库核验章',
+        seasonalPause: hqState.globalPolicy.seasonalPause || { isPaused: false, reason: '', resumeDate: '' }
       },
       hardware: {
-        ...DEFAULT_GLOBAL_POLICY,
+        storeTierEnabled: true,
+        storeTiers: [
+          { name: '工程项目战略户', creditLimit: 30000, discountRate: 0.92, returnQuota: 3000 },
+          { name: '五金机电合作店', creditLimit: 5000, discountRate: 0.96, returnQuota: 500 },
+          { name: '零星维修工坊', creditLimit: 1000, discountRate: 1.0, returnQuota: 200 }
+        ],
+        storeCustomFields: ['施工工地名称', '开票税号与收货负责人'],
+        harvestAidOn: false,
+        rationLimitQty: 0,
+        onlinePriceEnabled: false,
+        onlineTiers: [{ minQty: 1, rate: 1.0, label: '网购散装价' }],
+        rebateEnabled: true,
+        rebateTiers: [{ threshold: 30000, rate: 2.5 }],
+        promoterEnabled: true,
+        promoterRate: 5.0,
+        referralBonus: 150,
+        campaignActive: false,
+        promos: [],
         carriers: [{ name: '周转铁料箱', deposit: 50 }],
+        tier1Name: '批发平准基准价',
+        tier2Name: '网上平准零售基准价',
+        twoFaCashOn: true,
+        twoFaThreshold: 5000,
+        twoFaPriceOn: true,
+        twoFaPricePct: 15,
+        twoFaCreditOn: true,
+        twoFaDeleteOn: true,
+        twoFaLimitOn: true,
+        twoFaStockAuditOn: false,
+        twoFaPolicyOn: false,
+        twoFaExportOn: false,
+        defaultMinStock: 20,
         expiryWarnDays: 0,
-        slipHeaderSub: '工料配件直供中心 · 规格齐全 · 按需配送'
+        allowStoreReturn: true,
+        slipHeaderSub: '工料配件直供中心 · 规格齐全 · 按需配送',
+        slipFooterNote: '非质量问题定制件不退不换，标准件完整包装支持调换。',
+        slipStampText: '仓储配发专用章',
+        seasonalPause: hqState.globalPolicy.seasonalPause || { isPaused: false, reason: '', resumeDate: '' }
       },
       cylinder: {
-        ...DEFAULT_GLOBAL_POLICY,
-        carriers: [{ name: '18.9L PC周转水桶', deposit: 30 }, { name: '标准钢瓶容器', deposit: 120 }],
+        storeTierEnabled: true,
+        storeTiers: [
+          { name: '大型餐饮食堂户', creditLimit: 5000, discountRate: 0.94, returnQuota: 500 },
+          { name: '配送分销网点', creditLimit: 3000, discountRate: 0.96, returnQuota: 300 }
+        ],
+        storeCustomFields: ['容器押金单编号', '配送楼层/电梯备注'],
+        harvestAidOn: false,
+        rationLimitQty: 0,
+        onlinePriceEnabled: true,
+        onlineTiers: [
+          { minQty: 1, rate: 1.0, label: '单桶零售价' },
+          { minQty: 5, rate: 0.9, label: '5桶套餐9折' }
+        ],
+        rebateEnabled: true,
+        rebateTiers: [{ threshold: 8000, rate: 3.0 }],
+        promoterEnabled: true,
+        promoterRate: 10.0,
+        referralBonus: 80,
+        campaignActive: false,
+        promos: [],
+        carriers: [
+          { name: '18.9L PC周转水桶', deposit: 30 },
+          { name: '标准钢瓶容器', deposit: 120 }
+        ],
+        tier1Name: '批发平准基准价',
+        tier2Name: '网上平准零售基准价',
+        twoFaCashOn: true,
+        twoFaThreshold: 2000,
+        twoFaPriceOn: true,
+        twoFaPricePct: 15,
+        twoFaCreditOn: true,
+        twoFaDeleteOn: true,
+        twoFaLimitOn: true,
+        twoFaStockAuditOn: false,
+        twoFaPolicyOn: false,
+        twoFaExportOn: false,
+        defaultMinStock: 50,
+        expiryWarnDays: 15,
         allowStoreReturn: false,
-        slipHeaderSub: '安全循环配送 · 空桶/空瓶随车清点抵账'
+        slipHeaderSub: '安全循环配送 · 空桶/空瓶随车清点抵账',
+        slipFooterNote: '送一收一，缺失容器按押金标准计入往来账目。',
+        slipStampText: '配送调度核验章',
+        seasonalPause: hqState.globalPolicy.seasonalPause || { isPaused: false, reason: '', resumeDate: '' }
       }
     };
+
     const chosen = presets[presetKey];
     if (!chosen) return;
     hqState.globalPolicy = JSON.parse(JSON.stringify(chosen));
     window.openGlobalPolicyModal('tiers');
-    alert('✅ 已套用行业预设模板！可继续微调后保存。');
+    alert('✅ 已套用行业预设模板！您可继续微调各项开关与数字后点击底部「保存全局经营策略」。');
   };
 
   window.saveGlobalPolicySettings = async function () {
@@ -505,7 +656,9 @@ export function initPolicyBindings(callbacks) {
       try {
         await HQService.updateTenantWithVerify(hqState.currentAgent, { custom_settings: nextPolicy });
         if (hqState.currentTenantData) hqState.currentTenantData.custom_settings = nextPolicy;
-      } catch (err) {}
+      } catch (err) {
+        console.warn('云端 custom_settings 同步提示（本地已生效）:', err.message);
+      }
 
       loadGlobalPolicyFromTenant(hqState.currentTenantData);
       callbacks?.onPolicyUpdated?.();
@@ -581,12 +734,12 @@ export function initPolicyBindings(callbacks) {
   window.testWebhookPing = async function () {
     const url = document.getElementById('webhook-url-input').value.trim();
     if (!url) return alert('请先粘贴群机器人 Webhook 地址！');
-    const msg = `🔔【${hqState.currentTenantData?.company_name || hqState.currentAgent}】报单提醒测试成功！`;
+    const msg = `🔔【${hqState.currentTenantData?.company_name || hqState.currentAgent}】报单提醒测试成功！后续合作门店下新单或新店预约送样，本群将第一时间收到通知。`;
     try {
       await HQService.sendWebhookMessage(url, msg);
-      alert('📡 测试消息已发出！请打开您的群聊查看是否收到提醒。');
+      alert('📡 测试消息已发出！请打开您的企业微信 / 钉钉 / 飞书群查看是否收到提醒。');
     } catch (err) {
-      alert('发送失败：' + err.message);
+      alert('发送失败，请检查网址格式是否正确：' + err.message);
     }
   };
 }
