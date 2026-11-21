@@ -1,15 +1,19 @@
 import { supabase } from '../../lib/supabase.js';
-import { platformState, scanProductRiskWords } from './platformState.js';
+import {
+  platformState,
+  DEFAULT_CATEGORY_SEED,
+  scanProductCompliance
+} from './platformState.js';
 
-export function renderProductAuditList() {
-  const container = document.getElementById('platform-audit-list');
+export function renderAuditProductList() {
+  const container = document.getElementById('audit-product-list') || document.getElementById('platform-audit-list');
   if (!container) return;
 
   const flagged = [];
   const clean = [];
   platformState.allProductsForAudit.forEach((p) => {
-    const hits = scanProductRiskWords(p);
-    if (hits.length > 0 || p.status === 'rectify_required') {
+    const hits = scanProductCompliance(p);
+    if (hits.length > 0 || p.status === 'rectify_required' || p.status === 'inactive') {
       flagged.push({ prod: p, hits });
     } else {
       clean.push({ prod: p, hits: [] });
@@ -32,18 +36,21 @@ export function renderProductAuditList() {
       const tenant = platformState.allTenants.find((t) => t.tenant_id === prod.tenant_id);
       const tenantName = tenant ? tenant.company_name : prod.tenant_id;
       const isRectify = prod.status === 'rectify_required';
+      const isInactive = prod.status === 'inactive';
       const rectifyNote = prod.custom_specs?.rectify_note || '';
 
       return `
-        <div class="p-3.5 bg-stone-50 border ${
-          hits.length > 0 || isRectify ? 'border-amber-300 bg-amber-50/40' : 'border-stone-200'
-        } rounded-2xl flex flex-wrap justify-between items-center gap-3 text-xs">
+        <div class="p-3.5 bg-white border ${
+          isInactive ? 'border-rose-300 bg-rose-50/30' : hits.length > 0 || isRectify ? 'border-amber-300 bg-amber-50/40' : 'border-stone-200'
+        } rounded-2xl flex flex-wrap justify-between items-center gap-3 text-xs shadow-2xs">
           <div class="space-y-1 flex-1 min-w-0">
             <div class="flex flex-wrap items-center gap-1.5">
-              <span class="font-mono text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.2 rounded">${tenantName}</span>
+              <span class="font-mono text-[10px] bg-stone-100 text-stone-700 border border-stone-200 px-2 py-0.2 rounded-lg font-bold">${tenantName} (${prod.tenant_id})</span>
               <b class="text-stone-900">${prod.name}</b>
               ${
-                hits.length > 0
+                isInactive
+                  ? '<span class="bg-rose-600 text-white px-2 py-0.2 rounded-full text-[10px] font-bold">🚫 已下架停售</span>'
+                  : hits.length > 0
                   ? `<span class="bg-rose-100 text-rose-800 border border-rose-200 px-2 py-0.2 rounded-full text-[10px] font-bold">⚠️ 检出慎用词: ${hits.join('、')}</span>`
                   : isRectify
                   ? '<span class="bg-amber-200 text-amber-950 px-2 py-0.2 rounded-full text-[10px] font-bold">📜 已发礼貌润色提示</span>'
@@ -51,18 +58,21 @@ export function renderProductAuditList() {
               }
             </div>
             <div class="text-[11px] text-stone-500 truncate">
-              规格: ${prod.spec || '整装'} · 基准价: ¥${prod.tier_1_price} · 简介: ${prod.custom_specs?.summary || prod.description || '无'}
+              类目: ${prod.category_main || '常规'} ➔ ${prod.category_sub || '通用'} · 规格: ${prod.spec || '整装'} · 基准价: ¥${prod.tier_1_price}
             </div>
-            ${rectifyNote ? `<div class="text-[10px] text-amber-900 font-bold">💬 平台润色叮咛：${rectifyNote}</div>` : ''}
+            <div class="text-[11px] text-stone-600 line-clamp-1">
+              简介: ${prod.custom_specs?.summary || prod.description || '无对外说明'}
+            </div>
+            ${rectifyNote ? `<div class="text-[10px] text-amber-950 bg-amber-100/70 px-2 py-0.5 rounded-lg inline-block font-bold">💬 平台润色叮咛：${rectifyNote}</div>` : ''}
           </div>
-          <div class="flex items-center gap-1.5 shrink-0">
-            <button type="button" onclick="window.sendPoliteRectifyPrompt(${prod.id}, '${hits.join('、')}')" class="bg-amber-500 hover:bg-amber-600 text-stone-950 px-3 py-1.5 rounded-xl font-bold text-[11px] shadow-2xs">
-              📜 发送礼貌润色提示
+          <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+            <button type="button" onclick="window.sendPoliteRectifyPrompt(${prod.id}, '${hits.join('、')}')" class="bg-amber-400 hover:bg-amber-500 text-stone-950 px-3 py-1.5 rounded-xl font-bold text-[11px] shadow-2xs">
+              📜 礼貌润色提示
             </button>
             ${
-              isRectify
-                ? `<button type="button" onclick="window.restoreProductActive(${prod.id})" class="bg-emerald-800 text-white px-2.5 py-1.5 rounded-xl font-bold text-[11px]">✓ 核验通过恢复</button>`
-                : ''
+              isRectify || isInactive
+                ? `<button type="button" onclick="window.restoreProductActive(${prod.id})" class="bg-emerald-800 hover:bg-emerald-900 text-white px-2.5 py-1.5 rounded-xl font-bold text-[11px]">✓ 核验恢复</button>`
+                : `<button type="button" onclick="window.forceOfflineProduct(${prod.id}, '${prod.name.replace(/'/g, '')}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1.5 rounded-xl font-bold text-[11px]">🚫 暂下架</button>`
             }
           </div>
         </div>
@@ -72,12 +82,19 @@ export function renderProductAuditList() {
 }
 
 export function renderCategoryTree() {
-  const container = document.getElementById('platform-category-tree');
+  const container = document.getElementById('category-tree') || document.getElementById('platform-category-tree');
   if (!container) return;
 
   const l1List = platformState.allCategories.filter((c) => c.level === 1);
   if (l1List.length === 0) {
-    container.innerHTML = '<div class="py-8 text-center text-stone-400 text-xs">暂无平台标准类目，点击上方「+ 新增一级大类」建立。</div>';
+    container.innerHTML = `
+      <div class="py-8 text-center space-y-3 bg-stone-50 rounded-2xl border border-stone-200 p-4">
+        <div class="text-stone-500 text-xs">当前尚未建立平台统一标准类目树</div>
+        <button type="button" onclick="window.seedDefaultPlatformCategories()" class="bg-[#1b4332] text-white text-xs font-bold px-4 py-2 rounded-xl shadow">
+          🌾 一键初始化六大民生百工标准类目树
+        </button>
+      </div>
+    `;
     return;
   }
 
@@ -85,32 +102,35 @@ export function renderCategoryTree() {
     .map((l1) => {
       const subs = platformState.allCategories.filter((c) => c.level === 2 && Number(c.parent_id) === Number(l1.id));
       return `
-        <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2 text-xs">
-          <div class="flex justify-between items-center">
+        <div class="p-3.5 bg-white border border-stone-200 rounded-2xl space-y-2.5 text-xs shadow-2xs">
+          <div class="flex flex-wrap justify-between items-center gap-2">
             <div class="flex items-center gap-2">
-              <span class="bg-[#1b4332] text-white text-[10px] font-bold px-2 py-0.5 rounded-lg">一级大类</span>
+              <span class="bg-[#1b4332] text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-lg">一级大类</span>
               <b class="text-stone-900 text-sm">${l1.name}</b>
-              <span class="text-[10px] font-mono text-stone-400">(ID: ${l1.id})</span>
+              <span class="text-[10px] font-mono text-stone-400">(${subs.length} 个子类)</span>
             </div>
             <div class="flex items-center gap-1.5">
               <button type="button" onclick="window.promptAddSubCategory(${l1.id}, '${l1.name}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-xl font-bold text-[11px]">
                 + 添二级子类
+              </button>
+              <button type="button" onclick="window.renamePlatformCategory(${l1.id}, '${l1.name}')" class="bg-stone-100 hover:bg-stone-200 text-stone-700 px-2 py-1 rounded-xl font-bold text-[11px]">
+                改名
               </button>
               <button type="button" onclick="window.deletePlatformCategory(${l1.id}, '${l1.name}')" class="text-rose-600 hover:underline text-[11px] font-bold px-1.5">
                 删除
               </button>
             </div>
           </div>
-          <div class="flex flex-wrap gap-1.5 pl-2 border-l-2 border-emerald-200">
+          <div class="flex flex-wrap gap-1.5 pl-2.5 border-l-2 border-emerald-200">
             ${
               subs.length === 0
-                ? '<span class="text-[11px] text-stone-400">暂无二级子类</span>'
+                ? '<span class="text-[11px] text-stone-400">暂无二级子类，点击右上角添加</span>'
                 : subs
                     .map(
                       (s) => `
-                      <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 px-2.5 py-1 rounded-xl text-[11px] text-stone-800 font-bold">
-                        <span>${s.name}</span>
-                        <button type="button" onclick="window.deletePlatformCategory(${s.id}, '${s.name}')" class="text-stone-400 hover:text-rose-600">✕</button>
+                      <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 px-2.5 py-1 rounded-xl text-[11px] text-stone-800 font-bold">
+                        <span class="cursor-pointer hover:text-emerald-800" onclick="window.renamePlatformCategory(${s.id}, '${s.name}')" title="点击修改名称">${s.name}</span>
+                        <button type="button" onclick="window.deletePlatformCategory(${s.id}, '${s.name}')" class="text-stone-400 hover:text-rose-600 ml-0.5">✕</button>
                       </span>
                     `
                     )
@@ -123,24 +143,30 @@ export function renderCategoryTree() {
     .join('');
 }
 
-export function renderSuggestionBoard() {
-  const container = document.getElementById('platform-suggestion-list');
+export function renderSuggestionList() {
+  const container = document.getElementById('suggestion-list') || document.getElementById('platform-suggestion-list');
   if (!container) return;
 
-  const merchantSuggestions = platformState.allSuggestions.filter(
+  let list = platformState.allSuggestions.filter(
     (s) => s.proposer_type === 'merchant_hq' || s.proposer_type === 'platform_feedback' || !s.proposer_type
   );
 
-  if (merchantSuggestions.length === 0) {
-    container.innerHTML = '<div class="py-8 text-center text-stone-400 text-xs">暂无商号掌柜建言与自省来信。</div>';
+  if (platformState.currentSuggestionFilter === 'pending') {
+    list = list.filter((s) => !s.official_reply);
+  } else if (platformState.currentSuggestionFilter === 'replied') {
+    list = list.filter((s) => !!s.official_reply);
+  }
+
+  if (list.length === 0) {
+    container.innerHTML = '<div class="py-8 text-center text-stone-400 text-xs">当前筛选项下暂无商号掌柜建言与自省来信。</div>';
     return;
   }
 
-  container.innerHTML = merchantSuggestions
+  container.innerHTML = list
     .map((s) => {
       const hasReply = !!s.official_reply;
       return `
-        <div class="p-3.5 bg-stone-50 border ${hasReply ? 'border-stone-200' : 'border-amber-300 bg-amber-50/30'} rounded-2xl space-y-2 text-xs">
+        <div class="p-3.5 bg-white border ${hasReply ? 'border-stone-200' : 'border-amber-300 bg-amber-50/30'} rounded-2xl space-y-2 text-xs shadow-2xs">
           <div class="flex justify-between items-center">
             <div>
               <b class="text-stone-900">${s.proposer_name || '在册合作商号'}</b>
@@ -150,14 +176,14 @@ export function renderSuggestionBoard() {
               hasReply ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-200 text-amber-950'
             }">${hasReply ? '✅ 执事已批复' : '⏳ 待总控批复'}</span>
           </div>
-          <p class="text-stone-800 leading-relaxed bg-white p-2.5 rounded-xl border border-stone-100">${s.content}</p>
+          <p class="text-stone-800 leading-relaxed bg-stone-50 p-2.5 rounded-xl border border-stone-100">${s.content}</p>
           ${
             hasReply
               ? `<div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-emerald-950 text-[11px]"><b>🏛️ 平准执事批复：</b>${s.official_reply}</div>`
               : ''
           }
           <div class="text-right">
-            <button type="button" onclick="window.replyToMerchantSuggestion(${s.id})" class="bg-[#1b4332] text-white px-3 py-1 rounded-xl font-bold text-[11px]">
+            <button type="button" onclick="window.replyToMerchantSuggestion(${s.id})" class="bg-[#1b4332] hover:bg-[#143628] text-white px-3 py-1 rounded-xl font-bold text-[11px]">
               ${hasReply ? '✏️ 修改批复' : '✍️ 批复回信'}
             </button>
           </div>
@@ -176,7 +202,12 @@ export function initAuditBindings() {
         ? 'audit-filter-btn px-3 py-1.5 rounded-xl bg-[#1b4332] text-white text-xs font-bold transition'
         : 'audit-filter-btn px-3 py-1.5 rounded-xl bg-stone-100 text-stone-600 text-xs font-bold transition';
     });
-    renderProductAuditList();
+    renderAuditProductList();
+  };
+
+  window.filterSuggestions = function (filterType) {
+    platformState.currentSuggestionFilter = filterType;
+    renderSuggestionList();
   };
 
   window.sendPoliteRectifyPrompt = async function (prodId, hitWordsStr) {
@@ -202,6 +233,22 @@ export function initAuditBindings() {
     window.loadPlatformDashboard();
   };
 
+  window.forceOfflineProduct = async function (prodId, prodName) {
+    const reason = prompt(`确认将违规货品【${prodName}】强制下架停售？请输入下架原因：`, '含违规夸大宣传或资质不符，请修改合规后再上架');
+    if (!reason || !reason.trim()) return;
+
+    const prod = platformState.allProductsForAudit.find((x) => Number(x.id) === Number(prodId));
+    const nextSpecs = { ...(prod?.custom_specs || {}), rectify_note: `[总控下架] ${reason.trim()}` };
+    const { error } = await supabase
+      .from('product')
+      .update({ status: 'inactive', custom_specs: nextSpecs })
+      .eq('id', prodId);
+
+    if (error) return alert('下架操作失败：' + error.message);
+    alert(`🚫 货品【${prodName}】已下架停售。`);
+    window.loadPlatformDashboard();
+  };
+
   window.restoreProductActive = async function (prodId) {
     const prod = platformState.allProductsForAudit.find((x) => Number(x.id) === Number(prodId));
     if (!prod) return;
@@ -218,6 +265,28 @@ export function initAuditBindings() {
     window.loadPlatformDashboard();
   };
 
+  window.seedDefaultPlatformCategories = async function () {
+    if (!confirm('确认一键初始化六大民生百工标准一级与二级类目树？')) return;
+    for (const group of DEFAULT_CATEGORY_SEED) {
+      const { data: l1Data, error } = await supabase
+        .from('platform_category')
+        .insert([{ name: group.name, level: 1, parent_id: null, is_active: true }])
+        .select('id')
+        .single();
+      if (!error && l1Data?.id && Array.isArray(group.subs)) {
+        const subRows = group.subs.map((subName) => ({
+          name: subName,
+          level: 2,
+          parent_id: l1Data.id,
+          is_active: true
+        }));
+        await supabase.from('platform_category').insert(subRows);
+      }
+    }
+    alert('🎉 六大民生百工标准类目树已初始化完成！');
+    window.loadPlatformDashboard();
+  };
+
   window.promptAddMainCategory = async function () {
     const name = prompt('输入平台标准一级大类名称（如：粮油副食 / 生鲜果蔬 / 五金建材 / 农资农具）：');
     if (!name || !name.trim()) return;
@@ -231,6 +300,14 @@ export function initAuditBindings() {
     if (!name || !name.trim()) return;
     const { error } = await supabase.from('platform_category').insert([{ name: name.trim(), level: 2, parent_id: parentId, is_active: true }]);
     if (error) return alert('新增二级类目失败：' + error.message);
+    window.loadPlatformDashboard();
+  };
+
+  window.renamePlatformCategory = async function (catId, oldName) {
+    const newName = prompt(`修改标准类目名称（原名：${oldName}）：`, oldName);
+    if (!newName || !newName.trim() || newName.trim() === oldName) return;
+    const { error } = await supabase.from('platform_category').update({ name: newName.trim() }).eq('id', catId);
+    if (error) return alert('修改名称失败：' + error.message);
     window.loadPlatformDashboard();
   };
 
