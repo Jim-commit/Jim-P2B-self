@@ -74,6 +74,7 @@ export function initDriverAuthBindings(callbacks) {
         const s = res.sessionSnapshot;
         localStorage.setItem(PALM_SESSION_KEY, JSON.stringify(s));
         driverState.currentAgent = s.tenantId;
+        driverState.sessionEpoch = Number(s.sessionEpoch || 1);
         driverState.currentRoleCode = s.roleCode || 'driver';
         driverState.effectiveViewRole = driverState.currentRoleCode === 'owner' ? 'owner_cockpit' : driverState.currentRoleCode;
         driverState.currentAccountCode = s.accountCode || '';
@@ -152,6 +153,7 @@ export function initDriverAuthBindings(callbacks) {
 
     const sessionSnap = {
       tenantId: driverState.currentAgent,
+      sessionEpoch: Number(driverState.sessionEpoch || 1),
       roleCode: driverState.currentRoleCode,
       accountCode: driverState.currentAccountCode,
       operatorName: driverState.currentOperatorName
@@ -325,8 +327,10 @@ export function initDriverAuthBindings(callbacks) {
       }
 
       AuthSecurity.clearLoginFailure(`PALM_${tenantId}`);
+      const currentEpoch = Number(tenantList[0].session_epoch || 1);
       const sessionObj = {
         tenantId,
+        sessionEpoch: currentEpoch,
         roleCode: subList[0].role_code || 'driver',
         accountCode: subList[0].account_name,
         operatorName: subList[0].real_name || subAcc
@@ -334,6 +338,7 @@ export function initDriverAuthBindings(callbacks) {
       localStorage.setItem(PALM_SESSION_KEY, JSON.stringify(sessionObj));
       localStorage.setItem('baigong_palm_last_tid', tenantId);
       driverState.currentAgent = sessionObj.tenantId;
+      driverState.sessionEpoch = currentEpoch;
       driverState.currentRoleCode = sessionObj.roleCode;
       driverState.effectiveViewRole = sessionObj.roleCode;
       driverState.currentAccountCode = sessionObj.accountCode;
@@ -371,8 +376,10 @@ export function initDriverAuthBindings(callbacks) {
     }
 
     AuthSecurity.clearLoginFailure(`PALM_${tenantId}`);
+    const currentEpoch = Number(tenants[0].session_epoch || 1);
     const sessionObj = {
       tenantId,
+      sessionEpoch: currentEpoch,
       roleCode: 'owner',
       accountCode: '',
       operatorName: '大当家掌柜'
@@ -380,6 +387,7 @@ export function initDriverAuthBindings(callbacks) {
     localStorage.setItem(PALM_SESSION_KEY, JSON.stringify(sessionObj));
     localStorage.setItem('baigong_palm_last_tid', tenantId);
     driverState.currentAgent = tenantId;
+    driverState.sessionEpoch = currentEpoch;
     driverState.currentRoleCode = 'owner';
     driverState.effectiveViewRole = 'owner_cockpit';
     driverState.currentAccountCode = '';
