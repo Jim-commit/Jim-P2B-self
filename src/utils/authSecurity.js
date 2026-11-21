@@ -1,42 +1,98 @@
 /**
- * 百工天街 · 全站安全防线与设备护航核心工具集
- * - 弱口令强度拦截（防 123456 / 顺子 / 手机号）
- * - 客户端设备环境指纹生成（写入不可篡改审计流水）
- * - Canvas 生成《安家立户凭证卡》与《6组应急恢复码卡》（兼容微信内置浏览器长按保存）
- * - 会话版本号（session_epoch）与 72 小时时间锁观察期操作护栏
+ * 百工天街 · 全站安全防线与设备护航核心工具集（完整兼容版）
  */
 
 const DEVICE_FP_KEY = 'bgtj_device_fp_v1';
+const LOCKOUT_PREFIX = 'bgtj_login_fail_';
 
 export const AuthSecurity = {
+  // ================= 1. 兼容原有防爆破与密码哈希接口 =================
+  checkLoginLockout(scopeKey) {
+    try {
+      const raw = localStorage.getItem(LOCKOUT_PREFIX + scopeKey);
+      if (!raw) return { locked: false, remainMins: 0 };
+      const rec = JSON.parse(raw);
+      if (rec.lockedUntil && Date.now() < rec.lockedUntil) {
+        const remainMins = Math.max(1, Math.ceil((rec.lockedUntil - Date.now()) / 60000));
+        return { locked: true, remainMins };
+      }
+      return { locked: false, remainMins: 0 };
+    } catch {
+      return { locked: false, remainMins: 0 };
+    }
+  },
+
+  recordLoginFailure(scopeKey) {
+    try {
+      const raw = localStorage.getItem(LOCKOUT_PREFIX + scopeKey);
+      const rec = raw ? JSON.parse(raw) : { count: 0, lockedUntil: 0 };
+      rec.count = (rec.count || 0) + 1;
+      if (rec.count >= 5) {
+        rec.lockedUntil = Date.now() + 15 * 60 * 1000;
+      }
+      localStorage.setItem(LOCKOUT_PREFIX + scopeKey, JSON.stringify(rec));
+      return rec;
+    } catch {
+      return { count: 1 };
+    }
+  },
+
+  clearLoginFailure(scopeKey) {
+    try {
+      localStorage.removeItem(LOCKOUT_PREFIX + scopeKey);
+    } catch {}
+  },
+
+  async hashPassword(plainPwd, salt = '') {
+    const clean = String(plainPwd || '').trim();
+    if (!clean) return '';
+    if (clean.startsWith('SHA256:')) return clean;
+    const data = new TextEncoder().encode(`BGTJ_SALT_${String(salt).toUpperCase()}_${clean}`);
+    const hashBuf = await crypto.subtle.digest('SHA-256', data);
+    const hex = Array.from(new Uint8Array(hashBuf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    return `SHA256:${hex}`;
+  },
+
+  async verifyPassword(inputPwd, storedHashOrPlain, salt = '') {
+    const input = String(inputPwd || '').trim();
+    const stored = String(storedHashOrPlain || '').trim();
+    if (!input || !stored) return false;
+    if (stored.startsWith('SHA256:')) {
+      const hashedInput = await this.hashPassword(input, salt);
+      return hashedInput === stored;
+    }
+    // 兼容历史明文密钥平滑过渡
+    return input === stored;
+  },
+
   /**
-   * 校验密码强度（至少 8 位，需同时包含字母和数字，拦截常见弱口令）
+   * 兼容原有 validatePasswordStrength(pwd, tenantId, phone) 返回 { ok, msg }
    */
-  validatePasswordStrength(password, contextHints = []) {
+  validatePasswordStrength(password, tenantId = '', phone = '') {
     const pwd = String(password || '').trim();
     if (pwd.length < 8) {
-      return { valid: false, message: '安全密码长度不能少于 8 位' };
+      return { ok: false, valid: false, msg: '安全密码长度不能少于 8 位', message: '安全密码长度不能少于 8 位' };
     }
     if (!/[A-Za-z]/.test(pwd) || !/\d/.test(pwd)) {
-      return { valid: false, message: '安全密码必须同时包含英文字母和数字' };
+      return { ok: false, valid: false, msg: '安全密码必须同时包含英文字母和数字', message: '安全密码必须同时包含英文字母和数字' };
     }
     const lower = pwd.toLowerCase();
     const weakList = ['12345678', '87654321', '11111111', '00000000', 'abcd1234', 'qwer1234', 'password'];
     if (weakList.some((w) => lower.includes(w))) {
-      return { valid: false, message: '请勿使用过于简单的连续数字或常见弱口令' };
+      return { ok: false, valid: false, msg: '请勿使用过于简单的连续数字或常见弱口令', message: '请勿使用过于简单的连续数字或常见弱口令' };
     }
-    for (const hint of contextHints) {
+    for (const hint of [tenantId, phone]) {
       const cleanHint = String(hint || '').trim().toLowerCase();
       if (cleanHint.length >= 4 && lower.includes(cleanHint)) {
-        return { valid: false, message: '安全密码不能直接包含商号代号或手机号' };
+        return { ok: false, valid: false, msg: '安全密码不能直接包含商号代号或手机号', message: '安全密码不能直接包含商号代号或手机号' };
       }
     }
-    return { valid: true, message: '密码强度符合安全规范' };
+    return { ok: true, valid: true, msg: '密码强度符合安全规范', message: '密码强度符合安全规范' };
   },
 
-  /**
-   * 获取当前设备的稳定硬件摘要指纹（用于审计留痕与信任设备识别）
-   */
+  // ================= 2. 设备指纹、脱敏与观察期护盘护栏 =================
   getDeviceFingerprint() {
     let cached = localStorage.getItem(DEVICE_FP_KEY);
     if (!cached) {
@@ -69,32 +125,21 @@ export const AuthSecurity = {
     };
   },
 
-  /**
-   * 手机号码中间四位脱敏显示（防断网快照全量泄露）
-   */
   maskPhone(phone) {
     const clean = String(phone || '').trim();
     if (clean.length < 7) return clean;
     return `${clean.slice(0, 3)}****${clean.slice(-4)}`;
   },
 
-  /**
-   * 判定当前商号是否处于“72 小时时间锁观察期”
-   * 观察期规则：放行正常接单、送货、收款；锁死改密、删档、大额抹账与改底价
-   */
   isTimelockObservationActive(tenantState) {
     if (!tenantState) return false;
     return tenantState.timelock_status === 'pending' || tenantState.timelock_status === 'ready';
   },
 
-  /**
-   * 观察期写操作护栏检查
-   */
   guardWriteOperation(tenantState, actionCategory = 'high_risk') {
     if (!this.isTimelockObservationActive(tenantState)) {
       return { allowed: true };
     }
-    // 一线正常履约（接单、配送、签收、日常收款）全部照常放行，绝不停摆
     const safeOps = ['order_create', 'order_fulfill', 'driver_collect', 'stock_in_out'];
     if (safeOps.includes(actionCategory)) {
       return { allowed: true, notice: '当前处于安全观察期，本笔一线业务单据将自动标记待复核。' };
@@ -105,10 +150,7 @@ export const AuthSecurity = {
     };
   },
 
-  /**
-   * 使用 Canvas 绘制高清《商号安家立户凭证卡》PNG DataURL
-   * 既可直接 <img> 渲染供微信内置浏览器“长按保存到相册”，也可触发桌面下载
-   */
+  // ================= 3. 《商号安家立户凭证卡》Canvas 高清渲染（支持微信长按保存） =================
   renderRegistrationVoucherDataUrl({
     tenantId,
     companyName,
@@ -124,11 +166,9 @@ export const AuthSecurity = {
     canvas.height = hasCodes ? 1180 : 860;
     const ctx = canvas.getContext('2d');
 
-    // 背景与宣纸底纹质感
     ctx.fillStyle = '#fbf9f5';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 外层朱砂金双边框
     ctx.strokeStyle = '#8b261d';
     ctx.lineWidth = 8;
     ctx.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
@@ -136,7 +176,6 @@ export const AuthSecurity = {
     ctx.lineWidth = 2;
     ctx.strokeRect(42, 42, canvas.width - 84, canvas.height - 84);
 
-    // 顶部印章抬头
     ctx.fillStyle = '#8b261d';
     ctx.font = 'bold 42px "PingFang SC", "Microsoft YaHei", serif';
     ctx.textAlign = 'center';
@@ -146,7 +185,6 @@ export const AuthSecurity = {
     ctx.font = '24px "PingFang SC", "Microsoft YaHei", sans-serif';
     ctx.fillText('核心资产钥匙 · 请长按保存至手机相册或打印妥善保管', canvas.width / 2, 168);
 
-    // 分割线
     ctx.beginPath();
     ctx.moveTo(80, 200);
     ctx.lineTo(canvas.width - 80, 200);
@@ -154,7 +192,6 @@ export const AuthSecurity = {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // 信息行绘制
     const rows = [
       ['商号全称', companyName || '—'],
       ['商号唯一代号', tenantId || '—'],
@@ -177,7 +214,6 @@ export const AuthSecurity = {
       y += 68;
     });
 
-    // 若附带 6 组保命应急恢复码，绘制恢复码方阵
     if (hasCodes) {
       ctx.fillStyle = '#fff5f2';
       ctx.fillRect(80, y + 10, canvas.width - 160, 310);
@@ -205,7 +241,6 @@ export const AuthSecurity = {
       y += 340;
     }
 
-    // 底部防骗警示
     ctx.fillStyle = '#7a6c5d';
     ctx.font = '22px "PingFang SC", "Microsoft YaHei", sans-serif';
     ctx.textAlign = 'center';
@@ -214,9 +249,6 @@ export const AuthSecurity = {
     return canvas.toDataURL('image/png');
   },
 
-  /**
-   * 弹出支持微信内置浏览器长按保存 + 桌面端一键下载的凭证卡预览窗
-   */
   showVoucherPreviewModal(options) {
     const dataUrl = this.renderRegistrationVoucherDataUrl(options);
     const existing = document.getElementById('bgtj-voucher-modal');
