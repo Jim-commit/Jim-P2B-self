@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase.js';
 import { TOTP } from '../../utils/totp.js';
+import { AuthSecurity } from '../../utils/authSecurity.js';
 import {
   P_AUTH_SESSION_KEY,
   platformState,
@@ -98,7 +99,7 @@ export function initPlatformAuthBindings() {
 
     if (!code || code.length !== 6) return alert('请输入验证器中显示的 6 位动态口令！');
 
-    const isValid = await TOTP.verifyTOTP(secret, code, 2);
+    const isValid = await TOTP.verifyTOTP(secret, code, 4);
     if (!isValid) {
       return alert('⚠️ 动态口令验证未通过！\n1. 请确认手机「自动设置时间」已开启；\n2. 若扫码异常，请点击「复制密钥」，在手机验证器选择「手动输入密钥」添加（基于时间）。');
     }
@@ -126,6 +127,13 @@ export function initPlatformAuthBindings() {
     const errBox = document.getElementById('p-auth-error');
     const btn = document.getElementById('btn-platform-auth');
 
+    const lockInfo = AuthSecurity.checkLoginLockout(`PLATFORM_${account}`);
+    if (lockInfo.locked) {
+      errBox.innerText = `🛡️ 安全保护：连续输错次数过多，请 ${lockInfo.remainMins} 分钟后再试。`;
+      errBox.classList.remove('hidden');
+      return;
+    }
+
     btn.disabled = true;
     btn.innerText = '正在核对密钥...';
     errBox.classList.add('hidden');
@@ -139,13 +147,15 @@ export function initPlatformAuthBindings() {
       .limit(1);
 
     if (error || !data || data.length === 0) {
+      const failRec = AuthSecurity.recordLoginFailure(`PLATFORM_${account}`);
       btn.disabled = false;
       btn.innerText = '安全验证 · 登录总控台';
-      errBox.innerText = '⚠️ 安全凭证无效或账号已被锁定！';
+      errBox.innerText = `⚠️ 安全凭证无效或账号已被锁定（还可尝试 ${Math.max(0, 5 - failRec.count)} 次）！`;
       errBox.classList.remove('hidden');
       return;
     }
 
+    AuthSecurity.clearLoginFailure(`PLATFORM_${account}`);
     sessionStorage.setItem(P_AUTH_SESSION_KEY, token);
     sessionStorage.setItem('p_auth_account', account);
     sessionStorage.setItem('p_auth_name', data[0].admin_name || '总控执事');
@@ -188,7 +198,7 @@ export function initPlatformAuthBindings() {
 
     let isSuccess = false;
     if (admin?.totp_enabled && admin?.totp_secret && inputVal.length === 6 && /^\d+$/.test(inputVal)) {
-      isSuccess = await TOTP.verifyTOTP(admin.totp_secret, inputVal, 2);
+      isSuccess = await TOTP.verifyTOTP(admin.totp_secret, inputVal, 4);
     } else {
       isSuccess = inputVal === curToken;
     }
