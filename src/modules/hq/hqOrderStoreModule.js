@@ -256,6 +256,7 @@ export function renderOrderFulfillmentList() {
               <div>期望工价: <b class="text-emerald-900">${blindPrice ? '***' : info.budget}</b></div>
               <div>交付要求: <b class="font-sans">${info.delivery}</b></div>
             </div>
+            ${info.note ? `<div class="text-[11px] text-stone-600">💬 定制规格细节：${info.note}</div>` : ''}
             ${hasReplied ? `<div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-2xl text-[11px] text-emerald-950"><b>已发直供回应：</b>${d.official_reply}</div>` : ''}
             <div class="flex justify-between items-center pt-1 text-[11px]">
               <span class="text-stone-400">发起人：${d.proposer_name || '天街买家'}</span>
@@ -312,8 +313,13 @@ export function renderOrderFulfillmentList() {
       const orderItems = Array.isArray(o.items) ? o.items : [];
       const returnItems = Array.isArray(o.items_return) ? o.items_return : [];
       const exchangeItems = Array.isArray(o.items_exchange) ? o.items_exchange : [];
+      const proofs = Array.isArray(o.proof_images) ? o.proof_images : [];
       const netTotal = parseFloat(o.net_settle_amount || o.total_amount || 0);
       const canRestockReturn = isDelivered && returnItems.length > 0 && !String(o.note || '').includes('[退货已质检入账]');
+
+      const step1Cls = 'bg-emerald-700 text-white';
+      const step2Cls = !isPending && !isOverCredit ? 'bg-emerald-700 text-white' : 'bg-stone-200 text-stone-500';
+      const step3Cls = isDelivered ? 'bg-emerald-700 text-white' : 'bg-stone-200 text-stone-500';
 
       return `
         <div class="p-4 bg-stone-50 border ${isOverCredit ? 'border-rose-400 bg-rose-50/30' : isPending ? 'border-amber-300' : 'border-stone-200'} rounded-3xl space-y-2.5">
@@ -327,11 +333,23 @@ export function renderOrderFulfillmentList() {
             </div>
             <span class="font-bold text-xs bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-lg">${o.settlement_type}</span>
           </div>
+          <div class="flex items-center gap-1.5 text-[10px] font-bold">
+            <span class="px-2 py-0.5 rounded-full ${step1Cls}">① 已提交制单</span>
+            <span class="text-stone-300">➔</span>
+            <span class="px-2 py-0.5 rounded-full ${step2Cls}">② 接单扣库装车</span>
+            <span class="text-stone-300">➔</span>
+            <span class="px-2 py-0.5 rounded-full ${step3Cls}">③ 送达签收平账</span>
+          </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-white p-2.5 rounded-2xl border border-stone-100 text-[11px]">
             <div>新配: ${orderItems.map((i) => `${i.name}x${i.qty}`).join('、') || '无'}</div>
             <div class="text-rose-700">退验: ${returnItems.map((i) => `${i.name}x${i.qty}`).join('、') || '无'}</div>
             <div class="text-amber-800">对调: ${exchangeItems.map((i) => `${i.name}x${i.qty}`).join('、') || '无'}</div>
           </div>
+          ${
+            o.note || proofs.length > 0 || o.sign_image_url
+              ? `<div class="flex items-center justify-between text-[10px] pt-0.5"><span class="text-amber-800">${o.note ? `💬 附言: ${o.note}` : ''}</span><div class="flex gap-1 items-center">${proofs.map((src) => `<img src="${src}" class="h-6 w-6 rounded border object-cover cursor-pointer" onclick="window.previewFullImage('${src}')">`).join('')}${o.sign_image_url ? `<img src="${o.sign_image_url}" class="h-6 border bg-white rounded px-1 cursor-pointer" onclick="window.previewFullImage('${o.sign_image_url}')">` : ''}</div></div>`
+              : ''
+          }
           <div class="flex flex-wrap justify-between items-center gap-2 pt-2 border-t border-stone-200/60 text-xs">
             <span class="font-mono text-stone-800 font-bold">净结: ${blindPrice ? '***' : `¥${netTotal.toFixed(2)}`}</span>
             <div class="flex flex-wrap items-center gap-2">
@@ -382,7 +400,7 @@ export function renderDriverSettleList(logs) {
                   ${
                     readOnly || hqState.currentRoleCode === 'sales'
                       ? '<span class="text-[10px] text-amber-700 font-bold">待财务核验销账</span>'
-                      : `<button onclick="window.confirmLogSettled(${l.id}, ${l.amount}, ${l.store_id || 0}, '${l.collect_type || ''}')" class="text-[10px] bg-[#1b4332] text-white font-bold px-2.5 py-1 rounded-lg shadow">财务点清入库</button>`
+                      : `<button onclick="window.confirmLogSettled(${l.id}, ${l.amount}, ${l.store_id || 0}, '${l.collect_type || ''}')" class="text-[10px] bg-[#1b4332] text-white font-bold px-2.5 py-1 rounded-lg shadow">财务点清入库${isSalesCollect ? '并冲减欠款' : ''}</button>`
                   }
                 </div>
               </div>
@@ -965,84 +983,354 @@ export function initOrderStoreBindings() {
     }
   };
 
+  function buildAggregatedPlanItems() {
+    const activePlans = hqState.allDemandPlans.filter((p) => p.status === 'submitted' || p.status === 'scheduled');
+    const map = {};
+    activePlans.forEach((p) => {
+      const items = Array.isArray(p.items) ? p.items : [];
+      items.forEach((it) => {
+        const unit = it.unit || '件';
+        const key = `${it.name}|${unit}`;
+        if (!map[key]) {
+          const matchedProd = hqState.allProducts.find((prod) => prod.name === it.name || prod.name.includes(it.name));
+          map[key] = {
+            name: it.name,
+            unit,
+            totalQty: 0,
+            currentStock: matchedProd ? parseInt(matchedProd.stock ?? 0) : null,
+            stores: []
+          };
+        }
+        map[key].totalQty += parseInt(it.qty || 0);
+        map[key].stores.push(`${p.store_name}(${it.qty}${unit}·${p.expected_date || '近期'})`);
+      });
+    });
+    return { activePlans, aggregatedList: Object.values(map) };
+  }
+
+  window.openPlanAggregateModal = function () {
+    const { activePlans, aggregatedList } = buildAggregatedPlanItems();
+    document.getElementById('plan-agg-tenant-name').innerText = `${hqState.currentTenantData?.company_name || hqState.currentAgent} · 源头采收/排产汇总单`;
+    document.getElementById('plan-agg-summary-meta').innerText = `汇总时间：${new Date().toLocaleString()}`;
+    document.getElementById('plan-agg-count').innerText = `${activePlans.length} 份计划`;
+
+    const container = document.getElementById('plan-agg-items-container');
+    if (aggregatedList.length === 0) {
+      container.innerHTML = '<div class="py-8 text-center text-stone-400">当前暂无「待排产 / 已纳入排产」的门店真实用度计划。</div>';
+      window.openModal('modal-plan-aggregate');
+      return;
+    }
+
+    container.innerHTML = aggregatedList
+      .map((row, idx) => {
+        const gap = row.currentStock !== null ? Math.max(0, row.totalQty - row.currentStock) : null;
+        return `
+          <div class="py-2.5 flex justify-between items-start gap-2">
+            <div>
+              <div class="font-bold text-stone-900 text-xs">${idx + 1}. ${row.name}</div>
+              <div class="text-[10px] text-stone-500 mt-0.5">门店需求拆解：${row.stores.join('、')}</div>
+              ${
+                row.currentStock !== null
+                  ? `<div class="text-[10px] font-mono mt-0.5 ${gap > 0 ? 'text-rose-700 font-bold' : 'text-emerald-700'}">当前账面库存：${row.currentStock}${row.unit} ${
+                      gap > 0 ? `（净缺口需采收/排产 ${gap}${row.unit}）` : '（现货充足可直接配发）'
+                    }</div>`
+                  : '<div class="text-[10px] text-amber-800 mt-0.5">非标准在库品 · 需按需定制/采收</div>'
+              }
+            </div>
+            <span class="bg-emerald-100 text-emerald-950 border border-emerald-300 px-2.5 py-0.5 rounded-lg font-mono font-bold text-sm shrink-0">${row.totalQty} ${row.unit}</span>
+          </div>
+        `;
+      })
+      .join('');
+
+    window.openModal('modal-plan-aggregate');
+  };
+
+  window.copyPlanAggregateText = function () {
+    const { activePlans, aggregatedList } = buildAggregatedPlanItems();
+    if (aggregatedList.length === 0) return alert('暂无可复制的排产计划！');
+    const lines = [
+      `【${hqState.currentTenantData?.company_name || hqState.currentAgent} 产销排产汇总单】`,
+      `汇总时间：${new Date().toLocaleString()} | 涵盖 ${activePlans.length} 份门店用度计划`,
+      `------------------------`,
+      ...aggregatedList.map((r, i) => {
+        const stockInfo = r.currentStock !== null ? `（在库${r.currentStock}${r.unit}，缺口${Math.max(0, r.totalQty - r.currentStock)}${r.unit}）` : '';
+        return `${i + 1}. ${r.name}：共需 ${r.totalQty} ${r.unit} ${stockInfo}`;
+      }),
+      `------------------------`,
+      `请村社合作社与源头工坊按此真实用度总量安排采收与生产！`
+    ];
+    navigator.clipboard.writeText(lines.join('\n')).then(() => alert('✅ 产销排产汇总单已复制，可直接发至产区合作社或工坊微信群！'));
+  };
+
+  window.exportPlanAggregateCSV = function () {
+    const { aggregatedList } = buildAggregatedPlanItems();
+    if (aggregatedList.length === 0) return alert('暂无可导出的排产汇总数据！');
+    const headers = ['品名', '单位', '门店计划总需量', '当前在库库存', '需新增采收/排产缺口', '各门店明细拆解'];
+    const rows = aggregatedList.map((r) => [
+      r.name,
+      r.unit,
+      r.totalQty,
+      r.currentStock !== null ? r.currentStock : '非在库品',
+      r.currentStock !== null ? Math.max(0, r.totalQty - r.currentStock) : r.totalQty,
+      r.stores.join('; ')
+    ]);
+    downloadCSV(`${hqState.currentAgent}_产销排产汇总单_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  };
+
+  window.openBatchPickListModal = function () {
+    const toShipOrders = hqState.allOrders.filter(
+      (o) => (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') && o.delivery_status !== 'delivered' && !isDirectoryLead(o)
+    );
+    document.getElementById('picklist-tenant-name').innerText = `${hqState.currentTenantData?.company_name || hqState.currentAgent} · 装车总拣货单`;
+    document.getElementById('picklist-time-label').innerText = `生成时间：${new Date().toLocaleString()}`;
+    document.getElementById('picklist-order-count').innerText = `${toShipOrders.length} 单待发`;
+
+    const container = document.getElementById('picklist-items-container');
+    if (toShipOrders.length === 0) {
+      container.innerHTML = '<div class="py-8 text-center text-stone-400">当前暂无「已排单发运」的待送货品。</div>';
+      window.openModal('modal-batch-picklist');
+      return;
+    }
+
+    const itemSummaryMap = {};
+    toShipOrders.forEach((o) => {
+      (Array.isArray(o.items) ? o.items : []).forEach((it) => {
+        const key = `${it.name}|${it.spec || '整装'}|${it.measure_unit || '件'}`;
+        if (!itemSummaryMap[key]) itemSummaryMap[key] = { name: it.name, spec: it.spec || '整装', unit: it.measure_unit || '件', totalQty: 0, stores: [] };
+        itemSummaryMap[key].totalQty += parseInt(it.qty || 0);
+        itemSummaryMap[key].stores.push(`${o.store_name || '天街自提单'}(${it.qty})`);
+      });
+    });
+
+    container.innerHTML = Object.values(itemSummaryMap)
+      .map(
+        (row, idx) => `
+        <div class="py-2.5 flex justify-between items-start gap-2">
+          <div>
+            <div class="font-bold text-stone-900 text-xs">${idx + 1}. ${row.name} <span class="text-stone-400 font-normal">(${row.spec})</span></div>
+            <div class="text-[10px] text-stone-500 mt-0.5">分门店明细：${row.stores.join('、')}</div>
+          </div>
+          <span class="bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-0.5 rounded-lg font-mono font-bold text-sm shrink-0">${row.totalQty} ${row.unit}</span>
+        </div>
+      `
+      )
+      .join('');
+
+    window.openModal('modal-batch-picklist');
+  };
+
+  window.copyPickListText = function () {
+    const toShipOrders = hqState.allOrders.filter(
+      (o) => (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') && o.delivery_status !== 'delivered' && !isDirectoryLead(o)
+    );
+    if (toShipOrders.length === 0) return alert('暂无待发货单据！');
+    const map = {};
+    toShipOrders.forEach((o) =>
+      (Array.isArray(o.items) ? o.items : []).forEach((it) => {
+        const k = `${it.name} (${it.spec || '整装'})`;
+        map[k] = (map[k] || 0) + parseInt(it.qty || 0);
+      })
+    );
+    const lines = [
+      `【${hqState.currentTenantData?.company_name || hqState.currentAgent} 装车总拣货单】`,
+      `时间：${new Date().toLocaleString()} | 共 ${toShipOrders.length} 家门店`,
+      `------------------------`,
+      ...Object.entries(map).map(([k, q], i) => `${i + 1}. ${k} × ${q}`),
+      `------------------------`,
+      `配送门店：${toShipOrders.map((o) => o.store_name || '天街自提单').join('、')}`
+    ];
+    navigator.clipboard.writeText(lines.join('\n')).then(() => alert('✅ 装车总拣货单已复制！'));
+  };
+
+  window.exportOrdersToCSV = function () {
+    const validOrders = hqState.allOrders.filter((o) => !isDirectoryLead(o));
+    if (validOrders.length === 0) return alert('当前暂无可导出的业务往来单据！');
+    const execExport = () => {
+      const headers = ['单据编号', '下单时间', '合作门店', '交割方式', '新配金额(元)', '调退抵扣(元)', '应结净额(元)', '单据状态', '履约交割状态', '货品明细', '备注'];
+      const rows = validOrders.map((o) => [
+        o.order_no || o.id,
+        o.created_at ? new Date(o.created_at).toLocaleString() : '',
+        o.store_name || '天街买家',
+        o.settlement_type || '',
+        parseFloat(o.total_amount || 0).toFixed(2),
+        parseFloat(o.return_amount || 0).toFixed(2),
+        parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2),
+        o.order_status || '',
+        o.delivery_status === 'delivered' ? '已交割签收' : '待配送/处理中',
+        (Array.isArray(o.items) ? o.items : []).map((i) => `${i.name}x${i.qty}`).join('; '),
+        (o.note || '').replace(/[\r\n,]+/g, ' ')
+      ]);
+      downloadCSV(`${hqState.currentAgent}_往来对账单_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    };
+    if (hqState.globalPolicy.twoFaExportOn) {
+      window.trigger2FAAction('导出全量业务往来核心账单 (CSV)，请输入验证器 6 位动态码授权：', execExport);
+    } else {
+      execExport();
+    }
+  };
+
   window.copyStoreStatementText = function () {
     const storeId = parseInt(document.getElementById('stmt-store-select')?.value || 0);
     const store = hqState.allStores.find((s) => s.id === storeId);
     if (!store) return;
-    navigator.clipboard.writeText(`【${store.name} 往来电子对账单】当前累计在账应结：¥${parseFloat(store.current_debt || 0).toFixed(2)}`).then(() => alert('✅ 已复制对账单摘要！'));
+    const startDate = document.getElementById('stmt-start-date')?.value || '2000-01-01';
+    const endDate = document.getElementById('stmt-end-date')?.value || '2099-12-31';
+    const startTs = new Date(`${startDate}T00:00:00`).getTime();
+    const endTs = new Date(`${endDate}T23:59:59`).getTime();
+
+    const orders = hqState.allOrders.filter((o) => !isDirectoryLead(o) && Number(o.store_id) === storeId && o.order_status !== 'cancelled' && new Date(o.created_at || 0).getTime() >= startTs && new Date(o.created_at || 0).getTime() <= endTs);
+    const orderSum = orders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+    const returnSum = orders.reduce((sum, o) => sum + parseFloat(o.return_amount || 0), 0);
+    const netSum = orders.reduce((sum, o) => sum + parseFloat(o.net_settle_amount || o.total_amount || 0), 0);
+    const curDebt = parseFloat(store.current_debt || 0);
+    const baskets = parseInt(store.carrier_hold_count || store.basket_count || 0);
+
+    const lines = [
+      `【${hqState.currentTenantData?.company_name || hqState.currentAgent} · 往来电子对账单】`,
+      `合作门店：${store.name}（${store.contact || '掌柜'}）`,
+      `对账周期：${startDate} 至 ${endDate}`,
+      `------------------------`,
+      `• 区间新配货品总额：¥${orderSum.toFixed(2)}`,
+      `• 区间验退冲抵金额：-¥${returnSum.toFixed(2)}`,
+      `• 区间发生净额合计：¥${netSum.toFixed(2)}（共 ${orders.length} 笔）`,
+      `• 当前累计在账应结：¥${curDebt.toFixed(2)}`,
+      `• ${hqState.carrierLabel}借存结余：${baskets} 件`,
+      `------------------------`,
+      `明细清单：`,
+      ...(orders.length > 0
+        ? orders.map((o, idx) => {
+            const d = new Date(o.created_at).toLocaleDateString();
+            const net = parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2);
+            const itemStr = (Array.isArray(o.items) ? o.items : []).map((i) => `${i.name}x${i.qty}`).join('、');
+            return `${idx + 1}. [${d}] #${o.order_no || o.id} ¥${net} (${itemStr || '调退'})`;
+          })
+        : ['（本期无新增往来单据）']),
+      `------------------------`,
+      `诚信相照，清白对账！请掌柜核验，如有疑问随时联系我们。`
+    ];
+
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      alert(`✅ 【${store.name}】电子对账单已复制到剪贴板，可直接发送微信给掌柜核对！`);
+    });
   };
 
   window.exportStoreStatementCSV = function () {
     const storeId = parseInt(document.getElementById('stmt-store-select')?.value || 0);
     const store = hqState.allStores.find((s) => s.id === storeId);
     if (!store) return;
-    const orders = hqState.allOrders.filter((o) => Number(o.store_id) === storeId && !isDirectoryLead(o));
-    downloadCSV(`${store.name}_往来对账单.csv`, ['单据号', '日期', '应结净额(元)'], orders.map((o) => [o.order_no || o.id, new Date(o.created_at).toLocaleString(), parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2)]));
+    const startDate = document.getElementById('stmt-start-date')?.value || '2000-01-01';
+    const endDate = document.getElementById('stmt-end-date')?.value || '2099-12-31';
+    const startTs = new Date(`${startDate}T00:00:00`).getTime();
+    const endTs = new Date(`${endDate}T23:59:59`).getTime();
+    const orders = hqState.allOrders.filter((o) => !isDirectoryLead(o) && Number(o.store_id) === storeId && o.order_status !== 'cancelled' && new Date(o.created_at || 0).getTime() >= startTs && new Date(o.created_at || 0).getTime() <= endTs);
+
+    const execExport = () => {
+      const headers = ['单据号', '日期', '门店名称', '交割方式', '新配金额(元)', '退验冲抵(元)', '净额(元)', '状态', '货品明细'];
+      const rows = orders.map((o) => [
+        o.order_no || o.id,
+        new Date(o.created_at).toLocaleString(),
+        store.name,
+        o.settlement_type || '',
+        parseFloat(o.total_amount || 0).toFixed(2),
+        parseFloat(o.return_amount || 0).toFixed(2),
+        parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2),
+        o.delivery_status === 'delivered' ? '已签收' : '配送/排单中',
+        (Array.isArray(o.items) ? o.items : []).map((i) => `${i.name}x${i.qty}`).join('; ')
+      ]);
+      downloadCSV(`${store.name}_往来对账单_${startDate}_${endDate}.csv`, headers, rows);
+    };
+    if (hqState.globalPolicy.twoFaExportOn) {
+      window.trigger2FAAction('导出客户财务往来对账单 (CSV)，请输入验证器 6 位动态码授权：', execExport);
+    } else {
+      execExport();
+    }
   };
-
-  window.openPlanAggregateModal = function () {
-    const activePlans = hqState.allDemandPlans.filter((p) => p.status === 'submitted' || p.status === 'scheduled');
-    document.getElementById('plan-agg-tenant-name').innerText = `${hqState.currentTenantData?.company_name || hqState.currentAgent} · 源头采收/排产汇总单`;
-    document.getElementById('plan-agg-count').innerText = `${activePlans.length} 份计划`;
-    const container = document.getElementById('plan-agg-items-container');
-    container.innerHTML = activePlans.length === 0 ? '<div class="py-8 text-center text-stone-400">暂无待排产的真实用度计划。</div>' : activePlans.map((p) => `<div class="py-2 text-xs"><b>${p.store_name}</b> (${p.plan_cycle})：${(p.items || []).map((i) => `${i.name}x${i.qty}`).join('、')}</div>`).join('');
-    window.openModal('modal-plan-aggregate');
-  };
-
-  window.copyPlanAggregateText = () => alert('✅ 排产汇总单已复制！');
-  window.exportPlanAggregateCSV = () => downloadCSV(`${hqState.currentAgent}_排产汇总单.csv`, ['门店', '周期', '明细'], hqState.allDemandPlans.map((p) => [p.store_name, p.plan_cycle, JSON.stringify(p.items || [])]));
-
-  window.openBatchPickListModal = function () {
-    const toShip = hqState.allOrders.filter((o) => (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') && o.delivery_status !== 'delivered' && !isDirectoryLead(o));
-    document.getElementById('picklist-order-count').innerText = `${toShip.length} 单待发`;
-    const container = document.getElementById('picklist-items-container');
-    container.innerHTML = toShip.length === 0 ? '<div class="py-8 text-center text-stone-400">暂无待发运货品。</div>' : toShip.map((o) => `<div class="py-2 text-xs"><b>${o.store_name}</b>：${(o.items || []).map((i) => `${i.name}x${i.qty}`).join('、')}</div>`).join('');
-    window.openModal('modal-batch-picklist');
-  };
-
-  window.copyPickListText = () => alert('✅ 装车总拣货单已复制！');
-  window.exportOrdersToCSV = () => downloadCSV(`${hqState.currentAgent}_往来对账单.csv`, ['单号', '门店', '净额'], hqState.allOrders.filter((o) => !isDirectoryLead(o)).map((o) => [o.order_no || o.id, o.store_name || '', parseFloat(o.net_settle_amount || o.total_amount || 0).toFixed(2)]));
 
   window.updateDemandPlanStatus = async function (planId, nextStatus) {
-    await supabase.from('demand_forecast_plan').update({ status: nextStatus }).eq('id', planId);
+    if (isAuditorReadOnly()) return alert('🔍 独立稽核账号仅限只读查验。');
+    const label = nextStatus === 'scheduled' ? '已纳入产区排产' : '已履约配发';
+    const { error } = await supabase.from('demand_forecast_plan').update({ status: nextStatus }).eq('id', planId);
+    if (error) return alert('更新用度计划状态失败：' + error.message);
+    alert(`✅ 该份用度计划单已标记为【${label}】，合作门店端将同步收到回执！`);
     window.loadHQData();
   };
 
   window.convertPlanToPushOrder = function (planId) {
+    if (isAuditorReadOnly()) return alert('🔍 独立稽核账号仅限只读查验。');
     const plan = hqState.allDemandPlans.find((p) => p.id === planId);
     if (!plan) return;
+    if (hqState.allStores.length === 0) return alert('当前名册下暂无合作门店，请先在「合作门店」中立户！');
+
     window.openPushOrderModal();
+    const storeSelect = document.getElementById('push-store-select');
+    const matchedStore = hqState.allStores.find((s) => Number(s.id) === Number(plan.store_id) || s.name === plan.store_name);
+    if (storeSelect && matchedStore) {
+      storeSelect.value = matchedStore.id;
+      window.onPushStoreChange(matchedStore.id);
+    }
+    const noteInput = document.getElementById('push-note-input');
+    if (noteInput) noteInput.value = `按【${plan.plan_cycle}】用度计划排产配发${plan.note ? '（' + plan.note + '）' : ''}`;
+
+    const planItems = Array.isArray(plan.items) ? plan.items : [];
+    const unmatched = [];
+    planItems.forEach((it) => {
+      const prod = hqState.allProducts.find((p) => p.name === it.name || p.name.includes(it.name));
+      if (prod) {
+        const qtyInput = document.getElementById(`push-qty-${prod.id}`);
+        if (qtyInput) qtyInput.value = parseInt(it.qty || 0);
+      } else {
+        unmatched.push(`${it.name}x${it.qty}${it.unit || '件'}`);
+      }
+    });
+    if (unmatched.length > 0) {
+      alert(`已为您自动匹配门店并回填在架货品数量！\n以下计划品项暂未上架标准货品，请核对：\n• ${unmatched.join('\n• ')}`);
+    }
   };
 
   window.completeLocalPoolItem = async function (poolId) {
+    if (isAuditorReadOnly()) return alert('🔍 独立稽核账号仅限只读查验。');
+    if (!confirm('确认该笔同城余缺调剂货物已由送货师傅顺路交割并完成平账？')) return;
     await supabase.from('local_inventory_pool').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', poolId);
+    alert('✅ 同城余缺互调单已标记交割平账！');
     window.loadHQData();
   };
 
   window.replyToC2BDemand = async function (demandId, demandTitle) {
-    const quote = prompt(`针对「${demandTitle}」输入直供报价：`);
+    if (isAuditorReadOnly()) return alert('🔍 独立稽核账号仅限只读查验。');
+    const quote = prompt(`【百工天街求购回应】针对「${demandTitle}」，请输入您的平准直供工价、起订量与交付时间：`, '合作社直供工价 ¥62/件，满20件包配送至合作门店自提，3天内安排发车！');
     if (!quote || !quote.trim()) return;
-    await HQService.replyC2BDemand(demandId, `【${hqState.currentTenantData?.company_name || hqState.currentAgent}】${quote.trim()}`);
-    window.loadHQData();
+    const senderLabel = `${hqState.currentTenantData?.company_name || hqState.currentAgent}（${hqState.currentOperatorName}）`;
+    const { error } = await HQService.replyC2BDemand(demandId, `【${senderLabel}】${quote.trim()}`);
+    if (error) alert('回应提交失败：' + error.message);
+    else {
+      alert('🎉 直供回应已发送至百工天街！');
+      window.loadHQData();
+    }
   };
 
   window.openPushOrderModal = function () {
     const visibleStores = getVisibleStoresForCurrentRole();
     const storeSelect = document.getElementById('push-store-select');
-    storeSelect.innerHTML = visibleStores.map((s) => `<option value="${s.id}">${s.name}</option>`).join('');
+    storeSelect.innerHTML = visibleStores.map((s) => `<option value="${s.id}">${s.name} (信用余 ¥${(s.credit_limit || 2000) - (s.current_debt || 0)})</option>`).join('');
     if (visibleStores.length > 0) window.onPushStoreChange(visibleStores[0].id);
     window.openModal('push-modal');
   };
 
   window.onPushStoreChange = function (storeId) {
     const s = hqState.allStores.find((x) => x.id === parseInt(storeId));
+    if (s) {
+      document.getElementById('push-driver-name').value = s.driver_name || '张师傅';
+      if (s.default_settlement) document.getElementById('push-settlement-select').value = s.default_settlement;
+    }
     const prodBox = document.getElementById('push-products-list');
     if (prodBox) {
       prodBox.innerHTML = hqState.allProducts
         .filter((p) => p.status !== 'inactive' && p.status !== 'draft')
         .map((p) => {
           const { price } = calcStoreEffectivePrice(s, p);
-          return `<div class="flex justify-between items-center py-1 border-b border-stone-50"><span>${p.name} (¥${price.toFixed(2)})</span><input type="number" min="0" value="0" id="push-qty-${p.id}" class="w-16 bg-stone-50 border border-stone-200 rounded px-1.5 py-0.5 text-center font-bold font-mono"></div>`;
+          const priceLabel = isWarehouseBlindPrice() ? `${p.measure_unit || '件'}` : `¥${price.toFixed(2)}/${p.measure_unit || '件'}`;
+          return `<div class="flex justify-between items-center py-1 border-b border-stone-50"><span class="text-stone-700">${p.name} (${priceLabel} · 存${p.stock ?? 0})</span><input type="number" min="0" value="0" id="push-qty-${p.id}" class="w-16 bg-stone-50 border border-stone-200 rounded px-1.5 py-0.5 text-center font-bold font-mono"></div>`;
         })
         .join('');
     }
@@ -1068,7 +1356,8 @@ export function initOrderStoreBindings() {
     if (items.length === 0) return alert('请至少挑选 1 样货品！');
 
     const orderNo = generateUnifiedVoucherNo('CK');
-    await supabase.from('store_order').insert([{ order_no: orderNo, tenant_id: hqState.currentAgent, store_id: storeId, store_name: store.name, driver_name: driver, order_source: 'vendor_push', settlement_type: settlement, items, total_amount: totalAmount, net_settle_amount: totalAmount, order_status: 'confirmed', delivery_status: 'ordered', note: `[主动铺底配发] ${note}` }]);
+    const { error } = await supabase.from('store_order').insert([{ order_no: orderNo, tenant_id: hqState.currentAgent, store_id: storeId, store_name: store.name, driver_name: driver, order_source: 'vendor_push', settlement_type: settlement, settlement_note: note, items, items_return: [], items_exchange: [], total_amount: totalAmount, return_amount: 0, net_settle_amount: totalAmount, order_status: 'confirmed', delivery_status: 'ordered', note: `[主动铺底配发] ${note}`, driver_action_instruction: `【主动配货】核验交付 ${items.length}项` }]);
+    if (error) return alert('配发失败: ' + error.message);
     await HQService.deductStockForItems(hqState.currentAgent, hqState.allProducts, items, orderNo, hqState.currentOperatorName);
     alert(`✅ 统一出库配货单 (${orderNo}) 已生成并自动扣库！`);
     window.closeModal('push-modal');
