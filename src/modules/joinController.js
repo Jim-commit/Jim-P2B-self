@@ -23,13 +23,16 @@ window.syncTenantIdFromCreditCode = function (codeVal) {
 };
 
 window.fillGeneratedMemorablePwd = function () {
-  const pwd = AuthSecurity.generateMemorablePassword();
+  const pwd = AuthSecurity.generateStrongMasterPassword();
   const p1 = document.getElementById('v-access-key');
   const p2 = document.getElementById('v-access-key-confirm');
   if (p1) p1.value = pwd;
   if (p2) p2.value = pwd;
   navigator.clipboard?.writeText(pwd).catch(() => {});
-  alert(`🎲 已为您生成好记的安家主密码并复制到剪贴板：\n\n【 ${pwd} 】\n\n建议您随手存进微信收藏或备忘录，首次登录手机端后即可设置 4 位快捷短码秒进！`);
+  alert(
+    `🎲 已为您生成 14 位高强度顺口安家主密码并复制到剪贴板：\n\n【 ${pwd} 】\n\n` +
+    `（同时包含大小写字母、数字与特殊符号，请随手存进微信收藏；首次登录掌中宝后即可设置 4 位快捷短码秒进！）`
+  );
 };
 
 window.onBusinessTypeChange = function (bType) {
@@ -313,7 +316,6 @@ window.handleVendorRegister = async function (e) {
     return alert('请完整填写 18 位统一社会信用代码或 18 位个人身份证号码！');
   }
 
-  // 重新按法定规则生成只读商号代号，防止页面DOM被人为篡改抢注
   const tenantId = AuthSecurity.generateLockedTenantId(businessType, creditCode, contactPerson);
   document.getElementById('v-tenant-id').value = tenantId;
 
@@ -323,7 +325,10 @@ window.handleVendorRegister = async function (e) {
 
   const pwdCheck = AuthSecurity.validatePasswordStrength(rawPwd, tenantId, contactPhone);
   if (!pwdCheck.ok) {
-    return alert(`⚠️ 密码安全提示：\n${pwdCheck.msg}\n\n您也可以点击「🎲 一键生成顺口密码」自动生成好记的安全密码。`);
+    return alert(
+      `⚠️ 主密码强度未达标：\n${pwdCheck.msg}\n\n` +
+      `请使用 12 位以上（含大小写字母 + 数字 + 特殊符号），或点击「🎲 一键生成14位高强顺口密码」。`
+    );
   }
 
   const btn = document.getElementById('btn-submit-join');
@@ -331,7 +336,6 @@ window.handleVendorRegister = async function (e) {
   btn.innerHTML = '正在核对一证一户唯一性并加密生成商契...';
 
   try {
-    // 一照一码（一证一号）全网物理防抢注查重
     if (!resubmitId) {
       const { data: dupCredit } = await supabase
         .from('platform_tenant')
@@ -345,7 +349,7 @@ window.handleVendorRegister = async function (e) {
             `该信用代码/身份证号【${creditCode}】已注册在册！\n` +
             `• 归属主体：${dupCredit[0].company_name}\n` +
             `• 商号代号：${dupCredit[0].tenant_id}\n\n` +
-            `平台严禁重复抢注。如您是该主体负责人但遗忘密码，请前往登录页点击「忘记密码 / 紧急找回」。`
+            `平台严禁重复抢注。如您是该主体负责人但遗忘密码，请前往登录页点击「凭验证器/恢复码秒设新密」或「72小时安全找回」。`
         );
         btn.disabled = false;
         updateSubmitButtonState(true, isManualFallbackMode);
@@ -365,7 +369,6 @@ window.handleVendorRegister = async function (e) {
       }
     }
 
-    // 前端加盐 SHA-256 单向哈希（云端零明文落库）
     const hashedAccessKey = await AuthSecurity.hashPassword(rawPwd, tenantId);
 
     const extraNotes = [];
@@ -387,7 +390,6 @@ window.handleVendorRegister = async function (e) {
       licenseBase64: currentCompressedBase64
     });
 
-    // 同步写入备用手机与联保背书字段（若云端列已就绪）
     try {
       await supabase
         .from('platform_tenant')
@@ -395,13 +397,22 @@ window.handleVendorRegister = async function (e) {
         .eq('tenant_id', tenantId);
     } catch (e) {}
 
+    // 同步初始化私有安全保险箱
+    try {
+      await supabase.rpc('rpc_sync_tenant_vault', {
+        p_tenant_id: tenantId,
+        p_access_key: hashedAccessKey,
+        p_backup_phone: backupPhone || null
+      });
+    } catch (e) {}
+
     if (!isManualFallbackMode) {
       alert(
         `🎉 资质验真通过！已为您开通「🍃 尝鲜体验」7天全功能席位（期满满意转正仅收极少公共运维会费，零交易抽佣）！\n\n` +
           `• 法定主体名称：${companyName}\n` +
           `• 专属商号代号（请牢记）：${tenantId}\n` +
-          `• 安家主密码：您刚才亲自设定的密码（云端已哈希加密保护）\n\n` +
-          `现在即可前往「百工掌中宝」或「平准调度台」登录，并设置 4 位快捷短码！`
+          `• 安家主密码：您刚才设定的 12 位以上高强度主密码（云端已单向哈希保护）\n\n` +
+          `接下来将为您生成《商号安家立户凭证卡》，请长按保存至手机相册！`
       );
     } else {
       alert(
@@ -409,7 +420,7 @@ window.handleVendorRegister = async function (e) {
           `• 主联络手机：${contactPhone}\n` +
           `• 证件/代码后 6 位（查询进度凭证）：${creditCode.slice(-6)}\n` +
           `• 锁定商号代号：${tenantId}\n\n` +
-          `平台总控核对原件后将第一时间批示，您随时可凭「手机号 + 后6位」查询结果！`
+          `接下来将为您生成《商号安家立户凭证卡》，请长按保存备查！`
       );
     }
 
@@ -417,12 +428,35 @@ window.handleVendorRegister = async function (e) {
     document.getElementById('q-search-phone').value = contactPhone;
     document.getElementById('q-search-last6').value = creditCode.slice(-6);
     window.switchJoinTab('query');
-    window.queryApplicationStatus();
+    await window.queryApplicationStatus();
+
+    // 弹出支持微信长按保存的高清《商号安家立户凭证卡》
+    AuthSecurity.showVoucherPreviewModal({
+      tenantId,
+      companyName,
+      legalName: contactPerson,
+      phone: contactPhone,
+      backupPhone,
+      accessKeyHint: '您亲自设定的12位以上高强度安家主密码'
+    });
   } catch (err) {
     alert('❌ 提交处理失败: ' + err.message);
     btn.disabled = false;
     updateSubmitButtonState(true, isManualFallbackMode);
   }
+};
+
+window.openAppVoucherCard = function (appId) {
+  const app = lastQueriedApps.find((a) => Number(a.id) === Number(appId));
+  if (!app) return;
+  AuthSecurity.showVoucherPreviewModal({
+    tenantId: app.tenant_id,
+    companyName: app.company_name,
+    legalName: app.contact_person || '',
+    phone: app.contact_phone || '',
+    backupPhone: '',
+    accessKeyHint: '您入驻时亲自设定的12位以上高强度安家主密码'
+  });
 };
 
 window.queryApplicationStatus = async function () {
@@ -480,7 +514,7 @@ window.queryApplicationStatus = async function () {
                 </div>
                 <div>
                   <span class="text-[10px] text-stone-400 block">安家主密码状态</span>
-                  <b class="text-emerald-400 text-xs font-bold font-sans">🔐 您入驻时亲自设定的密码</b>
+                  <b class="text-emerald-400 text-xs font-bold font-sans">🔐 您入驻时设定的12位强密码</b>
                 </div>
               </div>
 
@@ -489,6 +523,9 @@ window.queryApplicationStatus = async function () {
               </p>
 
               <div class="pt-1 flex flex-wrap justify-end gap-2">
+                <button type="button" onclick="window.openAppVoucherCard(${app.id})" class="bg-rose-900/70 hover:bg-rose-800 text-rose-100 border border-rose-500/40 font-bold px-3.5 py-2 rounded-xl transition">
+                  📜 保存凭证卡
+                </button>
                 <a href="mall.html?t=${encodeURIComponent(app.tenant_id)}" class="bg-stone-800 hover:bg-stone-700 text-amber-300 font-bold px-3.5 py-2 rounded-xl transition">
                   🏛️ 查看数字专柜
                 </a>
@@ -539,8 +576,11 @@ window.queryApplicationStatus = async function () {
               <p class="text-[11px] text-stone-300 leading-relaxed">
                 您的申请资料已进入平台人工复核队列（商号代号：<b class="font-mono text-amber-300">${app.tenant_id}</b>）。总控核对无误后，您即可凭商号代号与自设主密码登录运营。
               </p>
-              <div class="text-[10px] text-stone-500 font-mono">
-                提交时间：${new Date(app.created_at).toLocaleString()}
+              <div class="flex justify-between items-center pt-1">
+                <span class="text-[10px] text-stone-500 font-mono">提交时间：${new Date(app.created_at).toLocaleString()}</span>
+                <button type="button" onclick="window.openAppVoucherCard(${app.id})" class="text-[11px] text-amber-300 hover:underline font-bold">
+                  📜 查看并保存凭证卡
+                </button>
               </div>
             </div>
           `;
