@@ -1,15 +1,12 @@
 /**
- * 百工天街 · 全站安全防线与设备护航核心工具集（完整兼容版）
- * - 大当家主账号强制 12 位以上高强度口令（大小写字母 + 数字 + 特殊符号）
- * - 客户端设备环境指纹生成（写入不可篡改审计流水）
- * - Canvas 生成《安家立户凭证卡》与《6组应急恢复码卡》（支持微信内置浏览器长按保存）
- * - 会话纪元与 72 小时时间锁观察期操作护栏
+ * 百工天街 · 全站安全防线与设备护航核心工具集（全量无损兼容版）
  */
 
 const DEVICE_FP_KEY = 'bgtj_device_fp_v1';
 const LOCKOUT_PREFIX = 'bgtj_login_fail_';
 
 export const AuthSecurity = {
+  // ================= 1. 防爆破、商号防抢注锁定与哈希 =================
   checkLoginLockout(scopeKey) {
     try {
       const raw = localStorage.getItem(LOCKOUT_PREFIX + scopeKey);
@@ -46,6 +43,30 @@ export const AuthSecurity = {
     } catch {}
   },
 
+  /**
+   * 按入驻主体身份 + 18位信用代码/身份证号自动锁定唯一商号代号（一证一户防抢注）
+   */
+  generateLockedTenantId(businessType, creditCode, personName = '') {
+    const clean = String(creditCode || '').trim().toUpperCase().replace(/[^0-9A-Z]/g, '');
+    if (clean.length < 18) return '';
+    const prefixMap = {
+      coop: 'HZ',
+      factory: 'GC',
+      dealer: 'SH',
+      service: 'FW',
+      individual: 'GR'
+    };
+    const prefix = prefixMap[businessType] || 'HZ';
+    if (businessType === 'individual') {
+      // 个人实名：取生日段(6-12位) + 末尾4位校验段
+      const seg = `${clean.slice(8, 12)}${clean.slice(14, 18)}`;
+      return `${prefix}-${seg}`;
+    }
+    // 企事业单位/合作社：取第9~17位组织机构代码主体段（国标唯一）
+    const orgCode = clean.slice(8, 17);
+    return `${prefix}-${orgCode}`;
+  },
+
   async hashPassword(plainPwd, salt = '') {
     const clean = String(plainPwd || '').trim();
     if (!clean) return '';
@@ -70,7 +91,7 @@ export const AuthSecurity = {
   },
 
   /**
-   * 一键生成 14 位易读高强度安家主密码（含大小写字母 + 数字 + 特殊符号，剔除易混淆字符）
+   * 一键生成 14 位易读高强度安家主密码（含大小写字母 + 数字 + 特殊符号）
    */
   generateStrongMasterPassword() {
     const prefixes = ['FengShou', 'BaiGong', 'TianJie', 'HeZuoShe', 'JinSui', 'AnJia'];
@@ -86,11 +107,12 @@ export const AuthSecurity = {
     return `${word}${sym1}${numStr}${sym2}Bg`;
   },
 
+  generateMemorablePassword() {
+    return this.generateStrongMasterPassword();
+  },
+
   /**
-   * 校验大当家主密码强度：
-   * - 长度至少 12 位
-   * - 必须同时包含：大写字母、小写字母、数字、特殊符号
-   * - 严禁直接包含商号代号或手机号
+   * 校验大当家主密码强度（12位以上 + 大小写字母 + 数字 + 特殊符号）
    */
   validatePasswordStrength(password, tenantId = '', phone = '') {
     const pwd = String(password || '').trim();
@@ -153,6 +175,7 @@ export const AuthSecurity = {
     return { ok: true, valid: true, msg: '主密码强度符合 12 位高安全规范', message: '主密码强度符合 12 位高安全规范' };
   },
 
+  // ================= 2. 设备指纹、脱敏与观察期护盘护栏 =================
   getDeviceFingerprint() {
     let cached = localStorage.getItem(DEVICE_FP_KEY);
     if (!cached) {
@@ -210,6 +233,7 @@ export const AuthSecurity = {
     };
   },
 
+  // ================= 3. 《商号安家立户凭证卡》Canvas 高清渲染 =================
   renderRegistrationVoucherDataUrl({
     tenantId,
     companyName,
