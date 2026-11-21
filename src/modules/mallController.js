@@ -41,7 +41,7 @@ window.exitToTianJie = function () {
 };
 
 window.promptEnterBrandStore = function () {
-  const code = prompt('请输入合作社/工坊名称关键词或商号代号（如 顺达 或 NY-FUNIU）：');
+  const code = prompt('请输入合作社/工坊名称关键词或商号代号（如 顺达 或 HZ-91411300X）：');
   if (!code || !code.trim()) return;
   const clean = code.trim().toUpperCase();
   const found = allTenants.find(
@@ -98,9 +98,6 @@ window.switchMarketMode = async function (mode) {
   }
 };
 
-// =========================================================================
-// 网上/天街价格策略实时计算引擎（与调度台全局策略中心严格同步）
-// =========================================================================
 function calcMallOnlinePrice(prod, qty = 1) {
   const tenant = allTenants.find((t) => t.tenant_id === prod.tenant_id) || {};
   const settings = tenant.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
@@ -180,6 +177,8 @@ function setupBrandStoreMode(tenantId) {
   const name = tenant ? tenant.company_name : tenantId;
   const settings = tenant?.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
   const socialLinks = settings.socialLinks && typeof settings.socialLinks === 'object' ? settings.socialLinks : {};
+  const seasonalPause = settings.seasonalPause || {};
+  const sponsorOrg = (tenant?.sponsor_org || '').trim();
 
   document.getElementById('mall-header-title').innerText = `${name} · 数字专柜`;
   document.getElementById('mall-mode-badge').innerText = '源头专柜';
@@ -191,7 +190,9 @@ function setupBrandStoreMode(tenantId) {
 
   document.getElementById('hero-brand-name').innerText = name;
   let heroDesc = tenant?.brand_origin_desc || '村社合作社与匠心工坊 · 按需直配 · 阳光工价';
-  if (settings.campaignActive && Array.isArray(settings.promos) && settings.promos.length > 0) {
+  if (seasonalPause.isPaused) {
+    heroDesc = `🍵 农忙/盘点暂歇接单：${seasonalPause.reason || '产区集中采收中'}${seasonalPause.resumeDate ? `（预计 ${seasonalPause.resumeDate} 恢复接单）` : ''}`;
+  } else if (settings.campaignActive && Array.isArray(settings.promos) && settings.promos.length > 0) {
     heroDesc = `🔥 ${settings.promos[0].title}：${settings.promos[0].rule}`;
   } else if (settings.harvestAidOn) {
     heroDesc = '🌾 丰产助农平准认领季 · 源头新鲜直发 · 欢迎邻里拼单';
@@ -201,7 +202,7 @@ function setupBrandStoreMode(tenantId) {
 
   const isInd = tenant?.business_type === 'individual' || String(tenant?.tenant_id || '').startsWith('GR-');
   document.getElementById('craft-type-text').innerText = isInd
-    ? '实名农户 / 非遗手艺人专柜'
+    ? '实名农户 / 手艺人 / 个体匠人专柜'
     : tenant?.business_type === 'factory'
     ? '村社合作社 / 源头工坊专柜'
     : '区域平准仓集散专柜';
@@ -221,7 +222,6 @@ function setupBrandStoreMode(tenantId) {
     }
   }
 
-  // 动态渲染外部社交平台/官网/公众号/客服微信矩阵卡片
   const archivePanel = document.getElementById('brand-craft-archive-panel');
   if (archivePanel) {
     let matrixEl = document.getElementById('brand-social-matrix-bar');
@@ -231,6 +231,16 @@ function setupBrandStoreMode(tenantId) {
       archivePanel.appendChild(matrixEl);
     }
     const btns = [];
+    if (sponsorOrg) {
+      btns.push(
+        `<span class="bg-amber-100 border border-amber-400 text-amber-950 px-2.5 py-1 rounded-xl font-bold text-[10px]">🛡️ 由【${sponsorOrg}】提供品质联保背书</span>`
+      );
+    }
+    if (seasonalPause.isPaused) {
+      btns.push(
+        `<span class="bg-rose-100 border border-rose-300 text-rose-900 px-2.5 py-1 rounded-xl font-bold text-[10px]">🍵 暂歇接单至 ${seasonalPause.resumeDate || '近期恢复'}</span>`
+      );
+    }
     if (socialLinks.websiteUrl) {
       btns.push(
         `<a href="${socialLinks.websiteUrl}" target="_blank" class="bg-white border border-stone-200 text-stone-800 px-2.5 py-1 rounded-xl font-bold text-[10px] hover:border-emerald-700 transition">🌐 商号官网</a>`
@@ -293,7 +303,8 @@ function renderDigitalCountersGrid() {
       (t) =>
         (t.company_name || '').toLowerCase().includes(counterSearchKeyword) ||
         (t.tenant_id || '').toLowerCase().includes(counterSearchKeyword) ||
-        (t.brand_origin_desc || '').toLowerCase().includes(counterSearchKeyword)
+        (t.brand_origin_desc || '').toLowerCase().includes(counterSearchKeyword) ||
+        (t.sponsor_org || '').toLowerCase().includes(counterSearchKeyword)
     );
   }
 
@@ -307,13 +318,17 @@ function renderDigitalCountersGrid() {
       const tenantProds = allProducts.filter((p) => p.tenant_id === t.tenant_id);
       const sampleProds = tenantProds.slice(0, 3);
       const isInd = t.business_type === 'individual' || String(t.tenant_id || '').startsWith('GR-');
+      const settings = t.custom_settings && typeof t.custom_settings === 'object' ? t.custom_settings : {};
+      const seasonalPause = settings.seasonalPause || {};
+      const sponsorOrg = (t.sponsor_org || '').trim();
+
       return `
-        <div class="bg-white border border-stone-200 hover:border-emerald-700 rounded-3xl p-4 shadow-xs transition flex flex-col justify-between space-y-3">
+        <div class="bg-white border ${seasonalPause.isPaused ? 'border-amber-300' : 'border-stone-200 hover:border-emerald-700'} rounded-3xl p-4 shadow-xs transition flex flex-col justify-between space-y-3">
           <div class="space-y-2">
             <div class="flex justify-between items-start gap-2">
               <div>
                 <span class="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-mono font-bold">
-                  ${isInd ? '👨‍🌾 实名农户 / 非遗匠人' : t.business_type === 'factory' ? '🏭 源头工坊专柜' : '🌾 合作社 / 集散专柜'}
+                  ${isInd ? '👨‍🌾 个人农户 / 手艺人 / 个体匠人' : t.business_type === 'factory' ? '🏭 源头工坊专柜' : '🌾 合作社 / 集散专柜'}
                 </span>
                 <h3 class="text-sm font-bold text-stone-900 mt-1.5">${t.company_name}</h3>
                 <span class="text-[10px] text-stone-400 font-mono block">专柜编号: ${t.tenant_id}</span>
@@ -322,6 +337,22 @@ function renderDigitalCountersGrid() {
                 云端货架 ${tenantProds.length} 款
               </span>
             </div>
+
+            ${
+              sponsorOrg
+                ? `<div class="bg-amber-50 border border-amber-300 text-amber-950 px-2.5 py-1 rounded-xl text-[10px] font-bold">
+                    🛡️ 由【${sponsorOrg}】提供品质联保
+                  </div>`
+                : ''
+            }
+
+            ${
+              seasonalPause.isPaused
+                ? `<div class="bg-amber-100 border border-amber-400 text-amber-950 px-2.5 py-1 rounded-xl text-[10px] font-bold">
+                    🍵 农忙/盘点暂歇接单${seasonalPause.resumeDate ? `（预计 ${seasonalPause.resumeDate} 恢复）` : ''}
+                  </div>`
+                : ''
+            }
 
             <p class="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
               ${t.brand_origin_desc || '物勒工名 · 源头直供 · 支持合作门店自提与按需集采配货'}
@@ -495,6 +526,8 @@ function renderGoodsGrid() {
       const tenant = allTenants.find((t) => t.tenant_id === p.tenant_id);
       const tenantName = tenant ? tenant.company_name : p.tenant_id;
       const settings = tenant?.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
+      const sponsorOrg = (tenant?.sponsor_org || '').trim();
+      const isTenantPaused = !!settings.seasonalPause?.isPaused;
       const tags = Array.isArray(p.tags) ? p.tags : [];
       const isSingleShop = !!currentTenantParam;
       const priceInfo = calcMallOnlinePrice(p, 1);
@@ -538,6 +571,8 @@ function renderGoodsGrid() {
               <b class="text-xs text-stone-900 font-bold block line-clamp-1">${p.name}</b>
               <span class="text-[10px] text-stone-400 font-mono block">${p.spec || '整装'} · ${p.category_main || '常规'}</span>
               ${!isSingleShop ? `<span class="text-[9px] text-emerald-800/80 block truncate mt-0.5">🏭 ${tenantName}</span>` : ''}
+              ${sponsorOrg ? `<span class="inline-block bg-amber-50 text-amber-950 border border-amber-300 text-[9px] font-bold px-1.5 py-0.2 rounded mt-0.5">🛡️ ${sponsorOrg}品质联保</span>` : ''}
+              ${isTenantPaused ? `<span class="inline-block bg-rose-50 text-rose-800 border border-rose-200 text-[9px] font-bold px-1.5 py-0.2 rounded mt-0.5">🍵 农忙暂歇接单</span>` : ''}
               ${
                 tags.length
                   ? `<div class="flex flex-wrap gap-1 mt-1">
@@ -575,6 +610,7 @@ function renderGoodsGrid() {
     })
     .join('');
 }
+
 window.openProductDetail = function (prodId) {
   const p = allProducts.find((x) => x.id === prodId);
   if (!p) return;
