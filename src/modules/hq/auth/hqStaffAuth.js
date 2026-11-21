@@ -3,6 +3,23 @@ import { AuthSecurity } from '../../../utils/authSecurity.js';
 import { hqState } from '../hqState.js';
 import { renderHQSecurityBanner, startSessionEpochHeartbeat, stopSessionEpochHeartbeat } from './hqSessionGuard.js';
 
+function generateStaffInitialPassword() {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
+  const buf = new Uint8Array(8);
+  crypto.getRandomValues(buf);
+  return (
+    letters[buf[0] % 24] +
+    letters[24 + (buf[1] % 23)] +
+    digits[buf[2] % digits.length] +
+    digits[buf[3] % digits.length] +
+    digits[buf[4] % digits.length] +
+    digits[buf[5] % digits.length] +
+    letters[buf[6] % 24] +
+    letters[24 + (buf[7] % 23)]
+  );
+}
+
 export function applyRoleViewExperience(roleCode, operatorName) {
   const displayEl = document.getElementById('hq-operator-role-display');
   const roleLabels = {
@@ -380,6 +397,11 @@ export function bindLoginAndStaffActions() {
     document.getElementById('sub-account-input').value = '';
     document.getElementById('sub-name-input').value = '';
     document.getElementById('sub-phone-input').value = '';
+    const pwdInp = document.getElementById('sub-pwd-input');
+    if (pwdInp) {
+      pwdInp.type = 'text';
+      pwdInp.value = generateStaffInitialPassword();
+    }
     window.onSubRoleTemplateChange('sales');
     window.openModal('modal-add-subuser');
   };
@@ -393,6 +415,9 @@ export function bindLoginAndStaffActions() {
     const phone = document.getElementById('sub-phone-input').value.trim();
 
     if (!account_name || !real_name || !pwd) return alert('请填全账号、姓名与密码！');
+    if (pwd.length < 6 || ['123456', '654321', '888888', '000000', '111111'].includes(pwd)) {
+      return alert('⚠️ 为防同行或外部人员猜测，属员登录密码长度不能少于 6 位，且严禁使用 123456 / 888888 等纯数字弱密码！');
+    }
 
     const checkedPerms = Array.from(document.querySelectorAll('.sub-perm-cb:checked')).map((el) => el.value);
     if (checkedPerms.length === 0) return alert('请至少勾选一项岗位权限！');
@@ -411,7 +436,12 @@ export function bindLoginAndStaffActions() {
       .insert([{ tenant_id: hqState.currentAgent, account_name, real_name, role_code, password_hash: hashedSubPwd, phone: storedPhoneAndTitle, is_active: true }]);
     if (error) alert('授任失败: ' + error.message);
     else {
-      alert(`🎉 已授任【${real_name}】（${customTitle}），电脑端与掌中宝均可使用 ${account_name}:${pwd} 登录（密码已哈希加密保护）！`);
+      navigator.clipboard?.writeText(`${account_name}:${pwd}`).catch(() => {});
+      alert(
+        `🎉 已授任【${real_name}】（${customTitle}）！\n\n` +
+        `• 登录口令（已复制到剪贴板）：${account_name}:${pwd}\n` +
+        `• 电脑端与手机掌中宝通用，云端已单向哈希加密保护。`
+      );
       window.closeModal('modal-add-subuser');
       window.loadHQData();
     }
@@ -419,12 +449,46 @@ export function bindLoginAndStaffActions() {
 
   window.toggleSubUserActive = async function (id, curState) {
     const nextState = !curState;
+    const subUser = hqState.allSubUsers.find((u) => Number(u.id) === Number(id));
     await supabase.from('tenant_sub_user').update({ is_active: nextState }).eq('id', id);
+
     if (!nextState) {
       await supabase.rpc('rpc_bump_session_epoch', {
         p_tenant_id: hqState.currentAgent,
         p_reason: `停职属员账号(ID:${id})触发旧终端清退`
       });
+
+      // 检查并处理该离职属员名下的私海合作门店，防止客户悬空
+      if (subUser && subUser.account_name) {
+        const ownedStores = (hqState.allStores || []).filter((s) => s.sales_owner === subUser.account_name);
+        if (ownedStores.length > 0) {
+          const activeSalesList = hqState.allSubUsers.filter(
+            (u) => u.is_active && Number(u.id) !== Number(id) && u.role_code === 'sales'
+          );
+          const candidateTips = activeSalesList.map((u) => `${u.account_name}(${u.real_name})`).join('、');
+          const targetOwner = prompt(
+            `📋 离职资产交接提醒：\n` +
+            `【${subUser.real_name}】名下尚有 ${ownedStores.length} 家专属跟进门店！\n\n` +
+            `• 直接点击「确定」（留空）将全部划转至【🌐 全员公海】；\n` +
+            `• 或输入接任业务员账号进行一对一移交${candidateTips ? `\n  可选在职业务员：${candidateTips}` : ''}：`,
+            ''
+          );
+
+          if (targetOwner !== null) {
+            const cleanTarget = targetOwner.trim();
+            await supabase
+              .from('store')
+              .update({ sales_owner: cleanTarget || null })
+              .eq('tenant_id', hqState.currentAgent)
+              .eq('sales_owner', subUser.account_name);
+            alert(
+              cleanTarget
+                ? `✅ 已将 ${ownedStores.length} 家合作门店平稳移交至业务员【${cleanTarget}】名下！`
+                : `✅ 已将 ${ownedStores.length} 家合作门店划转至【🌐 全员公海】，由团队继续跟进！`
+            );
+          }
+        }
+      }
     }
     window.loadHQData();
   };
