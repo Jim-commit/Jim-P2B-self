@@ -41,25 +41,6 @@ window.closeInquiryModal = function () {
   document.getElementById('inquiry-modal')?.classList.add('hidden');
 };
 
-async function notifySupplierWebhook(tenantId, messageText) {
-  try {
-    const supplier = allSuppliers.find((s) => s.tenant_id === tenantId);
-    const url = (supplier?.webhook_url || '').trim();
-    if (!url || !url.startsWith('http')) return;
-
-    await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        msgtype: 'text',
-        text: { content: messageText },
-        content: { text: messageText }
-      })
-    });
-  } catch (e) {}
-}
-
 function renderSupplierCards() {
   const listEl = document.getElementById('supplier-list');
   const emptyEl = document.getElementById('empty-state');
@@ -241,11 +222,6 @@ async function handleInquirySubmit(e) {
     return alert('提交失败：' + error.message);
   }
 
-  await notifySupplierWebhook(
-    tenantId,
-    `🤝【新店合作意向提醒】\n意向门店：${storeName}\n联系人：${contactName} (${phone})\n地址：${address}\n${refPrefix}${note ? `需求：${note}\n` : ''}请登录调度台「新店合作意向」联系送样立户！`
-  );
-
   alert('🎉 合作意向已直达供货方调度台！当值执事或送货师傅将尽快电话联系您安排上门送样。');
   document.getElementById('inquiry-form')?.reset();
   window.closeInquiryModal();
@@ -268,7 +244,7 @@ export async function initSuppliersController() {
   const [tenantsRes, prodsRes] = await Promise.all([
     supabase
       .from('platform_tenant')
-      .select('tenant_id, company_name, business_type, service_mode, contact_person, contact_name, brand_origin_desc, media_url, sponsor_org, webhook_url, custom_settings, is_active, membership_status')
+      .select('tenant_id, company_name, business_type, service_mode, contact_person, contact_name, brand_origin_desc, media_url, sponsor_org, custom_settings, is_active, membership_status')
       .eq('is_active', true)
       .order('id', { ascending: false }),
     supabase
