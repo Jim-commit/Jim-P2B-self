@@ -5,6 +5,7 @@ export const PALM_SESSION_KEY = 'baigong_palm_session_v1';
 
 export const driverState = {
   currentAgent: localStorage.getItem('hq_active_agent') || localStorage.getItem('baigong_palm_last_tid') || '',
+  sessionEpoch: 1,
   currentRoleCode: 'driver',
   effectiveViewRole: 'driver',
   currentAccountCode: '',
@@ -187,7 +188,7 @@ export async function runLightweightOcrOnFile(file) {
 }
 
 export function initOfflineAndUtilityBindings() {
-  window.syncOfflineQueue = async function () {
+  window.syncOfflineQueue = async function (isSilent = false) {
     const queue = getOfflineQueue();
     if (queue.length === 0) return;
 
@@ -215,12 +216,14 @@ export function initOfflineAndUtilityBindings() {
       btn.innerText = '立即同步回库';
     }
 
-    if (successCount > 0) {
-      alert(`🎉 已成功将 ${successCount} 笔离线暂存签收单同步写入云端总账！`);
-      await window.loadDriverTasks();
-    }
-    if (remaining.length > 0) {
-      alert(`⚠️ 仍有 ${remaining.length} 笔因网络未恢复暂留本地，请移步信号较好区域再点同步。`);
+    if (!isSilent) {
+      if (successCount > 0) {
+        alert(`🎉 已成功将 ${successCount} 笔离线暂存签收单同步写入云端总账！`);
+        await window.loadDriverTasks();
+      }
+      if (remaining.length > 0) {
+        alert(`⚠️ 仍有 ${remaining.length} 笔因网络未恢复暂留本地，请移步信号较好区域再点同步。`);
+      }
     }
   };
 
