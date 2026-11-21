@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase.js';
 import { DriverService } from '../services/driverService.js';
 import { AuthSecurity } from '../utils/authSecurity.js';
+import { MobileSecurityGuard } from '../utils/mobileSecurityGuard.js';
 import {
   PALM_SESSION_KEY,
   driverState,
@@ -245,12 +246,41 @@ window.openPalmHelpModal = function () {
   window.openModal('modal-palm-help');
 };
 
+async function runPalmSecurityPatrol() {
+  if (!driverState.currentAgent) return;
+  let savedSession = null;
+  try {
+    savedSession = JSON.parse(localStorage.getItem(PALM_SESSION_KEY) || 'null');
+  } catch (e) {}
+
+  await MobileSecurityGuard.runMobileSecurityCheck({
+    tenantId: driverState.currentAgent,
+    localSessionEpoch: savedSession?.sessionEpoch || driverState.sessionEpoch || 1,
+    flushOfflineQueueFn: async () => {
+      if (navigator.onLine && typeof window.syncOfflineQueue === 'function') {
+        await window.syncOfflineQueue(true);
+      }
+    },
+    onTerminalRevokedFn: () => {
+      if (typeof window.logoutPalmTerminal === 'function') {
+        window.logoutPalmTerminal();
+      } else {
+        localStorage.removeItem(PALM_SESSION_KEY);
+        document.getElementById('palm-auth-gate')?.classList.remove('hidden');
+      }
+    }
+  });
+}
+
 window.loadDriverTasks = async function () {
   if (!driverState.currentAgent) return;
   updateOfflineBanner();
 
+  // 执行弱网离线队列优先入库、72小时观察期三端联动预警及终端清退巡检
+  await runPalmSecurityPatrol();
+
   const [tenantRes, stores, prods, activeOrds, deliveredOrds, todayLogs, invLogsRes] = await Promise.all([
-    supabase.from('platform_tenant').select('custom_settings').eq('tenant_id', driverState.currentAgent).maybeSingle(),
+    supabase.from('platform_tenant').select('custom_settings, session_epoch').eq('tenant_id', driverState.currentAgent).maybeSingle(),
     DriverService.fetchRouteStores(driverState.currentAgent),
     supabase.from('product').select('*').eq('tenant_id', driverState.currentAgent).order('id', { ascending: false }),
     DriverService.fetchActiveOrders(driverState.currentAgent),
@@ -258,6 +288,17 @@ window.loadDriverTasks = async function () {
     DriverService.fetchTodayCollections(driverState.currentAgent),
     supabase.from('inventory_log').select('*').eq('tenant_id', driverState.currentAgent).order('id', { ascending: false }).limit(50)
   ]);
+
+  if (tenantRes?.data?.session_epoch) {
+    driverState.sessionEpoch = Number(tenantRes.data.session_epoch);
+    try {
+      const curSess = JSON.parse(localStorage.getItem(PALM_SESSION_KEY) || 'null');
+      if (curSess && !curSess.sessionEpoch) {
+        curSess.sessionEpoch = driverState.sessionEpoch;
+        localStorage.setItem(PALM_SESSION_KEY, JSON.stringify(curSess));
+      }
+    } catch (e) {}
+  }
 
   const settings = tenantRes?.data?.custom_settings && typeof tenantRes.data.custom_settings === 'object'
     ? tenantRes.data.custom_settings
@@ -340,6 +381,7 @@ export async function initDriverController() {
 
   if (savedSession && savedSession.tenantId) {
     driverState.currentAgent = savedSession.tenantId;
+    driverState.sessionEpoch = Number(savedSession.sessionEpoch || 1);
     driverState.currentRoleCode = savedSession.roleCode || 'driver';
     driverState.effectiveViewRole = driverState.currentRoleCode === 'owner' ? 'owner_cockpit' : driverState.currentRoleCode;
     driverState.currentAccountCode = savedSession.accountCode || '';
