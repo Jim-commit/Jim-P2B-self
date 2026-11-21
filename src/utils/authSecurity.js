@@ -1,12 +1,15 @@
 /**
  * 百工天街 · 全站安全防线与设备护航核心工具集（完整兼容版）
+ * - 大当家主账号强制 12 位以上高强度口令（大小写字母 + 数字 + 特殊符号）
+ * - 客户端设备环境指纹生成（写入不可篡改审计流水）
+ * - Canvas 生成《安家立户凭证卡》与《6组应急恢复码卡》（支持微信内置浏览器长按保存）
+ * - 会话纪元与 72 小时时间锁观察期操作护栏
  */
 
 const DEVICE_FP_KEY = 'bgtj_device_fp_v1';
 const LOCKOUT_PREFIX = 'bgtj_login_fail_';
 
 export const AuthSecurity = {
-  // ================= 1. 兼容原有防爆破与密码哈希接口 =================
   checkLoginLockout(scopeKey) {
     try {
       const raw = localStorage.getItem(LOCKOUT_PREFIX + scopeKey);
@@ -63,36 +66,93 @@ export const AuthSecurity = {
       const hashedInput = await this.hashPassword(input, salt);
       return hashedInput === stored;
     }
-    // 兼容历史明文密钥平滑过渡
     return input === stored;
   },
 
   /**
-   * 兼容原有 validatePasswordStrength(pwd, tenantId, phone) 返回 { ok, msg }
+   * 一键生成 14 位易读高强度安家主密码（含大小写字母 + 数字 + 特殊符号，剔除易混淆字符）
+   */
+  generateStrongMasterPassword() {
+    const prefixes = ['FengShou', 'BaiGong', 'TianJie', 'HeZuoShe', 'JinSui', 'AnJia'];
+    const symbols = ['@', '#', '$', '%', '&', '!', '?'];
+    const digits = '23456789';
+    const buf = new Uint8Array(6);
+    crypto.getRandomValues(buf);
+
+    const word = prefixes[buf[0] % prefixes.length];
+    const sym1 = symbols[buf[1] % symbols.length];
+    const sym2 = symbols[buf[2] % symbols.length];
+    const numStr = `${digits[buf[3] % digits.length]}${digits[buf[4] % digits.length]}${digits[buf[5] % digits.length]}`;
+    return `${word}${sym1}${numStr}${sym2}Bg`;
+  },
+
+  /**
+   * 校验大当家主密码强度：
+   * - 长度至少 12 位
+   * - 必须同时包含：大写字母、小写字母、数字、特殊符号
+   * - 严禁直接包含商号代号或手机号
    */
   validatePasswordStrength(password, tenantId = '', phone = '') {
     const pwd = String(password || '').trim();
-    if (pwd.length < 8) {
-      return { ok: false, valid: false, msg: '安全密码长度不能少于 8 位', message: '安全密码长度不能少于 8 位' };
+    if (pwd.length < 12) {
+      return {
+        ok: false,
+        valid: false,
+        msg: '大当家安家主密码长度不能少于 12 位！',
+        message: '大当家安家主密码长度不能少于 12 位！'
+      };
     }
-    if (!/[A-Za-z]/.test(pwd) || !/\d/.test(pwd)) {
-      return { ok: false, valid: false, msg: '安全密码必须同时包含英文字母和数字', message: '安全密码必须同时包含英文字母和数字' };
+    if (!/[A-Z]/.test(pwd) || !/[a-z]/.test(pwd)) {
+      return {
+        ok: false,
+        valid: false,
+        msg: '安家主密码必须同时包含大写英文字母和小写英文字母！',
+        message: '安家主密码必须同时包含大写英文字母和小写英文字母！'
+      };
     }
+    if (!/\d/.test(pwd)) {
+      return {
+        ok: false,
+        valid: false,
+        msg: '安家主密码必须包含至少 1 位数字！',
+        message: '安家主密码必须包含至少 1 位数字！'
+      };
+    }
+    if (!/[^A-Za-z0-9\s]/.test(pwd)) {
+      return {
+        ok: false,
+        valid: false,
+        msg: '安家主密码必须包含至少 1 个特殊符号（如 @ # $ % & * ! ? _ -）！',
+        message: '安家主密码必须包含至少 1 个特殊符号（如 @ # $ % & * ! ? _ -）！'
+      };
+    }
+
     const lower = pwd.toLowerCase();
     const weakList = ['12345678', '87654321', '11111111', '00000000', 'abcd1234', 'qwer1234', 'password'];
     if (weakList.some((w) => lower.includes(w))) {
-      return { ok: false, valid: false, msg: '请勿使用过于简单的连续数字或常见弱口令', message: '请勿使用过于简单的连续数字或常见弱口令' };
+      return {
+        ok: false,
+        valid: false,
+        msg: '请勿使用过于简单的连续数字或常见弱口令片段！',
+        message: '请勿使用过于简单的连续数字或常见弱口令片段！'
+      };
     }
+
     for (const hint of [tenantId, phone]) {
       const cleanHint = String(hint || '').trim().toLowerCase();
       if (cleanHint.length >= 4 && lower.includes(cleanHint)) {
-        return { ok: false, valid: false, msg: '安全密码不能直接包含商号代号或手机号', message: '安全密码不能直接包含商号代号或手机号' };
+        return {
+          ok: false,
+          valid: false,
+          msg: '安家主密码不能直接包含商号代号或手机号！',
+          message: '安家主密码不能直接包含商号代号或手机号！'
+        };
       }
     }
-    return { ok: true, valid: true, msg: '密码强度符合安全规范', message: '密码强度符合安全规范' };
+
+    return { ok: true, valid: true, msg: '主密码强度符合 12 位高安全规范', message: '主密码强度符合 12 位高安全规范' };
   },
 
-  // ================= 2. 设备指纹、脱敏与观察期护盘护栏 =================
   getDeviceFingerprint() {
     let cached = localStorage.getItem(DEVICE_FP_KEY);
     if (!cached) {
@@ -150,14 +210,13 @@ export const AuthSecurity = {
     };
   },
 
-  // ================= 3. 《商号安家立户凭证卡》Canvas 高清渲染（支持微信长按保存） =================
   renderRegistrationVoucherDataUrl({
     tenantId,
     companyName,
     legalName,
     phone,
     backupPhone,
-    accessKeyHint = '（入驻时设定的安家主密码）',
+    accessKeyHint = '（入驻时设定的12位以上高强度安家主密码）',
     recoveryCodes = []
   }) {
     const canvas = document.createElement('canvas');
