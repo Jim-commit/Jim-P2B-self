@@ -1,8 +1,14 @@
 import { supabase } from '../lib/supabase.js';
 
+const PUBLIC_TENANT_FIELDS =
+  'tenant_id, company_name, business_type, service_mode, contact_person, phone, custom_settings, is_active, membership_status';
+
 export const MallService = {
   async fetchActiveTenants() {
-    const { data } = await supabase.from('platform_tenant').select('*').eq('is_active', true);
+    const { data } = await supabase
+      .from('platform_tenant')
+      .select(PUBLIC_TENANT_FIELDS)
+      .eq('is_active', true);
     return data || [];
   },
 
@@ -16,7 +22,11 @@ export const MallService = {
   },
 
   async fetchReferrerStore(storeId) {
-    const { data } = await supabase.from('store').select('*').eq('id', parseInt(storeId)).single();
+    const { data } = await supabase
+      .from('store')
+      .select('id, name, address, phone, tenant_id')
+      .eq('id', parseInt(storeId))
+      .single();
     return data || null;
   },
 
