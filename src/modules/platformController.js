@@ -168,9 +168,11 @@ function renderEcosystemDashboard() {
 function updateAISummaryInsight() {
   const activeCount = platformState.allTenants.filter((t) => (t.membership_status || 'active') === 'active').length;
   const trialCount = platformState.allTenants.filter((t) => t.membership_status === 'trial').length;
+  const timelockCount = platformState.allTenants.filter((t) => t.timelock_status === 'pending').length;
   const severeCount = getFlaggedProductsList().filter((x) => x.isSevere).length;
 
   let insight = `当前在册合作社、工坊与实名个体主体 ${platformState.allTenants.length} 家，和合畅运 ${activeCount} 家；全网用度计划 ${platformState.allEcoPlans.length} 份、余缺互调 ${platformState.allEcoPool.length} 笔。`;
+  if (timelockCount > 0) insight += ` ⏳ 有 ${timelockCount} 家商号正处于「72小时无人值守时间锁观察期」（若急需抢收可用证件核验加急放行）；`;
   if (severeCount > 0) insight += ` ⚖️ 涉违高风险词疑点 ${severeCount} 款待平台人工终审（常规缺图琐事已由 AI 自动协同提示）；`;
   if (trialCount > 0) insight += ` 尝鲜开席试用中 ${trialCount} 家（转正签约时可核定象征性公共运维会费）；`;
   insight += ` 城乡供需与品类标准运转平稳。`;
