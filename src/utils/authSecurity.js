@@ -174,7 +174,7 @@ export const AuthSecurity = {
     return { ok: true, valid: true, msg: '主密码强度符合 12 位高安全规范', message: '主密码强度符合 12 位高安全规范' };
   },
 
-  // ================= 2. 手机掌中宝本机 4 位快捷短码支持 =================
+  // ================= 2. 手机掌中宝本机 4 位快捷短码支持（兼容 3/4 参 + 3 次输错熔断） =================
   getDeviceQuickPinInfo(tenantId) {
     try {
       const raw = localStorage.getItem(QUICK_PIN_PREFIX + String(tenantId || '').toUpperCase());
@@ -184,12 +184,28 @@ export const AuthSecurity = {
     }
   },
 
-  async saveDeviceQuickPin(tenantId, pin4, sessionSnapshot = {}) {
+  async saveDeviceQuickPin(tenantId, roleOrPin, pinOrSnapshot, maybeSnapshot) {
     const tid = String(tenantId || '').toUpperCase();
-    const pinHash = await this.hashPassword(String(pin4 || '').trim(), `PIN_${tid}`);
+    let roleCode = '';
+    let pin4 = '';
+    let sessionSnapshot = {};
+
+    if (arguments.length >= 4) {
+      roleCode = String(roleOrPin || '');
+      pin4 = String(pinOrSnapshot || '').trim();
+      sessionSnapshot = maybeSnapshot || {};
+    } else {
+      pin4 = String(roleOrPin || '').trim();
+      sessionSnapshot = pinOrSnapshot || {};
+      roleCode = sessionSnapshot.roleCode || '';
+    }
+
+    const pinHash = await this.hashPassword(pin4, `PIN_${tid}`);
     const payload = {
       tenantId: tid,
+      roleCode,
       pinHash,
+      failCount: 0,
       sessionSnapshot,
       updatedAt: Date.now()
     };
@@ -197,16 +213,29 @@ export const AuthSecurity = {
     return payload;
   },
 
-  async setDeviceQuickPin(tenantId, pin4, sessionSnapshot = {}) {
-    return this.saveDeviceQuickPin(tenantId, pin4, sessionSnapshot);
+  async setDeviceQuickPin(tenantId, roleOrPin, pinOrSnapshot, maybeSnapshot) {
+    return this.saveDeviceQuickPin(tenantId, roleOrPin, pinOrSnapshot, maybeSnapshot);
   },
 
   async verifyDeviceQuickPin(tenantId, inputPin4) {
     const tid = String(tenantId || '').toUpperCase();
     const info = this.getDeviceQuickPinInfo(tid);
-    if (!info || !info.pinHash) return { ok: false };
+    if (!info || !info.pinHash) return { ok: false, reason: 'NOT_SET' };
+
     const matched = await this.verifyPassword(String(inputPin4 || '').trim(), info.pinHash, `PIN_${tid}`);
-    return matched ? { ok: true, sessionSnapshot: info.sessionSnapshot } : { ok: false };
+    if (matched) {
+      info.failCount = 0;
+      localStorage.setItem(QUICK_PIN_PREFIX + tid, JSON.stringify(info));
+      return { ok: true, sessionSnapshot: info.sessionSnapshot };
+    }
+
+    info.failCount = (info.failCount || 0) + 1;
+    if (info.failCount >= 3) {
+      this.clearDeviceQuickPin(tid);
+      return { ok: false, reason: 'MAX_ATTEMPTS', remain: 0 };
+    }
+    localStorage.setItem(QUICK_PIN_PREFIX + tid, JSON.stringify(info));
+    return { ok: false, reason: 'WRONG_PIN', remain: 3 - info.failCount };
   },
 
   clearDeviceQuickPin(tenantId) {
