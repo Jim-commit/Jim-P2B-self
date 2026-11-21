@@ -366,7 +366,11 @@ async function loadTerminalData() {
   safeSetText('current-agent-name', curAgObj ? curAgObj.name : storeState.currentAgent);
 
   const [tenantRes, storeData, productsData] = await Promise.all([
-    supabase.from('platform_tenant').select('*').eq('tenant_id', storeState.currentAgent).maybeSingle(),
+    supabase
+      .from('platform_tenant')
+      .select('tenant_id, company_name, custom_settings, sponsor_org, is_active, membership_status')
+      .eq('tenant_id', storeState.currentAgent)
+      .maybeSingle(),
     StoreService.getActiveStore(storeState.currentAgent),
     StoreService.getProductsByAgent(storeState.currentAgent)
   ]);
