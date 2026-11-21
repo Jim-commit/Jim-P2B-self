@@ -511,11 +511,11 @@
     </div>
   </div>
 
-  <!-- 线下特邀主体直通立户弹窗（同步最新五大百业门类与前缀规范） -->
+  <!-- 线下特邀主体直通立户弹窗（同步12位高强度主密码与前缀锁定） -->
   <div id="manual-tenant-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-        <h3 class="font-bold text-sm text-stone-900">🏛️ 线下特邀主体直通立户（名实相符 · 锁定专属前缀）</h3>
+        <h3 class="font-bold text-sm text-stone-900">🏛️ 线下特邀主体直通立户（名实相符 · 零明文加密）</h3>
         <button onclick="window.closeModal('manual-tenant-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="space-y-2.5">
@@ -524,7 +524,7 @@
           <input type="text" id="m-company-name" placeholder="严格与营业执照《名称》或实名招牌一致" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
         </div>
         <div>
-          <label class="block text-stone-600 font-medium mb-1">统一社会信用代码 / 实名证件号 (18位 · 自动取后6位为预设密钥) *：</label>
+          <label class="block text-stone-600 font-medium mb-1">统一社会信用代码 / 实名证件号 (18位 · 自动锁定代号) *：</label>
           <input type="text" id="m-credit-code" maxlength="18" oninput="window.syncManualModalDefaults()" placeholder="输入18位信用代码或证件号" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold">
         </div>
         <div class="grid grid-cols-2 gap-2">
@@ -534,7 +534,7 @@
           </div>
           <div>
             <label class="block text-stone-600 font-medium mb-1">经营主体身份：</label>
-            <select id="m-business-type" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
+            <select id="m-business-type" onchange="window.syncManualModalDefaults()" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
               <option value="coop">🌾 村社合作社 / 产区直供站 (HZ-)</option>
               <option value="factory">🏭 源头工坊 / 生产制造厂 (GC-)</option>
               <option value="dealer">🏢 区域平准仓 / 集散商行 (SH-)</option>
@@ -557,14 +557,21 @@
             <input type="text" id="m-contact-person" placeholder="如：王理事长 / 王师傅" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
           </div>
           <div>
-            <label class="block text-stone-600 font-medium mb-1">预设安家密钥 (后6位)：</label>
-            <input type="text" id="m-access-key" placeholder="自动同步后6位" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono uppercase font-bold text-emerald-800">
+            <label class="block text-stone-600 font-medium mb-1">登记主手机号：</label>
+            <input type="tel" id="m-contact-phone" maxlength="11" placeholder="11位手机号" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono">
           </div>
+        </div>
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-stone-600 font-medium">初始安家主密码 (12位以上强加密落库) *：</label>
+            <button type="button" onclick="window.fillManualStrongPwd()" class="text-[10px] text-emerald-800 font-bold underline">🎲 重新生成14位强密码</button>
+          </div>
+          <input type="text" id="m-access-key" minlength="12" placeholder="自动生成14位含大小写/数字/特殊符号主密码" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-mono font-bold text-emerald-800">
         </div>
       </div>
       <div class="pt-2 border-t border-stone-100 flex gap-2">
         <button onclick="window.submitManualTenant()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
-          🛡️ 2FA 特批直通激活
+          🛡️ 2FA 特批直通激活并签发凭证卡
         </button>
         <button onclick="window.closeModal('manual-tenant-modal')" class="bg-stone-100 text-stone-600 font-bold px-4 py-2.5 rounded-xl">
           取消
