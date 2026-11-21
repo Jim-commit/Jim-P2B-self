@@ -155,20 +155,20 @@
           <input type="tel" id="v-backup-phone" maxlength="11" placeholder="可填监事长或家人11位手机号" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono text-stone-300 outline-none focus:border-amber-500">
         </div>
 
-        <!-- 掌柜亲自设定初始主密码（支持一键生成顺口强密码） -->
+        <!-- 掌柜亲自设定初始主密码（12位以上含大小写字母+数字+特殊符号） -->
         <div class="bg-stone-900/90 border border-emerald-700/40 p-3 rounded-2xl space-y-2">
-          <div class="flex justify-between items-center">
-            <label class="text-emerald-300 font-bold">🔐 亲自设定安家主密码 (8位以上“字母+数字”组合) *：</label>
+          <div class="flex flex-wrap justify-between items-center gap-1">
+            <label class="text-emerald-300 font-bold">🔐 亲自设定安家主密码 (12位以上 · 大小写字母 + 数字 + 特殊符号) *：</label>
             <button type="button" onclick="window.fillGeneratedMemorablePwd()" class="bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/40 px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition">
-              🎲 一键生成顺口密码
+              🎲 一键生成14位高强顺口密码
             </button>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            <input type="text" id="v-access-key" required placeholder="输入8位以上字母+数字（如 FengShou2026）" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 font-mono font-bold text-amber-300 outline-none focus:border-emerald-500">
-            <input type="text" id="v-access-key-confirm" required placeholder="再次输入确认安家主密码" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 font-mono font-bold text-amber-300 outline-none focus:border-emerald-500">
+            <input type="text" id="v-access-key" required minlength="12" placeholder="至少12位（如 FengShou@2026#）" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 font-mono font-bold text-amber-300 outline-none focus:border-emerald-500">
+            <input type="text" id="v-access-key-confirm" required minlength="12" placeholder="再次输入确认安家主密码" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 font-mono font-bold text-amber-300 outline-none focus:border-emerald-500">
           </div>
           <p class="text-[10px] text-stone-400">
-            🛡️ 密码经前端 SHA-256 单向加密后存入云端（零明文落库）；首次登录手机端可设置「4位快捷短码」，日常点按即进无需重复敲长密码。
+            🛡️ 主账号密码须满 12 位且同时含大小写字母、数字与特殊符号（如 <code>@ # $ % & ! ?</code>），经前端 SHA-256 单向加密后存入云端（零明文落库）；首次登录手机端可设置「4位快捷短码」，日常点按即进无需重复敲长密码。
           </p>
         </div>
       </div>
@@ -180,8 +180,8 @@
           <span class="text-[10px] text-stone-400">名实相符 · 零抽佣 · 主权归己</span>
         </div>
         <p class="text-[11px] text-stone-400 leading-relaxed">
-          1. 平台不抽一分交易佣金、不搞竞价排名；入驻后享 <b>7 天免费开席体验</b>，满意转正成为正式会员后仅需缴纳<b>极少定额公共运维会费</b>以维持服务器与带宽运转。<br/>
-          2. 商号拥有完全独立的私有账本、客户资料与定价主权，平台绝不窥探也不干涉商家内部事务；入驻方承诺严格以法定证件实名立户，不抢注、不冒名、不作虚假宣传。
+1. 平台不抽一分交易佣金、不搞竞价排名；入驻后享 <b>7 天免费开席体验</b>，满意转正成为正式会员后仅需缴纳<b>极少定额公共运维会费</b>以维持服务器与带宽运转。<br/>
+2. 商号拥有完全独立的私有账本、客户资料与定价主权，平台绝不窥探也不干涉商家内部事务；入驻方承诺严格以法定证件实名立户，不抢注、不冒名、不作虚假宣传。
         </p>
         <label class="flex items-center gap-2 text-stone-200 font-bold cursor-pointer pt-1">
           <input type="checkbox" id="chk-agree-covenant" checked class="w-4 h-4 rounded text-amber-500">
