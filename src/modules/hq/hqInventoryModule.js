@@ -269,6 +269,23 @@ function applyChannelPermissions(tenant, prod = null) {
   ecChk.checked = permitEC ? (prod ? isEcommerceAllowed(prod) : true) : false;
 }
 
+function checkProductCompliance(name, summaryText, price, targetStatus) {
+  const combinedText = `${name} ${summaryText}`;
+  const hitWords = FORBIDDEN_WORDS.filter((w) => combinedText.includes(w));
+  if (hitWords.length > 0) {
+    return `⚠️ 温馨合规提示：货品名称或对外简介中包含广告法慎用词【${hitWords.join('、')}】，烦请稍作润色后再提交！`;
+  }
+  if (targetStatus === 'active') {
+    if (isNaN(price) || price <= 0) {
+      return `⚠️ 正式上架前请先设定有效的【${hqState.globalPolicy.tier1Name}】（若为仓管人员录入，请点「💾 暂存草稿」交由掌柜定价）。`;
+    }
+    if (!hqState.uploadedImageBase64) {
+      return `⚠️ 正式上架需要上传清晰的「实拍照」以保障交易透明（可先点「💾 暂存草稿」，补拍照片后再正式上架）。`;
+    }
+  }
+  return '';
+}
+
 export function initInventoryBindings() {
   window.onMainCategoryChange = function (mainCatName) {
     const l1Obj = hqState.allPlatformCats.find((c) => c.level === 1 && c.name === mainCatName);
@@ -300,6 +317,14 @@ export function initInventoryBindings() {
     hqState.onlyDraftFilter = false;
     const input = document.getElementById('prod-search-input');
     if (input) input.value = '';
+    const btnLow = document.getElementById('btn-low-stock-filter');
+    if (btnLow) {
+      btnLow.className = 'text-[11px] bg-white hover:bg-rose-50 text-stone-700 border border-stone-200 px-2.5 py-1.5 rounded-xl font-bold transition';
+    }
+    const btnDraft = document.getElementById('btn-draft-filter');
+    if (btnDraft) {
+      btnDraft.className = 'text-[11px] bg-white hover:bg-amber-50 text-stone-700 border border-stone-200 px-2.5 py-1.5 rounded-xl font-bold transition';
+    }
     renderProductTable();
   };
 
@@ -311,6 +336,12 @@ export function initInventoryBindings() {
 
   window.filterLowStockOnly = function (flag) {
     hqState.onlyLowStockFilter = !!flag;
+    const btn = document.getElementById('btn-low-stock-filter');
+    if (btn) {
+      btn.className = hqState.onlyLowStockFilter
+        ? 'text-[11px] bg-rose-600 text-white px-2.5 py-1.5 rounded-xl font-bold transition'
+        : 'text-[11px] bg-white hover:bg-rose-50 text-stone-700 border border-stone-200 px-2.5 py-1.5 rounded-xl font-bold transition';
+    }
     renderProductTable();
   };
 
@@ -318,6 +349,12 @@ export function initInventoryBindings() {
 
   window.toggleDraftOnlyFilter = function () {
     hqState.onlyDraftFilter = !hqState.onlyDraftFilter;
+    const btn = document.getElementById('btn-draft-filter');
+    if (btn) {
+      btn.className = hqState.onlyDraftFilter
+        ? 'text-[11px] bg-amber-500 text-stone-950 px-2.5 py-1.5 rounded-xl font-bold transition'
+        : 'text-[11px] bg-white hover:bg-amber-50 text-stone-700 border border-stone-200 px-2.5 py-1.5 rounded-xl font-bold transition';
+    }
     renderProductTable();
   };
 
@@ -370,6 +407,7 @@ export function initInventoryBindings() {
     const subSelect = document.getElementById('stock-ops-subtype');
     const label = document.getElementById('stock-ops-qty-label');
     const srcLabel = document.getElementById('stock-ops-source-label');
+    const srcInput = document.getElementById('stock-ops-source');
     if (mode === 'in_purchase') {
       if (subSelect) {
         subSelect.innerHTML = `
@@ -380,6 +418,7 @@ export function initInventoryBindings() {
       }
       label.innerText = '本次入库数量 (+) *：';
       if (srcLabel) srcLabel.innerText = '供货产区 / 交货班组 *：';
+      if (srcInput) srcInput.placeholder = '例：伏牛山种植合作社一组 / 加工车间一班';
     } else if (mode === 'out_loss') {
       if (subSelect) {
         subSelect.innerHTML = `
@@ -389,10 +428,12 @@ export function initInventoryBindings() {
       }
       label.innerText = '本次出库数量 (-) *：';
       if (srcLabel) srcLabel.innerText = '领用部门 / 去向单位 *：';
+      if (srcInput) srcInput.placeholder = '例：展销品鉴样品 / 运输破损报废 / 调出西区仓';
     } else {
       if (subSelect) subSelect.innerHTML = `<option value="实地盘点校准">⚖️ 仓库实地清点校准</option>`;
       label.innerText = '仓库实地清点后的实际库存总数 (=) *：';
       if (srcLabel) srcLabel.innerText = '盘点库区 / 监盘人 *：';
+      if (srcInput) srcInput.placeholder = '例：一号恒温总仓 · 财务监盘';
     }
   };
 
@@ -406,7 +447,7 @@ export function initInventoryBindings() {
     const remark = document.getElementById('stock-ops-remark').value.trim();
 
     if (isNaN(inputVal) || inputVal < 0) return alert('请输入有效的正整数量！');
-    if (!sourceParty) return alert('请填写供货产区 / 领用去向 / 盘点库区！');
+    if (!sourceParty) return alert('请填写供货产区 / 领用去向 / 盘点库区，以便财务与仓库稽核！');
 
     const p = hqState.allProducts.find((x) => x.id === prodId);
     if (!p) return;
@@ -447,7 +488,13 @@ export function initInventoryBindings() {
         created_at: new Date().toISOString()
       });
 
-      alert(`✅ 单据已制单入账！正式单号：${voucherNo}`);
+      alert(
+        `✅ 单据已制单入账！\n\n` +
+          `• 正式单号：${voucherNo}\n` +
+          `• 单据子类：${subType}\n` +
+          `• 货品名称：${p.name}\n` +
+          `• 库存变动：${curStock} ➔ ${afterStock} ${p.measure_unit || '件'}`
+      );
       window.closeModal('modal-stock-ops');
       window.loadHQData();
     };
@@ -512,7 +559,14 @@ export function initInventoryBindings() {
     const storeId = storeIdMatch ? parseInt(storeIdMatch[1]) : 0;
     const store = hqState.allStores.find((s) => Number(s.id) === storeId);
 
-    if (!confirm(`确认核准内部定损单 ${meta.voucherNo}，并从【${meta.sourceParty}】在账欠款中冲减 ¥${deductAmt.toFixed(2)} 吗？`)) return;
+    const confirmMsg =
+      `【商号内部定损裁定】单号：${meta.voucherNo}\n` +
+      `• 涉及门店：${meta.sourceParty}\n` +
+      `• 定损说明：${meta.cleanNote}\n` +
+      `• 核准退赔冲抵金额：¥${deductAmt.toFixed(2)}\n\n` +
+      `确认核准该笔内部定损单，并自动从该门店在账欠款中冲减 ¥${deductAmt.toFixed(2)} 吗？`;
+
+    if (!confirm(confirmMsg)) return;
 
     if (store && deductAmt > 0) {
       const nextDebt = Math.max(0, Number((parseFloat(store.current_debt || 0) - deductAmt).toFixed(2)));
@@ -521,6 +575,7 @@ export function initInventoryBindings() {
 
     const nextRemark = `${log.remark || ''} [已核准冲账 · 经手:${hqState.currentOperatorName}]`.trim();
     await supabase.from('inventory_log').update({ remark: nextRemark }).eq('id', log.id);
+
     alert(`✅ 内部定损单 ${meta.voucherNo} 已核准并完成账目冲抵！`);
     window.loadHQData();
   };
@@ -627,12 +682,8 @@ export function initInventoryBindings() {
     const summaryText = document.getElementById('prod-summary')?.value.trim() || '';
     if (!name) return alert('请写明货品或服务全称！');
 
-    const hitWords = FORBIDDEN_WORDS.filter((w) => `${name} ${summaryText}`.includes(w));
-    if (hitWords.length > 0) return alert(`⚠️ 广告法慎用词提示：【${hitWords.join('、')}】，请润色后再提交！`);
-    if (targetStatus === 'active') {
-      if (isNaN(price) || price <= 0) return alert(`⚠️ 正式上架前请先设定有效的【${hqState.globalPolicy.tier1Name}】！`);
-      if (!hqState.uploadedImageBase64) return alert('⚠️ 正式上架需要上传清晰的「实拍照」（仓管可先点「暂存草稿」）。');
-    }
+    const complianceErr = checkProductCompliance(name, summaryText, price, targetStatus);
+    if (complianceErr) return alert(complianceErr);
 
     const attrs = {};
     document.querySelectorAll('#custom-attrs-container .custom-attr-row').forEach((row) => {
@@ -672,10 +723,18 @@ export function initInventoryBindings() {
       status: targetStatus
     };
 
-    const res = editId ? await supabase.from('product').update(payload).eq('id', parseInt(editId)) : await supabase.from('product').insert([payload]);
+    let res = editId ? await supabase.from('product').update(payload).eq('id', parseInt(editId)) : await supabase.from('product').insert([payload]);
+    if (res.error && (res.error.message || '').includes('custom_specs')) {
+      delete payload.custom_specs;
+      res = editId ? await supabase.from('product').update(payload).eq('id', parseInt(editId)) : await supabase.from('product').insert([payload]);
+    }
     if (res.error) return alert('储存失败: ' + res.error.message);
 
-    alert(targetStatus === 'draft' ? `💾 【${name}】已暂存草稿！` : `🎉 【${name}】已合规上架生效！`);
+    alert(
+      targetStatus === 'draft'
+        ? `💾 货品【${name}】已暂存为「待定价草稿」，待完善定价与实拍照后即可正式上架！`
+        : `🎉 合规核验通过！货品【${name}】已正式上架生效（投放渠道：${channelLabel}）！`
+    );
     window.closeAddProductModal();
     window.loadHQData();
   };
@@ -686,9 +745,15 @@ export function initInventoryBindings() {
     try {
       const compressedBase64 = await compressImageFile(file, 600, 0.75);
       document.getElementById('image-preview-box').innerHTML = `<img src="${compressedBase64}" class="w-full h-full object-cover opacity-60">`;
+
       hqState.isUploadingImage = true;
+      const submitBtn = document.getElementById('btn-submit-product');
+      if (submitBtn) submitBtn.innerText = '⏳ 上传图床中...';
+
       hqState.uploadedImageBase64 = await uploadBlobToStorage(compressedBase64, hqState.currentAgent, 'products');
+
       hqState.isUploadingImage = false;
+      if (submitBtn) submitBtn.innerText = '✅ 合规核验 · 正式上架发布';
       document.getElementById('image-preview-box').innerHTML = `<img src="${hqState.uploadedImageBase64}" class="w-full h-full object-cover">`;
     } catch (e) {
       hqState.isUploadingImage = false;
@@ -706,7 +771,7 @@ export function initInventoryBindings() {
   };
 
   window.promptAddTag = function () {
-    const customTag = prompt('输入特色标签：');
+    const customTag = prompt('输入特色标签（如：🌾 合作社直供、🔄 余缺平价调剂、🤝 抱团集采惠）：');
     if (customTag && customTag.trim()) {
       if (!hqState.selectedTags.includes(customTag.trim())) hqState.selectedTags.push(customTag.trim());
       renderTagChips();
@@ -720,7 +785,7 @@ export function initInventoryBindings() {
       const p = parseFloat(newPrice);
       const maxDropPct = parseFloat(hqState.globalPolicy.twoFaPricePct ?? 15);
       if (hqState.globalPolicy.twoFaPriceOn !== false && (oldPrice - p) / oldPrice > maxDropPct / 100) {
-        window.trigger2FAAction(`底价调幅超 ${maxDropPct}%，请输入验证器 6 位动态码授权：`, async () => {
+        window.trigger2FAAction(`底价调幅超 ${maxDropPct}% (从 ¥${oldPrice} 调至 ¥${p})，请输入验证器 6 位动态码授权：`, async () => {
           await supabase.from('product').update({ tier_1_price: p }).eq('id', id);
           window.loadHQData();
         });
@@ -745,7 +810,11 @@ export function initInventoryBindings() {
 
   window.downloadBulkProductTemplate = function () {
     const headers = ['货品全称', hqState.globalPolicy.tier1Name || '批发平准基准价', hqState.globalPolicy.tier2Name || '网上平准零售基准价', '包装规格', '计量单位', '初始库存', '条码', '产地'];
-    downloadCSV('货品批量导入标准模板.csv', headers, [['伏牛山有机五常大米 10kg', '68.00', '78.00', '10kg/袋', '袋', '200', '690123456001', '伏牛山生态合作社']]);
+    const sampleRows = [
+      ['伏牛山有机五常大米 10kg', '68.00', '78.00', '10kg/袋', '袋', '200', '690123456001', '伏牛山生态合作社'],
+      ['农家古法压榨菜籽油 5L', '85.00', '98.00', '4桶/箱', '箱', '120', '690123456002', '源头榨油工坊']
+    ];
+    downloadCSV('货品批量导入标准模板.csv', headers, sampleRows);
   };
 
   window.handleBulkCsvFile = function (event) {
@@ -758,6 +827,11 @@ export function initInventoryBindings() {
     const reader = new FileReader();
     reader.onload = function (e) {
       const lines = (e.target.result || '').replace(/^\uFEFF/, '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      if (lines.length <= 1) {
+        if (previewEl) previewEl.innerText = '⚠️ 文件内容为空或仅有表头！';
+        if (btn) btn.disabled = true;
+        return;
+      }
       const l1Default = hqState.allPlatformCats.find((c) => c.level === 1)?.name || '粮油副食';
       const l2Default = hqState.allPlatformCats.find((c) => c.level === 2)?.name || '常规良品';
 
@@ -786,7 +860,12 @@ export function initInventoryBindings() {
           status: 'active'
         });
       }
-      if (previewEl) previewEl.innerText = hqState.parsedBulkProducts.length > 0 ? `✅ 已解析 ${hqState.parsedBulkProducts.length} 款待上架货品` : '⚠️ 未解析到有效货品行';
+      if (previewEl) {
+        previewEl.innerText =
+          hqState.parsedBulkProducts.length > 0
+            ? `✅ 已成功解析 ${hqState.parsedBulkProducts.length} 款待上架货品，点击下方按钮立即入库！`
+            : '⚠️ 未解析到有效货品行，请检查价格是否为数字！';
+      }
       if (btn) btn.disabled = hqState.parsedBulkProducts.length === 0;
     };
     reader.readAsText(file, 'UTF-8');
@@ -794,7 +873,16 @@ export function initInventoryBindings() {
 
   window.submitBulkProductImport = async function () {
     if (hqState.parsedBulkProducts.length === 0) return;
+    const btn = document.getElementById('btn-exec-bulk-import');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerText = '批量入库中...';
+    }
     const { error } = await supabase.from('product').insert(hqState.parsedBulkProducts);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = '确认批量上架写入云端库';
+    }
     if (error) return alert('批量导入失败：' + error.message);
     alert(`🎉 成功批量上架 ${hqState.parsedBulkProducts.length} 款货品！`);
     hqState.parsedBulkProducts = [];
@@ -805,24 +893,64 @@ export function initInventoryBindings() {
   window.exportInventorySheetCSV = function () {
     if (hqState.allProducts.length === 0) return alert('暂无货品可导出盘点表！');
     const headers = isWarehouseBlindPrice()
-      ? ['货品ID', '货品全称', '规格', '计量单位', '当前账面库存', '实地清点数', '差异', '内部备注']
-      : ['货品ID', '货品全称', '规格', '计量单位', `${hqState.globalPolicy.tier1Name}(元)`, '当前账面库存', '实地清点数', '内部备注'];
+      ? ['货品ID', '货品全称', '规格', '计量单位', '当前账面库存', '实地清点数(手填)', '盘盈/盘亏差异', '内部备注']
+      : ['货品ID', '货品全称', '规格', '计量单位', `${hqState.globalPolicy.tier1Name}(元)`, `${hqState.globalPolicy.tier2Name}(元)`, '当前账面库存', '实地清点数(手填)', '盘盈/盘亏差异', '内部备注'];
+
     const rows = hqState.allProducts.map((p) =>
       isWarehouseBlindPrice()
         ? [p.id, p.name, p.spec || '整装', p.measure_unit || '件', p.stock ?? 0, '', '', p.remark || '']
-        : [p.id, p.name, p.spec || '整装', p.measure_unit || '件', parseFloat(p.tier_1_price || 0).toFixed(2), p.stock ?? 0, '', p.remark || '']
+        : [
+            p.id,
+            p.name,
+            p.spec || '整装',
+            p.measure_unit || '件',
+            parseFloat(p.tier_1_price || 0).toFixed(2),
+            parseFloat(p.tier_2_price || p.tier_1_price || 0).toFixed(2),
+            p.stock ?? 0,
+            '',
+            '',
+            p.remark || ''
+          ]
     );
     downloadCSV(`${hqState.currentAgent}_仓库实地盘点表_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
 
   window.exportInventoryLogsCSV = function () {
     if (hqState.allInventoryLogs.length === 0) return alert('当前暂无单据记录！');
-    const headers = ['单据编号', '制单时间', '单据类型', '货品全称', '来源/去向', '变动数量', '变动前库存', '变动后库存', '经手人', '事由备注'];
+    const headers = isWarehouseBlindPrice()
+      ? ['单据编号', '制单时间', '单据类型', '货品全称', '来源/去向', '变动数量', '变动前库存', '变动后库存', '经手人', '事由备注']
+      : ['单据编号', '制单时间', '单据类型', '货品全称', '来源/去向', '变动数量', '变动前库存', '变动后库存', '估算货值(元)', '经手人', '事由备注'];
+
     const rows = hqState.allInventoryLogs.map((l) => {
-      const { voucherNo, sourceParty, cleanNote } = extractVoucherMeta(l);
+      const { voucherNo, sourceParty, goodsValue, cleanNote } = extractVoucherMeta(l);
       const isPlus = parseInt(l.delta_qty) >= 0;
       const typeLabel = l.action_type === 'qc_damage_claim' ? 'DS-内部定损单' : isPlus ? 'RK-统一入库单' : 'CK-统一出库单';
-      return [voucherNo, l.created_at ? new Date(l.created_at).toLocaleString() : '', typeLabel, l.product_name || '', sourceParty, l.delta_qty ?? 0, l.before_stock ?? 0, l.after_stock ?? 0, l.operator_name || '仓管', cleanNote];
+      return isWarehouseBlindPrice()
+        ? [
+            voucherNo,
+            l.created_at ? new Date(l.created_at).toLocaleString() : '',
+            typeLabel,
+            l.product_name || '',
+            sourceParty,
+            l.delta_qty ?? 0,
+            l.before_stock ?? 0,
+            l.after_stock ?? 0,
+            l.operator_name || '仓管',
+            cleanNote.replace(/[\r\n,]+/g, ' ')
+          ]
+        : [
+            voucherNo,
+            l.created_at ? new Date(l.created_at).toLocaleString() : '',
+            typeLabel,
+            l.product_name || '',
+            sourceParty,
+            l.delta_qty ?? 0,
+            l.before_stock ?? 0,
+            l.after_stock ?? 0,
+            goodsValue,
+            l.operator_name || '仓管',
+            cleanNote.replace(/[\r\n,]+/g, ' ')
+          ];
     });
     downloadCSV(`${hqState.currentAgent}_极简单据台账_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
