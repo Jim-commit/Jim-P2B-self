@@ -1,9 +1,10 @@
 /**
- * 百工天街 · 全站安全防线与设备护航核心工具集（全量无损兼容版）
+ * 百工天街 · 全站安全防线与设备护航核心工具集（全量无损终版）
  */
 
 const DEVICE_FP_KEY = 'bgtj_device_fp_v1';
 const LOCKOUT_PREFIX = 'bgtj_login_fail_';
+const QUICK_PIN_PREFIX = 'bgtj_palm_pin_';
 
 export const AuthSecurity = {
   // ================= 1. 防爆破、商号防抢注锁定与哈希 =================
@@ -58,11 +59,9 @@ export const AuthSecurity = {
     };
     const prefix = prefixMap[businessType] || 'HZ';
     if (businessType === 'individual') {
-      // 个人实名：取生日段(6-12位) + 末尾4位校验段
       const seg = `${clean.slice(8, 12)}${clean.slice(14, 18)}`;
       return `${prefix}-${seg}`;
     }
-    // 企事业单位/合作社：取第9~17位组织机构代码主体段（国标唯一）
     const orgCode = clean.slice(8, 17);
     return `${prefix}-${orgCode}`;
   },
@@ -175,7 +174,48 @@ export const AuthSecurity = {
     return { ok: true, valid: true, msg: '主密码强度符合 12 位高安全规范', message: '主密码强度符合 12 位高安全规范' };
   },
 
-  // ================= 2. 设备指纹、脱敏与观察期护盘护栏 =================
+  // ================= 2. 手机掌中宝本机 4 位快捷短码支持 =================
+  getDeviceQuickPinInfo(tenantId) {
+    try {
+      const raw = localStorage.getItem(QUICK_PIN_PREFIX + String(tenantId || '').toUpperCase());
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  async saveDeviceQuickPin(tenantId, pin4, sessionSnapshot = {}) {
+    const tid = String(tenantId || '').toUpperCase();
+    const pinHash = await this.hashPassword(String(pin4 || '').trim(), `PIN_${tid}`);
+    const payload = {
+      tenantId: tid,
+      pinHash,
+      sessionSnapshot,
+      updatedAt: Date.now()
+    };
+    localStorage.setItem(QUICK_PIN_PREFIX + tid, JSON.stringify(payload));
+    return payload;
+  },
+
+  async setDeviceQuickPin(tenantId, pin4, sessionSnapshot = {}) {
+    return this.saveDeviceQuickPin(tenantId, pin4, sessionSnapshot);
+  },
+
+  async verifyDeviceQuickPin(tenantId, inputPin4) {
+    const tid = String(tenantId || '').toUpperCase();
+    const info = this.getDeviceQuickPinInfo(tid);
+    if (!info || !info.pinHash) return { ok: false };
+    const matched = await this.verifyPassword(String(inputPin4 || '').trim(), info.pinHash, `PIN_${tid}`);
+    return matched ? { ok: true, sessionSnapshot: info.sessionSnapshot } : { ok: false };
+  },
+
+  clearDeviceQuickPin(tenantId) {
+    try {
+      localStorage.removeItem(QUICK_PIN_PREFIX + String(tenantId || '').toUpperCase());
+    } catch {}
+  },
+
+  // ================= 3. 设备指纹、脱敏与观察期护盘护栏 =================
   getDeviceFingerprint() {
     let cached = localStorage.getItem(DEVICE_FP_KEY);
     if (!cached) {
@@ -233,7 +273,7 @@ export const AuthSecurity = {
     };
   },
 
-  // ================= 3. 《商号安家立户凭证卡》Canvas 高清渲染 =================
+  // ================= 4. 《商号安家立户凭证卡》Canvas 高清渲染 =================
   renderRegistrationVoucherDataUrl({
     tenantId,
     companyName,
