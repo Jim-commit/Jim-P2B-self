@@ -61,6 +61,7 @@ try {
 let currentAgent = localStorage.getItem('active_agent') || myAgents[0].id;
 let currentStore = null;
 let currentTenantSettings = {};
+let currentTenantSponsorOrg = '';
 let shopType = localStorage.getItem('active_shop_type') || '社区便利';
 let allProducts = [];
 let currentCategory = '全部';
@@ -95,6 +96,44 @@ let cachedSelfStatementOrders = [];
 function safeSetText(id, text) {
   const el = document.getElementById(id);
   if (el) el.innerText = text;
+}
+
+function renderSupplierStatusBanners() {
+  let statusBanner = document.getElementById('store-supplier-status-banner');
+  const headerEl = document.querySelector('header');
+  if (!statusBanner && headerEl) {
+    statusBanner = document.createElement('div');
+    statusBanner.id = 'store-supplier-status-banner';
+    statusBanner.className = 'hidden mx-3 mt-2.5 space-y-1.5 text-[11px]';
+    headerEl.insertAdjacentElement('afterend', statusBanner);
+  }
+  if (!statusBanner) return;
+
+  const blocks = [];
+  const sp = currentTenantSettings?.seasonalPause || {};
+  if (sp.isPaused) {
+    blocks.push(
+      `<div class="bg-amber-100 border border-amber-400 text-amber-950 p-2.5 rounded-2xl leading-relaxed shadow-2xs">
+        <b>🍵 供货方农忙 / 盘点暂歇告示：</b>${sp.reason || '产区集中采收中'}${sp.resumeDate ? `（预计 <b>${sp.resumeDate}</b> 恢复正常接单发运）` : ''}。您可提前提报「真实用度计划单」锁定排产名额！
+      </div>`
+    );
+  }
+  if (currentTenantSponsorOrg) {
+    blocks.push(
+      `<div class="bg-emerald-50 border border-emerald-300 text-emerald-950 px-3 py-2 rounded-2xl font-bold flex items-center gap-1.5 shadow-2xs">
+        <span>🛡️</span>
+        <span>品质联保背书：该主体由【${currentTenantSponsorOrg}】提供品质联保担保</span>
+      </div>`
+    );
+  }
+
+  if (blocks.length === 0) {
+    statusBanner.classList.add('hidden');
+    statusBanner.innerHTML = '';
+  } else {
+    statusBanner.classList.remove('hidden');
+    statusBanner.innerHTML = blocks.join('');
+  }
 }
 
 function renderPendingCollectionBanner() {
@@ -386,9 +425,6 @@ window.confirmStoreSelfStatement = async function () {
   window.closeModal('store-self-statement-modal');
 };
 
-// ==========================================
-// 统一一店一约 & 全局策略折算引擎（严格遵循启用开关）
-// ==========================================
 function getStorePriceInfo(prod) {
   const basePrice = calcBasePrice(prod, shopType);
   const pricing = (currentStore && currentStore.custom_pricing && typeof currentStore.custom_pricing === 'object')
@@ -475,8 +511,9 @@ document.addEventListener('click', () => {
 
 window.openModal = id => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = id => document.getElementById(id)?.classList.add('hidden');
+
 // ==========================================
-// 3. 供货合作方导航：适配社区门店与大型食堂卖场
+// 3. 供货合作方导航
 // ==========================================
 window.switchActiveAgent = async function (agentId) {
   currentAgent = agentId;
@@ -911,7 +948,7 @@ function updateCartSummary() {
 }
 
 // ==========================================
-// 6. 结算凭单弹窗与提交（自动将生效促销赠品规则随单流转）
+// 6. 结算凭单弹窗与提交
 // ==========================================
 window.openSettlementModal = () => {
   const orderItems = [];
@@ -1106,7 +1143,6 @@ window.confirmAndSubmitOrder = async () => {
   const settlementType = settlementSelect ? settlementSelect.value : 'credit';
   let customNote = document.getElementById('slip-custom-note')?.value.trim() || '';
 
-  // 自动随单附带当前生效的促销赠品规则提醒，避免仓管与司机漏配赠品
   if (currentTenantSettings?.campaignActive && Array.isArray(currentTenantSettings?.promos) && currentTenantSettings.promos.length > 0) {
     const promoText = currentTenantSettings.promos.map((pr) => `${pr.title}:${pr.rule}`).join('；');
     customNote = `${customNote} [生效活动:${promoText}]`.trim();
@@ -1187,7 +1223,7 @@ window.confirmAndSubmitOrder = async () => {
 };
 
 // ==========================================
-// 7. 捎话机制、快捷工具、画报、业态、商品渲染、单据存根、初始化、余缺池、用度计划（100% 保留）
+// 7. 捎话机制、快捷工具、画报、业态、商品渲染、单据存根、初始化、余缺池、用度计划
 // ==========================================
 const STORE_CUSTOM_NOTES_KEY = 'b2b_store_custom_notes';
 let myCustomNotes = [];
@@ -1238,7 +1274,7 @@ window.appendDeliveryNote = (txt) => {
 };
 
 window.repeatLastOrder = async function () {
-  if (!currentStore) return alert('当前供货方未绑定有效门店档案！');
+  if (!currentStore) return alert('当前供货方尚未绑定有效门店档案！');
 
   const myOrders = await StoreService.getMyOrders(currentStore.id, currentAgent);
   if (!myOrders || myOrders.length === 0) {
@@ -1595,7 +1631,7 @@ window.verifyMallPickupPin = async function (orderId, orderNoSeed) {
 };
 
 window.openReceiptsModal = async () => {
-  if (!currentStore) return alert('当前供货方未绑定有效门店档案！');
+  if (!currentStore) return alert('当前供货方尚未绑定有效门店档案！');
   window.openModal('receipts-modal');
 
   const [myOrders, myReceipts, pickupOrders] = await Promise.all([
@@ -1759,14 +1795,17 @@ async function initTerminal() {
 
   const [storeObj, tenantRes] = await Promise.all([
     StoreService.getStoreByTenant(currentAgent),
-    supabase.from('platform_tenant').select('custom_settings').eq('tenant_id', currentAgent).maybeSingle()
+    supabase.from('platform_tenant').select('custom_settings, sponsor_org').eq('tenant_id', currentAgent).maybeSingle()
   ]);
 
   currentStore = storeObj;
   currentTenantSettings = tenantRes?.data?.custom_settings && typeof tenantRes.data.custom_settings === 'object'
     ? tenantRes.data.custom_settings
     : {};
+  currentTenantSponsorOrg = (tenantRes?.data?.sponsor_org || '').trim();
   allowStoreSelfReturn = currentTenantSettings.allowStoreReturn !== false;
+
+  renderSupplierStatusBanners();
 
   if (currentStore) {
     safeSetText('store-title', currentStore.name || '厚德便民门店');
