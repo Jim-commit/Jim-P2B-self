@@ -188,6 +188,9 @@ function renderProducts() {
             </div>
 
             <div class="flex items-center gap-1.5">
+              <button type="button" onclick="window.openFlyerModal(${p.id})" class="px-2 py-1 rounded-xl text-[10px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100" title="生成街坊微信群推荐海报">
+                📣 街坊海报
+              </button>
               ${
                 storeState.allowStoreSelfReturn
                   ? `
@@ -287,15 +290,61 @@ function renderDynamicNotes() {
   const allNotes = Array.from(new Set([...storeState.myCustomNotes, ...presets]));
 
   listEl.innerHTML = allNotes
-    .map(
-      (txt) => `
-      <button type="button" onclick="window.appendVoiceNote('${txt.replace(/'/g, "\\'")}')" class="w-full text-left p-2.5 rounded-xl bg-stone-50 hover:bg-emerald-50 border border-stone-200 text-xs text-stone-800 transition flex justify-between items-center">
-        <span>💬 ${txt}</span>
-        <span class="text-[10px] text-emerald-800 font-bold shrink-0">+ 填入</span>
-      </button>
-    `
-    )
+    .map((txt) => {
+      const isCustom = storeState.myCustomNotes.includes(txt);
+      const safeTxt = txt.replace(/'/g, "\\'");
+      return `
+        <div onclick="window.appendVoiceNote('${safeTxt}')" class="cursor-pointer w-full text-left p-2.5 rounded-xl bg-stone-50 hover:bg-emerald-50 border border-stone-200 text-xs text-stone-800 transition flex justify-between items-center gap-2">
+          <span>💬 ${txt}</span>
+          <div class="flex items-center gap-2 shrink-0">
+            ${
+              isCustom
+                ? `<button type="button" onclick="window.removeCustomQuickNote('${safeTxt}', event)" class="text-[10px] text-rose-500 hover:underline">删</button>`
+                : ''
+            }
+            <span class="text-[10px] text-emerald-800 font-bold">+ 填入</span>
+          </div>
+        </div>
+      `;
+    })
     .join('');
+}
+
+function renderFlyerPreview() {
+  const prod = storeState.currentFlyerProd;
+  if (!prod) return;
+  const storeName = storeState.currentStore?.name || '厚德便民门店';
+  const curAgObj = storeState.myAgents.find((a) => a.id === storeState.currentAgent);
+  const agentName = curAgObj?.name || storeState.currentAgent;
+  const { price } = getStorePriceInfo(prod);
+  const retailRef = prod.tier_2_price ? parseFloat(prod.tier_2_price).toFixed(2) : (price * 1.15).toFixed(2);
+  const unit = prod.measure_unit || prod.pack_unit || '件';
+
+  const styleBadges = {
+    neighborhood: '🏡 邻里街坊诚意推荐 · 源头直供好物',
+    fresh: '🌾 产区新鲜直达 · 实名保真溯源',
+    group: '🤝 邻里凑单拼团 · 到店自提更划算'
+  };
+
+  safeSetText('flyer-style-badge', styleBadges[storeState.currentFlyerStyle] || styleBadges.neighborhood);
+  safeSetText('flyer-store-name', storeName);
+  safeSetText('flyer-prod-name', prod.name);
+  safeSetText('flyer-prod-spec', `${prod.spec || '整装'} · ${prod.origin_place || agentName}`);
+  safeSetText('flyer-prod-price', `¥${retailRef}/${unit}`);
+
+  const imgBox = document.getElementById('flyer-prod-img');
+  if (imgBox) {
+    imgBox.innerHTML = prod.image_url
+      ? `<img src="${prod.image_url}" class="w-full h-full object-cover">`
+      : '<span class="text-xs text-stone-400">源头良品实拍</span>';
+  }
+
+  const refParam = storeState.currentStore?.id ? `&ref=${encodeURIComponent(storeState.currentStore.id)}` : '';
+  const mallUrl = `${window.location.origin}/mall.html?t=${encodeURIComponent(storeState.currentAgent)}${refParam}`;
+  const qrImg = document.getElementById('flyer-qr-img');
+  if (qrImg) {
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(mallUrl)}`;
+  }
 }
 
 async function loadTerminalData() {
@@ -327,7 +376,6 @@ async function loadTerminalData() {
   storeState.currentTenantSponsorOrg = (tenant.sponsor_org || '').trim();
   storeState.allowStoreSelfReturn = storeState.currentTenantSettings.allowStoreReturn !== false;
 
-  // 农忙暂歇或联保背书提示条
   const pauseBar = document.getElementById('store-seasonal-pause-banner');
   const sp = storeState.currentTenantSettings.seasonalPause;
   if (pauseBar) {
@@ -371,7 +419,6 @@ async function loadTerminalData() {
   safeSetText('shop-type-label', storeState.shopType);
   safeSetText('shop-type-icon', getShopIcon(storeState.shopType));
 
-  // 过滤该门店可见的专供品道
   const visibleIds = Array.isArray(storeData?.visible_product_ids) ? storeData.visible_product_ids : null;
   storeState.allProducts = visibleIds
     ? (productsData || []).filter((p) => visibleIds.includes(p.id))
@@ -495,6 +542,13 @@ window.saveCustomQuickNote = function () {
   alert('⭐ 已存为本店常用口信，下次可直接一键点选！');
 };
 
+window.removeCustomQuickNote = function (txt, e) {
+  e?.stopPropagation();
+  storeState.myCustomNotes = storeState.myCustomNotes.filter((n) => n !== txt);
+  localStorage.setItem(STORE_CUSTOM_NOTES_KEY, JSON.stringify(storeState.myCustomNotes));
+  renderDynamicNotes();
+};
+
 window.saveVoiceNote = function () {
   const val = (document.getElementById('voice-note-input')?.value || '').trim();
   storeState.deliveryNote = val;
@@ -510,6 +564,50 @@ window.saveVoiceNote = function () {
   window.closeModal('voice-modal');
 };
 
+window.openFlyerModal = function (prodId) {
+  const prod = storeState.allProducts.find((p) => Number(p.id) === Number(prodId));
+  if (!prod) return;
+  storeState.currentFlyerProd = prod;
+  storeState.currentFlyerStyle = 'neighborhood';
+  renderFlyerPreview();
+  window.openModal('flyer-modal');
+};
+
+window.switchFlyerStyle = function (style) {
+  storeState.currentFlyerStyle = style;
+  ['neighborhood', 'fresh', 'group'].forEach((s) => {
+    const btn = document.getElementById(`flyer-style-${s}`);
+    if (btn) {
+      btn.className =
+        s === style
+          ? 'flex-1 py-1.5 rounded-xl bg-[#1b4332] text-white font-bold text-xs transition'
+          : 'flex-1 py-1.5 rounded-xl bg-stone-100 text-stone-600 font-bold text-xs transition';
+    }
+  });
+  renderFlyerPreview();
+};
+
+window.copyFlyerText = function () {
+  const prod = storeState.currentFlyerProd;
+  if (!prod) return;
+  const storeName = storeState.currentStore?.name || '厚德便民门店';
+  const { price } = getStorePriceInfo(prod);
+  const retailRef = prod.tier_2_price ? parseFloat(prod.tier_2_price).toFixed(2) : (price * 1.15).toFixed(2);
+  const unit = prod.measure_unit || prod.pack_unit || '件';
+  const refParam = storeState.currentStore?.id ? `&ref=${encodeURIComponent(storeState.currentStore.id)}` : '';
+  const mallUrl = `${window.location.origin}/mall.html?t=${encodeURIComponent(storeState.currentAgent)}${refParam}`;
+
+  const text =
+    `【${storeName} · 街坊好物推荐】\n` +
+    `推荐良品：${prod.name}（${prod.spec || '整装'}）\n` +
+    `阳光平准价：¥${retailRef}/${unit}\n` +
+    `源头合作社/工坊直供，扫码预订送到本店自提验货：${mallUrl}`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    alert('✅ 街坊推广文案与专属链接已复制，可直接转发微信邻里群！');
+  });
+};
+
 async function initTerminal() {
   document.addEventListener('click', window.closeAllMenus);
 
@@ -519,7 +617,6 @@ async function initTerminal() {
   });
   initPoolPlanBindings();
 
-  // 启动时首先从云端 Supabase platform_tenant 同步在册供货方名册（彻底无本地硬编码测试厂商）
   await syncAgentsFromCloud();
   await loadTerminalData();
 }
