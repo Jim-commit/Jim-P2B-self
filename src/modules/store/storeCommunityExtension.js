@@ -1,9 +1,21 @@
 import { supabase } from '../../lib/supabase.js';
+import { storeState } from './storeState.js';
 
 function getCurrentStoreMeta() {
-  const storeName = document.getElementById('store-title')?.innerText?.trim() || '合作门店';
-  const bossName = document.getElementById('store-boss')?.innerText?.trim() || '掌柜';
-  const agentTag = document.getElementById('menu-current-agent-tag')?.innerText?.trim() || localStorage.getItem('store_active_agent') || '';
+  const storeName =
+    storeState.currentStore?.name ||
+    document.getElementById('store-title')?.innerText?.trim() ||
+    '合作门店';
+  const bossName =
+    storeState.currentStore?.contact_name ||
+    storeState.currentStore?.boss_name ||
+    document.getElementById('store-boss')?.innerText?.trim() ||
+    '掌柜';
+  const agentTag =
+    storeState.currentAgent ||
+    localStorage.getItem('active_agent') ||
+    document.getElementById('menu-current-agent-tag')?.innerText?.trim() ||
+    '';
   return { storeName, bossName, agentTag };
 }
 
@@ -20,7 +32,9 @@ export async function loadAndRenderCommunityTools() {
       .order('id', { ascending: false })
       .limit(20);
 
-    if (agentTag) query = query.eq('tenant_id', agentTag);
+    if (agentTag && agentTag !== '未接入') {
+      query = query.eq('tenant_id', agentTag);
+    }
 
     const { data } = await query;
     const toolItems = (data || []).filter(
@@ -81,7 +95,7 @@ export function initStoreCommunityExtension() {
 
     const { error } = await supabase.from('local_inventory_pool').insert([
       {
-        tenant_id: agentTag || 'PUBLIC',
+        tenant_id: agentTag && agentTag !== '未接入' ? agentTag : 'PUBLIC',
         from_store_name: storeName,
         product_name: `${kind} ${title}${note ? `（${note}）` : ''}`,
         qty: 1,
@@ -121,6 +135,7 @@ export function initStoreCommunityExtension() {
       storeName,
       bossName,
       supplierTenantId: agentTag,
+      myAgents: storeState.myAgents || [],
       localStorageSnapshot: { ...localStorage }
     };
     const blob = new Blob([JSON.stringify(backupObj, null, 2)], { type: 'application/json;charset=utf-8' });
