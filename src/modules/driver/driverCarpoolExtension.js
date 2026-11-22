@@ -1,30 +1,28 @@
 import { supabase } from '../../lib/supabase.js';
+import { driverState } from './driverState.js';
 
-// 读取本商号或周边待顺路捎带接力的包裹单
 export async function loadAndRenderCarpoolRelays() {
   const banner = document.getElementById('carpool-relay-banner');
   const countEl = document.getElementById('carpool-relay-count');
   const listEl = document.getElementById('carpool-relay-list');
 
   const tenantId =
+    driverState.currentAgent ||
     document.getElementById('tenant-display')?.innerText?.trim() ||
-    sessionStorage.getItem('palm_tenant_id') ||
-    localStorage.getItem('palm_bound_tenant') ||
+    localStorage.getItem('baigong_palm_last_tid') ||
     '';
 
+  if (!tenantId || tenantId === '--' || tenantId === '未绑定商号') return;
+
   try {
-    let query = supabase
+    const { data, error } = await supabase
       .from('local_inventory_pool')
       .select('*')
+      .eq('tenant_id', tenantId)
       .in('status', ['open', 'claimed'])
       .order('id', { ascending: false })
       .limit(30);
 
-    if (tenantId && tenantId !== '--') {
-      query = query.eq('tenant_id', tenantId);
-    }
-
-    const { data, error } = await query;
     if (error || !data) return;
 
     if (banner && countEl) {
@@ -80,13 +78,15 @@ export async function loadAndRenderCarpoolRelays() {
 }
 
 export function initDriverCarpoolBindings() {
+  window.loadAndRenderCarpoolRelays = loadAndRenderCarpoolRelays;
+
   window.openCarpoolRelayModal = async function () {
     await loadAndRenderCarpoolRelays();
     document.getElementById('modal-carpool-relay')?.classList.remove('hidden');
   };
 
   window.claimCarpoolRelayItem = async function (poolId) {
-    const driverName = document.getElementById('driver-name-display')?.innerText?.trim() || '顺路师傅';
+    const driverName = driverState.currentOperatorName || '顺路师傅';
     const { error } = await supabase
       .from('local_inventory_pool')
       .update({
@@ -112,7 +112,6 @@ export function initDriverCarpoolBindings() {
     await loadAndRenderCarpoolRelays();
   };
 
-  // 页面加载后延迟探测一次顺路捎带单，并在每次点击刷新路线时同步刷新
   setTimeout(() => {
     loadAndRenderCarpoolRelays();
   }, 1500);
