@@ -77,7 +77,7 @@
     </div>
   </header>
 
-  <!-- 态型 A：合作社/工坊私域专柜门面（含可折叠产区水土与工艺档案 + 实拍与社交外链矩阵入口） -->
+  <!-- 态型 A：合作社/工坊私域专柜门面 -->
   <section id="brand-hero-section" class="hidden px-3 pt-3">
     <div class="bg-gradient-to-br from-stone-900 to-[#1b4332] text-white p-4 rounded-3xl shadow-md border border-stone-800 space-y-2.5">
       <div class="flex justify-between items-start gap-2">
@@ -102,7 +102,6 @@
         </button>
       </div>
 
-      <!-- 可折叠展开的产区水土、匠心档案与田间/车间实拍卡（mallController 自动向此注入官网/公众号/客服微信按钮） -->
       <div id="brand-craft-archive-panel" class="hidden bg-black/30 border border-emerald-700/40 rounded-2xl p-3 space-y-1.5 text-[11px] text-stone-200">
         <div class="flex justify-between"><span class="text-stone-400">经营主体身份：</span><b id="craft-type-text">--</b></div>
         <div class="flex justify-between"><span class="text-stone-400">当值执事对接：</span><b id="craft-contact-text">--</b></div>
@@ -131,6 +130,9 @@
     <div id="category-filter-bar" class="hidden px-3 pt-2.5 overflow-x-auto no-scrollbar flex gap-1.5 text-xs whitespace-nowrap">
       <button onclick="window.filterMallCategory('all')" class="mall-cat-chip bg-amber-400 text-stone-950 px-3 py-1 rounded-xl font-bold transition">
         全部精选
+      </button>
+      <button type="button" id="btn-barter-filter-chip" onclick="window.toggleMallBarterFilter()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 px-3 py-1 rounded-xl font-bold transition">
+        🌾 可物物/劳务置换
       </button>
       <div id="dynamic-cat-chips" class="flex gap-1.5"></div>
     </div>
@@ -175,13 +177,13 @@
 
   <!-- 平台背书、双公约公示与建言堂直达页脚 -->
   <div class="px-4 pt-3 pb-6 text-center text-[10px] text-stone-400 space-y-1">
-    <div>百工天街 · 零竞价排名 · 服务归店源头直供集市</div>
+    <div>百工天街 · 零交易抽佣 · 零竞价排名 · 服务归店源头直供集市</div>
     <div class="flex flex-wrap justify-center gap-3">
       <a href="join.html" class="hover:text-emerald-800 underline transition">合作社 / 工坊 / 个人匠人入驻</a>
       <span>·</span>
       <button type="button" onclick="window.openModal('modal-mall-covenant')" class="hover:text-emerald-800 underline transition">📜 商道与邻里公约</button>
       <span>·</span>
-      <button type="button" onclick="window.openC2BDemandModal('【建言献策】')" class="hover:text-emerald-800 underline transition">💬 商道建言堂</button>
+      <button type="button" onclick="window.openC2BDemandModal('【公众监督与建言】')" class="hover:text-emerald-800 underline transition">💬 公众监督与建言堂</button>
     </div>
   </div>
 
@@ -193,9 +195,9 @@
         <button onclick="window.closeModal('modal-mall-covenant')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-2xl space-y-2 text-[11px] text-stone-700 leading-relaxed">
-        <p><b>一、源头平准 · 零抽佣：</b>本集市不收交易抽佣、不搞竞价排名，合作社、工坊与实名匠人直连邻里，阳光工价。</p>
+        <p><b>一、源头平准 · 零抽佣：</b>本集市不收一分交易抽佣、不搞流量竞价，合作社、工坊与实名匠人直连邻里，阳光工价。</p>
         <p><b>二、服务归店 · 邻里互助：</b>选择就近合作门店自提，服务润利全额归属该门店，支持社区小店可持续发展。</p>
-        <p><b>三、物勒工名 · 一物一码：</b>每款良品均公开出品主体与产地溯源印记，共同守护货真价实的城乡商业信用。</p>
+        <p><b>三、物勒工名 · 公众监督：</b>每款良品均公开出品主体、经营范围与产地溯源印记；若发现虚假宣传或超范围经营，欢迎随时通过页脚「公众监督与建言堂」反馈核查。</p>
       </div>
       <button onclick="window.closeModal('modal-mall-covenant')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl">我已阅知并共同守护</button>
     </div>
@@ -429,12 +431,10 @@
         <button onclick="window.closeModal('modal-checkout')" class="text-stone-400 text-lg">✕</button>
       </div>
 
-      <!-- 服务润利归属透明公示条 -->
       <div id="checkout-profit-notice" class="bg-emerald-50 border border-emerald-200 text-emerald-950 px-3 py-2 rounded-2xl text-[11px] font-bold leading-relaxed">
         📜 商道公示：全网统一阳光正价，不破价、不挤兑周边合作门店
       </div>
 
-      <!-- 邻里拼单随车直达进度条 -->
       <div id="checkout-group-buy-bar" class="hidden bg-amber-50/90 border border-amber-200 px-3 py-2 rounded-2xl"></div>
 
       <div class="space-y-2.5">
@@ -524,6 +524,24 @@
       </button>
     </div>
   </div>
+
+  <script>
+    window.toggleMallBarterFilter = function () {
+      const inp = document.getElementById('mall-search-input');
+      const btn = document.getElementById('btn-barter-filter-chip');
+      if (!inp) return;
+      const isActive = inp.value.trim() === '可物物置换';
+      inp.value = isActive ? '' : '可物物置换';
+      if (btn) {
+        btn.className = !isActive
+          ? 'bg-[#1b4332] text-amber-300 border border-[#1b4332] px-3 py-1 rounded-xl font-bold transition shadow-2xs'
+          : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 px-3 py-1 rounded-xl font-bold transition';
+      }
+      if (typeof window.onSearchMallKeyword === 'function') {
+        window.onSearchMallKeyword(inp.value);
+      }
+    };
+  </script>
 
   <script type="module">
     import { initMallController } from './src/modules/mallController.js';
