@@ -17,28 +17,50 @@ import {
   renderAuditLogs,
   initPlatformAuditBindings
 } from './platform/platformAuditModule.js';
+import {
+  renderGovernanceConfigs,
+  renderMembershipPlans,
+  renderComplianceCases,
+  initPlatformGovernanceBindings
+} from './platform/platformGovernanceModule.js';
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
 
 window.switchTab = function (tabName) {
-  ['apps', 'tenants', 'compliance', 'ecosystem', 'suggestions', 'categories', 'selfcheck', 'audit'].forEach((t) => {
+  [
+    'apps',
+    'tenants',
+    'compliance',
+    'appeals',
+    'ecosystem',
+    'suggestions',
+    'categories',
+    'membership',
+    'configs',
+    'selfcheck',
+    'audit'
+  ].forEach((t) => {
     document.getElementById(`p-tab-${t}`)?.classList.add('hidden');
     const btn = document.getElementById(`p-tab-btn-${t}`);
     if (btn) {
-      btn.className = 'flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition flex items-center justify-center gap-1 whitespace-nowrap';
+      btn.className =
+        'flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition flex items-center justify-center gap-1 whitespace-nowrap';
     }
   });
   document.getElementById(`p-tab-${tabName}`)?.classList.remove('hidden');
   const activeBtn = document.getElementById(`p-tab-btn-${tabName}`);
   if (activeBtn) {
-    activeBtn.className = 'flex-1 py-2 px-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1 whitespace-nowrap';
+    activeBtn.className =
+      'flex-1 py-2 px-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1 whitespace-nowrap';
   }
 };
 
 window.previewFullImage = function (url) {
   const w = window.open('');
-  w.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`);
+  w.document.write(
+    `<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:90%;max-height:90%;border-radius:16px;"></body>`
+  );
 };
 
 function renderEcosystemDashboard() {
@@ -170,11 +192,15 @@ function updateAISummaryInsight() {
   const trialCount = platformState.allTenants.filter((t) => t.membership_status === 'trial').length;
   const timelockCount = platformState.allTenants.filter((t) => t.timelock_status === 'pending').length;
   const severeCount = getFlaggedProductsList().filter((x) => x.isSevere).length;
+  const openAppealsCount = (platformState.allComplianceCases || []).filter(
+    (c) => c.status !== 'resolved_pass' && c.status !== 'resolved_reject'
+  ).length;
 
   let insight = `当前在册合作社、工坊与实名个体主体 ${platformState.allTenants.length} 家，和合畅运 ${activeCount} 家；全网用度计划 ${platformState.allEcoPlans.length} 份、余缺互调 ${platformState.allEcoPool.length} 笔。`;
-  if (timelockCount > 0) insight += ` ⏳ 有 ${timelockCount} 家商号正处于「72小时无人值守时间锁观察期」（若急需抢收可用证件核验加急放行）；`;
+  if (timelockCount > 0) insight += ` ⏳ 有 ${timelockCount} 家商号正处于「无人值守时间锁观察期」（若急需抢收可用证件核验加急放行）；`;
   if (severeCount > 0) insight += ` ⚖️ 涉违高风险词疑点 ${severeCount} 款待平台人工终审（常规缺图琐事已由 AI 自动协同提示）；`;
-  if (trialCount > 0) insight += ` 尝鲜开席试用中 ${trialCount} 家（转正签约时可核定象征性公共运维会费）；`;
+  if (openAppealsCount > 0) insight += ` 🛡️ 商号凭证申诉/监督公断工单 ${openAppealsCount} 件待裁决；`;
+  if (trialCount > 0) insight += ` 尝鲜开席试用中 ${trialCount} 家（转正签约时可自选自定义会员档位）；`;
   insight += ` 城乡供需与品类标准运转平稳。`;
   const el = document.getElementById('ai-adviser-text');
   if (el) el.innerText = insight;
@@ -193,14 +219,14 @@ window.renderPlatformSelfCheck = function () {
 
   const checks = [
     {
-      title: '① 非掠夺性公益定位与公共运维会费自查',
+      title: '① 非掠夺性公益定位与平台运维会费自查',
       status: '✅ 守正达标',
-      desc: `全网交易抽佣率：0.00%（零抽佣、零竞价排名）。在册主体累计定额公共运维会费：¥${totalFees.toFixed(2)}（仅用于云服务器、图床与通信带宽运维，公开透明）。`
+      desc: `全网交易抽佣率：0.00%（零抽佣、零竞价排名）。在册主体累计定额平台运维会费：¥${totalFees.toFixed(2)}（仅收取平台运维费用，以会员费形式维持运转）。`
     },
     {
-      title: '② 数字主权与商家内务零干涉自查',
+      title: '② 数字主权与商业机密隔离自查',
       status: '✅ 边界清白',
-      desc: '各入驻合作社、工坊与门店拥有独立私有账本与定价主权；商号内部定损单（DS-）与仓储备注已实现物理隔离，平台绝不窥探也不干涉商家家务事。'
+      desc: '坚决捍卫各方数据主权、商业机密与个人敏感信息；平台、源头、驿站、个人各守边界、各守本分、彼此协作，各自数据随时可一键带走。'
     },
     {
       title: '③ 百工多元主体包容度与防抢注自查',
@@ -232,7 +258,21 @@ window.renderPlatformSelfCheck = function () {
 window.loadPlatformData = async function () {
   loadGovernancePrefs();
 
-  const [appsRes, tenantsRes, prodsRes, suggsRes, catsRes, auditsRes, plansRes, poolRes, c2bRes, ordersRes] = await Promise.all([
+  const [
+    appsRes,
+    tenantsRes,
+    prodsRes,
+    suggsRes,
+    catsRes,
+    auditsRes,
+    plansRes,
+    poolRes,
+    c2bRes,
+    ordersRes,
+    cfgRes,
+    memPlansRes,
+    casesRes
+  ] = await Promise.all([
     supabase.from('tenant_application').select('*').order('id', { ascending: false }),
     supabase.from('platform_tenant').select('*').order('id', { ascending: false }),
     supabase.from('product').select('id, tenant_id, name, image_url, tier_1_price, status, custom_specs').order('id', { ascending: false }).limit(400),
@@ -246,7 +286,10 @@ window.loadPlatformData = async function () {
     supabase.from('demand_forecast_plan').select('*').order('id', { ascending: false }).limit(100),
     supabase.from('local_inventory_pool').select('*').order('id', { ascending: false }).limit(100),
     supabase.from('platform_suggestion_board').select('*').eq('proposer_type', 'c2b_demand').order('id', { ascending: false }).limit(50),
-    supabase.from('store_order').select('id, tenant_id, delivery_status, order_status').order('id', { ascending: false }).limit(200)
+    supabase.from('store_order').select('id, tenant_id, delivery_status, order_status').order('id', { ascending: false }).limit(200),
+    supabase.from('platform_governance_config').select('*').order('category', { ascending: true }),
+    supabase.from('platform_membership_plan').select('*').order('sort_order', { ascending: true }),
+    supabase.from('platform_compliance_case').select('*').order('id', { ascending: false })
   ]);
 
   platformState.allApplications = appsRes.data || [];
@@ -304,6 +347,24 @@ window.loadPlatformData = async function () {
   renderEcosystemDashboard();
   window.renderPlatformSelfCheck();
 
+  // 【新增】渲染动态治理参数、自定义会员等级、双轨申诉与联署公断台
+  platformState.allGovConfigs = cfgRes.data || [];
+  renderGovernanceConfigs();
+
+  platformState.allMembershipPlans = memPlansRes.data || [];
+  renderMembershipPlans();
+
+  platformState.allComplianceCases = casesRes.data || [];
+  const openAppeals = platformState.allComplianceCases.filter(
+    (c) => c.status !== 'resolved_pass' && c.status !== 'resolved_reject'
+  );
+  const appealsBadge = document.getElementById('badge-appeals-count');
+  if (appealsBadge) {
+    appealsBadge.innerText = openAppeals.length;
+    appealsBadge.classList.toggle('hidden', openAppeals.length === 0);
+  }
+  renderComplianceCases();
+
   updateAISummaryInsight();
 };
 
@@ -311,6 +372,7 @@ export async function initPlatformController() {
   initPlatformAuthBindings();
   initPlatformTenantBindings();
   initPlatformAuditBindings();
+  initPlatformGovernanceBindings();
 
   const isAuthed = await checkPlatformAuthStatus();
   if (isAuthed) {
