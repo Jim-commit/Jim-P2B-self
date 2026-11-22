@@ -19,6 +19,10 @@ export const platformState = {
   allEcoPool: [],
   allEcoC2B: [],
   allEcoOrders: [],
+  // 【新增】全域零写死治理参数、自定义会员等级、AI巡检与双轨申诉工单
+  allGovConfigs: [],
+  allMembershipPlans: [],
+  allComplianceCases: [],
   pendingPlatform2FACallback: null
 };
 
@@ -50,4 +54,10 @@ export async function recordAuditLog(actionTitle, level, details) {
       }
     ]);
   } catch (e) {}
+}
+
+// 【新增】动态读取全域治理参数（无硬编码兜底）
+export function getGovConfigValue(key, fallback = '') {
+  const found = (platformState.allGovConfigs || []).find((c) => c.config_key === key);
+  return found && found.config_value !== undefined && found.config_value !== '' ? found.config_value : fallback;
 }
