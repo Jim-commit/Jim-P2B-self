@@ -45,10 +45,10 @@
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <span class="inline-block px-2 py-0.5 text-[11px] font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-300/30 rounded-lg mb-1">
-              产销直连 · 合作门店对接
+              产销直连 · 合作门店对接 · 零交易抽佣
             </span>
             <h2 class="text-lg font-bold">对接本地村社合作社、源头工坊与实名匠人</h2>
-            <p class="text-xs text-emerald-100/90 mt-0.5">所有在册主体均已实名资质核验，支持预约送货师傅上门送样、先验货后合作。</p>
+            <p class="text-xs text-emerald-100/90 mt-0.5">所有在册主体均已实名资质与经营范围核验，支持预约送货师傅上门送样、先验货后合作。</p>
           </div>
           <div class="text-right hidden sm:block">
             <div class="text-2xl font-bold text-amber-300 font-mono" id="stat-supplier-count">-</div>
@@ -57,16 +57,26 @@
         </div>
       </div>
 
-      <div class="relative">
-        <input
-          type="text"
-          id="search-input"
-          placeholder="搜索合作社、工坊、实名匠人、商号代号、主营货品、材质或规格..."
-          class="w-full pl-10 pr-4 py-3 rounded-2xl bg-white text-stone-900 placeholder-stone-400 text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
-        />
-        <svg class="w-5 h-5 text-stone-400 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-        </svg>
+      <div class="space-y-2">
+        <div class="relative">
+          <input
+            type="text"
+            id="search-input"
+            placeholder="搜索合作社、工坊、实名匠人、商号代号、主营货品、材质或规格..."
+            class="w-full pl-10 pr-4 py-3 rounded-2xl bg-white text-stone-900 placeholder-stone-400 text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+          <svg class="w-5 h-5 text-stone-400 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+
+        <div class="flex gap-1.5 overflow-x-auto no-scrollbar text-[11px] pt-0.5">
+          <button type="button" onclick="window.applySupplierQuickFilter('')" class="bg-amber-400 text-stone-950 font-bold px-2.5 py-1 rounded-xl shrink-0">全部主体</button>
+          <button type="button" onclick="window.applySupplierQuickFilter('合作社')" class="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1 rounded-xl shrink-0">🌾 村社合作社</button>
+          <button type="button" onclick="window.applySupplierQuickFilter('工坊')" class="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1 rounded-xl shrink-0">🏭 源头工坊</button>
+          <button type="button" onclick="window.applySupplierQuickFilter('GR-')" class="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1 rounded-xl shrink-0">👨‍🌾 实名农户/匠人</button>
+          <button type="button" onclick="window.applySupplierQuickFilter('置换')" class="bg-emerald-500/30 hover:bg-emerald-500/40 text-amber-200 border border-emerald-400/30 font-bold px-2.5 py-1 rounded-xl shrink-0">🤝 支持物物/劳务合作</button>
+        </div>
       </div>
     </div>
   </section>
@@ -94,9 +104,9 @@
 
     <div id="supplier-list" class="space-y-4"></div>
 
-    <!-- 平台入驻公约背书提示 -->
+    <!-- 平台入驻公约与独立主权背书提示 -->
     <div class="mt-6 text-center text-[11px] text-stone-400 space-y-1">
-      <div>百工百业数字协作平台 · 零交易抽佣 · 商号数字主权归己</div>
+      <div>百工百业数字协作平台 · 零交易抽佣 · 独立收银结算 · 商号数字主权归己</div>
       <div>
         <a href="join.html" class="text-emerald-800 hover:underline font-bold">查看《百工百业平台入驻与商道公约》并申请入驻 ➔</a>
       </div>
@@ -139,12 +149,12 @@
         </div>
 
         <div>
-          <label class="block font-bold text-stone-700 mb-1">日常用度需求或备注（选填）</label>
-          <textarea id="lead-note" rows="2" placeholder="例如：想了解压榨食用油整箱直供价，每周大概补货20箱" class="w-full px-3.5 py-2 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:border-emerald-700 focus:outline-none"></textarea>
+          <label class="block font-bold text-stone-700 mb-1">日常用度需求或物物/劳务合作意向（选填）</label>
+          <textarea id="lead-note" rows="2" placeholder="例如：想了解压榨食用油整箱直供价，或希望用本地农产/农机服务抵扣合作" class="w-full px-3.5 py-2 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:border-emerald-700 focus:outline-none"></textarea>
         </div>
 
         <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900 leading-relaxed">
-          💡 提交后合作意向将直达供货方调度中枢，当值执事或送货师傅将电话联系您安排上门送样与开通专属补货账号。
+          💡 双方自主协商结算（支持现金、月度账期或实物/劳务等价抵扣），平台不抽一分佣金。提交后意向直达供货方调度中枢安排上门送样。
         </div>
 
         <button type="submit" id="submit-inquiry-btn" class="w-full py-3 rounded-xl bg-[#1b4332] hover:bg-[#143628] text-white font-bold text-sm shadow-md transition active:scale-95">
@@ -170,6 +180,15 @@
       </a>
     </div>
   </footer>
+
+  <script>
+    window.applySupplierQuickFilter = function (kw) {
+      const inp = document.getElementById('search-input');
+      if (!inp) return;
+      inp.value = kw;
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+  </script>
 
   <script type="module">
     import { initSuppliersController } from './src/modules/suppliersController.js';
