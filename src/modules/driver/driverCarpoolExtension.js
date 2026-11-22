@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase.js';
 import { driverState } from './driverState.js';
 
+// 读取本商号或周边待顺路捎带接力的包裹单
 export async function loadAndRenderCarpoolRelays() {
   const banner = document.getElementById('carpool-relay-banner');
   const countEl = document.getElementById('carpool-relay-count');
@@ -9,6 +10,8 @@ export async function loadAndRenderCarpoolRelays() {
   const tenantId =
     driverState.currentAgent ||
     document.getElementById('tenant-display')?.innerText?.trim() ||
+    sessionStorage.getItem('palm_tenant_id') ||
+    localStorage.getItem('palm_bound_tenant') ||
     localStorage.getItem('baigong_palm_last_tid') ||
     '';
 
