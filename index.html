@@ -43,6 +43,14 @@
               </div>
             </button>
 
+            <button type="button" onclick="window.openCommunityHubModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-cyan-50/90 hover:bg-cyan-100/80 border border-cyan-200 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98] mb-1">
+              <span class="w-6 h-6 rounded-lg bg-cyan-800 text-white flex items-center justify-center text-xs font-bold">🛠️</span>
+              <div>
+                <div class="font-bold text-cyan-950 text-[11px]">邻里公器共享 & 物物置换</div>
+                <div class="text-[9px] text-cyan-800">闲置工具借用 · 实物劳务互换</div>
+              </div>
+            </button>
+
             <button type="button" onclick="window.openDemandPlanModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-amber-50/90 hover:bg-amber-100/80 border border-amber-200 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98] mb-1.5">
               <span class="w-6 h-6 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center text-xs font-bold">📅</span>
               <div>
@@ -98,6 +106,14 @@
               <div>
                 <div class="font-bold text-stone-800 text-[11px]">快捷查寻好物</div>
                 <div class="text-[9px] text-stone-400">品类、存量、供货底价</div>
+              </div>
+            </button>
+
+            <button type="button" onclick="window.exportStoreLocalBackup(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-stone-100 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
+              <span class="w-6 h-6 rounded-lg bg-stone-200 text-stone-800 flex items-center justify-center text-xs">💾</span>
+              <div>
+                <div class="font-bold text-stone-800 text-[11px]">导出本店独立账本备份</div>
+                <div class="text-[9px] text-stone-400">数据主权归己 · 随时带走</div>
               </div>
             </button>
 
@@ -296,7 +312,7 @@
         </button>
       </div>
 
-      <!-- 信用账本看板（点击可直接打开周期电子对账单） -->
+      <!-- 信用账本看板 -->
       <div onclick="window.openStoreSelfStatementModal()" class="cursor-pointer bg-[#143628]/80 hover:bg-[#143628] p-2.5 rounded-2xl border border-emerald-600/30 space-y-1 transition">
         <div class="flex justify-between items-center text-xs">
           <div>
@@ -364,6 +380,36 @@
 
   </div>
 
+  <!-- 邻里公器共享 & 百工物物置换弹窗 -->
+  <div id="community-hub-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('community-hub-modal')">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🛠️ 邻里公器共享 & 物物劳务置换池</h3>
+          <p class="text-[10px] text-stone-400">闲置手推车/封口机/梯子邻里共享 · 实物与劳务等价互换</p>
+        </div>
+        <button type="button" onclick="window.closeModal('community-hub-modal')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <form onsubmit="window.submitCommunityToolOffer(event)" class="bg-cyan-50/70 border border-cyan-200 p-3 rounded-2xl space-y-2">
+        <b class="text-cyan-950 block">🌿 发布本店共享公器或物物置换意向：</b>
+        <div class="grid grid-cols-3 gap-1.5">
+          <select id="comm-offer-kind" class="bg-white border border-stone-200 rounded-xl px-2 py-1.5 font-bold outline-none">
+            <option value="[公器共享]">🛠️ 公器共享</option>
+            <option value="[物物置换]">🌾 物物置换</option>
+          </select>
+          <input type="text" id="comm-offer-title" required placeholder="名称（如：液压搬运车/头茬香油）" class="col-span-2 bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none">
+        </div>
+        <input type="text" id="comm-offer-note" placeholder="借用约定或期望置换物品说明（选填）" class="w-full bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none">
+        <button type="submit" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2 rounded-xl shadow-2xs">
+          发布至邻里驿站互助池
+        </button>
+      </form>
+
+      <div id="community-tools-list" class="space-y-2 max-h-64 overflow-y-auto no-scrollbar"></div>
+    </div>
+  </div>
+
   <!-- 《合作门店与邻里驿站公约》公示弹窗 -->
   <div id="store-covenant-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('store-covenant-modal')">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
@@ -374,14 +420,14 @@
       <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-2xl space-y-2 text-[11px] text-stone-700 leading-relaxed">
         <p><b>一、邻里驿站 · 实干得利：</b>合作门店扎根社区村镇，承担体验展示与邻里自提服务，天街自提服务润利全额归属门店。</p>
         <p><b>二、诚信账期 · 爱护载具：</b>依约使用免息信用周转额度，按月清白对账；爱护周转筐、托盘、水桶等循环载具，随车及时归还。</p>
-        <p><b>三、余缺互助 · 零浪费：</b>店内富余货品可随时挂入「同城余缺互调池」平价调剂给同行，同舟共济。</p>
-        <p><b>四、真实用度 · 不囤积炒作：</b>如实提报周期真实用度计划，助力产区按需采收生产，守护千家万户稳定供应。</p>
+        <p><b>三、余缺互助 · 公器共享：</b>店内富余货品可随时挂入「同城余缺互调池」平价调剂给同行，闲置工具可开放邻里公器共享。</p>
+        <p><b>四、数据主权 · 账目归己：</b>本店往来账本、客户记录与对账单完全归本店所有，随时可一键打包导出带走。</p>
       </div>
       <button type="button" onclick="window.closeModal('store-covenant-modal')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl">我已阅知并恪守公约</button>
     </div>
   </div>
 
-  <!-- 原有全部弹窗（周期电子对账单、同城余缺互调池、真实用度计划单、云端扩充货架码、推荐同行、存桌面引导、随车送货凭单、合作供货方名册、邻里便民海报、单据与自提核销、接入新供货方）100% 完整保留 -->
+  <!-- 原有全部业务弹窗（100% 完整保留） -->
   <div id="store-self-statement-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('store-self-statement-modal')">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -888,5 +934,9 @@
   </script>
 
   <script type="module" src="./src/main.js"></script>
+  <script type="module">
+    import { initStoreCommunityExtension } from './src/modules/store/storeCommunityExtension.js';
+    initStoreCommunityExtension();
+  </script>
 </body>
 </html>
