@@ -63,7 +63,7 @@
       <span class="text-[10px] text-stone-400 font-mono">辅佐人断 · 宽猛相济</span>
     </div>
 
-    <!-- 导航切换标签 -->
+    <!-- 导航切换标签（完整保留原有 8 项 + 增量新增 3 项治理中枢） -->
     <nav class="flex flex-wrap bg-white rounded-2xl shadow-sm border border-stone-200 p-1.5 gap-1.5 text-xs font-bold">
       <button id="p-tab-btn-apps" onclick="window.switchTab('apps')" class="flex-1 py-2 px-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1.5 whitespace-nowrap">
         📝 入驻资质查验
@@ -76,6 +76,10 @@
         🌿 商道清朗巡检
         <span id="badge-compliance-count" class="bg-amber-500 text-stone-950 text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
       </button>
+      <button id="p-tab-btn-appeals" onclick="window.switchTab('appeals')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition flex items-center justify-center gap-1 whitespace-nowrap">
+        🛡️ 申诉与公断裁决
+        <span id="badge-appeals-count" class="bg-rose-600 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
+      </button>
       <button id="p-tab-btn-ecosystem" onclick="window.switchTab('ecosystem')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
         🌐 全域供需大盘
       </button>
@@ -85,6 +89,12 @@
       </button>
       <button id="p-tab-btn-categories" onclick="window.switchTab('categories')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
         🗂️ 标准品类字典
+      </button>
+      <button id="p-tab-btn-membership" onclick="window.switchTab('membership')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
+        🎖️ 会员等级与会费
+      </button>
+      <button id="p-tab-btn-configs" onclick="window.switchTab('configs')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
+        🎛️ 全局参数与网关
       </button>
       <button id="p-tab-btn-selfcheck" onclick="window.switchTab('selfcheck'); window.renderPlatformSelfCheck();" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
         🧭 平台自省与公约
@@ -179,6 +189,22 @@
       </div>
     </section>
 
+    <!-- 【新增】板块 2.3：双轨申诉、街坊监督与重大事项联署公断台 -->
+    <section id="p-tab-appeals" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3 text-xs">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">🛡️ 商号凭证申诉、街坊监督与重大事项联署公断台</h2>
+            <p class="text-[11px] text-stone-400">日常小出入就近协商化解；超经营范围拦截、宣传真伪申诉、街坊监督及重大失信联署公断在此裁决</p>
+          </div>
+          <button type="button" onclick="window.createMajorArbitrationCase()" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-3.5 py-2 rounded-xl shadow active:scale-95 transition">
+            + 立项重大事项联署公断
+          </button>
+        </div>
+        <div id="compliance-cases-container" class="space-y-3"></div>
+      </div>
+    </section>
+
     <!-- 板块 2.5：全域供需协同与互调大盘 -->
     <section id="p-tab-ecosystem" class="hidden space-y-4">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
@@ -261,14 +287,41 @@
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-sm font-bold text-stone-900">平台标准一二级品类字典 (根基准绳)</h2>
-            <p class="text-[11px] text-stone-400">平台牢固管控一级大项与二级细项，确保全盘索引规整；合作社与工坊发布良品可自定延伸三级细分类</p>
+            <h2 class="text-sm font-bold text-stone-900">平台标准一二级品类字典 (根基准绳 · 全网一盘货通用)</h2>
+            <p class="text-[11px] text-stone-400">已取消实体与电商渠道割裂，平台管控一二级标准类目，合作社与工坊发布好物可自由添加特色标签胶囊</p>
           </div>
           <button onclick="window.openAddCategoryModal()" class="text-xs bg-stone-900 hover:bg-stone-800 text-white font-bold px-3 py-1.5 rounded-xl shadow active:scale-95 transition">
             + 制定新标准品类
           </button>
         </div>
         <div id="category-tree-display" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs pt-1"></div>
+      </div>
+    </section>
+
+    <!-- 【新增】板块 4.5：自定义会员等级与平台运维会费配置 -->
+    <section id="p-tab-membership" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3 text-xs">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">🎖️ 自定义会员等级与平台运维费用标准</h2>
+            <p class="text-[11px] text-stone-400">不抽交易佣金，仅收取平台运维费用（以会员费形式）；支持自定义等级、缴费周期与帮手/合作门店配额</p>
+          </div>
+          <button type="button" onclick="window.openNewPlanModal()" class="bg-stone-900 hover:bg-stone-800 text-amber-300 font-bold px-3.5 py-2 rounded-xl shadow active:scale-95 transition">
+            + 新增会员等级档位
+          </button>
+        </div>
+        <div id="membership-plans-container" class="space-y-3"></div>
+      </div>
+    </section>
+
+    <!-- 【新增】板块 4.8：全域零写死运行参数与跨部署支付网关配置 -->
+    <section id="p-tab-configs" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3 text-xs">
+        <div class="border-b border-stone-100 pb-3">
+          <h2 class="text-sm font-bold text-stone-900">🎛️ 全域“零写死”运行参数与国内备案收银台网关配置</h2>
+          <p class="text-[11px] text-stone-400">所有体验天数、宽待延期天数、锁定时长、监管词库及未来国内已备案独立收银台网关地址皆可随时调整</p>
+        </div>
+        <div id="gov-configs-container" class="space-y-2.5"></div>
       </div>
     </section>
 
@@ -291,10 +344,10 @@
         <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-2">
           <h3 class="text-sm font-bold text-emerald-950">📜 《百工百业数字公器 · 平台入驻与商道公约》</h3>
           <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-2xl space-y-1.5 text-[11px] text-stone-700 leading-relaxed">
-            <p><b>第一条（数字公器定位）：</b>本平台作为社会公共数字基础设施，坚守均输平准初心，绝不搞流量竞价排名、绝不抽佣掠夺生产者劳动成果。</p>
-            <p><b>第二条（数字主权归己）：</b>入驻合作社、源头工坊、服务机构及实名个体拥有完全独立的私有账本、客户档案与自主定价权，平台绝不窥探、绝不倒卖数据。</p>
+            <p><b>第一条（非利润导向定位）：</b>本平台不搞流量竞价排名、绝不抽佣，仅收取平台运维费用（以会员费形式）维持运转。</p>
+            <p><b>第二条（捍卫数据主权与隐私）：</b>坚决捍卫各方数据主权、商业机密与个人敏感信息；平台、源头、驿站、个人各守边界、各守本分、彼此协作，各自数据随时可一键带走。</p>
             <p><b>第三条（物勒工名保真）：</b>入驻主体须如实登记法定证件全称，严禁抢注公共产区名或冒用他人字号；上架货品与服务须实拍明码、不作虚假夸大宣传。</p>
-            <p><b>第四条（同行公议自治）：</b>遇跨主体重大履约争议，遵循“先协商、再行会调解、必要时由无利益关联高信用同行陪审团众裁”原则。</p>
+            <p><b>第四条（就近化解与公断）：</b>日常交割小分歧由双方或就近驿站当面化解；重大失信或清退事项由总控或三位德高望重在册老匠人联署公断。</p>
           </div>
         </div>
 
@@ -461,7 +514,7 @@
             <input type="radio" name="membership_status_choice" value="trial" class="mt-0.5 text-cyan-800">
             <div>
               <b class="text-cyan-950 block">🍃 尝鲜开席 · 体验全开</b>
-              <span class="text-[10px] text-stone-500">7 天无门槛试用，双轨权能全放行，满意后再行商约签约。</span>
+              <span class="text-[10px] text-stone-500">无门槛体验期（天数后台可调），双轨权能全放行，满意后再行商约签约。</span>
             </div>
           </label>
           <label class="p-2 rounded-xl border border-stone-200 flex items-start gap-2 cursor-pointer hover:bg-stone-50">
@@ -511,7 +564,7 @@
     </div>
   </div>
 
-  <!-- 线下特邀主体直通立户弹窗（同步12位高强度主密码与前缀锁定） -->
+  <!-- 线下特邀主体直通立户弹窗 -->
   <div id="manual-tenant-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -543,14 +596,7 @@
             </select>
           </div>
         </div>
-        <div>
-          <label class="block text-stone-600 font-medium mb-1">供货协作场景模式：</label>
-          <select id="m-service-mode" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
-            <option value="实体与电商双轨">🔄 实体与电商双轨 (门店直配 + 天街专柜)</option>
-            <option value="实体店">🏬 合作门店专供 (随车配送/自提)</option>
-            <option value="电子商务">🌐 电子商务直供 (百工天街/产区专柜)</option>
-          </select>
-        </div>
+        <input type="hidden" id="m-service-mode" value="实体与电商双轨">
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-stone-600 font-medium mb-1">负责人称呼：</label>
@@ -580,14 +626,14 @@
     </div>
   </div>
 
-  <!-- 新增标准品类弹窗 -->
+  <!-- 新增标准品类弹窗（已移除“适用经营模式”三选一，全网一盘货通用） -->
   <div id="add-category-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
         <h3 class="font-bold text-sm text-stone-900">🗂️ 制定新标准平台品类</h3>
         <button onclick="window.closeModal('add-category-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
-      <div class="space-y-2">
+      <div class="space-y-2.5">
         <div>
           <label class="block text-stone-600 mb-1">品类级别：</label>
           <select id="cat-level-select" onchange="window.onCatLevelChange(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
@@ -603,19 +649,73 @@
           <label class="block text-stone-600 mb-1">品类规范名称 *：</label>
           <input type="text" id="cat-name-input" placeholder="输入规范名称" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
         </div>
-        <div>
-          <label class="block text-stone-600 mb-1">适用经营模式：</label>
-          <select id="cat-mode-select" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
-            <option value="实体与电商双轨">实体与电商双轨通用</option>
-            <option value="实体店">仅合作门店渠道适用</option>
-            <option value="电子商务">仅电子商务渠道适用</option>
-          </select>
-        </div>
+        <!-- 隐藏字段保持后端表兼容，默认全网一盘货双轨通用 -->
+        <input type="hidden" id="cat-mode-select" value="实体与电商双轨">
+        <p class="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl leading-relaxed">
+          ✅ <b>渠道归一原则：</b>不再区分实体渠道与电子商务，全平台一盘货通用；自提、送货或远途寄递由发布好物时按需勾选。
+        </p>
       </div>
       <div class="pt-2 border-t border-stone-100 flex gap-2">
         <button onclick="window.savePlatformCategory()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition">
           存入标准字典
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 【新增】自定义会员等级与运维会费编辑弹窗 -->
+  <div id="modal-membership-plan" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <h3 class="font-bold text-sm text-stone-900">🎖️ 配置会员等级与平台运维会费标准</h3>
+        <button onclick="window.closeModal('modal-membership-plan')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <input type="hidden" id="plan-edit-id" value="">
+      <div class="space-y-2.5">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-stone-600 font-bold mb-1">等级代号 *：</label>
+            <input type="text" id="plan-code-input" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 font-mono uppercase font-bold">
+          </div>
+          <div>
+            <label class="block text-stone-600 font-bold mb-1">等级名称 *：</label>
+            <input type="text" id="plan-name-input" placeholder="如：合作社标准席" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 font-bold">
+          </div>
+        </div>
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">平实说明寄语：</label>
+          <input type="text" id="plan-tagline-input" placeholder="如：适合合作社统筹排产与多门店协作" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-stone-600 font-bold mb-1">平台运维会费（元）：</label>
+            <input type="number" id="plan-fee-input" value="199" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 font-mono font-bold">
+          </div>
+          <div>
+            <label class="block text-stone-600 font-bold mb-1">缴费周期：</label>
+            <select id="plan-cycle-input" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 font-bold">
+              <option value="yearly">按年缴纳</option>
+              <option value="quarterly">按季缴纳</option>
+              <option value="monthly">按月缴纳</option>
+              <option value="trial">免费体验期</option>
+              <option value="lifetime">一次核定</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-stone-600 font-bold mb-1">允许授任帮手账号上限：</label>
+            <input type="number" id="plan-staff-input" value="5" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 font-mono">
+          </div>
+          <div>
+            <label class="block text-stone-600 font-bold mb-1">允许协作周边门店上限：</label>
+            <input type="number" id="plan-station-input" value="20" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 font-mono">
+          </div>
+        </div>
+      </div>
+      <div class="pt-2 border-t border-stone-100 flex justify-end gap-2">
+        <button type="button" onclick="window.closeModal('modal-membership-plan')" class="px-4 py-2 rounded-xl bg-stone-100 text-stone-600 font-bold">取消</button>
+        <button type="button" onclick="window.saveMembershipPlan()" class="px-4 py-2 rounded-xl bg-stone-900 text-amber-300 font-bold">保存等级配置</button>
       </div>
     </div>
   </div>
