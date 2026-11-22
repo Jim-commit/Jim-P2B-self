@@ -82,6 +82,8 @@ export const JoinService = {
     creditCode,
     contactPerson,
     contactPhone,
+    backupPhone,
+    sponsorOrg,
     businessType,
     accessKey,
     isManualFallback,
@@ -100,6 +102,7 @@ export const JoinService = {
           contact_person: contactPerson,
           contact_phone: contactPhone,
           business_type: businessType,
+          access_key: accessKey,
           application_status: appStatus,
           ai_audit_score: auditScore,
           review_note: `【补件重提】${auditSummary}`,
@@ -118,6 +121,7 @@ export const JoinService = {
           contact_phone: contactPhone,
           business_type: businessType,
           service_mode: '实体与电商双轨',
+          access_key: accessKey,
           application_status: appStatus,
           ai_audit_score: auditScore,
           review_note: auditSummary,
@@ -142,6 +146,8 @@ export const JoinService = {
           contact_person: contactPerson,
           contact_name: contactPerson,
           phone: contactPhone,
+          backup_phone: backupPhone || null,
+          sponsor_org: sponsorOrg || null,
           access_key: accessKey,
           membership_status: 'trial',
           is_active: true,
@@ -155,7 +161,7 @@ export const JoinService = {
     }
   },
 
-  // 凭手机号 + 营业执照代码后 6 位查询入驻审批结果
+  // 凭主手机号 + 证件代码后 6 位拉取关联记录（供三重核身与四重应急核身过滤）
   async queryApplicationsByPhoneAndLast6(phone, last6) {
     const { data, error } = await supabase
       .from('tenant_application')
