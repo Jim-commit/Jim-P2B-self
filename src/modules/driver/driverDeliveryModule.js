@@ -346,6 +346,9 @@ export function initDeliveryBindings() {
     } else if (order && order.order_source === 'online_mall') {
       document.getElementById('collect-amount').value = '0';
       document.getElementById('collect-method').value = '仅签收回单';
+    } else if (settlementType === 'barter_or_labor') {
+      document.getElementById('collect-amount').value = '0';
+      document.getElementById('collect-method').value = '以物换物/劳务抵扣';
     } else if (settlementType === 'cash' && order) {
       document.getElementById('collect-amount').value = netAmt.toFixed(2);
       document.getElementById('collect-method').value = '电子扫码/转账';
@@ -364,7 +367,7 @@ export function initDeliveryBindings() {
 
   window.onCollectMethodChange = () => {
     const method = document.getElementById('collect-method').value;
-    if (method === '挂账签收' || method === '仅签收回单') {
+    if (method === '挂账签收' || method === '仅签收回单' || method === '以物换物/劳务抵扣') {
       document.getElementById('collect-amount').value = '0';
     }
     window.updateDeliverBtnText();
@@ -391,6 +394,7 @@ export function initDeliveryBindings() {
     if (!btn) return;
 
     if (payAmt > 0) btn.innerText = `✅ 确认收款 ¥${payAmt.toFixed(2)} · 签收平账`;
+    else if (method === '以物换物/劳务抵扣') btn.innerText = `🌾 确认物物/劳务抵扣 · 立信签收`;
     else if (method === '仅签收回单') btn.innerText = `📜 确认验货签回单 (待财务统对)`;
     else btn.innerText = `📝 确认记账交割 · 立信签收`;
   };
@@ -420,7 +424,11 @@ export function initDeliveryBindings() {
     });
 
     const order = driverState.activeOrders.find((o) => Number(o.id) === Number(orderId));
-    const netOrderAmt = order && order.order_source !== 'online_mall' ? parseFloat(order.net_settle_amount || order.total_amount || 0) : 0;
+    const isBarterSettlement = method === '以物换物/劳务抵扣' || order?.settlement_type === 'barter_or_labor';
+    const netOrderAmt =
+      order && order.order_source !== 'online_mall' && !isBarterSettlement
+        ? parseFloat(order.net_settle_amount || order.total_amount || 0)
+        : 0;
 
     if (!deliverySignPad.hasSigned()) {
       return alert('🤝 立信为本：请请收货掌柜在签字框内手写签字确认！');
@@ -459,7 +467,6 @@ export function initDeliveryBindings() {
       return;
     }
 
-    // 生成全局唯一幂等事务号 + 设备终端存证，杜绝弱网连点或离线重传导致重复扣款
     const clientTxUuid = buildClientTxUuid(driverState.currentAgent, orderId, storeId);
     const deviceFp = AuthSecurity.getDeviceFingerprint();
 
