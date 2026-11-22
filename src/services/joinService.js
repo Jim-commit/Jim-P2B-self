@@ -65,17 +65,8 @@ export const JoinService = {
     return canvas.toDataURL('image/jpeg', 0.78);
   },
 
-  // 校验手机号或商号代号是否已存在
-  async checkExistingApplication(contactPhone, tenantId) {
-    const { data } = await supabase
-      .from('tenant_application')
-      .select('id, tenant_id, contact_phone')
-      .or(`contact_phone.eq.${contactPhone},tenant_id.eq.${tenantId}`);
-    return data || [];
-  },
-
-  // 提交新入驻申请或退回补件重提
-  async submitVendorApplication({
+  // 单入口原子化提交（防前端 F12 绕过，支持分级占用与正主抢注申诉）
+  async submitVendorApplicationAtomic({
     resubmitId,
     tenantId,
     companyName,
@@ -88,80 +79,55 @@ export const JoinService = {
     accessKey,
     isManualFallback,
     auditSummary,
-    licenseBase64
+    licenseBase64,
+    isClaimAppeal = false
   }) {
-    const appStatus = isManualFallback ? 'pending_review' : 'approved_by_ai';
-    const auditScore = isManualFallback ? 65 : 98;
+    const { data, error } = await supabase.rpc('rpc_submit_vendor_onboarding', {
+      p_resubmit_id: resubmitId ? parseInt(resubmitId) : null,
+      p_tenant_id: tenantId,
+      p_company_name: companyName,
+      p_credit_code: creditCode,
+      p_contact_person: contactPerson,
+      p_contact_phone: contactPhone,
+      p_backup_phone: backupPhone,
+      p_sponsor_org: sponsorOrg || '',
+      p_business_type: businessType,
+      p_access_key: accessKey,
+      p_is_manual_fallback: isManualFallback,
+      p_audit_summary: auditSummary,
+      p_license_base64: licenseBase64,
+      p_is_claim_appeal: isClaimAppeal
+    });
 
-    if (resubmitId) {
-      const { error: updErr } = await supabase
-        .from('tenant_application')
-        .update({
-          company_name: companyName,
-          credit_code: creditCode,
-          contact_person: contactPerson,
-          contact_phone: contactPhone,
-          business_type: businessType,
-          access_key: accessKey,
-          application_status: appStatus,
-          ai_audit_score: auditScore,
-          review_note: `【补件重提】${auditSummary}`,
-          license_image_url: licenseBase64
-        })
-        .eq('id', parseInt(resubmitId));
-
-      if (updErr) throw new Error('补件更新失败: ' + updErr.message);
-    } else {
-      const { error: appErr } = await supabase.from('tenant_application').insert([
-        {
-          tenant_id: tenantId,
-          company_name: companyName,
-          credit_code: creditCode,
-          contact_person: contactPerson,
-          contact_phone: contactPhone,
-          business_type: businessType,
-          service_mode: '实体与电商双轨',
-          access_key: accessKey,
-          application_status: appStatus,
-          ai_audit_score: auditScore,
-          review_note: auditSummary,
-          license_image_url: licenseBase64
-        }
-      ]);
-
-      if (appErr) throw new Error('申请登记失败: ' + appErr.message);
-    }
-
-    if (!isManualFallback) {
-      const trialEndDate = new Date();
-      trialEndDate.setDate(trialEndDate.getDate() + 7);
-
-      const { error: tenantErr } = await supabase.from('platform_tenant').upsert([
-        {
-          tenant_id: tenantId,
-          company_name: companyName,
-          credit_code: creditCode,
-          business_type: businessType,
-          service_mode: '实体与电商双轨',
-          contact_person: contactPerson,
-          contact_name: contactPerson,
-          phone: contactPhone,
-          backup_phone: backupPhone || null,
-          sponsor_org: sponsorOrg || null,
-          access_key: accessKey,
-          membership_status: 'trial',
-          is_active: true,
-          permit_brick_and_mortar: true,
-          permit_ecommerce: true,
-          valid_until: trialEndDate.toISOString().slice(0, 10)
-        }
-      ]);
-
-      if (tenantErr) throw new Error('开席激活失败: ' + tenantErr.message);
-    }
+    if (error) throw new Error('原子提交接口异常: ' + error.message);
+    return data;
   },
 
-  // 凭主手机号 + 证件代码后 6 位拉取关联记录（供三重核身与四重应急核身过滤）
+  // 库级三重核身 / 四重应急核身查询（带数据库级 5 次熔断）
+  async verifyAndQueryOnboarding({ mode, phone, idLast6, cipher = '', backupPhone = '', companyName = '' }) {
+    const { data, error } = await supabase.rpc('rpc_verify_and_query_onboarding', {
+      p_mode: mode,
+      p_phone: phone,
+      p_id_last6: idLast6,
+      p_cipher: cipher,
+      p_backup_phone: backupPhone,
+      p_company_name: companyName
+    });
+
+    if (error) throw new Error('核身接口异常: ' + error.message);
+    return data;
+  },
+
+  // 【向下兼容保留】校验手机号或商号代号是否已存在
+  async checkExistingApplication(contactPhone, tenantId) {
+    const { data } = await supabase
+      .from('tenant_application')
+      .select('id, tenant_id, contact_phone')
+      .or(`contact_phone.eq.${contactPhone},tenant_id.eq.${tenantId}`);
+    return data || [];
+  },
+
+  // 【向下兼容保留】凭主手机号 + 证件代码后 6 位拉取关联记录
   async queryApplicationsByPhoneAndLast6(phone, last6) {
     const { data, error } = await supabase
       .from('tenant_application')
