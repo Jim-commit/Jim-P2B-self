@@ -9,9 +9,6 @@ let failedAttemptsCount = 0;
 let verifiedAuditSummary = '';
 let lastQueriedApps = [];
 
-const QUERY_FAIL_LOCK_KEY = 'join_cipher_fail_guard_v1';
-
-// 生成 8 位防混淆查验暗号（剔除 0/O/1/I/L，格式如 SD-8K2P9X）
 function generateCheckCipher() {
   const chars = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
   let body = '';
@@ -33,53 +30,6 @@ function extractBackupPhoneFromReviewNote(note) {
   return m ? m[1] : '';
 }
 
-function checkQueryRateLock(phone) {
-  try {
-    const raw = JSON.parse(localStorage.getItem(QUERY_FAIL_LOCK_KEY) || '{}');
-    const rec = raw[phone];
-    if (!rec) return { locked: false };
-    if (rec.lockUntil && Date.now() < rec.lockUntil) {
-      const hours = Math.ceil((rec.lockUntil - Date.now()) / 3600000);
-      return {
-        locked: true,
-        msg: `⚠️ 该手机号连续核身输错已达 5 次，为防冒领已自动锁定查询通道（剩余约 ${hours} 小时），或联系平台总控人工核实解锁。`
-      };
-    }
-    return { locked: false };
-  } catch (e) {
-    return { locked: false };
-  }
-}
-
-function recordQueryFailure(phone) {
-  try {
-    const raw = JSON.parse(localStorage.getItem(QUERY_FAIL_LOCK_KEY) || '{}');
-    const cur = raw[phone] || { count: 0, lockUntil: 0 };
-    if (cur.lockUntil && Date.now() >= cur.lockUntil) {
-      cur.count = 0;
-      cur.lockUntil = 0;
-    }
-    cur.count += 1;
-    if (cur.count >= 5) {
-      cur.lockUntil = Date.now() + 24 * 3600 * 1000;
-    }
-    raw[phone] = cur;
-    localStorage.setItem(QUERY_FAIL_LOCK_KEY, JSON.stringify(raw));
-    return cur.count;
-  } catch (e) {
-    return 1;
-  }
-}
-
-function clearQueryFailure(phone) {
-  try {
-    const raw = JSON.parse(localStorage.getItem(QUERY_FAIL_LOCK_KEY) || '{}');
-    delete raw[phone];
-    localStorage.setItem(QUERY_FAIL_LOCK_KEY, JSON.stringify(raw));
-  } catch (e) {}
-}
-
-// 根据主体身份 + 18位信用代码/身份证号自动锁定唯一商号代号（杜绝抢注冒名）
 window.syncTenantIdFromCreditCode = function (codeVal) {
   const bType = document.getElementById('v-business-type')?.value || 'coop';
   const personName = document.getElementById('v-contact-person')?.value || '';
@@ -366,8 +316,8 @@ window.handleImageUpload = function (e) {
   reader.readAsDataURL(file);
 };
 
-window.handleVendorRegister = async function (e) {
-  e.preventDefault();
+window.handleVendorRegister = async function (e, isClaimAppeal = false) {
+  if (e && e.preventDefault) e.preventDefault();
   if (!document.getElementById('chk-agree-covenant')?.checked) {
     return alert('请先阅读并勾选同意《百工百业平台入驻与商道公约》！');
   }
@@ -416,41 +366,9 @@ window.handleVendorRegister = async function (e) {
 
   const btn = document.getElementById('btn-submit-join');
   btn.disabled = true;
-  btn.innerHTML = '正在核对一证一户唯一性并加密生成商契...';
+  btn.innerHTML = '正在核对一证一户分级唯一性并原子提交...';
 
   try {
-    if (!resubmitId) {
-      const { data: dupCredit } = await supabase
-        .from('platform_tenant')
-        .select('tenant_id, company_name')
-        .eq('credit_code', creditCode)
-        .limit(1);
-
-      if (dupCredit && dupCredit.length > 0) {
-        alert(
-          `🛡️ 一证一户保护提示：\n\n` +
-            `该信用代码/身份证号【${creditCode}】已注册在册！\n` +
-            `• 归属主体：${dupCredit[0].company_name}\n` +
-            `• 商号代号：${dupCredit[0].tenant_id}\n\n` +
-            `平台严禁重复抢注。如您是该主体负责人但遗忘密码，请前往登录页点击「凭验证器/恢复码秒设新密」或「72小时安全找回」。`
-        );
-        btn.disabled = false;
-        updateSubmitButtonState(true, isManualFallbackMode);
-        return;
-      }
-
-      const existingApps = await JoinService.checkExistingApplication(contactPhone, tenantId);
-      if (existingApps.length > 0) {
-        alert('ℹ️ 检测到该手机号或证件已有入驻申请记录！已为您跳转至核身查询页。');
-        document.getElementById('q-search-phone').value = contactPhone;
-        document.getElementById('q-search-last6').value = creditCode.slice(-6);
-        window.switchJoinTab('query');
-        btn.disabled = false;
-        updateSubmitButtonState(true, isManualFallbackMode);
-        return;
-      }
-    }
-
     const hashedAccessKey = await AuthSecurity.hashPassword(rawPwd, tenantId);
     const checkCipher = generateCheckCipher();
 
@@ -458,7 +376,7 @@ window.handleVendorRegister = async function (e) {
     if (sponsorOrg) extraNotes.push(`联保担保单位：${sponsorOrg}`);
     const finalAuditSummary = `${verifiedAuditSummary} | ${extraNotes.join(' ')}`;
 
-    await JoinService.submitVendorApplication({
+    const res = await JoinService.submitVendorApplicationAtomic({
       resubmitId,
       tenantId,
       companyName,
@@ -471,8 +389,26 @@ window.handleVendorRegister = async function (e) {
       accessKey: hashedAccessKey,
       isManualFallback: isManualFallbackMode,
       auditSummary: finalAuditSummary,
-      licenseBase64: currentCompressedBase64
+      licenseBase64: currentCompressedBase64,
+      isClaimAppeal
     });
+
+    if (!res?.ok) {
+      if (res?.code === 'CAN_APPEAL_CLAIM') {
+        const wantAppeal = confirm(
+          `🛡️ 发现疑似抢注记录：\n\n${res.msg}\n\n是否立即作为【正主发起抢注申诉】并附原件转交平台总控核实覆盖？`
+        );
+        if (wantAppeal) {
+          btn.disabled = false;
+          return window.handleVendorRegister(null, true);
+        }
+      } else {
+        alert(res?.msg || '提交未通过校验');
+      }
+      btn.disabled = false;
+      updateSubmitButtonState(true, isManualFallbackMode);
+      return;
+    }
 
     // 同步初始化私有安全保险箱
     try {
@@ -485,7 +421,9 @@ window.handleVendorRegister = async function (e) {
 
     navigator.clipboard?.writeText(checkCipher).catch(() => {});
 
-    if (!isManualFallbackMode) {
+    const isAutoApproved = res.status === 'approved_by_ai';
+
+    if (isAutoApproved) {
       alert(
         `🎉 AI 核验秒过 · 当场发放商号信物！已为您开通「🍃 尝鲜体验」7天全功能席位！\n\n` +
           `• 法定主体名称：${companyName}\n` +
@@ -513,7 +451,6 @@ window.handleVendorRegister = async function (e) {
     window.switchJoinTab('query');
     await window.queryApplicationStatus();
 
-    // 弹出支持微信长按保存的高清《商号安家立户凭证卡》（附带查验暗号）
     AuthSecurity.showVoucherPreviewModal({
       tenantId,
       companyName,
@@ -571,7 +508,7 @@ function renderMatchedApplicationCards(matchedApps, container) {
                 ${typeBadge}
               </div>
               <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
-                ✅ 三重核身通过 · 已开席
+                ✅ 核身通过 · 已开席
               </span>
             </div>
 
@@ -661,7 +598,6 @@ function renderMatchedApplicationCards(matchedApps, container) {
     .join('');
 }
 
-// 常规通道：主手机 + 证件后6位 + 8位查验暗号（三重核身 + 5次错误熔断）
 window.queryApplicationStatus = async function () {
   const phone = document.getElementById('q-search-phone').value.trim();
   const last6 = document.getElementById('q-search-last6').value.trim().toUpperCase();
@@ -672,30 +608,22 @@ window.queryApplicationStatus = async function () {
     return alert('请完整输入「11位主联络手机号码」、「证件/代码后 6 位」以及「8 位查验暗号」！');
   }
 
-  const lockState = checkQueryRateLock(phone);
-  if (lockState.locked) {
-    return alert(lockState.msg);
-  }
-
-  container.innerHTML = '<div class="text-center py-6 text-stone-400">正在进行三重核身校验...</div>';
+  container.innerHTML = '<div class="text-center py-6 text-stone-400">正在进行数据库级三重核身校验...</div>';
 
   try {
-    const rawMatched = await JoinService.queryApplicationsByPhoneAndLast6(phone, last6);
-    const verifiedApps = rawMatched.filter((app) => {
-      const savedCipher = extractCipherFromReviewNote(app.review_note);
-      if (!savedCipher) return true;
-      return savedCipher === cipher;
+    const res = await JoinService.verifyAndQueryOnboarding({
+      mode: 'cipher',
+      phone,
+      idLast6: last6,
+      cipher
     });
 
-    if (verifiedApps.length === 0) {
-      const failCount = recordQueryFailure(phone);
-      const remain = Math.max(0, 5 - failCount);
+    if (!res?.ok) {
       container.innerHTML = `
         <div class="bg-[#202023] border border-rose-500/40 rounded-2xl p-6 text-center space-y-2">
           <span class="text-2xl block">🛡️</span>
-          <b class="text-rose-300 block">三重核身未通过（手机号、证件后 6 位或查验暗号不匹配）</b>
+          <b class="text-rose-300 block">${res?.msg || '三重核身未通过'}</b>
           <p class="text-[11px] text-stone-400">
-            ${remain > 0 ? `今日还可试错 ${remain} 次（连续输错 5 次将自动锁定 24 小时防冒领）。` : '连续输错已达 5 次，该查询通道已锁定 24 小时。'}<br/>
             若忘记查验暗号，可点击上方「🔑 忘记查验暗号？使用紧急备用手机四重应急核身找回」。
           </p>
         </div>
@@ -703,14 +631,12 @@ window.queryApplicationStatus = async function () {
       return;
     }
 
-    clearQueryFailure(phone);
-    renderMatchedApplicationCards(verifiedApps, container);
+    renderMatchedApplicationCards(res.apps || [], container);
   } catch (err) {
     container.innerHTML = `<div class="text-center py-6 text-rose-400">查询异常：${err.message}</div>`;
   }
 };
 
-// 忘暗号应急通道：主手机 + 紧急备用手机 + 证件后6位 + 法定主体全称（四重核身）
 window.queryApplicationByEmergency = async function () {
   const phone = document.getElementById('q-emerg-phone').value.trim();
   const backup = document.getElementById('q-emerg-backup').value.trim();
@@ -722,40 +648,31 @@ window.queryApplicationByEmergency = async function () {
     return alert('请完整填写主联络手机、紧急备用手机、证件后 6 位以及法定主体全称/个人招牌！');
   }
 
-  const lockState = checkQueryRateLock(phone);
-  if (lockState.locked) {
-    return alert(lockState.msg);
-  }
-
-  container.innerHTML = '<div class="text-center py-6 text-stone-400">正在进行四重应急核身校验...</div>';
+  container.innerHTML = '<div class="text-center py-6 text-stone-400">正在进行数据库级四重应急核身校验...</div>';
 
   try {
-    const rawMatched = await JoinService.queryApplicationsByPhoneAndLast6(phone, last6);
-    const verifiedApps = rawMatched.filter((app) => {
-      const savedBackup = extractBackupPhoneFromReviewNote(app.review_note);
-      const nameMatch = String(app.company_name || '').trim() === compName;
-      if (!nameMatch) return false;
-      if (savedBackup) return savedBackup === backup;
-      return true;
+    const res = await JoinService.verifyAndQueryOnboarding({
+      mode: 'emergency',
+      phone,
+      idLast6: last6,
+      backupPhone: backup,
+      companyName: compName
     });
 
-    if (verifiedApps.length === 0) {
-      const failCount = recordQueryFailure(phone);
-      const remain = Math.max(0, 5 - failCount);
+    if (!res?.ok) {
       container.innerHTML = `
         <div class="bg-[#202023] border border-rose-500/40 rounded-2xl p-6 text-center space-y-2">
           <span class="text-2xl block">🔐</span>
-          <b class="text-rose-300 block">四重应急核身未匹配</b>
+          <b class="text-rose-300 block">${res?.msg || '四重应急核身未匹配'}</b>
           <p class="text-[11px] text-stone-400">
-            请核对主手机号、紧急备用手机号、证件后 6 位及法定全称是否一字不差（剩余试错次数：${remain} 次）。如均遗忘，请联系平台总控主叫您的主联络手机号核实。
+            请核对主手机号、紧急备用手机号、证件后 6 位及法定全称是否一字不差。如均遗忘，请联系平台总控主叫您的主联络手机号核实。
           </p>
         </div>
       `;
       return;
     }
 
-    clearQueryFailure(phone);
-    renderMatchedApplicationCards(verifiedApps, container);
+    renderMatchedApplicationCards(res.apps || [], container);
   } catch (err) {
     container.innerHTML = `<div class="text-center py-6 text-rose-400">应急查询异常：${err.message}</div>`;
   }
