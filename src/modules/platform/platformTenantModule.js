@@ -20,6 +20,11 @@ export function renderApplications() {
       const isPending = a.application_status === 'pending_review';
       const isApproved = a.application_status === 'approved' || a.application_status === 'approved_by_ai' || a.application_status === 'approved_manually';
       const isIndividual = a.business_type === 'individual' || String(a.tenant_id || '').startsWith('GR-');
+      const cipherMatch = String(a.review_note || '').match(/\[查验暗号[:：]([A-Z0-9-]+)\]/i);
+      const backupMatch = String(a.review_note || '').match(/\[备用手机[:：](\d{11})\]/);
+      const cipherStr = cipherMatch ? cipherMatch[1].toUpperCase() : '';
+      const backupStr = backupMatch ? backupMatch[1] : '';
+
       return `
         <div class="p-4 bg-stone-50 border ${isPending ? 'border-amber-300 shadow-sm' : 'border-stone-200'} rounded-2xl space-y-2.5">
           <div class="flex flex-wrap justify-between items-start gap-2">
@@ -36,8 +41,12 @@ export function renderApplications() {
                   ${isPending ? '⏳ 待人工复核' : isApproved ? '✅ 验真已发证' : '🚫 已退回商榷'}
                 </span>
               </div>
-              <div class="text-[11px] text-stone-500 font-mono mt-1">
-                负责人: <b>${a.contact_person || '-'}</b> · 手机: <a href="tel:${a.contact_phone}" class="underline font-bold text-stone-800">${a.contact_phone || '-'}</a> · 初审分: <b class="text-emerald-700">${a.ai_audit_score || 95}分</b>
+              <div class="text-[11px] text-stone-500 font-mono mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>负责人: <b>${a.contact_person || '-'}</b></span>
+                <span>· 主手机: <a href="tel:${a.contact_phone}" class="underline font-bold text-stone-800">${a.contact_phone || '-'}</a></span>
+                ${backupStr ? `<span>· 备用手机: <a href="tel:${backupStr}" class="underline font-bold text-amber-800">${backupStr}</a></span>` : ''}
+                ${cipherStr ? `<span class="bg-emerald-100 text-emerald-900 px-1.5 py-0.2 rounded font-bold">🔐 查验暗号: ${cipherStr}</span>` : ''}
+                <span>· 初审分: <b class="text-emerald-700">${a.ai_audit_score || 95}分</b></span>
               </div>
               ${a.review_note ? `<div class="text-[10px] text-stone-500 mt-1 bg-white px-2.5 py-1 rounded-lg border border-stone-200/70">${a.review_note}</div>` : ''}
             </div>
@@ -119,7 +128,7 @@ export function renderTenantsTable() {
           <td class="p-3 font-bold text-amber-800">${t.tenant_id}</td>
           <td class="p-3 font-sans">
             <div class="font-bold text-stone-900">${t.company_name}</div>
-            <div class="text-[10px] font-mono text-stone-400">${t.credit_code || '特邀/实名立户'} · 运维会费: ¥${t.membership_fee || 0}/年</div>
+            <div class="text-[10px] font-mono text-stone-400">${t.credit_code || '特邀/实名立户'} · 运维会费: ¥${t.membership_fee || 0}/年${t.backup_phone ? ` · 备号:${t.backup_phone}` : ''}</div>
             ${timelockBadge}
           </td>
           <td class="p-3 font-sans">${formatBusinessTypeLabel(t.business_type)}</td>
@@ -201,6 +210,8 @@ export function initPlatformTenantBindings() {
   };
 
   window.rejectApplicationNameMismatch = async function (appId) {
+    const app = platformState.allApplications.find((a) => a.id === appId);
+    const metaTags = (String(app?.review_note || '').match(/\[(查验暗号|备用手机)[:：][^\]]+\]/g) || []).join(' ');
     const defaultReason =
       '【名实不符退回】平台恪守“物勒工名、名实相符”商道，严禁抢注公共产区名或未在营业执照上体现的品牌字号。请严格按照营业执照《名称》一栏（或本人真实姓名+镇村/行当）修改后重新提交。';
     const reason = prompt('确认以【名实不符】退回该申请（可微调批示说明）：', defaultReason);
@@ -210,7 +221,7 @@ export function initPlatformTenantBindings() {
       .from('tenant_application')
       .update({
         application_status: 'rejected',
-        review_note: reason.trim(),
+        review_note: `${reason.trim()} ${metaTags}`.trim(),
         reviewed_at: new Date().toISOString()
       })
       .eq('id', appId);
@@ -339,6 +350,8 @@ export function initPlatformTenantBindings() {
     if (fee === null) return;
 
     const app = platformState.allApplications.find((a) => a.id === appId);
+    const backupMatch = String(app?.review_note || '').match(/\[备用手机[:：](\d{11})\]/);
+    const extractedBackupPhone = backupMatch ? backupMatch[1] : null;
     const existingKey = (app?.access_key || '').trim();
     let storedAccessKey = existingKey;
     let plainGeneratedPwd = '';
@@ -375,6 +388,7 @@ export function initPlatformTenantBindings() {
         contact_person: app ? app.contact_person : '掌柜',
         contact_name: app ? app.contact_person : '掌柜',
         phone: app ? app.contact_phone : '',
+        backup_phone: extractedBackupPhone,
         access_key: storedAccessKey,
         membership_fee: parseFloat(fee) || 0,
         membership_status: 'active',
@@ -385,7 +399,7 @@ export function initPlatformTenantBindings() {
     await supabase.rpc('rpc_sync_tenant_vault', {
       p_tenant_id: tenantId,
       p_access_key: storedAccessKey,
-      p_backup_phone: null
+      p_backup_phone: extractedBackupPhone
     }).catch(() => {});
 
     recordAuditLog('审批激活新会员主体', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: companyName, ops_fee: parseFloat(fee) || 0 });
@@ -395,6 +409,8 @@ export function initPlatformTenantBindings() {
   };
 
   window.rejectApplication = async function (appId) {
+    const app = platformState.allApplications.find((a) => a.id === appId);
+    const metaTags = (String(app?.review_note || '').match(/\[(查验暗号|备用手机)[:：][^\]]+\]/g) || []).join(' ');
     const reason = prompt('输入商榷退回说明（负责人将在查询页面看到此意见并重新上传补件）：', '执照公章略有反光模糊，请在光线均匀处重新拍摄上传。');
     if (!reason) return;
 
@@ -402,12 +418,12 @@ export function initPlatformTenantBindings() {
       .from('tenant_application')
       .update({
         application_status: 'rejected',
-        review_note: reason.trim(),
+        review_note: `${reason.trim()} ${metaTags}`.trim(),
         reviewed_at: new Date().toISOString()
       })
       .eq('id', appId);
 
-    alert('已退回修润建议！负责人凭手机号与后6位查询即可看到并补件重提。');
+    alert('已退回修润建议！负责人凭三重核身查询即可看到并补件重提。');
     window.loadPlatformData();
   };
 
