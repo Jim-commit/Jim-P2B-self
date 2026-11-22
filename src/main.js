@@ -24,33 +24,72 @@ import {
   initPoolPlanBindings
 } from './modules/store/storePoolPlanModule.js';
 
+// ==========================================
+// 1. 弹窗与顶部导航菜单控制（全版本兼容）
+// ==========================================
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
 
 window.closeAllMenus = () => {
+  document.getElementById('left-nav-menu')?.classList.add('hidden');
+  document.getElementById('right-nav-menu')?.classList.add('hidden');
+  document.getElementById('shop-type-dropdown')?.classList.add('hidden');
   document.getElementById('agent-switcher-menu')?.classList.add('hidden');
   document.getElementById('more-actions-menu')?.classList.add('hidden');
 };
 
-window.toggleAgentMenu = (e) => {
-  e.stopPropagation();
-  document.getElementById('more-actions-menu')?.classList.add('hidden');
-  document.getElementById('agent-switcher-menu')?.classList.toggle('hidden');
+// 左上角 ☰ 掌柜锦囊
+window.toggleLeftNavMenu = (e) => {
+  e?.stopPropagation();
+  const menu = document.getElementById('left-nav-menu');
+  const isHidden = menu?.classList.contains('hidden');
+  window.closeAllMenus();
+  if (isHidden) menu?.classList.remove('hidden');
 };
 
-window.toggleMoreActionsMenu = (e) => {
-  e.stopPropagation();
-  document.getElementById('agent-switcher-menu')?.classList.add('hidden');
-  document.getElementById('more-actions-menu')?.classList.toggle('hidden');
+// 上中间 社区便利 ▾ 业态气泡下拉
+window.toggleShopTypeDropdown = (e) => {
+  e?.stopPropagation();
+  const menu = document.getElementById('shop-type-dropdown');
+  const isHidden = menu?.classList.contains('hidden');
+  window.closeAllMenus();
+  if (isHidden) menu?.classList.remove('hidden');
 };
+
+// 右上角 ··· 供货服务
+window.toggleRightNavMenu = (e) => {
+  e?.stopPropagation();
+  const menu = document.getElementById('right-nav-menu');
+  const isHidden = menu?.classList.contains('hidden');
+  window.closeAllMenus();
+  if (isHidden) menu?.classList.remove('hidden');
+};
+
+// 兼容旧版菜单入口
+window.toggleAgentMenu = window.toggleLeftNavMenu;
+window.toggleMoreActionsMenu = window.toggleRightNavMenu;
+
+// ==========================================
+// 2. 顶部供货方胶囊与名册弹窗渲染
+// ==========================================
+let agentSearchKeyword = '';
+let agentCategoryFilter = '全部';
 
 function renderAgentNavTabs() {
-  const nav = document.getElementById('agent-nav-tabs');
+  const nav = document.getElementById('agents-nav-chips') || document.getElementById('agent-nav-tabs');
+  const allBtn = document.getElementById('btn-all-agents');
+  safeSetText('total-agents-count', String(storeState.myAgents.length));
+
+  if (allBtn) {
+    if (storeState.myAgents.length > 0) allBtn.classList.remove('hidden');
+    else allBtn.classList.add('hidden');
+  }
+
   if (!nav) return;
 
   if (storeState.myAgents.length === 0) {
     nav.innerHTML = `
-      <a href="suppliers.html" class="shrink-0 px-3 py-1 rounded-full text-[11px] bg-amber-300 text-stone-950 font-bold shadow">
+      <a href="suppliers.html" class="shrink-0 px-3 py-0.5 rounded-full text-[10px] bg-amber-300 text-stone-950 font-bold shadow">
         + 前往百业供需名录接入供货合作社/工坊
       </a>
     `;
@@ -62,10 +101,10 @@ function renderAgentNavTabs() {
       const isCur = ag.id === storeState.currentAgent;
       const shortName = ag.name.split('(')[0].trim();
       return `
-        <button type="button" onclick="window.switchAgent('${ag.id}')" class="shrink-0 px-3 py-1 rounded-full text-[11px] transition flex items-center gap-1 ${
+        <button type="button" onclick="window.switchAgent('${ag.id}')" class="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] transition flex items-center gap-1 ${
         isCur
           ? 'bg-amber-300 text-stone-950 font-bold shadow'
-          : 'bg-white/10 text-emerald-100 hover:bg-white/20 border border-white/10'
+          : 'bg-white/15 text-emerald-100 hover:bg-white/25 border border-white/10'
       }">
           <span>${isCur ? '●' : '○'}</span>
           <span>${shortName}</span>
@@ -106,11 +145,86 @@ function renderAgentSwitcherMenu() {
     .join('');
 }
 
+function renderAllAgentsModalList() {
+  const box = document.getElementById('all-agents-container');
+  if (!box) return;
+
+  const filtered = storeState.myAgents.filter((ag) => {
+    const matchKw =
+      !agentSearchKeyword ||
+      ag.name.toLowerCase().includes(agentSearchKeyword) ||
+      ag.id.toLowerCase().includes(agentSearchKeyword);
+    const matchCat =
+      agentCategoryFilter === '全部' ||
+      (ag.category || ag.name || '').includes(agentCategoryFilter);
+    return matchKw && matchCat;
+  });
+
+  if (filtered.length === 0) {
+    box.innerHTML = '<div class="py-8 text-center text-stone-400 text-xs">未检索到匹配的合作供货方，可清空筛选或绑定新商号。</div>';
+    return;
+  }
+
+  box.innerHTML = filtered
+    .map((ag) => {
+      const isCur = ag.id === storeState.currentAgent;
+      return `
+        <div class="flex items-center justify-between py-2.5 px-2.5 rounded-2xl transition ${
+          isCur ? 'bg-emerald-50/90 border border-emerald-200' : 'hover:bg-stone-50'
+        }">
+          <button type="button" onclick="window.switchAgent('${ag.id}'); window.closeModal('all-agents-modal');" class="flex-1 text-left">
+            <div class="font-bold text-xs ${isCur ? 'text-emerald-950' : 'text-stone-800'}">
+              ${isCur ? '✅ ' : '🏛️ '}${ag.name}
+            </div>
+            <div class="text-[10px] text-stone-400 font-mono mt-0.5">商号代号：${ag.id}</div>
+          </button>
+          <button type="button" onclick="window.removeAgentFromList('${ag.id}', event)" class="text-[10px] text-stone-400 hover:text-rose-600 px-2 py-1 rounded-lg hover:bg-rose-50">
+            解绑
+          </button>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+window.openAllAgentsModal = function () {
+  agentSearchKeyword = '';
+  agentCategoryFilter = '全部';
+  const input = document.getElementById('agent-search-input');
+  if (input) input.value = '';
+  renderAllAgentsModalList();
+  window.openModal('all-agents-modal');
+};
+
+window.filterAgentList = function (val) {
+  agentSearchKeyword = (val || '').trim().toLowerCase();
+  renderAllAgentsModalList();
+};
+
+window.filterAgentByCategory = function (cat) {
+  agentCategoryFilter = cat;
+  document.querySelectorAll('.agent-cat-pill').forEach((btn) => {
+    const isCur = btn.innerText.includes(cat) || (cat === '全部' && btn.innerText.includes('全部'));
+    btn.className = isCur
+      ? 'agent-cat-pill bg-stone-900 text-white px-2 py-0.5 rounded-lg font-bold'
+      : 'agent-cat-pill bg-stone-100 text-stone-600 px-2 py-0.5 rounded-lg';
+  });
+  renderAllAgentsModalList();
+};
+
+window.confirmUnbindCurrentAgent = async function () {
+  if (!storeState.currentAgent) return alert('当前尚未接入供货方。');
+  await window.removeAgentFromList(storeState.currentAgent);
+};
+
+// ==========================================
+// 3. 业态选择、快捷标签与商品清单渲染
+// ==========================================
 function renderShopTypeList() {
   const container = document.getElementById('shop-type-list');
   if (!container) return;
   const presetKeys = typeof ShopTypeManager.getAllPresetKeys === 'function' ? ShopTypeManager.getAllPresetKeys() : [];
-  const allTypes = Array.from(new Set([...presetKeys, '社区便利', '餐饮酒店', '工料五金', '农资农具', '医药康养', '烘焙茶饮']));
+  const allTypes = Array.from(new Set([...presetKeys, '社区便利', '餐饮饭庄', '精品商超', '五金机电', '汽修配件', '农资农具', '医药日化', '文体劳保']));
 
   container.innerHTML = allTypes
     .map((t) => {
@@ -127,8 +241,43 @@ function renderShopTypeList() {
     .join('');
 }
 
+function updateShopTypeDisplay(type) {
+  const icon = getShopIcon(type);
+  safeSetText('shop-type-label', type);
+  safeSetText('shop-type-icon', icon);
+  const badge = document.getElementById('shop-type-badge');
+  if (badge) {
+    badge.innerHTML = `<span>${icon} ${type}</span> ▾`;
+  }
+}
+
+window.promptCustomShopType = function () {
+  window.closeAllMenus();
+  const custom = prompt('请输入本店自定义经营行当名称（如：生鲜果蔬、母婴百货）：', storeState.shopType || '');
+  if (custom && custom.trim()) {
+    window.selectShopType(custom.trim());
+  }
+};
+
+window.focusProductSearch = function () {
+  const target = document.getElementById('category-bar') || document.getElementById('product-container');
+  target?.scrollIntoView({ behavior: 'smooth' });
+};
+
+window.filterBySpecialTag = function (tag) {
+  document.querySelectorAll('.tag-filter-chip').forEach((btn) => {
+    const active =
+      (tag === '全部' && btn.innerText.includes('全选')) ||
+      (tag !== '全部' && btn.innerText.includes(tag.replace(/^[^\u4e00-\u9fa5]+/, '').slice(0, 4)));
+    btn.className = active
+      ? 'tag-filter-chip bg-stone-900 text-white px-2.5 py-0.5 rounded-lg whitespace-nowrap font-bold shadow-sm'
+      : 'tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap';
+  });
+  window.selectTagFilter(tag);
+};
+
 function renderProducts() {
-  const container = document.getElementById('product-list');
+  const container = document.getElementById('product-container') || document.getElementById('product-list');
   if (!container) return;
 
   let filtered = storeState.allProducts;
@@ -140,7 +289,7 @@ function renderProducts() {
   }
 
   if (filtered.length === 0) {
-    container.innerHTML = '<div class="py-12 text-center text-stone-400 text-xs">当前筛选项下暂无在供货品，可切换顶部供货方或清空筛选。</div>';
+    container.innerHTML = '<div class="py-12 text-center text-stone-400 text-xs">当前筛选项下暂无在供货品，可切换顶部供货方或点选「全选品类」。</div>';
     return;
   }
 
@@ -154,7 +303,7 @@ function renderProducts() {
       const tags = Array.isArray(p.tags) ? p.tags : [];
 
       return `
-        <div class="bg-white rounded-3xl p-3.5 border border-stone-200/80 shadow-2xs space-y-2.5">
+        <div class="py-3.5 first:pt-1 space-y-2.5">
           <div class="flex gap-3">
             <div class="w-16 h-16 rounded-2xl bg-stone-100 border border-stone-200/70 overflow-hidden shrink-0 flex items-center justify-center">
               ${p.image_url ? `<img src="${p.image_url}" class="w-full h-full object-cover">` : `<span class="text-[10px] text-stone-400">良品封装</span>`}
@@ -181,15 +330,15 @@ function renderProducts() {
             </div>
           </div>
 
-          <div class="pt-2 border-t border-stone-100 flex justify-between items-center gap-2">
+          <div class="pt-1.5 flex justify-between items-center gap-2">
             <div>
               <span class="text-[10px] text-stone-400 block">门店专属工价</span>
               <b class="text-base font-mono font-bold text-emerald-950">¥${price.toFixed(2)}<span class="text-[10px] font-normal text-stone-400">/${unit}</span></b>
             </div>
 
             <div class="flex items-center gap-1.5">
-              <button type="button" onclick="window.openFlyerModal(${p.id})" class="px-2 py-1 rounded-xl text-[10px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100" title="生成街坊微信群推荐海报">
-                📣 街坊海报
+              <button type="button" onclick="window.openFlyerModal(${p.id})" class="px-2 py-1 rounded-xl text-[10px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100" title="定制街坊邻里便民画报">
+                🎨 画报
               </button>
               ${
                 storeState.allowStoreSelfReturn
@@ -221,14 +370,14 @@ function renderProducts() {
 }
 
 function renderCategoriesAndTags() {
-  const catBar = document.getElementById('category-tabs');
+  const catBar = document.getElementById('category-bar') || document.getElementById('category-tabs');
   if (catBar) {
     const cats = ['全部', ...Array.from(new Set(storeState.allProducts.map((p) => p.category_main || '常规良品')))];
     catBar.innerHTML = cats
       .map(
         (c) => `
         <button type="button" onclick="window.selectCategory('${c}')" class="shrink-0 px-3 py-1 rounded-xl text-[11px] font-bold transition ${
-          storeState.currentCategory === c ? 'bg-[#1b4332] text-white shadow-2xs' : 'bg-white text-stone-600 border border-stone-200'
+          storeState.currentCategory === c ? 'bg-[#1b4332] text-white shadow-2xs' : 'bg-stone-100 text-stone-600 hover:bg-stone-200/70'
         }">${c}</button>
       `
       )
@@ -257,8 +406,6 @@ function renderCategoriesAndTags() {
 }
 
 function renderSettlementSelector() {
-  const box = document.getElementById('settlement-selector-bar');
-  if (!box) return;
   const allowed =
     storeState.currentStore && Array.isArray(storeState.currentStore.allowed_settlements)
       ? storeState.currentStore.allowed_settlements
@@ -268,47 +415,185 @@ function renderSettlementSelector() {
     storeState.currentSettlementType = allowed[0] || 'cash';
   }
 
-  box.innerHTML = Object.entries(SETTLEMENT_CONFIG)
-    .filter(([key]) => allowed.includes(key))
-    .map(([key, val]) => {
-      const isCur = key === storeState.currentSettlementType;
-      return `
-        <button type="button" onclick="window.selectSettlementType('${key}')" class="flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold border transition ${
-        isCur ? 'bg-[#1b4332] text-white border-[#1b4332] shadow-2xs' : 'bg-white text-stone-700 border-stone-200'
-      }">
-          ${val.label}
-        </button>
-      `;
-    })
-    .join('');
+  // 兼容新版随车送货凭单弹窗内 select
+  const slipSelect = document.getElementById('slip-settlement-select');
+  if (slipSelect) {
+    slipSelect.innerHTML = Object.entries(SETTLEMENT_CONFIG)
+      .filter(([key]) => allowed.includes(key))
+      .map(([key, val]) => `<option value="${key}" ${key === storeState.currentSettlementType ? 'selected' : ''}>${val.label}</option>`)
+      .join('');
+    slipSelect.onchange = (e) => {
+      storeState.currentSettlementType = e.target.value;
+    };
+  }
+
+  // 兼容旧版快捷按钮条
+  const box = document.getElementById('settlement-selector-bar');
+  if (box) {
+    box.innerHTML = Object.entries(SETTLEMENT_CONFIG)
+      .filter(([key]) => allowed.includes(key))
+      .map(([key, val]) => {
+        const isCur = key === storeState.currentSettlementType;
+        return `
+          <button type="button" onclick="window.selectSettlementType('${key}')" class="flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold border transition ${
+          isCur ? 'bg-[#1b4332] text-white border-[#1b4332] shadow-2xs' : 'bg-white text-stone-700 border-stone-200'
+        }">
+            ${val.label}
+          </button>
+        `;
+      })
+      .join('');
+  }
 }
 
+// ==========================================
+// 4. 底部常驻「捎句话」快捷胶囊与自定义口信
+// ==========================================
 function renderDynamicNotes() {
-  const listEl = document.getElementById('dynamic-notes-list');
-  if (!listEl) return;
   const presets = getShopDynamicNotes(storeState.shopType);
   const allNotes = Array.from(new Set([...storeState.myCustomNotes, ...presets]));
 
-  listEl.innerHTML = allNotes
-    .map((txt) => {
-      const isCustom = storeState.myCustomNotes.includes(txt);
-      const safeTxt = txt.replace(/'/g, "\\'");
-      return `
-        <div onclick="window.appendVoiceNote('${safeTxt}')" class="cursor-pointer w-full text-left p-2.5 rounded-xl bg-stone-50 hover:bg-emerald-50 border border-stone-200 text-xs text-stone-800 transition flex justify-between items-center gap-2">
-          <span>💬 ${txt}</span>
-          <div class="flex items-center gap-2 shrink-0">
-            ${
-              isCustom
-                ? `<button type="button" onclick="window.removeCustomQuickNote('${safeTxt}', event)" class="text-[10px] text-rose-500 hover:underline">删</button>`
-                : ''
-            }
-            <span class="text-[10px] text-emerald-800 font-bold">+ 填入</span>
+  // 新版底部常驻横滑胶囊条
+  const notesBox = document.getElementById('dynamic-notes-box');
+  if (notesBox) {
+    notesBox.innerHTML = allNotes
+      .slice(0, 6)
+      .map((txt) => {
+        const isSelected = (storeState.deliveryNote || '').includes(txt);
+        const safeTxt = txt.replace(/'/g, "\\'");
+        return `
+          <button type="button" onclick="window.toggleQuickDeliveryNote('${safeTxt}')" class="px-2 py-0.5 rounded-lg border whitespace-nowrap transition active:scale-95 ${
+          isSelected
+            ? 'bg-[#1b4332] text-white border-[#1b4332] font-bold'
+            : 'bg-stone-50 hover:bg-emerald-50 text-stone-700 border-stone-200'
+        }">
+            ${isSelected ? '✓ ' : ''}${txt}
+          </button>
+        `;
+      })
+      .join('');
+  }
+
+  // 旧版语音口信弹窗列表
+  const listEl = document.getElementById('dynamic-notes-list');
+  if (listEl) {
+    listEl.innerHTML = allNotes
+      .map((txt) => {
+        const isCustom = storeState.myCustomNotes.includes(txt);
+        const safeTxt = txt.replace(/'/g, "\\'");
+        return `
+          <div onclick="window.appendVoiceNote('${safeTxt}')" class="cursor-pointer w-full text-left p-2.5 rounded-xl bg-stone-50 hover:bg-emerald-50 border border-stone-200 text-xs text-stone-800 transition flex justify-between items-center gap-2">
+            <span>💬 ${txt}</span>
+            <div class="flex items-center gap-2 shrink-0">
+              ${
+                isCustom
+                  ? `<button type="button" onclick="window.removeCustomQuickNote('${safeTxt}', event)" class="text-[10px] text-rose-500 hover:underline">删</button>`
+                  : ''
+              }
+              <span class="text-[10px] text-emerald-800 font-bold">+ 填入</span>
+            </div>
           </div>
-        </div>
-      `;
-    })
-    .join('');
+        `;
+      })
+      .join('');
+  }
 }
+
+window.toggleQuickDeliveryNote = function (txt) {
+  const cur = (storeState.deliveryNote || '').trim();
+  if (cur.includes(txt)) {
+    storeState.deliveryNote = cur
+      .split('；')
+      .filter((part) => part.trim() !== txt)
+      .join('；');
+  } else {
+    storeState.deliveryNote = cur ? `${cur}；${txt}` : txt;
+  }
+  const slipNote = document.getElementById('slip-custom-note');
+  if (slipNote) slipNote.value = storeState.deliveryNote;
+  renderDynamicNotes();
+};
+
+window.promptCustomDeliveryNote = function () {
+  const val = prompt('写下给供货方或随车送货师傅的特别口信：', storeState.deliveryNote || '');
+  if (val === null) return;
+  const trimmed = val.trim();
+  storeState.deliveryNote = trimmed;
+  if (trimmed && !storeState.myCustomNotes.includes(trimmed)) {
+    storeState.myCustomNotes.unshift(trimmed);
+    localStorage.setItem(STORE_CUSTOM_NOTES_KEY, JSON.stringify(storeState.myCustomNotes.slice(0, 15)));
+  }
+  const slipNote = document.getElementById('slip-custom-note');
+  if (slipNote) slipNote.value = trimmed;
+  renderDynamicNotes();
+};
+
+// ==========================================
+// 5. 云端扩充货架码、推荐同行码、画报与致电司机
+// ==========================================
+window.openCloudShelfModal = function () {
+  const storeName = storeState.currentStore?.name || '厚德便民门店';
+  safeSetText('cloud-shelf-store-title', `${storeName} · 云端扩充货架`);
+  const refParam = storeState.currentStore?.id ? `&ref=${encodeURIComponent(storeState.currentStore.id)}` : '';
+  const url = `${window.location.origin}/mall.html?t=${encodeURIComponent(storeState.currentAgent || '')}${refParam}`;
+  safeSetText('cloud-shelf-link-text', url);
+  const qr = document.getElementById('cloud-shelf-qr-img');
+  if (qr) qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(url)}`;
+  window.openModal('cloud-shelf-modal');
+};
+
+window.copyCloudShelfLink = function () {
+  const storeName = storeState.currentStore?.name || '厚德便民门店';
+  const link = document.getElementById('cloud-shelf-link-text')?.innerText || window.location.href;
+  const text =
+    `【${storeName} · 云端便民扩充货架】\n` +
+    `合作社与源头工坊直供，整箱好货免运费送到本店自提，街坊扫码即可预订：${link}`;
+  navigator.clipboard.writeText(text).then(() => {
+    alert('✅ 云端扩充货架文案与链接已复制，可直接发街坊微信群！');
+  });
+};
+
+window.openReferralModal = function () {
+  const storeName = storeState.currentStore?.name || '厚德便民门店';
+  const curAgObj = storeState.myAgents.find((a) => a.id === storeState.currentAgent);
+  safeSetText('ref-store-title', `${storeName} · 诚意推荐`);
+  if (curAgObj?.name) {
+    safeSetText('ref-agent-subtitle', `携手【${curAgObj.name}】· 源头直供货真价实`);
+  }
+  const url = `${window.location.origin}/suppliers.html?ref=${encodeURIComponent(storeState.currentStore?.id || '')}`;
+  const qr = document.getElementById('ref-qr-img');
+  if (qr) qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(url)}`;
+  window.openModal('referral-modal');
+};
+
+window.copyReferralShareText = function () {
+  const storeName = storeState.currentStore?.name || '厚德便民门店';
+  const url = `${window.location.origin}/suppliers.html?ref=${encodeURIComponent(storeState.currentStore?.id || '')}`;
+  const text =
+    `【${storeName} 掌柜引荐 · 源头直供合作名录】\n` +
+    `本店一直合作的源头合作社与匠心工坊，阳光工价、随车送货到店、月度清白对账。同行老板点此查看名录或预约送样：${url}`;
+  navigator.clipboard.writeText(text).then(() => {
+    alert('✅ 推荐同行文案与链接已复制，可直接转发同行群！');
+  });
+};
+
+window.callDriver = function () {
+  const phone = storeState.currentStore?.driver_phone || '';
+  if (phone) {
+    window.location.href = `tel:${phone}`;
+  } else {
+    alert(`当前随车送货师傅：${storeState.currentStore?.driver_name || '老张师傅'}（暂未录入电话，可在底部「捎句话」留言或查看交割存根）。`);
+  }
+};
+
+window.openMarketingCenter = function () {
+  const firstProd = storeState.allProducts[0];
+  if (firstProd) {
+    window.openFlyerModal(firstProd.id);
+  } else {
+    window.openModal('marketing-modal');
+  }
+};
 
 function renderFlyerPreview() {
   const prod = storeState.currentFlyerProd;
@@ -328,9 +613,18 @@ function renderFlyerPreview() {
 
   safeSetText('flyer-style-badge', styleBadges[storeState.currentFlyerStyle] || styleBadges.neighborhood);
   safeSetText('flyer-store-name', storeName);
-  safeSetText('flyer-prod-name', prod.name);
+  safeSetText('flyer-prod-name', `${prod.name}（${prod.spec || '整装'}）`);
   safeSetText('flyer-prod-spec', `${prod.spec || '整装'} · ${prod.origin_place || agentName}`);
   safeSetText('flyer-prod-price', `¥${retailRef}/${unit}`);
+
+  const titleInput = document.getElementById('flyer-title-input');
+  const taglineInput = document.getElementById('flyer-tagline-input');
+  const priceInput = document.getElementById('flyer-price-input');
+  const noteInput = document.getElementById('flyer-note-input');
+  if (titleInput && !titleInput.value) titleInput.value = `${storeName} · 街坊好物推荐`;
+  if (taglineInput && !taglineInput.value) taglineInput.value = `源头直供保真 · 到店自提验货`;
+  if (priceInput && !priceInput.value) priceInput.value = retailRef;
+  if (noteInput && !noteInput.value) noteInput.value = `本店实测品质过硬，街坊邻里整件预订更划算！`;
 
   const imgBox = document.getElementById('flyer-prod-img');
   if (imgBox) {
@@ -341,12 +635,93 @@ function renderFlyerPreview() {
 
   const refParam = storeState.currentStore?.id ? `&ref=${encodeURIComponent(storeState.currentStore.id)}` : '';
   const mallUrl = `${window.location.origin}/mall.html?t=${encodeURIComponent(storeState.currentAgent)}${refParam}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(mallUrl)}`;
   const qrImg = document.getElementById('flyer-qr-img');
-  if (qrImg) {
-    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(mallUrl)}`;
-  }
+  if (qrImg) qrImg.src = qrUrl;
+
+  // 渲染新版 Canvas 画报预览图
+  window.renderLiveFlyerPreview();
 }
 
+window.renderLiveFlyerPreview = function () {
+  const canvas = document.getElementById('hidden-canvas');
+  const previewImg = document.getElementById('flyer-preview-img');
+  const prod = storeState.currentFlyerProd;
+  if (!canvas || !previewImg || !prod) return;
+
+  const ctx = canvas.getContext('2d');
+  canvas.width = 600;
+  canvas.height = 760;
+
+  const bgMap = {
+    neighborhood: '#1b4332',
+    fresh: '#2d6a4f',
+    group: '#78350f'
+  };
+  ctx.fillStyle = bgMap[storeState.currentFlyerStyle] || '#1b4332';
+  ctx.fillRect(0, 0, 600, 760);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.roundRect(32, 32, 536, 696, 28);
+  ctx.fill();
+
+  const title = document.getElementById('flyer-title-input')?.value || `${storeState.currentStore?.name || '厚德便民门店'} · 街坊好物`;
+  const tagline = document.getElementById('flyer-tagline-input')?.value || '源头直供 · 到店自提验货';
+  const priceVal = document.getElementById('flyer-price-input')?.value || '0.00';
+  const noteVal = document.getElementById('flyer-note-input')?.value || '街坊邻里整件预订更划算';
+  const unit = prod.measure_unit || prod.pack_unit || '件';
+
+  ctx.fillStyle = '#1b4332';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.fillText(title.slice(0, 18), 64, 96);
+
+  ctx.fillStyle = '#78716c';
+  ctx.font = '20px sans-serif';
+  ctx.fillText(tagline.slice(0, 24), 64, 134);
+
+  ctx.fillStyle = '#f5f5f4';
+  ctx.fillRect(64, 165, 472, 220);
+  ctx.fillStyle = '#1c1917';
+  ctx.font = 'bold 30px sans-serif';
+  ctx.fillText(prod.name.slice(0, 16), 88, 250);
+  ctx.fillStyle = '#57534e';
+  ctx.font = '22px sans-serif';
+  ctx.fillText(`规格：${prod.spec || '整装'}  |  产地：${prod.origin_place || '源头直供'}`, 88, 298);
+
+  ctx.fillStyle = '#b91c1c';
+  ctx.font = 'bold 44px monospace';
+  ctx.fillText(`¥${priceVal} / ${unit}`, 64, 455);
+
+  ctx.fillStyle = '#44403c';
+  ctx.font = '21px sans-serif';
+  ctx.fillText(`掌柜叮咛：${noteVal.slice(0, 22)}`, 64, 515);
+  if (noteVal.length > 22) {
+    ctx.fillText(noteVal.slice(22, 46), 64, 548);
+  }
+
+  ctx.fillStyle = '#1b4332';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.fillText('到店自提验货 · 邻里诚信驿站服务保障', 64, 675);
+
+  previewImg.src = canvas.toDataURL('image/png');
+};
+
+window.applyQuickNote = function (type) {
+  const noteInput = document.getElementById('flyer-note-input');
+  if (!noteInput) return;
+  const presets = {
+    daily: '居家常备日化好物，源头直供保真，整件囤货更省心！',
+    general: '本店亲自把关选品，品质过硬、价格厚道，欢迎街坊到店自提！',
+    food: '产区直达良心粮油副食，日期新鲜、吃得放心，邻里拼单更实惠！'
+  };
+  noteInput.value = presets[type] || presets.general;
+  window.renderLiveFlyerPreview();
+};
+
+// ==========================================
+// 6. 核心云端数据加载与界面同步
+// ==========================================
 async function loadTerminalData() {
   renderAgentNavTabs();
   renderAgentSwitcherMenu();
@@ -354,8 +729,12 @@ async function loadTerminalData() {
   if (!storeState.currentAgent) {
     safeSetText('store-title', '尚未接入供货合作方');
     safeSetText('current-agent-name', '点击前往名录或输入代号接入');
+    safeSetText('menu-current-agent-tag', '未接入');
     safeSetText('debt-val', '0.00');
+    safeSetText('credit-debt', '¥0.00');
+    safeSetText('credit-avail', '¥0.00');
     safeSetText('basket-val', '0');
+    safeSetText('store-basket-count', '0 件');
     storeState.allProducts = [];
     renderProducts();
     updateCartSummary();
@@ -363,7 +742,9 @@ async function loadTerminalData() {
   }
 
   const curAgObj = storeState.myAgents.find((a) => a.id === storeState.currentAgent);
-  safeSetText('current-agent-name', curAgObj ? curAgObj.name : storeState.currentAgent);
+  const agentDisplayName = curAgObj ? curAgObj.name : storeState.currentAgent;
+  safeSetText('current-agent-name', agentDisplayName);
+  safeSetText('menu-current-agent-tag', agentDisplayName);
 
   const [tenantRes, storeData, productsData] = await Promise.all([
     supabase
@@ -396,9 +777,22 @@ async function loadTerminalData() {
 
   storeState.currentStore = storeData;
   if (storeData) {
+    const debt = parseFloat(storeData.current_debt || 0);
+    const creditLimit = parseFloat(storeData.credit_limit || 2000);
+    const availCredit = Math.max(0, creditLimit - debt);
+    const baskets = storeData.carrier_hold_count || storeData.basket_count || 0;
+
     safeSetText('store-title', storeData.name || '厚德便民门店');
-    safeSetText('debt-val', parseFloat(storeData.current_debt || 0).toFixed(2));
-    safeSetText('basket-val', storeData.carrier_hold_count || storeData.basket_count || 0);
+    safeSetText('store-boss', storeData.contact_name || storeData.boss_name || '主人家');
+    safeSetText('store-driver', storeData.driver_name || '老张师傅');
+
+    // 新旧两套账本看板 ID 同步更新
+    safeSetText('debt-val', debt.toFixed(2));
+    safeSetText('credit-debt', `¥${debt.toFixed(2)}`);
+    safeSetText('credit-avail', `¥${availCredit.toFixed(2)}`);
+    safeSetText('basket-val', String(baskets));
+    safeSetText('store-basket-count', `${baskets} 件`);
+
     if (storeData.default_settlement) {
       storeState.currentSettlementType = storeData.default_settlement;
     }
@@ -417,11 +811,13 @@ async function loadTerminalData() {
   } else {
     safeSetText('store-title', '厚德便民门店 (未建档)');
     safeSetText('debt-val', '0.00');
+    safeSetText('credit-debt', '¥0.00');
+    safeSetText('credit-avail', '¥2000.00');
     safeSetText('basket-val', '0');
+    safeSetText('store-basket-count', '0 件');
   }
 
-  safeSetText('shop-type-label', storeState.shopType);
-  safeSetText('shop-type-icon', getShopIcon(storeState.shopType));
+  updateShopTypeDisplay(storeState.shopType);
 
   const visibleIds = Array.isArray(storeData?.visible_product_ids) ? storeData.visible_product_ids : null;
   storeState.allProducts = visibleIds
@@ -431,12 +827,15 @@ async function loadTerminalData() {
   loadAgentCart();
   renderCategoriesAndTags();
   renderSettlementSelector();
+  renderDynamicNotes();
   renderProducts();
   updateCartSummary();
   await checkVendorProposalBadge();
 }
 
-// 全局窗口交互函数绑定
+// ==========================================
+// 7. 全局窗口交互函数绑定
+// ==========================================
 window.switchAgent = async function (agentId) {
   storeState.currentAgent = agentId;
   storeState.currentCategory = '全部';
@@ -454,16 +853,18 @@ window.removeAgentFromList = async function (agentId, e) {
     storeState.currentAgent = storeState.myAgents[0]?.id || '';
     localStorage.setItem('active_agent', storeState.currentAgent);
   }
+  renderAllAgentsModalList();
   await loadTerminalData();
 };
 
 window.bindByCode = async function () {
-  const input = document.getElementById('input-agent-code');
+  const input = document.getElementById('bind-input-code') || document.getElementById('input-agent-code');
   const rawCode = (input?.value || '').trim().toUpperCase();
   if (!rawCode) return alert('请输入供货合作社或工坊的商号代号！');
 
   if (storeState.myAgents.some((a) => a.id.toUpperCase() === rawCode)) {
     window.closeAllMenus();
+    window.closeModal('bind-agent-modal');
     return window.switchAgent(rawCode);
   }
 
@@ -484,6 +885,35 @@ window.bindByCode = async function () {
   localStorage.setItem(MY_AGENTS_KEY, JSON.stringify(storeState.myAgents));
   if (input) input.value = '';
   window.closeAllMenus();
+  window.closeModal('bind-agent-modal');
+  alert(`✅ 已成功接入直供合作方：【${tenant.company_name}】！`);
+  await window.switchAgent(tenant.tenant_id);
+};
+
+window.bindByPhone = async function () {
+  const input = document.getElementById('bind-input-phone');
+  const phone = (input?.value || '').trim();
+  if (!/^1\d{10}$/.test(phone)) return alert('请输入正确的 11 位开户手机号！');
+
+  const { data: tenant, error } = await supabase
+    .from('platform_tenant')
+    .select('tenant_id, company_name, is_active, membership_status')
+    .eq('contact_phone', phone)
+    .maybeSingle();
+
+  if (error || !tenant) {
+    return alert(`⚠️ 未查找到手机号【${phone}】对应的供货方商号，请核对号码或改用商号代号接入。`);
+  }
+  if (!tenant.is_active || tenant.membership_status === 'paused') {
+    return alert(`🚫 该商号【${tenant.company_name}】当前处于暂歇状态，暂不可接入。`);
+  }
+
+  if (!storeState.myAgents.some((a) => a.id === tenant.tenant_id)) {
+    storeState.myAgents.push({ id: tenant.tenant_id, name: tenant.company_name || tenant.tenant_id });
+    localStorage.setItem(MY_AGENTS_KEY, JSON.stringify(storeState.myAgents));
+  }
+  if (input) input.value = '';
+  window.closeModal('bind-agent-modal');
   alert(`✅ 已成功接入直供合作方：【${tenant.company_name}】！`);
   await window.switchAgent(tenant.tenant_id);
 };
@@ -513,9 +943,10 @@ window.openShopTypeModal = function () {
 window.selectShopType = function (type) {
   storeState.shopType = type;
   localStorage.setItem('active_shop_type', type);
-  safeSetText('shop-type-label', type);
-  safeSetText('shop-type-icon', getShopIcon(type));
+  updateShopTypeDisplay(type);
+  window.closeAllMenus();
   window.closeModal('shop-type-modal');
+  renderDynamicNotes();
   renderProducts();
   updateCartSummary();
 };
@@ -565,6 +996,7 @@ window.saveVoiceNote = function () {
       preview.classList.add('hidden');
     }
   }
+  renderDynamicNotes();
   window.closeModal('voice-modal');
 };
 
@@ -573,7 +1005,41 @@ window.openFlyerModal = function (prodId) {
   if (!prod) return;
   storeState.currentFlyerProd = prod;
   storeState.currentFlyerStyle = 'neighborhood';
+
+  // 初始化新版画报编辑框默认值
+  const storeName = storeState.currentStore?.name || '厚德便民门店';
+  const { price } = getStorePriceInfo(prod);
+  const retailRef = prod.tier_2_price ? parseFloat(prod.tier_2_price).toFixed(2) : (price * 1.15).toFixed(2);
+  const titleInput = document.getElementById('flyer-title-input');
+  const taglineInput = document.getElementById('flyer-tagline-input');
+  const priceInput = document.getElementById('flyer-price-input');
+  const noteInput = document.getElementById('flyer-note-input');
+  if (titleInput) titleInput.value = `${storeName} · 街坊好物推荐`;
+  if (taglineInput) taglineInput.value = '源头合作社/工坊直供 · 到店自提验货';
+  if (priceInput) priceInput.value = retailRef;
+  if (noteInput) noteInput.value = '本店实测品质过硬，街坊邻里整件预订更划算！';
+
+  // 渲染风韵选择按钮
+  const selectorBox = document.getElementById('style-selector-box');
+  if (selectorBox) {
+    const styles = [
+      { key: 'neighborhood', label: '🏡 松林邻里风' },
+      { key: 'fresh', label: '🌾 产区原生态' },
+      { key: 'group', label: '🤝 街坊集采风' }
+    ];
+    selectorBox.innerHTML = styles
+      .map(
+        (s) => `
+        <button type="button" onclick="window.switchFlyerStyle('${s.key}')" class="px-2.5 py-1 rounded-xl text-[11px] font-bold transition ${
+          storeState.currentFlyerStyle === s.key ? 'bg-[#1b4332] text-white' : 'bg-stone-100 text-stone-700'
+        }">${s.label}</button>
+      `
+      )
+      .join('');
+  }
+
   renderFlyerPreview();
+  window.openModal('marketing-modal');
   window.openModal('flyer-modal');
 };
 
@@ -588,6 +1054,23 @@ window.switchFlyerStyle = function (style) {
           : 'flex-1 py-1.5 rounded-xl bg-stone-100 text-stone-600 font-bold text-xs transition';
     }
   });
+  const selectorBox = document.getElementById('style-selector-box');
+  if (selectorBox) {
+    const styles = [
+      { key: 'neighborhood', label: '🏡 松林邻里风' },
+      { key: 'fresh', label: '🌾 产区原生态' },
+      { key: 'group', label: '🤝 街坊集采风' }
+    ];
+    selectorBox.innerHTML = styles
+      .map(
+        (s) => `
+        <button type="button" onclick="window.switchFlyerStyle('${s.key}')" class="px-2.5 py-1 rounded-xl text-[11px] font-bold transition ${
+          style === s.key ? 'bg-[#1b4332] text-white' : 'bg-stone-100 text-stone-700'
+        }">${s.label}</button>
+      `
+      )
+      .join('');
+  }
   renderFlyerPreview();
 };
 
@@ -612,6 +1095,9 @@ window.copyFlyerText = function () {
   });
 };
 
+// ==========================================
+// 8. 启动初始化（优先绑定事件，再异步拉取云端数据）
+// ==========================================
 async function initTerminal() {
   document.addEventListener('click', window.closeAllMenus);
 
