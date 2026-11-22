@@ -36,6 +36,10 @@ import {
   renderDriverSettleList,
   initOrderStoreBindings
 } from './hq/hqOrderStoreModule.js';
+import {
+  loadAndRenderHqGovernanceExtension,
+  initHqGovernanceExtensionBindings
+} from './hq/hqGovernanceExtension.js';
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
@@ -374,6 +378,9 @@ window.loadHQData = async function () {
   renderSubUsersTable();
   renderThreeFlowsAndAIAdvisor();
   renderPerformanceAndCommissions();
+
+  // 增量加载体验期动态演进引导、合规申诉通道与百工物物/劳务置换契约
+  await loadAndRenderHqGovernanceExtension();
 };
 
 export async function initHQController() {
@@ -387,6 +394,7 @@ export async function initHQController() {
   });
   initInventoryBindings();
   initOrderStoreBindings();
+  initHqGovernanceExtensionBindings();
 
   window.openContextualHelpModal = function () {
     const roleNames = {
