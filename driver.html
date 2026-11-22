@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -26,7 +25,7 @@
   
   <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-xl relative">
     
-    <!-- 顶栏：按岗位自适应显示身份与功能入口（新增：大字模式、授权电脑、一键锁屏） -->
+    <!-- 顶栏：按岗位自适应显示身份与功能入口 -->
     <header class="bg-[#1b4332] text-white p-4 pt-5 rounded-b-3xl shadow-md space-y-3">
       <div class="space-y-1.5">
         <div class="flex justify-between items-center gap-1.5">
@@ -64,7 +63,7 @@
         </div>
       </div>
 
-      <!-- 大当家专属工作台切换器（仅 owner 登录时显示） -->
+      <!-- 大当家专属工作台切换器 -->
       <div id="owner-view-switcher" class="hidden bg-[#143628] p-2 rounded-2xl border border-emerald-700/50 flex items-center justify-between gap-2 text-[11px]">
         <span class="text-amber-300 font-bold shrink-0">👑 掌柜切换视角:</span>
         <select id="owner-role-preview-select" onchange="window.switchOwnerPreviewRole(this.value)" class="flex-1 bg-[#0c1e16] text-white border border-emerald-600/50 rounded-xl px-2 py-1 font-bold outline-none">
@@ -77,7 +76,7 @@
         </select>
       </div>
 
-      <!-- 送货师傅随车收款汇总看板（仅 driver 配送视角可见） -->
+      <!-- 送货师傅随车收款汇总看板 -->
       <div id="driver-cash-summary-card" onclick="window.openReceiptHistoryModal()" class="cursor-pointer bg-[#143628] hover:bg-[#102b20] p-3 rounded-2xl border border-emerald-700/50 flex justify-between items-center text-xs shadow-inner transition">
         <div>
           <span class="text-emerald-300 text-[10px] block">今日随车已收款项 (待交财务)</span>
@@ -101,12 +100,21 @@
       </button>
     </div>
 
-    <!-- 动态岗位功能导航栏（由 JS 根据当前角色最小化权限动态生成） -->
+    <!-- 城乡顺路捎带接力（同城余缺互调微物流）提示条 -->
+    <div id="carpool-relay-banner" class="hidden mx-3 mt-2 bg-cyan-50 border border-cyan-300 text-cyan-950 p-2.5 rounded-2xl flex items-center justify-between text-xs shadow-xs">
+      <div>
+        <b class="font-bold">🚚 顺路捎带接力 (<span id="carpool-relay-count">0</span> 单可顺路带货)</b>
+        <span class="block text-[10px] text-cyan-800">周边门店余缺调剂或散件包裹，顺路接力送达</span>
+      </div>
+      <button type="button" onclick="window.openCarpoolRelayModal()" class="bg-cyan-700 hover:bg-cyan-800 text-white font-bold px-3 py-1.5 rounded-xl text-[11px] shadow active:scale-95">
+        查看顺路单
+      </button>
+    </div>
+
+    <!-- 动态岗位功能导航栏 -->
     <div id="palm-role-nav" class="p-3 pb-0"></div>
 
-    <!-- =====================================================================
-         工作区 O：👑 掌柜移动指挥舱（大当家手机端批复定损/超信、定草稿价格、看三流晴雨）
-         ===================================================================== -->
+    <!-- 工作区 O：👑 掌柜移动指挥舱 -->
     <main id="pane-owner-cockpit" class="hidden p-3 flex-1 space-y-3 text-xs">
       <div class="grid grid-cols-3 gap-2 text-center">
         <div class="bg-stone-50 border border-stone-200 p-2.5 rounded-2xl">
@@ -142,9 +150,7 @@
       </div>
     </main>
 
-    <!-- =====================================================================
-         工作区 A：送货师傅随车交割路线 (driver)
-         ===================================================================== -->
+    <!-- 工作区 A：送货师傅随车交割路线 (driver) -->
     <main id="pane-deliver" class="hidden p-3 flex-1 space-y-3">
       <div class="flex justify-between items-center px-1">
         <div class="flex items-center gap-1.5">
@@ -158,7 +164,7 @@
             <input type="checkbox" id="chk-palm-voice" checked class="rounded text-emerald-700">
             <span>🔊 新单播报</span>
           </label>
-          <button onclick="window.loadDriverTasks()" class="text-[11px] text-emerald-800 font-bold hover:underline">
+          <button onclick="window.loadDriverTasks(); window.loadAndRenderCarpoolRelays();" class="text-[11px] text-emerald-800 font-bold hover:underline">
             刷新路线
           </button>
         </div>
@@ -168,9 +174,7 @@
       </div>
     </main>
 
-    <!-- =====================================================================
-         工作区 B：仓储调度 & 产区采收移动工作台 (warehouse / producer，严禁显示价格)
-         ===================================================================== -->
+    <!-- 工作区 B：仓储调度 & 产区采收移动工作台 -->
     <main id="pane-warehouse" class="hidden p-3 flex-1 space-y-3 text-xs">
       <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl flex justify-between items-center">
         <div>
@@ -232,9 +236,7 @@
       </div>
     </main>
 
-    <!-- =====================================================================
-         工作区 C：业务员 / 客户经理拜访跟进与上门催收 (sales，私海客户隔离)
-         ===================================================================== -->
+    <!-- 工作区 C：业务员 / 客户经理拜访跟进与上门催收 -->
     <main id="pane-sales-stores" class="hidden p-3 flex-1 space-y-3 text-xs">
       <div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl space-y-1">
         <b class="text-amber-950 block">🤝 我的专属跟单门店、GPS采集与上门催收</b>
@@ -243,9 +245,7 @@
       <div id="palm-sales-stores-list" class="space-y-2.5"></div>
     </main>
 
-    <!-- =====================================================================
-         工作区 D：售后定损 / 质检鉴证工作台 (qc_service，写入商号私有账本 DS- 单号)
-         ===================================================================== -->
+    <!-- 工作区 D：售后定损 / 质检鉴证工作台 -->
     <main id="pane-qc-service" class="hidden p-3 flex-1 space-y-3 text-xs">
       <div class="bg-stone-50 border border-stone-200 p-4 rounded-3xl space-y-3">
         <div class="flex justify-between items-center">
@@ -313,9 +313,7 @@
       </div>
     </main>
 
-    <!-- =====================================================================
-         工作区 E：顺路新店合作登记（支持拍照OCR识门头/名片 + 语音输入 + GPS采集）
-         ===================================================================== -->
+    <!-- 工作区 E：顺路新店合作登记 -->
     <main id="pane-explore" class="hidden p-3 flex-1 space-y-3">
       <div class="bg-stone-50 border border-stone-200 p-4 rounded-3xl space-y-3 text-xs">
         <div class="flex flex-wrap justify-between items-center gap-1.5">
@@ -383,7 +381,7 @@
       </div>
     </main>
 
-    <!-- 底部常驻回库交账按钮（仅送货师傅显示） -->
+    <!-- 底部常驻回库交账按钮 -->
     <footer id="driver-checkout-footer" class="hidden fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 z-20">
       <button onclick="window.openCheckoutSummaryModal()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-3 rounded-2xl text-xs shadow active:scale-95 transition flex justify-center items-center gap-2">
         <span>📦 今日跑车交割完毕 · 生成回库对账单</span>
@@ -392,9 +390,22 @@
 
   </div>
 
-  <!-- =========================================================================
-       掌中宝身份验证登录门禁（支持：本机 4 位九宫格快捷解锁 + 主密码/属员子账号密码核验）
-       ========================================================================= -->
+  <!-- 城乡顺路捎带接力列表弹窗 -->
+  <div id="modal-carpool-relay" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar text-xs">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <div>
+          <h3 class="font-bold text-sm text-stone-900">🚚 城乡顺路捎带与余缺互调接力</h3>
+          <p class="text-[10px] text-stone-400">周边门店余缺调剂包裹，跑车回程顺路捎带送达</p>
+        </div>
+        <button onclick="window.closeModal('modal-carpool-relay')" class="text-stone-400 text-lg">✕</button>
+      </div>
+      <div id="carpool-relay-list" class="space-y-2 max-h-80 overflow-y-auto no-scrollbar"></div>
+      <button type="button" onclick="window.closeModal('modal-carpool-relay')" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-2xl">关闭</button>
+    </div>
+  </div>
+
+  <!-- 掌中宝身份验证登录门禁 -->
   <div id="palm-auth-gate" class="fixed inset-0 bg-[#0c1e16]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
     <div class="bg-white border border-stone-200 w-full max-w-sm rounded-[2rem] p-6 space-y-4 text-stone-800 shadow-2xl">
       <div class="text-center space-y-1">
@@ -403,7 +414,6 @@
         <p class="text-[11px] text-stone-400">本机信任短码秒进 · 零生物隐私采集</p>
       </div>
 
-      <!-- 模式 A：本机已绑定 4 位快捷短码九宫格面板 -->
       <div id="palm-pin-unlock-box" class="hidden space-y-3">
         <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-center space-y-0.5">
           <span id="palm-pin-tenant-label" class="text-[10px] font-mono text-emerald-700 block">--</span>
@@ -441,7 +451,6 @@
         </div>
       </div>
 
-      <!-- 模式 B：首次 / 换机完整密码登录表单 -->
       <form id="palm-full-login-form" onsubmit="window.verifyPalmAuthLogin(event)" class="space-y-3 text-xs">
         <p class="text-[11px] text-stone-400 text-center">大当家输入商号主密码；属员输入「子账号:密码」如 <code>wh_li:********</code></p>
         <div>
@@ -546,7 +555,7 @@
     </div>
   </div>
 
-  <!-- 业务员上门拜访催收弹窗（支持拍转账回执OCR识别金额 + 掌柜手写签名） -->
+  <!-- 业务员上门拜访催收弹窗 -->
   <div id="palm-sales-collect-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -703,6 +712,7 @@
               <option value="现金">💵 现场收取现钞</option>
               <option value="挂账签收">📝 挂账 / 账期免收现</option>
               <option value="仅签收回单">📜 仅验货签回单 (期末统对)</option>
+              <option value="以物换物/劳务抵扣">🌾 以物换物 / 劳务工时抵扣</option>
             </select>
           </div>
         </div>
@@ -797,7 +807,9 @@
 
   <script type="module">
     import { initDriverController } from './src/modules/driverController.js';
+    import { initDriverCarpoolBindings } from './src/modules/driver/driverCarpoolExtension.js';
     initDriverController();
+    initDriverCarpoolBindings();
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
