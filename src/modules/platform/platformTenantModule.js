@@ -18,15 +18,17 @@ export function renderApplications() {
   container.innerHTML = platformState.allApplications
     .map((a) => {
       const isPending = a.application_status === 'pending_review';
-      const isApproved = a.application_status === 'approved' || a.application_status === 'approved_by_ai' || a.application_status === 'approved_manually';
+      const isAiApproved = a.application_status === 'approved_by_ai';
+      const isApproved = a.application_status === 'approved' || isAiApproved || a.application_status === 'approved_manually';
       const isIndividual = a.business_type === 'individual' || String(a.tenant_id || '').startsWith('GR-');
+      const isClaimAppeal = String(a.review_note || '').includes('疑似抢注申诉');
       const cipherMatch = String(a.review_note || '').match(/\[查验暗号[:：]([A-Z0-9-]+)\]/i);
       const backupMatch = String(a.review_note || '').match(/\[备用手机[:：](\d{11})\]/);
       const cipherStr = cipherMatch ? cipherMatch[1].toUpperCase() : '';
       const backupStr = backupMatch ? backupMatch[1] : '';
 
       return `
-        <div class="p-4 bg-stone-50 border ${isPending ? 'border-amber-300 shadow-sm' : 'border-stone-200'} rounded-2xl space-y-2.5">
+        <div class="p-4 bg-stone-50 border ${isClaimAppeal ? 'border-rose-400 shadow-md' : isPending ? 'border-amber-300 shadow-sm' : 'border-stone-200'} rounded-2xl space-y-2.5">
           <div class="flex flex-wrap justify-between items-start gap-2">
             <div>
               <div class="flex flex-wrap items-center gap-2">
@@ -35,10 +37,17 @@ export function renderApplications() {
                 ${a.business_type ? `<span class="text-[10px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-1.5 py-0.2 rounded font-bold">${formatBusinessTypeLabel(a.business_type)}</span>` : ''}
                 ${isIndividual ? '<span class="text-[10px] bg-amber-100 text-amber-950 px-1.5 py-0.2 rounded font-bold">实名农户/手艺人</span>' : ''}
                 ${a.credit_code ? `<span class="text-[10px] bg-amber-100/80 text-amber-900 font-mono px-1.5 py-0.2 rounded font-bold">${a.credit_code}</span>` : ''}
+                ${isClaimAppeal ? '<span class="text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded-full font-bold animate-bounce">⚠️ 疑似抢注申诉·请回拨核实正主</span>' : ''}
                 <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                  isPending ? 'bg-amber-100 text-amber-900 animate-pulse' : isApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                  isPending
+                    ? 'bg-amber-100 text-amber-900 animate-pulse'
+                    : isAiApproved
+                    ? 'bg-sky-100 text-sky-900 border border-sky-300'
+                    : isApproved
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-rose-100 text-rose-800'
                 }">
-                  ${isPending ? '⏳ 待人工复核' : isApproved ? '✅ 验真已发证' : '🚫 已退回商榷'}
+                  ${isPending ? '⏳ 待人工复核' : isAiApproved ? '🤖 AI秒批（待巡检）' : isApproved ? '✅ 终审已发证' : '🚫 已退回商榷'}
                 </span>
               </div>
               <div class="text-[11px] text-stone-500 font-mono mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -106,8 +115,12 @@ export function renderTenantsTable() {
   tbody.innerHTML = platformState.allTenants
     .map((t) => {
       const status = t.membership_status || (t.is_active ? 'active' : 'paused');
+      const matchedApp = platformState.allApplications.find((a) => a.tenant_id === t.tenant_id);
+      const isAiTrialInspect = status === 'trial' && matchedApp?.application_status === 'approved_by_ai';
+
       let statusTag = '';
       if (!t.is_active || status === 'paused') statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">🛑 商道暂歇</span>';
+      else if (isAiTrialInspect) statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-900 border border-sky-300">🤖 AI秒批（待巡检）</span>';
       else if (status === 'trial') statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-100 text-cyan-800">🍃 尝鲜体验</span>';
       else if (status === 'grace') statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">🍃 春风宽待</span>';
       else if (status === 'restricted') statusTag = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">🛡️ 护盘存续</span>';
