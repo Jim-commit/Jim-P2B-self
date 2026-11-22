@@ -2052,7 +2052,14 @@
 
   <script type="module">
     import { initHQController } from './src/modules/hqController.js';
-    initHQController();
+    import {
+      initHqGovernanceExtensionBindings,
+      loadAndRenderHqGovernanceExtension
+    } from './src/modules/hq/hqGovernanceExtension.js';
+
+    initHqGovernanceExtensionBindings();
+    await initHQController();
+    await loadAndRenderHqGovernanceExtension();
   </script>
 </body>
 </html>
