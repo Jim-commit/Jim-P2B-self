@@ -8,6 +8,23 @@ let isManualFallbackMode = false;
 let failedAttemptsCount = 0;
 let verifiedAuditSummary = '';
 let lastQueriedApps = [];
+let dynamicTrialDays = 7;
+
+async function loadDynamicTrialDays() {
+  try {
+    const { data } = await supabase
+      .from('platform_governance_config')
+      .select('config_value')
+      .eq('config_key', 'trial_days')
+      .maybeSingle();
+    if (data && data.config_value) {
+      dynamicTrialDays = parseInt(data.config_value, 10) || 7;
+      document.querySelectorAll('.js-dynamic-trial-days').forEach((el) => {
+        el.innerText = `${dynamicTrialDays} 天`;
+      });
+    }
+  } catch (e) {}
+}
 
 function generateCheckCipher() {
   const chars = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
@@ -64,17 +81,20 @@ window.onBusinessTypeChange = function (bType) {
   const lblMain = document.getElementById('lbl-upload-main');
   const lblName = document.getElementById('lbl-company-name');
   const lblCode = document.getElementById('lbl-credit-code');
+  const lblScope = document.getElementById('lbl-business-scope');
 
   if (isInd) {
     if (lblUpload) lblUpload.innerText = '2. 个人实名身份证件 / 手艺资质实拍照 *：';
     if (lblMain) lblMain.innerText = '点击拍摄或上传本人身份证件正面原件';
     if (lblName) lblName.innerText = '个人实名招牌 (格式：真实姓名·所在镇村/行当，如：王建国·石界河镇农户) *：';
     if (lblCode) lblCode.innerText = '个人身份证号码 (18位 · 系统自动生成 GR- 专属代号) *：';
+    if (lblScope) lblScope.innerText = '主营农产 / 手艺服务范围（防越界自律备案） *：';
   } else {
     if (lblUpload) lblUpload.innerText = '2. 营业执照正本 / 副本实拍照 (拍照后自动即时核验) *：';
     if (lblMain) lblMain.innerText = '点击拍摄或上传营业执照原件';
     if (lblName) lblName.innerText = '法定主体全称 (严格与营业执照《名称》一致，不准自起花名) *：';
     if (lblCode) lblCode.innerText = '统一社会信用代码 (18位国标校验 · 自动按机构代码锁定商号) *：';
+    if (lblScope) lblScope.innerText = '营业执照经营范围（系统自动核验，上架商品不超范围） *：';
   }
 
   const curCode = document.getElementById('v-credit-code')?.value || '';
@@ -115,7 +135,7 @@ function updateSubmitButtonState(enabled, isManual = false) {
       'w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-2xl active:scale-95 transition shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer';
     btn.innerHTML = isResubmit
       ? '<span>🔄</span> 资质已验真 · 立即重新递交复核'
-      : '<span>📜</span> 资质已验真 · 当场签约发证（免费体验7天）';
+      : `<span>📜</span> 资质已验真 · 当场签约发证（免费体验${dynamicTrialDays}天）`;
   } else if (enabled && isManual) {
     btn.disabled = false;
     btn.className =
@@ -287,6 +307,12 @@ async function runInteractiveLicenseCheck(imgElement, base64Data) {
     document.getElementById('v-company-name').value = nameMatch[1];
   }
 
+  const scopeMatch = recognizedText.match(/经营范围[:：]?([\u4e00-\u9fa5、，；()（）]{4,80})/);
+  const scopeInput = document.getElementById('v-business-scope');
+  if (scopeMatch && scopeMatch[1] && scopeInput && !scopeInput.value) {
+    scopeInput.value = scopeMatch[1];
+  }
+
   const canPass = hitKeywords.length >= 2 && (qrScan.isOfficial || isCodeChecksumPass);
   renderInteractiveFeedback(canPass, successes, issues, finalCreditCode);
 }
@@ -329,6 +355,7 @@ window.handleVendorRegister = async function (e, isClaimAppeal = false) {
   const companyName = document.getElementById('v-company-name').value.trim();
   const creditCode = document.getElementById('v-credit-code').value.trim().toUpperCase();
   const businessType = document.getElementById('v-business-type').value;
+  const businessScope = document.getElementById('v-business-scope')?.value.trim() || '';
   const contactPerson = document.getElementById('v-contact-person').value.trim();
   const contactPhone = document.getElementById('v-contact-phone').value.trim();
   const backupPhone = document.getElementById('v-backup-phone')?.value.trim() || '';
@@ -338,6 +365,9 @@ window.handleVendorRegister = async function (e, isClaimAppeal = false) {
 
   if (creditCode.length !== 18) {
     return alert('请完整填写 18 位统一社会信用代码或 18 位个人身份证号码！');
+  }
+  if (!businessScope) {
+    return alert('请填写营业执照经营范围或主营农产/手艺范围（用于防越界自律备案）！');
   }
   if (!/^1\d{10}$/.test(contactPhone)) {
     return alert('请填写正确的 11 位主联络手机号码！');
@@ -372,7 +402,7 @@ window.handleVendorRegister = async function (e, isClaimAppeal = false) {
     const hashedAccessKey = await AuthSecurity.hashPassword(rawPwd, tenantId);
     const checkCipher = generateCheckCipher();
 
-    const extraNotes = [`[查验暗号:${checkCipher}]`, `[备用手机:${backupPhone}]`];
+    const extraNotes = [`[查验暗号:${checkCipher}]`, `[备用手机:${backupPhone}]`, `[经营范围:${businessScope}]`];
     if (sponsorOrg) extraNotes.push(`联保担保单位：${sponsorOrg}`);
     const finalAuditSummary = `${verifiedAuditSummary} | ${extraNotes.join(' ')}`;
 
@@ -410,13 +440,17 @@ window.handleVendorRegister = async function (e, isClaimAppeal = false) {
       return;
     }
 
-    // 同步初始化私有安全保险箱
+    // 同步初始化私有安全保险箱与法定经营范围
     try {
       await supabase.rpc('rpc_sync_tenant_vault', {
         p_tenant_id: tenantId,
         p_access_key: hashedAccessKey,
         p_backup_phone: backupPhone
       });
+      await supabase
+        .from('platform_tenant')
+        .update({ business_scope: businessScope })
+        .eq('tenant_id', tenantId);
     } catch (e) {}
 
     navigator.clipboard?.writeText(checkCipher).catch(() => {});
@@ -425,7 +459,7 @@ window.handleVendorRegister = async function (e, isClaimAppeal = false) {
 
     if (isAutoApproved) {
       alert(
-        `🎉 AI 核验秒过 · 当场发放商号信物！已为您开通「🍃 尝鲜体验」7天全功能席位！\n\n` +
+        `🎉 AI 核验秒过 · 当场发放商号信物！已为您开通「🍃 尝鲜体验」${dynamicTrialDays}天全功能席位！\n\n` +
           `• 法定主体名称：${companyName}\n` +
           `• 专属商号代号（登录账号）：${tenantId}\n` +
           `• 专属查验暗号（已复制）：${checkCipher}\n` +
@@ -493,6 +527,7 @@ function renderMatchedApplicationCards(matchedApps, container) {
       const cleanReviewNote = String(app.review_note || '')
         .replace(/\[查验暗号[:：][A-Z0-9-]+\]/gi, '')
         .replace(/\[备用手机[:：]\d{11}\]/g, '')
+        .replace(/\[经营范围[:：][^\]]+\]/g, '')
         .trim();
 
       const typeBadge = isInd
@@ -718,6 +753,7 @@ window.cancelResubmitMode = function () {
 };
 
 export function initJoinController() {
+  loadDynamicTrialDays();
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('tab') === 'query') {
     window.switchJoinTab('query');
