@@ -139,20 +139,19 @@
           <input type="text" id="v-sponsor-org" placeholder="如：伏牛山生态农业合作社 / 顺达便民超市" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-emerald-300 outline-none focus:border-amber-500">
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label class="block text-stone-400 mb-1">当家负责人称呼 *：</label>
             <input type="text" id="v-contact-person" required placeholder="如：王理事长 / 王师傅" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 text-stone-200 outline-none focus:border-amber-500">
           </div>
           <div>
-            <label class="block text-stone-400 mb-1">主联络手机 (核身与找回凭证) *：</label>
-            <input type="tel" id="v-contact-phone" required maxlength="11" placeholder="11位手机号码" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono text-stone-200 outline-none focus:border-amber-500">
+            <label class="block text-stone-400 mb-1">主联络手机 (核身主凭证) *：</label>
+            <input type="tel" id="v-contact-phone" required maxlength="11" placeholder="11位主手机号码" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono text-stone-200 outline-none focus:border-amber-500">
           </div>
-        </div>
-
-        <div>
-          <label class="block text-stone-400 mb-1">紧急备用手机号 (防主手机丢失/更换号码，选填)：</label>
-          <input type="tel" id="v-backup-phone" maxlength="11" placeholder="可填监事长或家人11位手机号" class="w-full bg-stone-900 border border-stone-700 rounded-xl p-2.5 font-mono text-stone-300 outline-none focus:border-amber-500">
+          <div>
+            <label class="block text-amber-300 font-bold mb-1">紧急备用手机 (必填防失联/应急找回) *：</label>
+            <input type="tel" id="v-backup-phone" required maxlength="11" placeholder="监事长或家人11位手机号" class="w-full bg-stone-900 border border-amber-500/40 rounded-xl p-2.5 font-mono text-stone-200 outline-none focus:border-amber-500">
+          </div>
         </div>
 
         <!-- 掌柜亲自设定初始主密码（12位以上含大小写字母+数字+特殊符号） -->
@@ -195,20 +194,46 @@
       </button>
     </form>
 
-    <!-- 视图 2：审核进度查询（凭手机号 + 信用代码/证件号后 6 位双重核身查询） -->
+    <!-- 视图 2：审核进度查询（三重核身防冒领 + 忘暗号四重应急找回） -->
     <section id="query-status-section" class="hidden space-y-4 text-xs">
       <div class="bg-[#202023] p-5 rounded-2xl border border-stone-700/80 space-y-3">
-        <label class="block text-stone-300 font-bold text-sm">🔍 查询入驻审核批示与商号信物</label>
-        <p class="text-[11px] text-stone-400">请输入登记时的「主联络手机号码」及「18位信用代码/身份证号后 6 位」进行核身查询：</p>
+        <div class="flex justify-between items-center">
+          <label class="block text-stone-300 font-bold text-sm">🔍 三重核身领取商号信物与审核批示</label>
+          <span class="text-[10px] text-emerald-400 font-mono">防冒领 · 5次输错自动熔断</span>
+        </div>
+        <p class="text-[11px] text-stone-400">请输入登记时的「主联络手机号」、「证件/信用代码后 6 位」及提交时领取的「8 位查验暗号」：</p>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          <input type="tel" id="q-search-phone" placeholder="1. 输入 11 位主联络手机号码" class="bg-stone-900 border border-stone-700 rounded-xl px-3.5 py-2.5 font-mono text-white outline-none focus:border-amber-500">
-          <input type="text" id="q-search-last6" maxlength="6" placeholder="2. 输入代码/证件号后 6 位" class="bg-stone-900 border border-stone-700 rounded-xl px-3.5 py-2.5 font-mono uppercase text-amber-400 font-bold outline-none focus:border-amber-500">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+          <input type="tel" id="q-search-phone" maxlength="11" placeholder="1. 11位主联络手机号码" class="bg-stone-900 border border-stone-700 rounded-xl px-3 py-2.5 font-mono text-white outline-none focus:border-amber-500">
+          <input type="text" id="q-search-last6" maxlength="6" placeholder="2. 证件/代码后 6 位" class="bg-stone-900 border border-stone-700 rounded-xl px-3 py-2.5 font-mono uppercase text-amber-400 font-bold outline-none focus:border-amber-500">
+          <input type="text" id="q-search-cipher" maxlength="12" placeholder="3. 8位查验暗号 (如 SD-XXXX)" class="bg-stone-900 border border-emerald-500/40 rounded-xl px-3 py-2.5 font-mono uppercase text-emerald-300 font-bold outline-none focus:border-emerald-400">
         </div>
 
         <button type="button" onclick="window.queryApplicationStatus()" class="w-full bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
-          核验查询进度
+          三重核身 · 查询审核结果与商号信物
         </button>
+
+        <!-- 忘了查验暗号：四重免暗号应急找回折叠入口 -->
+        <div class="pt-2 border-t border-stone-800">
+          <button type="button" onclick="window.toggleForgotCipherBox()" class="text-[11px] text-stone-400 hover:text-amber-300 underline flex items-center gap-1">
+            <span>🔑</span> 忘记「查验暗号」？点此使用紧急备用手机四重应急核身找回 ▾
+          </button>
+
+          <div id="forgot-cipher-box" class="hidden mt-3 p-3.5 bg-stone-900/90 border border-amber-500/30 rounded-2xl space-y-2.5">
+            <p class="text-[11px] text-amber-200/90 leading-relaxed">
+              🛡️ <b>应急核身通道：</b>无需查验暗号，请同时核对以下四项登记私密信息以找回商号信物：
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <input type="tel" id="q-emerg-phone" maxlength="11" placeholder="① 主联络手机号 (11位)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 font-mono text-white outline-none">
+              <input type="tel" id="q-emerg-backup" maxlength="11" placeholder="② 紧急备用手机号 (11位)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 font-mono text-amber-300 outline-none">
+              <input type="text" id="q-emerg-last6" maxlength="6" placeholder="③ 证件/信用代码后 6 位" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 font-mono uppercase text-white outline-none">
+              <input type="text" id="q-emerg-name" placeholder="④ 法定主体全称或个人招牌" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-white outline-none">
+            </div>
+            <button type="button" onclick="window.queryApplicationByEmergency()" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 rounded-xl transition">
+              🛡️ 四重应急核身 · 找回商号信物
+            </button>
+          </div>
+        </div>
       </div>
 
       <div id="query-result-container" class="space-y-3"></div>
