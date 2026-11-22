@@ -9,6 +9,76 @@ let failedAttemptsCount = 0;
 let verifiedAuditSummary = '';
 let lastQueriedApps = [];
 
+const QUERY_FAIL_LOCK_KEY = 'join_cipher_fail_guard_v1';
+
+// 生成 8 位防混淆查验暗号（剔除 0/O/1/I/L，格式如 SD-8K2P9X）
+function generateCheckCipher() {
+  const chars = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  let body = '';
+  const arr = new Uint8Array(6);
+  crypto.getRandomValues(arr);
+  for (let i = 0; i < 6; i++) {
+    body += chars[arr[i] % chars.length];
+  }
+  return `SD-${body}`;
+}
+
+function extractCipherFromReviewNote(note) {
+  const m = String(note || '').match(/\[查验暗号[:：]([A-Z0-9-]+)\]/i);
+  return m ? m[1].toUpperCase() : '';
+}
+
+function extractBackupPhoneFromReviewNote(note) {
+  const m = String(note || '').match(/\[备用手机[:：](\d{11})\]/);
+  return m ? m[1] : '';
+}
+
+function checkQueryRateLock(phone) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(QUERY_FAIL_LOCK_KEY) || '{}');
+    const rec = raw[phone];
+    if (!rec) return { locked: false };
+    if (rec.lockUntil && Date.now() < rec.lockUntil) {
+      const hours = Math.ceil((rec.lockUntil - Date.now()) / 3600000);
+      return {
+        locked: true,
+        msg: `⚠️ 该手机号连续核身输错已达 5 次，为防冒领已自动锁定查询通道（剩余约 ${hours} 小时），或联系平台总控人工核实解锁。`
+      };
+    }
+    return { locked: false };
+  } catch (e) {
+    return { locked: false };
+  }
+}
+
+function recordQueryFailure(phone) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(QUERY_FAIL_LOCK_KEY) || '{}');
+    const cur = raw[phone] || { count: 0, lockUntil: 0 };
+    if (cur.lockUntil && Date.now() >= cur.lockUntil) {
+      cur.count = 0;
+      cur.lockUntil = 0;
+    }
+    cur.count += 1;
+    if (cur.count >= 5) {
+      cur.lockUntil = Date.now() + 24 * 3600 * 1000;
+    }
+    raw[phone] = cur;
+    localStorage.setItem(QUERY_FAIL_LOCK_KEY, JSON.stringify(raw));
+    return cur.count;
+  } catch (e) {
+    return 1;
+  }
+}
+
+function clearQueryFailure(phone) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(QUERY_FAIL_LOCK_KEY) || '{}');
+    delete raw[phone];
+    localStorage.setItem(QUERY_FAIL_LOCK_KEY, JSON.stringify(raw));
+  } catch (e) {}
+}
+
 // 根据主体身份 + 18位信用代码/身份证号自动锁定唯一商号代号（杜绝抢注冒名）
 window.syncTenantIdFromCreditCode = function (codeVal) {
   const bType = document.getElementById('v-business-type')?.value || 'coop';
@@ -31,7 +101,7 @@ window.fillGeneratedMemorablePwd = function () {
   navigator.clipboard?.writeText(pwd).catch(() => {});
   alert(
     `🎲 已为您生成 14 位高强度顺口安家主密码并复制到剪贴板：\n\n【 ${pwd} 】\n\n` +
-    `（同时包含大小写字母、数字与特殊符号，请随手存进微信收藏；首次登录掌中宝后即可设置 4 位快捷短码秒进！）`
+      `（同时包含大小写字母、数字与特殊符号，请随手存进微信收藏；首次登录掌中宝后即可设置 4 位快捷短码秒进！）`
   );
 };
 
@@ -80,6 +150,10 @@ window.switchJoinTab = function (tab) {
   }
 };
 
+window.toggleForgotCipherBox = function () {
+  document.getElementById('forgot-cipher-box')?.classList.toggle('hidden');
+};
+
 function updateSubmitButtonState(enabled, isManual = false) {
   const btn = document.getElementById('btn-submit-join');
   if (!btn) return;
@@ -91,14 +165,14 @@ function updateSubmitButtonState(enabled, isManual = false) {
       'w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-2xl active:scale-95 transition shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer';
     btn.innerHTML = isResubmit
       ? '<span>🔄</span> 资质已验真 · 立即重新递交复核'
-      : '<span>📜</span> 资质已验真 · 立即签约开席（免费体验7天）';
+      : '<span>📜</span> 资质已验真 · 当场签约发证（免费体验7天）';
   } else if (enabled && isManual) {
     btn.disabled = false;
     btn.className =
       'w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl active:scale-95 transition shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer';
     btn.innerHTML = isResubmit
-      ? '<span>📨</span> 重新提交补件资料 · 转人工复核'
-      : '<span>📨</span> 提交资料 · 转入平台人工绿色审核';
+      ? '<span>📨</span> 重新提交补件资料 · 领取查验暗号'
+      : '<span>📨</span> 提交资料转人工复核 · 立即领取查验暗号';
   } else {
     btn.disabled = true;
     btn.className =
@@ -121,8 +195,8 @@ function renderInteractiveFeedback(passed, successes, issues, creditCode) {
     isManualFallbackMode = false;
     box.className = 'p-4 rounded-2xl border border-emerald-500/40 bg-emerald-950/30 text-emerald-200 space-y-2';
     title.innerHTML = isInd
-      ? '🎉 个人实名证件核验通过！已解锁签约开席'
-      : '🎉 营业执照三维度光学验真通过！已解锁签约开席';
+      ? '🎉 个人实名证件核验通过！提交即当场发放商号信物'
+      : '🎉 营业执照三维度光学验真通过！提交即当场发放商号信物';
     retryBtn?.classList.add('hidden');
 
     list.innerHTML = successes.map((s) => `<li>${s}</li>`).join('');
@@ -148,13 +222,13 @@ function renderInteractiveFeedback(passed, successes, issues, creditCode) {
       if (retryBtn) retryBtn.innerText = '📷 再试一次清晰拍摄';
 
       list.innerHTML = [
-        '<li>请在下方核对填写您的<b>法定主体全称</b>与<b>18位统一社会信用代码/个人身份证号码</b>（系统自动锁定唯一商号代号）。</li>',
-        '<li>提交后直接转交平台总控人工复核原件，审核通过后即可正式营业。</li>'
+        '<li>请在下方核对填写您的<b>法定主体全称</b>、<b>18位代码/证件号</b>与<b>紧急备用手机号</b>。</li>',
+        '<li>提交后系统将<b>当场发放 8 位专属【查验暗号】</b>，总控人工复核通过后凭暗号即可领取商号信物。</li>'
       ].join('');
 
       verifiedAuditSummary = isInd
         ? '【个人实名入驻通道】已附实名证件原件转入后台人工复核。'
-        : '【触发人工兜底通道】前端光学多次未达标，已附原件转入后台人工复核。';
+        : '【触发人工兜底通道】前端光学未自动放行，已附原件转入后台人工复核。';
       updateSubmitButtonState(true, true);
     } else {
       isManualFallbackMode = false;
@@ -315,6 +389,15 @@ window.handleVendorRegister = async function (e) {
   if (creditCode.length !== 18) {
     return alert('请完整填写 18 位统一社会信用代码或 18 位个人身份证号码！');
   }
+  if (!/^1\d{10}$/.test(contactPhone)) {
+    return alert('请填写正确的 11 位主联络手机号码！');
+  }
+  if (!/^1\d{10}$/.test(backupPhone)) {
+    return alert('⚠️ 紧急备用手机号为必填项，请填写正确的 11 位手机号码（可填监事长、合伙人或家人手机号）！');
+  }
+  if (contactPhone === backupPhone) {
+    return alert('⚠️ 紧急备用手机号不能与主联络手机号相同，请填写另一个可联系到的手机号码！');
+  }
 
   const tenantId = AuthSecurity.generateLockedTenantId(businessType, creditCode, contactPerson);
   document.getElementById('v-tenant-id').value = tenantId;
@@ -327,7 +410,7 @@ window.handleVendorRegister = async function (e) {
   if (!pwdCheck.ok) {
     return alert(
       `⚠️ 主密码强度未达标：\n${pwdCheck.msg}\n\n` +
-      `请使用 12 位以上（含大小写字母 + 数字 + 特殊符号），或点击「🎲 一键生成14位高强顺口密码」。`
+        `请使用 12 位以上（含大小写字母 + 数字 + 特殊符号），或点击「🎲 一键生成14位高强顺口密码」。`
     );
   }
 
@@ -358,11 +441,10 @@ window.handleVendorRegister = async function (e) {
 
       const existingApps = await JoinService.checkExistingApplication(contactPhone, tenantId);
       if (existingApps.length > 0) {
-        alert('ℹ️ 检测到该手机号或证件已有入驻申请记录！已为您跳转至进度查询页查看最新批示。');
+        alert('ℹ️ 检测到该手机号或证件已有入驻申请记录！已为您跳转至核身查询页。');
         document.getElementById('q-search-phone').value = contactPhone;
         document.getElementById('q-search-last6').value = creditCode.slice(-6);
         window.switchJoinTab('query');
-        window.queryApplicationStatus();
         btn.disabled = false;
         updateSubmitButtonState(true, isManualFallbackMode);
         return;
@@ -370,11 +452,11 @@ window.handleVendorRegister = async function (e) {
     }
 
     const hashedAccessKey = await AuthSecurity.hashPassword(rawPwd, tenantId);
+    const checkCipher = generateCheckCipher();
 
-    const extraNotes = [];
+    const extraNotes = [`[查验暗号:${checkCipher}]`, `[备用手机:${backupPhone}]`];
     if (sponsorOrg) extraNotes.push(`联保担保单位：${sponsorOrg}`);
-    if (backupPhone) extraNotes.push(`紧急备用手机：${backupPhone}`);
-    const finalAuditSummary = extraNotes.length > 0 ? `${verifiedAuditSummary} | ${extraNotes.join(' | ')}` : verifiedAuditSummary;
+    const finalAuditSummary = `${verifiedAuditSummary} | ${extraNotes.join(' ')}`;
 
     await JoinService.submitVendorApplication({
       resubmitId,
@@ -383,6 +465,8 @@ window.handleVendorRegister = async function (e) {
       creditCode,
       contactPerson,
       contactPhone,
+      backupPhone,
+      sponsorOrg,
       businessType,
       accessKey: hashedAccessKey,
       isManualFallback: isManualFallbackMode,
@@ -390,54 +474,53 @@ window.handleVendorRegister = async function (e) {
       licenseBase64: currentCompressedBase64
     });
 
-    try {
-      await supabase
-        .from('platform_tenant')
-        .update({ backup_phone: backupPhone || null, sponsor_org: sponsorOrg || null })
-        .eq('tenant_id', tenantId);
-    } catch (e) {}
-
     // 同步初始化私有安全保险箱
     try {
       await supabase.rpc('rpc_sync_tenant_vault', {
         p_tenant_id: tenantId,
         p_access_key: hashedAccessKey,
-        p_backup_phone: backupPhone || null
+        p_backup_phone: backupPhone
       });
     } catch (e) {}
 
+    navigator.clipboard?.writeText(checkCipher).catch(() => {});
+
     if (!isManualFallbackMode) {
       alert(
-        `🎉 资质验真通过！已为您开通「🍃 尝鲜体验」7天全功能席位（期满满意转正仅收极少公共运维会费，零交易抽佣）！\n\n` +
+        `🎉 AI 核验秒过 · 当场发放商号信物！已为您开通「🍃 尝鲜体验」7天全功能席位！\n\n` +
           `• 法定主体名称：${companyName}\n` +
-          `• 专属商号代号（请牢记）：${tenantId}\n` +
-          `• 安家主密码：您刚才设定的 12 位以上高强度主密码（云端已单向哈希保护）\n\n` +
+          `• 专属商号代号（登录账号）：${tenantId}\n` +
+          `• 专属查验暗号（已复制）：${checkCipher}\n` +
+          `• 安家主密码：您刚才设定的 12 位以上高强度主密码\n\n` +
           `接下来将为您生成《商号安家立户凭证卡》，请长按保存至手机相册！`
       );
     } else {
       alert(
-        `📨 您的入驻资料与资质原件已成功递交！\n\n` +
+        `📨 资料已成功转入平台总控人工绿色复核通道！\n\n` +
+          `🔐 请务必牢记或截屏保存您的专属【查验暗号】：\n` +
+          `【 ${checkCipher} 】（已自动复制到剪贴板）\n\n` +
+          `• 锁定商号代号：${tenantId}\n` +
           `• 主联络手机：${contactPhone}\n` +
-          `• 证件/代码后 6 位（查询进度凭证）：${creditCode.slice(-6)}\n` +
-          `• 锁定商号代号：${tenantId}\n\n` +
-          `接下来将为您生成《商号安家立户凭证卡》，请长按保存备查！`
+          `• 紧急备用手机：${backupPhone}\n\n` +
+          `总控核验通过后，凭「主手机 + 证件后6位 + 查验暗号」三重核身即可领取商号信物！`
       );
     }
 
     window.cancelResubmitMode();
     document.getElementById('q-search-phone').value = contactPhone;
     document.getElementById('q-search-last6').value = creditCode.slice(-6);
+    document.getElementById('q-search-cipher').value = checkCipher;
     window.switchJoinTab('query');
     await window.queryApplicationStatus();
 
-    // 弹出支持微信长按保存的高清《商号安家立户凭证卡》
+    // 弹出支持微信长按保存的高清《商号安家立户凭证卡》（附带查验暗号）
     AuthSecurity.showVoucherPreviewModal({
       tenantId,
       companyName,
-      legalName: contactPerson,
+      legalName: `${contactPerson}（查验暗号：${checkCipher}）`,
       phone: contactPhone,
       backupPhone,
-      accessKeyHint: '您亲自设定的12位以上高强度安家主密码'
+      accessKeyHint: `查验暗号：${checkCipher} ｜ 密码：您自设的12位以上强密码`
     });
   } catch (err) {
     alert('❌ 提交处理失败: ' + err.message);
@@ -449,146 +532,232 @@ window.handleVendorRegister = async function (e) {
 window.openAppVoucherCard = function (appId) {
   const app = lastQueriedApps.find((a) => Number(a.id) === Number(appId));
   if (!app) return;
+  const cipher = extractCipherFromReviewNote(app.review_note);
+  const backup = extractBackupPhoneFromReviewNote(app.review_note);
   AuthSecurity.showVoucherPreviewModal({
     tenantId: app.tenant_id,
     companyName: app.company_name,
-    legalName: app.contact_person || '',
+    legalName: `${app.contact_person || ''}${cipher ? `（查验暗号：${cipher}）` : ''}`,
     phone: app.contact_phone || '',
-    backupPhone: '',
-    accessKeyHint: '您入驻时亲自设定的12位以上高强度安家主密码'
+    backupPhone: backup,
+    accessKeyHint: `${cipher ? `查验暗号：${cipher} ｜ ` : ''}您入驻时亲自设定的12位以上高强度安家主密码`
   });
 };
 
+function renderMatchedApplicationCards(matchedApps, container) {
+  lastQueriedApps = matchedApps;
+  container.innerHTML = matchedApps
+    .map((app) => {
+      const status = app.application_status;
+      const isApproved = status === 'approved' || status === 'approved_by_ai' || status === 'approved_manually';
+      const isRejected = status === 'rejected';
+      const isInd = app.business_type === 'individual' || String(app.tenant_id || '').startsWith('GR-');
+      const cipher = extractCipherFromReviewNote(app.review_note);
+      const cleanReviewNote = String(app.review_note || '')
+        .replace(/\[查验暗号[:：][A-Z0-9-]+\]/gi, '')
+        .replace(/\[备用手机[:：]\d{11}\]/g, '')
+        .trim();
+
+      const typeBadge = isInd
+        ? '<span class="bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full text-[10px] font-bold">👨‍🌾 个人实名入驻 (GR)</span>'
+        : '<span class="bg-sky-500/20 text-sky-300 border border-sky-400/30 px-2 py-0.5 rounded-full text-[10px] font-bold">🏢 商事主体执照入驻</span>';
+
+      if (isApproved) {
+        return `
+          <div class="bg-emerald-950/30 border border-emerald-500/40 rounded-2xl p-5 space-y-3">
+            <div class="flex flex-wrap justify-between items-center gap-2 border-b border-emerald-500/20 pb-2">
+              <div class="flex items-center gap-2">
+                <b class="text-sm text-white">${app.company_name}</b>
+                ${typeBadge}
+              </div>
+              <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
+                ✅ 三重核身通过 · 已开席
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-stone-900/80 p-3 rounded-xl border border-stone-800 font-mono">
+              <div>
+                <span class="text-[10px] text-stone-400 block">专属商号信物 (登录账号)</span>
+                <b class="text-amber-400 text-base font-bold">${app.tenant_id}</b>
+              </div>
+              <div>
+                <span class="text-[10px] text-stone-400 block">专属查验暗号</span>
+                <b class="text-emerald-300 text-xs font-bold">${cipher || '已验真激活'}</b>
+              </div>
+              <div>
+                <span class="text-[10px] text-stone-400 block">安家主密码状态</span>
+                <b class="text-emerald-400 text-xs font-bold font-sans">🔐 您自设的12位强密码</b>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-emerald-200/80">
+              🎉 核验成功！您可凭商号代号【<b>${app.tenant_id}</b>】与您亲自设定的安家主密码登录；手机端首次登录后可设置「4位快捷短码」秒进。
+            </p>
+
+            <div class="pt-1 flex flex-wrap justify-end gap-2">
+              <button type="button" onclick="window.openAppVoucherCard(${app.id})" class="bg-rose-900/70 hover:bg-rose-800 text-rose-100 border border-rose-500/40 font-bold px-3.5 py-2 rounded-xl transition">
+                📜 保存凭证卡
+              </button>
+              <a href="mall.html?t=${encodeURIComponent(app.tenant_id)}" class="bg-stone-800 hover:bg-stone-700 text-amber-300 font-bold px-3.5 py-2 rounded-xl transition">
+                🏛️ 查看数字专柜
+              </a>
+              <a href="driver.html" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold px-3.5 py-2 rounded-xl transition">
+                📱 打开百工掌中宝
+              </a>
+              <a href="hq.html?t=${encodeURIComponent(app.tenant_id)}" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-4 py-2 rounded-xl shadow transition">
+                🚀 登录电脑调度台 ➔
+              </a>
+            </div>
+          </div>
+        `;
+      } else if (isRejected) {
+        return `
+          <div class="bg-rose-950/30 border border-rose-500/50 rounded-2xl p-5 space-y-3">
+            <div class="flex flex-wrap justify-between items-center gap-2 border-b border-rose-500/20 pb-2">
+              <div class="flex items-center gap-2">
+                <b class="text-sm text-white">${app.company_name}</b>
+                ${typeBadge}
+              </div>
+              <span class="bg-rose-500/20 text-rose-300 border border-rose-400/30 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
+                🚫 退回商榷 · 需补件修正
+              </span>
+            </div>
+            <div class="bg-stone-900/90 p-3.5 rounded-xl border border-rose-500/30 space-y-1">
+              <b class="text-rose-400 text-[11px] block">📋 平台审核批示意见（不通过原因）：</b>
+              <p class="text-stone-200 text-xs leading-relaxed">${cleanReviewNote || '资质图片不够清晰或与法定名称不符，请重新上传清晰原件照片。'}</p>
+            </div>
+            <div class="pt-1 flex justify-end">
+              <button type="button" onclick="window.startResubmitCorrection(${app.id})" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-4 py-2 rounded-xl shadow active:scale-95 transition flex items-center gap-1.5">
+                <span>🔄</span> 立即改善并重新上传资质
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="bg-amber-950/20 border border-amber-500/40 rounded-2xl p-5 space-y-2.5">
+            <div class="flex flex-wrap justify-between items-center gap-2 border-b border-amber-500/20 pb-2">
+              <div class="flex items-center gap-2">
+                <b class="text-sm text-white">${app.company_name}</b>
+                ${typeBadge}
+              </div>
+              <span class="bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 rounded-full font-bold text-[11px] animate-pulse">
+                ⏳ 人工绿色通道加急审核中
+              </span>
+            </div>
+            <p class="text-[11px] text-stone-300 leading-relaxed">
+              您的申请资料已进入平台人工复核队列（商号代号：<b class="font-mono text-amber-300">${app.tenant_id}</b>${cipher ? `，查验暗号：<b class="font-mono text-emerald-300">${cipher}</b>` : ''}）。总控核对无误后，您即可凭商号代号与自设主密码登录运营。
+            </p>
+            <div class="flex justify-between items-center pt-1">
+              <span class="text-[10px] text-stone-500 font-mono">提交时间：${new Date(app.created_at).toLocaleString()}</span>
+              <button type="button" onclick="window.openAppVoucherCard(${app.id})" class="text-[11px] text-amber-300 hover:underline font-bold">
+                📜 查看并保存凭证卡
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    })
+    .join('');
+}
+
+// 常规通道：主手机 + 证件后6位 + 8位查验暗号（三重核身 + 5次错误熔断）
 window.queryApplicationStatus = async function () {
   const phone = document.getElementById('q-search-phone').value.trim();
   const last6 = document.getElementById('q-search-last6').value.trim().toUpperCase();
+  const cipher = document.getElementById('q-search-cipher').value.trim().toUpperCase();
   const container = document.getElementById('query-result-container');
 
-  if (!phone || last6.length !== 6) {
-    return alert('请完整输入登记时的「主联络手机号码」与「18位信用代码/身份证号后 6 位」！');
+  if (!/^1\d{10}$/.test(phone) || last6.length !== 6 || cipher.length < 6) {
+    return alert('请完整输入「11位主联络手机号码」、「证件/代码后 6 位」以及「8 位查验暗号」！');
   }
 
-  container.innerHTML = '<div class="text-center py-6 text-stone-400">正在核验手机号与证件后六位...</div>';
+  const lockState = checkQueryRateLock(phone);
+  if (lockState.locked) {
+    return alert(lockState.msg);
+  }
+
+  container.innerHTML = '<div class="text-center py-6 text-stone-400">正在进行三重核身校验...</div>';
 
   try {
-    const matchedApps = await JoinService.queryApplicationsByPhoneAndLast6(phone, last6);
-    if (matchedApps.length === 0) {
+    const rawMatched = await JoinService.queryApplicationsByPhoneAndLast6(phone, last6);
+    const verifiedApps = rawMatched.filter((app) => {
+      const savedCipher = extractCipherFromReviewNote(app.review_note);
+      if (!savedCipher) return true;
+      return savedCipher === cipher;
+    });
+
+    if (verifiedApps.length === 0) {
+      const failCount = recordQueryFailure(phone);
+      const remain = Math.max(0, 5 - failCount);
       container.innerHTML = `
-        <div class="bg-[#202023] border border-stone-700/80 rounded-2xl p-6 text-center space-y-2">
-          <span class="text-2xl block">🔐</span>
-          <b class="text-stone-200 block">未查询到匹配档案（手机号或后 6 位不符）</b>
-          <p class="text-[11px] text-stone-400">请核对手机号码及信用代码/身份证号码最后 6 位字符（注意区分数字 0 与字母 O）。</p>
+        <div class="bg-[#202023] border border-rose-500/40 rounded-2xl p-6 text-center space-y-2">
+          <span class="text-2xl block">🛡️</span>
+          <b class="text-rose-300 block">三重核身未通过（手机号、证件后 6 位或查验暗号不匹配）</b>
+          <p class="text-[11px] text-stone-400">
+            ${remain > 0 ? `今日还可试错 ${remain} 次（连续输错 5 次将自动锁定 24 小时防冒领）。` : '连续输错已达 5 次，该查询通道已锁定 24 小时。'}<br/>
+            若忘记查验暗号，可点击上方「🔑 忘记查验暗号？使用紧急备用手机四重应急核身找回」。
+          </p>
         </div>
       `;
       return;
     }
 
-    lastQueriedApps = matchedApps;
-    container.innerHTML = matchedApps
-      .map((app) => {
-        const status = app.application_status;
-        const isApproved = status === 'approved' || status === 'approved_by_ai' || status === 'approved_manually';
-        const isRejected = status === 'rejected';
-        const isInd = app.business_type === 'individual' || String(app.tenant_id || '').startsWith('GR-');
-        const typeBadge = isInd
-          ? '<span class="bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full text-[10px] font-bold">👨‍🌾 个人实名入驻 (GR)</span>'
-          : '<span class="bg-sky-500/20 text-sky-300 border border-sky-400/30 px-2 py-0.5 rounded-full text-[10px] font-bold">🏢 商事主体执照入驻</span>';
-
-        if (isApproved) {
-          return `
-            <div class="bg-emerald-950/30 border border-emerald-500/40 rounded-2xl p-5 space-y-3">
-              <div class="flex flex-wrap justify-between items-center gap-2 border-b border-emerald-500/20 pb-2">
-                <div class="flex items-center gap-2">
-                  <b class="text-sm text-white">${app.company_name}</b>
-                  ${typeBadge}
-                </div>
-                <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
-                  ✅ 审核通过 · 已开席
-                </span>
-              </div>
-
-              <div class="grid grid-cols-2 gap-2 bg-stone-900/80 p-3 rounded-xl border border-stone-800 font-mono">
-                <div>
-                  <span class="text-[10px] text-stone-400 block">专属商号代号 (登录账号)</span>
-                  <b class="text-amber-400 text-base font-bold">${app.tenant_id}</b>
-                </div>
-                <div>
-                  <span class="text-[10px] text-stone-400 block">安家主密码状态</span>
-                  <b class="text-emerald-400 text-xs font-bold font-sans">🔐 您入驻时设定的12位强密码</b>
-                </div>
-              </div>
-
-              <p class="text-[11px] text-emerald-200/80">
-                🎉 核验成功！您可凭商号代号【<b>${app.tenant_id}</b>】与您亲自设定的安家主密码登录；手机端首次登录后可设置「4位快捷短码」秒进。
-              </p>
-
-              <div class="pt-1 flex flex-wrap justify-end gap-2">
-                <button type="button" onclick="window.openAppVoucherCard(${app.id})" class="bg-rose-900/70 hover:bg-rose-800 text-rose-100 border border-rose-500/40 font-bold px-3.5 py-2 rounded-xl transition">
-                  📜 保存凭证卡
-                </button>
-                <a href="mall.html?t=${encodeURIComponent(app.tenant_id)}" class="bg-stone-800 hover:bg-stone-700 text-amber-300 font-bold px-3.5 py-2 rounded-xl transition">
-                  🏛️ 查看数字专柜
-                </a>
-                <a href="driver.html" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold px-3.5 py-2 rounded-xl transition">
-                  📱 打开百工掌中宝
-                </a>
-                <a href="hq.html" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-4 py-2 rounded-xl shadow transition">
-                  🚀 登录电脑调度台 ➔
-                </a>
-              </div>
-            </div>
-          `;
-        } else if (isRejected) {
-          return `
-            <div class="bg-rose-950/30 border border-rose-500/50 rounded-2xl p-5 space-y-3">
-              <div class="flex flex-wrap justify-between items-center gap-2 border-b border-rose-500/20 pb-2">
-                <div class="flex items-center gap-2">
-                  <b class="text-sm text-white">${app.company_name}</b>
-                  ${typeBadge}
-                </div>
-                <span class="bg-rose-500/20 text-rose-300 border border-rose-400/30 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
-                  🚫 退回商榷 · 需补件修正
-                </span>
-              </div>
-              <div class="bg-stone-900/90 p-3.5 rounded-xl border border-rose-500/30 space-y-1">
-                <b class="text-rose-400 text-[11px] block">📋 平台审核批示意见（不通过原因）：</b>
-                <p class="text-stone-200 text-xs leading-relaxed">${app.review_note || '资质图片不够清晰或与法定名称不符，请重新上传清晰原件照片。'}</p>
-              </div>
-              <div class="pt-1 flex justify-end">
-                <button type="button" onclick="window.startResubmitCorrection(${app.id})" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-4 py-2 rounded-xl shadow active:scale-95 transition flex items-center gap-1.5">
-                  <span>🔄</span> 立即改善并重新上传资质
-                </button>
-              </div>
-            </div>
-          `;
-        } else {
-          return `
-            <div class="bg-amber-950/20 border border-amber-500/40 rounded-2xl p-5 space-y-2.5">
-              <div class="flex flex-wrap justify-between items-center gap-2 border-b border-amber-500/20 pb-2">
-                <div class="flex items-center gap-2">
-                  <b class="text-sm text-white">${app.company_name}</b>
-                  ${typeBadge}
-                </div>
-                <span class="bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 rounded-full font-bold text-[11px] animate-pulse">
-                  ⏳ 人工绿色通道加急审核中
-                </span>
-              </div>
-              <p class="text-[11px] text-stone-300 leading-relaxed">
-                您的申请资料已进入平台人工复核队列（商号代号：<b class="font-mono text-amber-300">${app.tenant_id}</b>）。总控核对无误后，您即可凭商号代号与自设主密码登录运营。
-              </p>
-              <div class="flex justify-between items-center pt-1">
-                <span class="text-[10px] text-stone-500 font-mono">提交时间：${new Date(app.created_at).toLocaleString()}</span>
-                <button type="button" onclick="window.openAppVoucherCard(${app.id})" class="text-[11px] text-amber-300 hover:underline font-bold">
-                  📜 查看并保存凭证卡
-                </button>
-              </div>
-            </div>
-          `;
-        }
-      })
-      .join('');
+    clearQueryFailure(phone);
+    renderMatchedApplicationCards(verifiedApps, container);
   } catch (err) {
     container.innerHTML = `<div class="text-center py-6 text-rose-400">查询异常：${err.message}</div>`;
+  }
+};
+
+// 忘暗号应急通道：主手机 + 紧急备用手机 + 证件后6位 + 法定主体全称（四重核身）
+window.queryApplicationByEmergency = async function () {
+  const phone = document.getElementById('q-emerg-phone').value.trim();
+  const backup = document.getElementById('q-emerg-backup').value.trim();
+  const last6 = document.getElementById('q-emerg-last6').value.trim().toUpperCase();
+  const compName = document.getElementById('q-emerg-name').value.trim();
+  const container = document.getElementById('query-result-container');
+
+  if (!/^1\d{10}$/.test(phone) || !/^1\d{10}$/.test(backup) || last6.length !== 6 || !compName) {
+    return alert('请完整填写主联络手机、紧急备用手机、证件后 6 位以及法定主体全称/个人招牌！');
+  }
+
+  const lockState = checkQueryRateLock(phone);
+  if (lockState.locked) {
+    return alert(lockState.msg);
+  }
+
+  container.innerHTML = '<div class="text-center py-6 text-stone-400">正在进行四重应急核身校验...</div>';
+
+  try {
+    const rawMatched = await JoinService.queryApplicationsByPhoneAndLast6(phone, last6);
+    const verifiedApps = rawMatched.filter((app) => {
+      const savedBackup = extractBackupPhoneFromReviewNote(app.review_note);
+      const nameMatch = String(app.company_name || '').trim() === compName;
+      if (!nameMatch) return false;
+      if (savedBackup) return savedBackup === backup;
+      return true;
+    });
+
+    if (verifiedApps.length === 0) {
+      const failCount = recordQueryFailure(phone);
+      const remain = Math.max(0, 5 - failCount);
+      container.innerHTML = `
+        <div class="bg-[#202023] border border-rose-500/40 rounded-2xl p-6 text-center space-y-2">
+          <span class="text-2xl block">🔐</span>
+          <b class="text-rose-300 block">四重应急核身未匹配</b>
+          <p class="text-[11px] text-stone-400">
+            请核对主手机号、紧急备用手机号、证件后 6 位及法定全称是否一字不差（剩余试错次数：${remain} 次）。如均遗忘，请联系平台总控主叫您的主联络手机号核实。
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    clearQueryFailure(phone);
+    renderMatchedApplicationCards(verifiedApps, container);
+  } catch (err) {
+    container.innerHTML = `<div class="text-center py-6 text-rose-400">应急查询异常：${err.message}</div>`;
   }
 };
 
@@ -606,6 +775,10 @@ window.startResubmitCorrection = function (appId) {
   window.syncTenantIdFromCreditCode(app.credit_code || '');
   document.getElementById('v-contact-person').value = app.contact_person || '';
   document.getElementById('v-contact-phone').value = app.contact_phone || '';
+  const savedBackup = extractBackupPhoneFromReviewNote(app.review_note);
+  if (savedBackup && document.getElementById('v-backup-phone')) {
+    document.getElementById('v-backup-phone').value = savedBackup;
+  }
 
   currentCompressedBase64 = null;
   isLicenseVerified = false;
