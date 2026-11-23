@@ -177,13 +177,13 @@
 
   <!-- 平台背书、双公约公示与独立公众监督建言堂直达页脚 -->
   <div class="px-4 pt-3 pb-6 text-center text-[10px] text-stone-400 space-y-1">
-    <div>百工天街 · 零交易抽佣 · 零竞价排名 · 服务归店源头直供集市</div>
+    <div>百工天街 · 零交易抽佣 · 零竞价排名 · 护私守密 · 和气生财</div>
     <div class="flex flex-wrap justify-center gap-3">
       <a href="join.html" class="hover:text-emerald-800 underline transition">合作社 / 工坊 / 个人匠人入驻</a>
       <span>·</span>
       <button type="button" onclick="window.openModal('modal-mall-covenant')" class="hover:text-emerald-800 underline transition">📜 商道与邻里公约</button>
       <span>·</span>
-      <button type="button" onclick="window.openPublicSupervisionModal('submit')" class="hover:text-emerald-800 underline transition">💬 公众监督与建言堂（含查回音）</button>
+      <button type="button" onclick="window.openPublicSupervisionModal('submit')" class="hover:text-emerald-800 underline transition">💬 公众监督与建言堂（含查回音与阳光公示）</button>
     </div>
   </div>
 
@@ -196,31 +196,34 @@
       </div>
       <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-2xl space-y-2 text-[11px] text-stone-700 leading-relaxed">
         <p><b>一、源头平准 · 零抽佣：</b>本集市不收一分交易抽佣、不搞流量竞价，合作社、工坊与实名匠人直连邻里，阳光工价。</p>
-        <p><b>二、服务归店 · 邻里互助：</b>选择就近合作门店自提，服务润利全额归属该门店，支持社区小店可持续发展。</p>
-        <p><b>三、物勒工名 · 公众监督：</b>每款良品均公开出品主体、经营范围与产地溯源印记；若发现虚假宣传或超范围经营，欢迎随时通过页脚「公众监督与建言堂」反馈并查询处理回音。</p>
+        <p><b>二、护私守密 · 商业独立：</b>严格保护每一位参与者个人隐私及商号商业机密（进货底价、客户名册等均归各自所有），平台绝不窥探越界。</p>
+        <p><b>三、春风化雨 · 抑恶扬善：</b>日常小误会温婉提醒、限期补正；若发现虚假宣传或超范围经营，可通过页脚「公众监督与建言堂」反馈，核实结案后脱敏公示于阳光栏。</p>
       </div>
       <button onclick="window.closeModal('modal-mall-covenant')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl">我已阅知并共同守护</button>
     </div>
   </div>
 
-  <!-- 独立的《公众监督与商道建言堂》双标签闭环弹窗（发起呈报 + 凭回音码/手机号查官方回复） -->
+  <!-- 独立的《公众监督与商道建言堂》三标签闭环弹窗（发起呈报 + 查私人回音 + 阳光脱敏公示栏） -->
   <div id="modal-mall-public-supervision" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
         <div>
           <h3 class="font-bold text-sm text-emerald-950">💬 公众监督与商道建言堂</h3>
-          <p class="text-[10px] text-stone-400">事事有回音 · 直呈平台公共治理中枢（不混入求购榜）</p>
+          <p class="text-[10px] text-stone-400">护私守密 · 温婉调处 · 事事有回音（不混入求购榜）</p>
         </div>
         <button type="button" onclick="window.closeModal('modal-mall-public-supervision')" class="text-stone-400 text-lg">✕</button>
       </div>
 
-      <!-- 双标签切换：发起呈报 vs 查官方回音 -->
-      <div class="grid grid-cols-2 gap-1.5 bg-stone-100 p-1 rounded-2xl font-bold text-center">
+      <!-- 三标签切换：发起呈报 vs 查私人回音 vs 阳光脱敏公示 -->
+      <div class="grid grid-cols-3 gap-1 bg-stone-100 p-1 rounded-2xl font-bold text-center text-[11px]">
         <button type="button" id="pub-sup-tab-submit" onclick="window.switchPubSupTab('submit')" class="py-2 rounded-xl bg-[#1b4332] text-white transition">
-          ✍️ 我要监督 / 建言
+          ✍️ 监督 / 建言
         </button>
         <button type="button" id="pub-sup-tab-query" onclick="window.switchPubSupTab('query')" class="py-2 rounded-xl text-stone-600 transition">
-          📬 查官方处理回音
+          📬 查私人回音
+        </button>
+        <button type="button" id="pub-sup-tab-public" onclick="window.switchPubSupTab('public')" class="py-2 rounded-xl text-stone-600 transition">
+          ⚖️ 阳光公示栏
         </button>
       </div>
 
@@ -245,11 +248,11 @@
 
         <div>
           <label class="block text-stone-600 font-bold mb-1">具体事实说明或建言内容 *：</label>
-          <textarea id="pub-sup-content" rows="3" placeholder="请客观描述发现的问题细节或您的宝贵建言..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none"></textarea>
+          <textarea id="pub-sup-content" rows="3" placeholder="请客观和气地描述发现的问题细节或您的宝贵建言..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none"></textarea>
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">联系手机号或称呼（留手机号可直接凭号查回音，亦可留空匿名）：</label>
+          <label class="block text-stone-600 font-bold mb-1">联系手机号或称呼（严格保密，仅用于私密回音查询）：</label>
           <input type="text" id="pub-sup-contact" placeholder="如：13800000000 或 王先生（留空则生成匿名回音码）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
         </div>
 
@@ -259,25 +262,38 @@
 
         <!-- 提交成功后生成的回音凭证卡 -->
         <div id="pub-sup-receipt-card" class="hidden bg-amber-50 border border-amber-300 p-3 rounded-2xl space-y-1.5 text-center">
-          <div class="text-emerald-950 font-bold">✅ 已直呈平台公共治理中枢！请留存您的《回音凭证码》：</div>
+          <div class="text-emerald-950 font-bold">✅ 已直呈平台治理中枢（您的身份信息严格保密）：</div>
           <div class="bg-white border border-amber-300 py-1.5 px-3 rounded-xl font-mono text-base font-bold text-stone-900 tracking-wider" id="pub-sup-receipt-code">JY-0000</div>
-          <p class="text-[10px] text-stone-600">日后随时点上方「📬 查官方处理回音」，输入此回音码或您留下的手机号即可查看平台答复。</p>
+          <p class="text-[10px] text-stone-600">日后随时点上方「📬 查私人回音」，输入此回音码或您留下的手机号即可查看平台答复。</p>
           <button type="button" onclick="window.copyPubSupReceiptCode()" class="bg-amber-400 text-stone-950 font-bold px-3 py-1 rounded-lg text-[11px]">
             📋 复制回音凭证码
           </button>
         </div>
       </div>
 
-      <!-- 面板 B：查询官方处理回音 -->
+      <!-- 面板 B：查询个人私人回音 -->
       <div id="pub-sup-pane-query" class="hidden space-y-2.5">
+        <div class="bg-stone-50 border border-stone-200 p-2 rounded-xl text-[10px] text-stone-500">
+          🔒 <b>隐私保护：</b>仅凭您专属的回音码或预留手机号方可查阅，绝不对外泄露提交人信息。
+        </div>
         <div class="flex gap-2">
           <input type="text" id="pub-sup-query-input" placeholder="输入回音码 (如 JY-0042) 或留下的手机号" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono outline-none font-bold">
           <button type="button" onclick="window.queryPublicSupervisionReplies()" class="bg-[#1b4332] text-white font-bold px-3.5 py-2 rounded-xl active:scale-95">
             查回音
           </button>
         </div>
-        <div id="pub-sup-reply-list" class="space-y-2 max-h-64 overflow-y-auto no-scrollbar">
+        <div id="pub-sup-reply-list" class="space-y-2 max-h-60 overflow-y-auto no-scrollbar">
           <div class="py-6 text-center text-stone-400">输入回音凭证码或手机号，查看平台核查结果与答复</div>
+        </div>
+      </div>
+
+      <!-- 面板 C：阳光治理与信义脱敏公示栏 -->
+      <div id="pub-sup-pane-public" class="hidden space-y-2.5">
+        <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-2xl text-[10px] text-emerald-950 leading-relaxed">
+          <b>⚖️ 对事不对人 · 脱敏公示：</b>本栏仅公开经平台核实并批准公示的典型建言采纳与商道调处结论；已严格隐藏提交人隐私及商号商业机密。
+        </div>
+        <div id="pub-sup-public-list" class="space-y-2 max-h-64 overflow-y-auto no-scrollbar">
+          <div class="py-6 text-center text-stone-400">正在调阅阳光治理与建言采纳公示...</div>
         </div>
       </div>
     </div>
@@ -633,30 +649,26 @@
     };
 
     window.switchPubSupTab = function (tab) {
-      const isSubmit = tab === 'submit';
-      document.getElementById('pub-sup-pane-submit')?.classList.toggle('hidden', !isSubmit);
-      document.getElementById('pub-sup-pane-query')?.classList.toggle('hidden', isSubmit);
+      ['submit', 'query', 'public'].forEach((t) => {
+        document.getElementById(`pub-sup-pane-${t}`)?.classList.toggle('hidden', t !== tab);
+        const btn = document.getElementById(`pub-sup-tab-${t}`);
+        if (btn) {
+          btn.className =
+            t === tab
+              ? 'py-2 rounded-xl bg-[#1b4332] text-white transition'
+              : 'py-2 rounded-xl text-stone-600 transition';
+        }
+      });
 
-      const btnSub = document.getElementById('pub-sup-tab-submit');
-      const btnQry = document.getElementById('pub-sup-tab-query');
-      if (btnSub) {
-        btnSub.className = isSubmit
-          ? 'py-2 rounded-xl bg-[#1b4332] text-white transition'
-          : 'py-2 rounded-xl text-stone-600 transition';
-      }
-      if (btnQry) {
-        btnQry.className = !isSubmit
-          ? 'py-2 rounded-xl bg-[#1b4332] text-white transition'
-          : 'py-2 rounded-xl text-stone-600 transition';
-      }
-
-      if (!isSubmit) {
+      if (tab === 'query') {
         const savedCode = localStorage.getItem('last_pub_sup_code') || '';
         const qInp = document.getElementById('pub-sup-query-input');
         if (qInp && !qInp.value && savedCode) {
           qInp.value = savedCode;
           window.queryPublicSupervisionReplies();
         }
+      } else if (tab === 'public') {
+        window.loadPublicGovernanceBulletins();
       }
     };
 
@@ -785,6 +797,64 @@
           .join('');
       } catch (err) {
         listEl.innerHTML = `<div class="py-4 text-center text-rose-600">查询失败：${err.message}</div>`;
+      }
+    };
+
+    // 加载平台审核并标注【公开公示】的脱敏治理结论（严守隐私与商业机密，只展示脱敏结论）
+    window.loadPublicGovernanceBulletins = async function () {
+      const listEl = document.getElementById('pub-sup-public-list');
+      if (!listEl) return;
+      listEl.innerHTML = '<div class="py-6 text-center text-stone-400">正在加载阳光治理与建言采纳公示...</div>';
+
+      try {
+        const { data, error } = await supabase
+          .from('platform_suggestion_board')
+          .select('id, content, admin_reply, official_reply, created_at')
+          .not('proposer_type', 'in', '("c2b_demand","mall_review")')
+          .order('id', { ascending: false })
+          .limit(60);
+
+        if (error) throw error;
+
+        const publicRows = (data || []).filter((r) => {
+          const rep = String(r.admin_reply || r.official_reply || '');
+          return rep.includes('【公开公示】') || rep.includes('[公开公示]');
+        });
+
+        if (publicRows.length === 0) {
+          listEl.innerHTML = `
+            <div class="py-6 text-center text-stone-400 space-y-1">
+              <div>🌿 当前百工天街清朗有序，暂无新的公开公示事项。</div>
+              <div class="text-[10px]">（注：总控批复时标注【公开公示】的典型整改与建言采纳将自动在此脱敏亮出）</div>
+            </div>
+          `;
+          return;
+        }
+
+        listEl.innerHTML = publicRows
+          .map((r) => {
+            // 自动脱敏手机号等个人隐私数字串
+            const cleanContent = String(r.content || '').replace(/1[3-9]\d{9}/g, '***').replace(/\[JY-\d+\]/g, '');
+            const cleanReply = String(r.admin_reply || r.official_reply || '')
+              .replace(/【公开公示】|\[公开公示\]/g, '')
+              .replace(/1[3-9]\d{9}/g, '***')
+              .trim();
+            return `
+              <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
+                <div class="flex justify-between items-center text-[10px] text-stone-400 font-mono">
+                  <span>公示编号 #${r.id}</span>
+                  <span>${r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}</span>
+                </div>
+                <p class="text-[11px] text-stone-700 leading-relaxed"><b>呈报事项：</b>${cleanContent}</p>
+                <div class="bg-emerald-50 border border-emerald-200 p-2 rounded-xl text-[11px] text-emerald-950">
+                  <b>🏛️ 温婉调处与结案结论：</b>${cleanReply}
+                </div>
+              </div>
+            `;
+          })
+          .join('');
+      } catch (err) {
+        listEl.innerHTML = `<div class="py-4 text-center text-rose-600">加载公示失败：${err.message}</div>`;
       }
     };
 
