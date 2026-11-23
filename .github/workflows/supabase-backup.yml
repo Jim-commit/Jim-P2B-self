@@ -1,0 +1,52 @@
+name: Daily Supabase Backup (7-Day Rolling)
+
+on:
+  schedule:
+    # 每天北京时间凌晨 03:30 自动执行 (UTC 19:30)
+    - cron: '30 19 * * *'
+  # 支持在 GitHub Actions 页面随时手动点击「Run workflow」立即备份
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Dump public schema & data (Overwrite by weekday)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          mkdir -p backups
+          DAY_TAG=$(TZ='Asia/Shanghai' date +%a)
+          FILE_PATH="backups/backup_${DAY_TAG}.sql"
+          pg_dump "$SUPABASE_DB_URL" \
+            --schema=public \
+            --no-owner \
+            --no-privileges \
+            --clean \
+            --if-exists \
+            -f "$FILE_PATH"
+
+      - name: Commit and push rolling backup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backups/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(backup): daily rolling snapshot $(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M')"
+            git push
+          else
+            echo "No database changes detected."
+          fi
