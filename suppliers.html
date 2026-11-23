@@ -107,8 +107,10 @@
     <!-- 平台入驻公约与独立主权背书提示 -->
     <div class="mt-6 text-center text-[11px] text-stone-400 space-y-1">
       <div>百工百业数字协作平台 · 零交易抽佣 · 独立收银结算 · 商号数字主权归己</div>
-      <div>
+      <div class="flex flex-wrap justify-center items-center gap-2">
         <a href="join.html" class="text-emerald-800 hover:underline font-bold">查看《百工百业平台入驻与商道公约》并申请入驻 ➔</a>
+        <span>·</span>
+        <button type="button" onclick="window.openSharedPubSupModal('submit')" class="text-emerald-800 hover:underline font-bold">💬 公众监督与建言堂（含查回音与阳光公示）</button>
       </div>
     </div>
   </main>
@@ -192,6 +194,9 @@
 
   <script type="module">
     import { initSuppliersController } from './src/modules/suppliersController.js';
+    import { mountPublicSupervisionWidget } from './src/modules/publicSupervisionWidget.js';
+
+    mountPublicSupervisionWidget('百业供需名录');
     initSuppliersController();
   </script>
   <script>
