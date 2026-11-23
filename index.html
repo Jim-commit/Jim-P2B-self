@@ -948,10 +948,12 @@
     import { initStoreCommunityExtension } from './src/modules/store/storeCommunityExtension.js';
     import { mountStoreElderModeWidget } from './src/modules/store/storeElderModeWidget.js';
     import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
+    import { initWechatBrowserGuide } from './src/lib/wechatBrowserGuard.js';
 
     enforceGlobalGovernance();
     initStoreCommunityExtension();
     mountStoreElderModeWidget();
+    initWechatBrowserGuide({ appName: '百工协作工作台' });
   </script>
 </body>
 </html>
