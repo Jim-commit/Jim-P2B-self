@@ -809,10 +809,12 @@
     import { initDriverController } from './src/modules/driverController.js';
     import { initDriverCarpoolBindings } from './src/modules/driver/driverCarpoolExtension.js';
     import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
+    import { initWechatBrowserGuide } from './src/lib/wechatBrowserGuard.js';
 
     enforceGlobalGovernance();
     initDriverController();
     initDriverCarpoolBindings();
+    initWechatBrowserGuide({ appName: '百工掌中宝' });
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
