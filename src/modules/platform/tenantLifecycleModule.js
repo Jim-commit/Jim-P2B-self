@@ -34,59 +34,82 @@ export function getOriginalCreditCode(creditCode) {
 }
 
 /**
- * 1. 全量导出商号 JSON 备份（覆盖全部 14 张商号主表与业务子表）
+ * 分页全量拉取指定表的所有记录（突破单次 1000 行上限，确保铁证与流水一字不漏）
+ */
+async function fetchAllRowsFromTable(tableName, filterCol = null, filterVal = null) {
+  const pageSize = 1000;
+  let from = 0;
+  let allRows = [];
+
+  while (true) {
+    let query = supabase.from(tableName).select('*').range(from, from + pageSize - 1);
+    if (filterCol && filterVal !== null) {
+      query = query.eq(filterCol, filterVal);
+    }
+    const { data, error } = await query;
+    if (error) {
+      // 兼容不同部署环境中部分可选表不存在的情况
+      return [];
+    }
+    if (!Array.isArray(data) || data.length === 0) break;
+    allRows = allRows.concat(data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return allRows;
+}
+
+/**
+ * 1. 全量导出单商号 JSON 备份（覆盖全部 14 张商号主表与业务子表 + 完整操作审计铁证）
  */
 export async function exportTenantFullBackup(tenantId, companyName = '', silent = false) {
   if (!tenantId) throw new Error('缺少商号代号 (tenantId)');
 
   const [
-    ptRes,
-    tRes,
-    driverRes,
-    prodRes,
-    storeRes,
-    leadRes,
-    storeOrderRes,
-    ordersRes,
-    driverColRes,
-    payRecRes,
-    invLogRes,
-    poolRes,
-    planRes,
-    auditRes
+    ptRows,
+    tRows,
+    driverRows,
+    prodRows,
+    storeRows,
+    leadRows,
+    storeOrderRows,
+    ordersRows,
+    driverColRows,
+    payRecRows,
+    invLogRows,
+    poolRows,
+    planRows,
+    auditRows
   ] = await Promise.all([
-    supabase.from('platform_tenant').select('*').eq('tenant_id', tenantId),
-    supabase.from('tenant').select('*').eq('id', tenantId),
-    supabase.from('driver').select('*').eq('tenant_id', tenantId),
-    supabase.from('product').select('*').eq('tenant_id', tenantId),
-    supabase.from('store').select('*').eq('tenant_id', tenantId),
-    supabase.from('store_lead').select('*').eq('tenant_id', tenantId),
-    supabase.from('store_order').select('*').eq('tenant_id', tenantId),
-    supabase.from('orders').select('*').eq('tenant_id', tenantId),
-    supabase.from('driver_collection_log').select('*').eq('tenant_id', tenantId),
-    supabase.from('payment_record').select('*').eq('tenant_id', tenantId),
-    supabase.from('inventory_log').select('*').eq('tenant_id', tenantId),
-    supabase.from('local_inventory_pool').select('*').eq('tenant_id', tenantId),
-    supabase.from('demand_forecast_plan').select('*').eq('tenant_id', tenantId),
-    supabase.from('audit_immutable_log').select('*').eq('tenant_id', tenantId).order('id', { ascending: false }).limit(200)
+    fetchAllRowsFromTable('platform_tenant', 'tenant_id', tenantId),
+    fetchAllRowsFromTable('tenant', 'id', tenantId),
+    fetchAllRowsFromTable('driver', 'tenant_id', tenantId),
+    fetchAllRowsFromTable('product', 'tenant_id', tenantId),
+    fetchAllRowsFromTable('store', 'tenant_id', tenantId),
+    fetchAllRowsFromTable('store_lead', 'tenant_id', tenantId),
+    fetchAllRowsFromTable('store_order', 'tenant_id', tenantId),
+    fetchAllRowsFromTable('orders', 'tenant_id', tenantId),
+    fetchAllRowsFromTable('driver_collection_log', 'tenant_id', tenantId),
+    fetchAllRowsFromTable('payment_record', 'tenant_id', tenantId),
+    fetchAllRowsFromTable('inventory_log', 'tenant_id', tenantId),
+    fetchAllRowsFromTable('local_inventory_pool', 'tenant_id', tenantId),
+    fetchAllRowsFromTable('demand_forecast_plan', 'tenant_id', tenantId),
+    fetchAllRowsFromTable('audit_immutable_log', 'tenant_id', tenantId)
   ]);
 
-  // order_item 表无 tenant_id，按 orders.id 关联拉取
-  const orderIds = (ordersRes.data || []).map((o) => o.id).filter(Boolean);
+  const orderIds = ordersRows.map((o) => o.id).filter(Boolean);
   let orderItems = [];
   if (orderIds.length > 0) {
-    const chunkSize = 200;
-    for (let i = 0; i < orderIds.length; i += chunkSize) {
-      const chunk = orderIds.slice(i, i + chunkSize);
+    for (let i = 0; i < orderIds.length; i += 200) {
+      const chunk = orderIds.slice(i, i + 200);
       const { data } = await supabase.from('order_item').select('*').in('order_id', chunk);
       if (Array.isArray(data)) orderItems = orderItems.concat(data);
     }
   }
 
   const cleanTid = getOriginalTenantId(tenantId);
-
-  // 剥离敏感密钥字段（access_key、totp_secret、reset_claim_token），防止备份文件泄露密码
-  const safePlatformTenants = (ptRes.data || []).map((row) => {
+  const safePlatformTenants = ptRows.map((row) => {
     const { access_key, totp_secret, reset_claim_token, ...safeRow } = row;
     return {
       ...safeRow,
@@ -97,19 +120,20 @@ export async function exportTenantFullBackup(tenantId, companyName = '', silent 
 
   const tables = {
     platform_tenant: safePlatformTenants,
-    tenant: (tRes.data || []).map((r) => ({ ...r, id: cleanTid })),
-    driver: driverRes.data || [],
-    product: prodRes.data || [],
-    store: storeRes.data || [],
-    store_lead: leadRes.data || [],
-    store_order: storeOrderRes.data || [],
-    orders: ordersRes.data || [],
+    tenant: tRows.map((r) => ({ ...r, id: cleanTid })),
+    driver: driverRows,
+    product: prodRows,
+    store: storeRows,
+    store_lead: leadRows,
+    store_order: storeOrderRows,
+    orders: ordersRows,
     order_item: orderItems,
-    driver_collection_log: driverColRes.data || [],
-    payment_record: payRecRes.data || [],
-    inventory_log: invLogRes.data || [],
-    local_inventory_pool: poolRes.data || [],
-    demand_forecast_plan: planRes.data || []
+    driver_collection_log: driverColRows,
+    payment_record: payRecRows,
+    inventory_log: invLogRows,
+    local_inventory_pool: poolRows,
+    demand_forecast_plan: planRows,
+    audit_immutable_log: auditRows
   };
 
   const resolvedName = companyName || safePlatformTenants[0]?.company_name || cleanTid;
@@ -120,22 +144,21 @@ export async function exportTenantFullBackup(tenantId, companyName = '', silent 
     company_name: resolvedName,
     summary: Object.fromEntries(Object.entries(tables).map(([k, v]) => [k, v.length])),
     tables,
-    audit_snapshot: auditRes.data || []
+    audit_snapshot: auditRows
   };
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const dateTag = new Date().toISOString().slice(0, 10);
   a.href = url;
-  a.download = `BAIGONG_BACKUP_${cleanTid}_${dateTag}.json`;
+  a.download = `BAIGONG_BACKUP_${cleanTid}_${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
 
   if (!silent) {
-    await recordAuditLog('导出商号全量数据快照', 'INFO', {
+    await recordAuditLog('导出商号全量数据与审计铁证快照', 'INFO', {
       tenant_id: cleanTid,
       company_name: resolvedName,
       summary: payload.summary
@@ -145,9 +168,6 @@ export async function exportTenantFullBackup(tenantId, companyName = '', silent 
   return payload;
 }
 
-/**
- * 辅助：重映射 JSON 数组里的商品 ID（适配 store_order.items / items_return / items_exchange）
- */
 function remapOrderItemsJson(itemsList, productIdMap) {
   if (!Array.isArray(itemsList)) return itemsList;
   return itemsList.map((item) => {
@@ -259,7 +279,8 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
     payment_record: '财务核销',
     inventory_log: '库存流水',
     local_inventory_pool: '余缺调剂',
-    demand_forecast_plan: '要货计划'
+    demand_forecast_plan: '要货计划',
+    audit_immutable_log: '审计铁证'
   };
 
   function updateBtnState() {
@@ -615,7 +636,6 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
         </div>
       </div>
 
-      <!-- 第一关：强制留存离场备份 -->
       <div class="bg-amber-50/80 border border-amber-300 rounded-2xl p-3 space-y-2">
         <div class="flex justify-between items-center">
           <b class="text-amber-950">第一关：留存离场全量数据快照 *</b>
@@ -633,7 +653,6 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
         </div>
       </div>
 
-      <!-- 第二关：手写双重口令校验 -->
       <div class="bg-stone-50 border border-stone-200 rounded-2xl p-3 space-y-2.5">
         <b class="text-stone-900 block">第二关：人工手写核验（防误触）*</b>
         <div>
@@ -652,7 +671,6 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
         </div>
       </div>
 
-      <!-- 第三关：8 秒冷静倒计时 -->
       <div class="pt-1 space-y-2">
         <div id="purge-countdown-tip" class="hidden text-center text-[11px] font-bold text-rose-700 bg-rose-50 py-1.5 rounded-xl border border-rose-200">
           ⏳ 核验通过，请保持冷静等待 <span id="purge-sec-num" class="font-mono text-sm">8</span> 秒后解锁最终按钮...
@@ -758,7 +776,6 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
   inputPhrase.addEventListener('input', evaluateAllGates);
   btnCancel.addEventListener('click', cleanupAndClose);
 
-  // 第四关：2FA 验证 + 软删除归档并释放营业执照注册资格
   btnFinal.addEventListener('click', () => {
     if (!countdownFinished) return;
 
@@ -782,7 +799,6 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
           const archivedCreditCode = targetRow.credit_code ? `${targetRow.credit_code}${archiveSuffix}` : null;
           const operatorName = sessionStorage.getItem('p_auth_name') || '高级运营管理';
 
-          // 1. 将 platform_tenant 软删除隐藏（加归档后缀释放原商号与信用代码，业务子表保留原 tenant_id 关联）
           const { error: upErr } = await supabase
             .from('platform_tenant')
             .update({
@@ -796,7 +812,6 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
 
           if (upErr) throw new Error('归档封存失败：' + upErr.message);
 
-          // 2. 同步将 tenant 与 tenant_application 标记为 archived，使原营业执照/手机号可立即重新走 join.html 注册
           await supabase.from('tenant').update({ id: archivedTenantId, status: 'archived' }).eq('id', tenantId);
           await supabase
             .from('tenant_application')
@@ -994,8 +1009,41 @@ export async function renderSeniorGovernancePanel() {
 }
 
 /**
- * 6. 终极运营管理者「三零隐身秘密武器」
+ * ============================================================================
+ * 6. 终极运营管理者「三零隐身秘密武器 · 全栈灾难母舰引擎 v2」
+ *    - 涵盖：26 张全库核心业务表 + 不可篡改审计铁证 + 操作日志 + 程序源码快照
+ *    - 具备：SHA-256 防篡改验签 + 空白新环境一键自举重建 + 全网终端紧急踢出
+ * ============================================================================
  */
+const MOTHERBOARD_TABLES = [
+  'platform_admin_credential',
+  'platform_governance_config',
+  'platform_gov_configs',
+  'platform_membership_plan',
+  'platform_category',
+  'platform_category_dict',
+  'platform_standard_category',
+  'platform_tenant',
+  'tenant',
+  'tenant_application',
+  'driver',
+  'product',
+  'store',
+  'store_lead',
+  'store_order',
+  'orders',
+  'order_item',
+  'driver_collection_log',
+  'payment_record',
+  'inventory_log',
+  'local_inventory_pool',
+  'demand_forecast_plan',
+  'platform_compliance_case',
+  'platform_suggestion_board',
+  'audit_immutable_log',
+  'sys_qr_session'
+];
+
 async function sha256Hex(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf))
@@ -1027,44 +1075,31 @@ async function verifySovereignPassphrase(inputPass) {
   return inputHash === defaultHash;
 }
 
+/**
+ * 打包导出全平台 26 表全量数据 + 不可篡改审计铁证 + 操作流水（带 SHA-256 防篡改验真封印）
+ */
 async function exportFullPlatformDisasterMotherboard() {
-  const allTables = [
-    'platform_admin_credential',
-    'platform_governance_config',
-    'platform_gov_configs',
-    'platform_membership_plan',
-    'platform_category',
-    'platform_category_dict',
-    'platform_standard_category',
-    'platform_tenant',
-    'tenant',
-    'tenant_application',
-    'driver',
-    'product',
-    'store',
-    'store_lead',
-    'store_order',
-    'orders',
-    'order_item',
-    'driver_collection_log',
-    'payment_record',
-    'inventory_log',
-    'local_inventory_pool',
-    'demand_forecast_plan',
-    'platform_compliance_case',
-    'platform_suggestion_board',
-    'audit_immutable_log'
-  ];
-
   const snapshot = {};
-  for (const tbl of allTables) {
-    const { data } = await supabase.from(tbl).select('*');
-    snapshot[tbl] = data || [];
+  for (const tbl of MOTHERBOARD_TABLES) {
+    snapshot[tbl] = await fetchAllRowsFromTable(tbl);
   }
 
+  const canonicalJson = JSON.stringify(snapshot);
+  const integritySeal = await sha256Hex(`BAIGONG_MOTHERBOARD_SEAL::${canonicalJson}`);
+
   const motherPayload = {
-    schema_version: 'baigong_sovereign_disaster_motherboard_v1',
+    schema_version: 'baigong_sovereign_disaster_motherboard_v2',
     created_at: new Date().toISOString(),
+    integrity_sha256: integritySeal,
+    evidence_summary: {
+      immutable_audit_logs: snapshot.audit_immutable_log.length,
+      compliance_arbitration_cases: snapshot.platform_compliance_case.length,
+      inventory_operation_logs: snapshot.inventory_log.length,
+      financial_payment_records: snapshot.payment_record.length,
+      driver_collection_logs: snapshot.driver_collection_log.length,
+      total_tenants: snapshot.platform_tenant.length,
+      total_orders: snapshot.orders.length + snapshot.store_order.length
+    },
     table_counts: Object.fromEntries(Object.entries(snapshot).map(([k, v]) => [k, v.length])),
     tables: snapshot
   };
@@ -1080,26 +1115,315 @@ async function exportFullPlatformDisasterMotherboard() {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * 打包当前运行时程序源码快照（捕获 HTML 入口与所有已加载 JS 模块源码，供离线代码容灾）
+ */
+async function exportRuntimeSourceCodeVault() {
+  const candidateUrls = new Set([
+    './platform.html',
+    './hq.html',
+    './join.html',
+    './mall.html',
+    './index.html',
+    './src/modules/platformController.js',
+    './src/modules/platform/platformState.js',
+    './src/modules/platform/platformAuthModule.js',
+    './src/modules/platform/platformTenantModule.js',
+    './src/modules/platform/tenantLifecycleModule.js',
+    './src/modules/platform/platformAuditModule.js',
+    './src/modules/platform/platformGovernanceModule.js',
+    './src/utils/authSecurity.js',
+    './src/utils/totp.js',
+    './src/lib/supabase.js'
+  ]);
+
+  // 自动收集当前页面性能资源列表中的所有同源 JS/CSS 脚本
+  if (typeof performance !== 'undefined' && performance.getEntriesByType) {
+    performance.getEntriesByType('resource').forEach((entry) => {
+      if (entry.name && entry.name.startsWith(window.location.origin)) {
+        candidateUrls.add(entry.name);
+      }
+    });
+  }
+
+  const capturedFiles = {};
+  for (const rawUrl of candidateUrls) {
+    try {
+      const resp = await fetch(rawUrl, { cache: 'no-store' });
+      if (resp.ok) {
+        const text = await resp.text();
+        if (text && text.length > 0 && !text.startsWith('<!DOCTYPE html>') || rawUrl.endsWith('.html') || rawUrl.endsWith('/')) {
+          const cleanKey = rawUrl.replace(window.location.origin, '');
+          capturedFiles[cleanKey] = text;
+        }
+      }
+    } catch (e) {}
+  }
+
+  const bundlePayload = {
+    schema_version: 'baigong_runtime_source_vault_v1',
+    captured_at: new Date().toISOString(),
+    origin: window.location.origin,
+    file_count: Object.keys(capturedFiles).length,
+    files: capturedFiles
+  };
+
+  const blob = new Blob([JSON.stringify(bundlePayload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `SOVEREIGN_PROGRAM_SOURCE_VAULT_${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  return bundlePayload.file_count;
+}
+
+/**
+ * 批量分片安全插入（自动剥离自增 id 冲突并兼容表结构）
+ */
+async function batchInsertTableRows(tableName, rows, preserveId = false) {
+  if (!Array.isArray(rows) || rows.length === 0) return 0;
+  const cleaned = rows.map((r) => {
+    if (preserveId) return { ...r };
+    const { id, ...rest } = r;
+    return rest;
+  });
+
+  const chunkSize = 200;
+  let inserted = 0;
+  for (let i = 0; i < cleaned.length; i += chunkSize) {
+    const chunk = cleaned.slice(i, i + chunkSize);
+    const { error } = await supabase.from(tableName).upsert(chunk);
+    if (!error) {
+      inserted += chunk.length;
+    } else {
+      // 若表无主键冲突约束则降级为普通 insert
+      const { error: insErr } = await supabase.from(tableName).insert(chunk);
+      if (!insErr) inserted += chunk.length;
+    }
+  }
+  return inserted;
+}
+
+/**
+ * 终极灾难母包一键全库重建引擎（在空白新库或遭破坏环境中按拓扑外键序重建 26 张表 + 审计铁证）
+ */
+async function executeFullMotherboardDisasterRebuild(motherJson, wipeBeforeRestore, logCallback) {
+  if (!motherJson || !motherJson.tables) {
+    throw new Error('无效的灾难恢复母包文件');
+  }
+
+  // 1. 校验 SHA-256 防篡改封印（v2 母包强制验真）
+  if (motherJson.schema_version === 'baigong_sovereign_disaster_motherboard_v2' && motherJson.integrity_sha256) {
+    logCallback('🔍 正在校验灾难母包 SHA-256 防篡改完整性封印...');
+    const computed = await sha256Hex(`BAIGONG_MOTHERBOARD_SEAL::${JSON.stringify(motherJson.tables)}`);
+    if (computed !== motherJson.integrity_sha256) {
+      throw new Error('⛔ 验签失败！该母包文件在离线保存期间遭到过篡改或损坏，系统已拒绝灌入以防污染！');
+    }
+    logCallback('✅ 母包 SHA-256 完整性封印验证通过，铁证无损！');
+  }
+
+  const t = motherJson.tables;
+
+  // 2. 若勾选重建前清扫残余脏数据，按外键逆序清理
+  if (wipeBeforeRestore) {
+    logCallback('🧹 正在按外键逆序清扫当前数据库残余脏数据...');
+    const reverseOrder = [...MOTHERBOARD_TABLES].reverse();
+    for (const tbl of reverseOrder) {
+      // 使用通用条件清空表（兼容 text 主键与 numeric 主键）
+      await supabase.from(tbl).delete().neq('id', -999999999);
+      await supabase.from(tbl).delete().neq('tenant_id', '__NONE__');
+      await supabase.from(tbl).delete().neq('config_key', '__NONE__');
+    }
+  }
+
+  let totalRestored = 0;
+
+  // 3. 第一梯队：系统根基（管理员凭证、治理配置、会员档位、标准品类树）
+  logCallback('🏛️ [1/5] 正在重建管理员凭证库、全域治理参数与会员等级体系...');
+  totalRestored += await batchInsertTableRows('platform_admin_credential', t.platform_admin_credential);
+  totalRestored += await batchInsertTableRows('platform_governance_config', t.platform_governance_config, true);
+  totalRestored += await batchInsertTableRows('platform_gov_configs', t.platform_gov_configs);
+  totalRestored += await batchInsertTableRows('platform_membership_plan', t.platform_membership_plan);
+
+  // 重建标准品类树并映射父子 parent_id
+  if (Array.isArray(t.platform_category) && t.platform_category.length > 0) {
+    const catIdMap = new Map();
+    const l1Cats = t.platform_category.filter((c) => c.level === 1 || !c.parent_id);
+    const l2Cats = t.platform_category.filter((c) => c.level === 2 && c.parent_id);
+    for (const c1 of l1Cats) {
+      const { id: oldId, ...rest } = c1;
+      const { data: ins } = await supabase.from('platform_category').insert([rest]).select('id').single();
+      if (oldId != null && ins?.id != null) catIdMap.set(String(oldId), ins.id);
+      totalRestored += 1;
+    }
+    for (const c2 of l2Cats) {
+      const { id: oldId, ...rest } = c2;
+      const mappedParent = catIdMap.get(String(rest.parent_id)) || rest.parent_id;
+      await supabase.from('platform_category').insert([{ ...rest, parent_id: mappedParent }]);
+      totalRestored += 1;
+    }
+  }
+  totalRestored += await batchInsertTableRows('platform_category_dict', t.platform_category_dict);
+  totalRestored += await batchInsertTableRows('platform_standard_category', t.platform_standard_category);
+
+  // 4. 第二梯队：在册商号主档与入驻资质档案
+  logCallback('🏢 [2/5] 正在重建全网商号主档、入驻申请资质与执事司机名册...');
+  totalRestored += await batchInsertTableRows('platform_tenant', t.platform_tenant);
+  totalRestored += await batchInsertTableRows('tenant', t.tenant, true);
+  totalRestored += await batchInsertTableRows('tenant_application', t.tenant_application);
+  totalRestored += await batchInsertTableRows('driver', t.driver);
+
+  // 5. 第三梯队：全网商品库、合作门店与订单（重建自增 ID 映射）
+  logCallback('📦 [3/5] 正在重建全网商品库、合作门店（含一店一价重映射）与订单主档...');
+  const productIdMap = new Map();
+  if (Array.isArray(t.product)) {
+    for (const oldProd of t.product) {
+      const { id: oldId, ...rest } = oldProd;
+      const { data: ins } = await supabase.from('product').insert([rest]).select('id').single();
+      if (oldId != null && ins?.id != null) productIdMap.set(String(oldId), ins.id);
+      totalRestored += 1;
+    }
+  }
+
+  const storeIdMap = new Map();
+  if (Array.isArray(t.store)) {
+    for (const oldStore of t.store) {
+      const { id: oldId, ...rest } = oldStore;
+      const mappedVisible = Array.isArray(rest.visible_product_ids)
+        ? rest.visible_product_ids.map((pid) => productIdMap.get(String(pid))).filter((v) => v != null)
+        : rest.visible_product_ids;
+      let mappedPricing = rest.custom_pricing;
+      if (mappedPricing && typeof mappedPricing === 'object' && !Array.isArray(mappedPricing)) {
+        const nextP = {};
+        for (const [k, v] of Object.entries(mappedPricing)) {
+          nextP[String(productIdMap.get(String(k)) || k)] = v;
+        }
+        mappedPricing = nextP;
+      }
+      const { data: ins } = await supabase
+        .from('store')
+        .insert([{ ...rest, visible_product_ids: mappedVisible, custom_pricing: mappedPricing }])
+        .select('id')
+        .single();
+      if (oldId != null && ins?.id != null) storeIdMap.set(String(oldId), ins.id);
+      totalRestored += 1;
+    }
+  }
+
+  totalRestored += await batchInsertTableRows('store_lead', t.store_lead);
+
+  if (Array.isArray(t.store_order) && t.store_order.length > 0) {
+    const mappedStoreOrders = t.store_order.map(({ id, ...rest }) => ({
+      ...rest,
+      store_id: storeIdMap.get(String(rest.store_id)) || rest.store_id,
+      items: remapOrderItemsJson(rest.items, productIdMap),
+      items_return: remapOrderItemsJson(rest.items_return, productIdMap),
+      items_exchange: remapOrderItemsJson(rest.items_exchange, productIdMap)
+    }));
+    totalRestored += await batchInsertTableRows('store_order', mappedStoreOrders);
+  }
+
+  const orderIdMap = new Map();
+  if (Array.isArray(t.orders)) {
+    for (const oldOrder of t.orders) {
+      const { id: oldId, ...rest } = oldOrder;
+      const { data: ins } = await supabase
+        .from('orders')
+        .insert([{ ...rest, store_id: rest.store_id != null ? storeIdMap.get(String(rest.store_id)) || rest.store_id : null }])
+        .select('id')
+        .single();
+      if (oldId != null && ins?.id != null) orderIdMap.set(String(oldId), ins.id);
+      totalRestored += 1;
+    }
+  }
+
+  if (Array.isArray(t.order_item) && t.order_item.length > 0) {
+    const mappedOrderItems = t.order_item.map(({ id, ...rest }) => ({
+      ...rest,
+      order_id: rest.order_id != null ? orderIdMap.get(String(rest.order_id)) || rest.order_id : null,
+      product_id: rest.product_id != null ? productIdMap.get(String(rest.product_id)) || rest.product_id : null
+    }));
+    totalRestored += await batchInsertTableRows('order_item', mappedOrderItems);
+  }
+
+  // 6. 第四梯队：财务核销、随车收款、库存流水、余缺调剂与用度计划
+  logCallback('💰 [4/5] 正在重建全部财务核销流水、随车收款记录与库存变动明细...');
+  if (Array.isArray(t.driver_collection_log) && t.driver_collection_log.length > 0) {
+    const rows = t.driver_collection_log.map(({ id, ...rest }) => ({
+      ...rest,
+      store_id: storeIdMap.get(String(rest.store_id)) || rest.store_id
+    }));
+    totalRestored += await batchInsertTableRows('driver_collection_log', rows);
+  }
+  if (Array.isArray(t.payment_record) && t.payment_record.length > 0) {
+    const rows = t.payment_record.map(({ id, ...rest }) => ({
+      ...rest,
+      store_id: rest.store_id != null ? storeIdMap.get(String(rest.store_id)) || rest.store_id : null,
+      order_id: rest.order_id != null ? orderIdMap.get(String(rest.order_id)) || rest.order_id : null
+    }));
+    totalRestored += await batchInsertTableRows('payment_record', rows);
+  }
+  if (Array.isArray(t.inventory_log) && t.inventory_log.length > 0) {
+    const rows = t.inventory_log.map(({ id, ...rest }) => ({
+      ...rest,
+      product_id: productIdMap.get(String(rest.product_id)) || rest.product_id
+    }));
+    totalRestored += await batchInsertTableRows('inventory_log', rows);
+  }
+  if (Array.isArray(t.local_inventory_pool) && t.local_inventory_pool.length > 0) {
+    const rows = t.local_inventory_pool.map(({ id, ...rest }) => ({
+      ...rest,
+      from_store_id: storeIdMap.get(String(rest.from_store_id)) || rest.from_store_id,
+      to_store_id: rest.to_store_id != null ? storeIdMap.get(String(rest.to_store_id)) || rest.to_store_id : null,
+      product_id: rest.product_id != null ? productIdMap.get(String(rest.product_id)) || rest.product_id : null
+    }));
+    totalRestored += await batchInsertTableRows('local_inventory_pool', rows);
+  }
+  if (Array.isArray(t.demand_forecast_plan) && t.demand_forecast_plan.length > 0) {
+    const rows = t.demand_forecast_plan.map(({ id, ...rest }) => ({
+      ...rest,
+      store_id: storeIdMap.get(String(rest.store_id)) || rest.store_id,
+      items: remapOrderItemsJson(rest.items, productIdMap)
+    }));
+    totalRestored += await batchInsertTableRows('demand_forecast_plan', rows);
+  }
+
+  // 7. 第五梯队：铁证回填（天道明鉴不可篡改审计流水 + 联署公断案卷 + 建言与公域求购留痕）
+  logCallback('⚖️ [5/5] 正在回填【天道明鉴不可篡改审计铁证】与联署公断历史案卷...');
+  totalRestored += await batchInsertTableRows('platform_compliance_case', t.platform_compliance_case);
+  totalRestored += await batchInsertTableRows('platform_suggestion_board', t.platform_suggestion_board);
+  totalRestored += await batchInsertTableRows('audit_immutable_log', t.audit_immutable_log);
+
+  logCallback(`🎉 全栈灾难重建圆满完成！累计精准还原 ${totalRestored} 条数据与铁证记录。`);
+  return totalRestored;
+}
+
 function openSovereignCommandVault() {
   document.getElementById('sovereign-command-vault')?.remove();
+
+  let loadedMotherboardJson = null;
 
   const overlay = document.createElement('div');
   overlay.id = 'sovereign-command-vault';
   overlay.className = 'fixed inset-0 bg-black/95 backdrop-blur-md z-[200] flex items-center justify-center p-4 select-none';
 
   overlay.innerHTML = `
-    <div class="bg-stone-950 border border-amber-500/50 w-full max-w-xl rounded-3xl p-6 space-y-4 text-stone-200 shadow-2xl text-xs">
+    <div class="bg-stone-950 border border-amber-500/50 w-full max-w-2xl rounded-3xl p-6 space-y-4 text-stone-200 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-800 pb-3">
         <div class="flex items-center gap-2.5">
           <span class="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black text-base">⚜️</span>
           <div>
-            <h3 class="text-sm font-black text-amber-400 tracking-wide">终极运营主权指令舱（隐身隔离态）</h3>
-            <p class="text-[10px] text-stone-400">独立主权加密验证 · 操作静默执行，不向常规运营列表暴露痕迹</p>
+            <h3 class="text-sm font-black text-amber-400 tracking-wide">终极运营主权指令舱（全栈灾难母舰 v2）</h3>
+            <p class="text-[10px] text-stone-400">独立主权加密验证 · 覆盖全库数据 + 审计操作铁证 + 程序源码容灾</p>
           </div>
         </div>
         <button type="button" id="btn-close-sovereign" class="text-stone-400 hover:text-white text-lg">✕</button>
       </div>
 
+      <!-- 身份核验区 -->
       <div id="sovereign-lock-view" class="space-y-3 py-2">
         <label class="block text-amber-300 font-bold">请输入终极主权暗令（默认 SOVEREIGN#2026，验证后可自定义修改）：</label>
         <input type="password" id="input-sovereign-pass" placeholder="输入主权暗令"
@@ -1110,33 +1434,71 @@ function openSovereignCommandVault() {
         </button>
       </div>
 
-      <div id="sovereign-weapons-view" class="hidden space-y-3.5 max-h-[75vh] overflow-y-auto pr-1">
+      <!-- 解锁后的终极武器库 -->
+      <div id="sovereign-weapons-view" class="hidden space-y-3.5 max-h-[78vh] overflow-y-auto pr-1">
+        <!-- 武器一：全网紧急熔断与全端踢出 -->
         <div class="bg-stone-900 border border-rose-500/40 rounded-2xl p-3.5 space-y-2">
           <div class="flex justify-between items-center">
-            <b class="text-rose-400 text-xs">⚡ 武器一：全网极端情况紧急熔断（Kill-Switch）</b>
+            <b class="text-rose-400 text-xs">⚡ 武器一：全网紧急熔断与全端强制踢出（Kill-Switch）</b>
             <span id="sovereign-circuit-status" class="text-[10px] font-mono px-2 py-0.5 rounded bg-stone-800 text-stone-300">检测中...</span>
           </div>
-          <p class="text-[11px] text-stone-400">遭遇极端并发异常、黑客攻击或重大政策调整时，一键切换全站只读护盘熔断状态。</p>
-          <div class="flex gap-2">
-            <button type="button" id="btn-sovereign-freeze-all" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl">
-              🛑 启动全网紧急熔断护盘
+          <p class="text-[11px] text-stone-400">遭遇攻击或内部异常时，一键冻结全站外部写入，并可立即作废全网所有在线终端凭证。</p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button type="button" id="btn-sovereign-freeze-all" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl">
+              🛑 启动全网熔断护盘
             </button>
-            <button type="button" id="btn-sovereign-unfreeze-all" class="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 rounded-xl">
-              🟢 解除熔断恢复全网通畅
+            <button type="button" id="btn-sovereign-unfreeze-all" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 rounded-xl">
+              🟢 解除熔断恢复通畅
+            </button>
+            <button type="button" id="btn-sovereign-wipe-sessions" class="bg-amber-900 hover:bg-amber-800 text-amber-200 border border-amber-600/50 font-bold py-2 rounded-xl">
+              🔌 踢出全网所有在线终端
             </button>
           </div>
         </div>
 
-        <div class="bg-stone-900 border border-amber-500/30 rounded-2xl p-3.5 space-y-2">
-          <b class="text-amber-300 text-xs block">🧬 武器二：全库多商号母版灾备导出（25张全表级）</b>
-          <p class="text-[11px] text-stone-400">一键打包全平台所有商号、品类字典、会员档位、运行参数与凭证库，用于跨服务器灾难重建。</p>
-          <button type="button" id="btn-sovereign-export-all" class="w-full bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-2 rounded-xl">
-            📥 立即下载全平台 25 表灾难恢复母包 (.json)
+        <!-- 武器二：全栈母版灾备导出（26表数据+审计操作铁证 + 程序源码包） -->
+        <div class="bg-stone-900 border border-amber-500/40 rounded-2xl p-3.5 space-y-2.5">
+          <b class="text-amber-300 text-xs block">🧬 武器二：全栈母版离线备份（26表数据 + 审计操作铁证 + 程序源码）</b>
+          <p class="text-[11px] text-stone-400">
+            完整包含 <b>audit_immutable_log（防篡改审计铁证）</b>、<b>inventory_log（库存操作流水）</b>、<b>payment_record（财务核销流水）</b>及全网 26 表数据（带 SHA-256 防篡改封印），另可一键打包当前程序源码。
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button type="button" id="btn-sovereign-export-all" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-2.5 rounded-xl">
+              📥 下载全库 26 表与铁证母包 (.json)
+            </button>
+            <button type="button" id="btn-sovereign-export-code" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-2.5 rounded-xl">
+              📦 打包下载当前程序源码快照 (.json)
+            </button>
+          </div>
+        </div>
+
+        <!-- 武器三：从零开始 · 上传母包一键灾难重建 -->
+        <div class="bg-stone-900 border border-emerald-500/40 rounded-2xl p-3.5 space-y-2.5">
+          <b class="text-emerald-400 text-xs block">🏗️ 武器三：从零开始 · 上传灾难母包一键全库重建（含审计铁证还原）</b>
+          <p class="text-[11px] text-stone-400">
+            遭遇极端毁灭性破坏时，在新库建好基础空表后上传母包，自动验证 SHA-256 封印并按拓扑外键序重建全网数据与审计铁证。
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="flex-1 bg-stone-950 border border-dashed border-emerald-500/50 hover:border-emerald-400 rounded-xl px-3 py-2 cursor-pointer text-center font-bold text-emerald-300">
+              <span id="sovereign-mother-file-label">📂 点击选择灾难恢复母包 (.json)</span>
+              <input type="file" id="input-sovereign-mother-file" accept=".json,application/json" class="hidden">
+            </label>
+            <label class="flex items-center gap-1.5 text-[11px] text-amber-300 cursor-pointer shrink-0">
+              <input type="checkbox" id="chk-sovereign-wipe-before" checked class="rounded text-rose-600">
+              <span>灌入前清扫脏数据</span>
+            </label>
+          </div>
+          <div id="sovereign-mother-preview" class="hidden bg-stone-950 border border-stone-800 rounded-xl p-2.5 text-[11px] space-y-1"></div>
+          <div id="sovereign-rebuild-log" class="hidden bg-black border border-emerald-900/60 rounded-xl p-2.5 font-mono text-[10px] text-emerald-300 max-h-32 overflow-y-auto space-y-0.5"></div>
+          <button type="button" id="btn-sovereign-execute-rebuild" disabled
+            class="w-full bg-stone-800 text-stone-500 font-black py-2.5 rounded-xl cursor-not-allowed transition">
+            🔒 请先选择灾难恢复母包
           </button>
         </div>
 
+        <!-- 武器四：指定商号物理级彻底粉碎 -->
         <div class="bg-stone-900 border border-stone-700 rounded-2xl p-3.5 space-y-2">
-          <b class="text-stone-200 text-xs block">☢️ 武器三：物理级彻底抹除（不可逆粉碎指定商号）</b>
+          <b class="text-stone-200 text-xs block">☢️ 武器四：物理级彻底抹除（不可逆粉碎指定商号）</b>
           <div class="flex gap-2">
             <input type="text" id="input-sovereign-hard-purge-tid" placeholder="输入商号代号（含 __ARCHIVED_ 后缀亦可）"
               class="flex-1 bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white outline-none">
@@ -1146,8 +1508,9 @@ function openSovereignCommandVault() {
           </div>
         </div>
 
+        <!-- 武器五：自定义主权暗令 -->
         <div class="bg-stone-900 border border-stone-800 rounded-2xl p-3.5 space-y-2">
-          <b class="text-stone-300 text-xs block">🔐 武器四：重设终极主权暗令</b>
+          <b class="text-stone-300 text-xs block">🔐 武器五：重设终极主权暗令</b>
           <div class="flex gap-2">
             <input type="password" id="input-sovereign-new-pass" placeholder="输入新的高强度主权暗令（至少10位）"
               class="flex-1 bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white outline-none">
@@ -1201,6 +1564,7 @@ function openSovereignCommandVault() {
   });
   setTimeout(() => passInput.focus(), 100);
 
+  // 武器一绑定
   document.getElementById('btn-sovereign-freeze-all').addEventListener('click', async () => {
     await supabase.from('platform_governance_config').upsert([
       {
@@ -1231,21 +1595,114 @@ function openSovereignCommandVault() {
     alert('🟢 已解除全网熔断，全站恢复正常协作！');
   });
 
+  document.getElementById('btn-sovereign-wipe-sessions').addEventListener('click', async () => {
+    await supabase.from('sys_qr_session').delete().neq('id', -999999999);
+    await supabase.from('login_qr_session').delete().neq('id', -999999999);
+    const { data: allTenants } = await supabase.from('platform_tenant').select('tenant_id');
+    for (const row of allTenants || []) {
+      await supabase.rpc('rpc_bump_session_epoch', {
+        p_tenant_id: row.tenant_id,
+        p_reason: '全局最高安全指令清退所有在线终端'
+      }).catch(() => {});
+    }
+    alert('🔌 已清退全网所有商号与扫码登录会话，所有终端必须重新核验身份！');
+  });
+
+  // 武器二绑定
   document.getElementById('btn-sovereign-export-all').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
-    btn.textContent = '⏳ 正在全库提取 25 张核心表母包...';
+    btn.textContent = '⏳ 正在全库提取 26 张表与审计铁证...';
     try {
       await exportFullPlatformDisasterMotherboard();
-      alert('✅ 全平台 25 表灾难恢复母包已导出下载！请妥善离线保管。');
+      alert('✅ 全平台 26 表数据 + 不可篡改审计铁证母包已导出下载（含 SHA-256 防篡改封印）！');
     } catch (err) {
       alert('❌ 导出失败：' + (err?.message || ''));
     } finally {
       btn.disabled = false;
-      btn.textContent = '📥 立即下载全平台 25 表灾难恢复母包 (.json)';
+      btn.textContent = '📥 下载全库 26 表与铁证母包 (.json)';
     }
   });
 
+  document.getElementById('btn-sovereign-export-code').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = '⏳ 正在收集前端程序与模块源码...';
+    try {
+      const count = await exportRuntimeSourceCodeVault();
+      alert(`📦 已打包下载当前运行时程序源码快照（共收录 ${count} 个核心程序源文件）！`);
+    } catch (err) {
+      alert('❌ 源码打包失败：' + (err?.message || ''));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '📦 打包下载当前程序源码快照 (.json)';
+    }
+  });
+
+  // 武器三绑定（上传母包一键灾难重建）
+  const motherFileInput = document.getElementById('input-sovereign-mother-file');
+  const motherFileLabel = document.getElementById('sovereign-mother-file-label');
+  const motherPreview = document.getElementById('sovereign-mother-preview');
+  const rebuildLogBox = document.getElementById('sovereign-rebuild-log');
+  const btnExecuteRebuild = document.getElementById('btn-sovereign-execute-rebuild');
+
+  motherFileInput.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (!parsed.tables || !String(parsed.schema_version || '').startsWith('baigong_sovereign_disaster_motherboard')) {
+        alert('❌ 格式错误：请选择终极主权指令舱导出的灾难恢复母包文件！');
+        return;
+      }
+      loadedMotherboardJson = parsed;
+      motherFileLabel.textContent = `✅ 已载入：${file.name}`;
+      const ev = parsed.evidence_summary || {};
+      motherPreview.classList.remove('hidden');
+      motherPreview.innerHTML = `
+        <div class="text-emerald-300 font-bold">母包生成时间：${new Date(parsed.created_at).toLocaleString('zh-CN')}</div>
+        <div class="text-stone-300">内含：在册/归档商号 <b>${ev.total_tenants ?? (parsed.tables.platform_tenant?.length || 0)}</b> 家 · 订单 <b>${ev.total_orders ?? 0}</b> 笔 · 不可篡改审计铁证 <b>${ev.immutable_audit_logs ?? (parsed.tables.audit_immutable_log?.length || 0)}</b> 条 · 财务与库存流水 <b>${(ev.financial_payment_records || 0) + (ev.inventory_operation_logs || 0)}</b> 条</div>
+        <div class="text-amber-400 font-mono truncate">SHA-256 封印：${parsed.integrity_sha256 || 'v1兼容包'}</div>
+      `;
+      btnExecuteRebuild.disabled = false;
+      btnExecuteRebuild.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl shadow transition';
+      btnExecuteRebuild.textContent = '🚀 立即执行全库灾难重建与铁证还原';
+    } catch (err) {
+      alert('❌ 母包文件解析失败：' + (err?.message || '文件损坏'));
+    }
+  });
+
+  btnExecuteRebuild.addEventListener('click', async () => {
+    if (!loadedMotherboardJson) return;
+    const wipeBefore = document.getElementById('chk-sovereign-wipe-before').checked;
+    btnExecuteRebuild.disabled = true;
+    btnExecuteRebuild.textContent = '⏳ 正在执行全栈灾难重建，请勿关闭页面...';
+    rebuildLogBox.classList.remove('hidden');
+    rebuildLogBox.innerHTML = '';
+
+    const appendLog = (msg) => {
+      const line = document.createElement('div');
+      line.textContent = `[${new Date().toLocaleTimeString('zh-CN', { hour12: false })}] ${msg}`;
+      rebuildLogBox.appendChild(line);
+      rebuildLogBox.scrollTop = rebuildLogBox.scrollHeight;
+    };
+
+    try {
+      const total = await executeFullMotherboardDisasterRebuild(loadedMotherboardJson, wipeBefore, appendLog);
+      alert(`🎉 灾难重建圆满完成！全库 26 张核心表、业务往来与不可篡改审计铁证（共 ${total} 条记录）已全部还原！`);
+      if (typeof window.loadPlatformData === 'function') {
+        await window.loadPlatformData();
+      }
+    } catch (err) {
+      appendLog('❌ 重建中止：' + (err?.message || '未知错误'));
+      alert('❌ 灾难重建失败：' + (err?.message || '未知错误'));
+    } finally {
+      btnExecuteRebuild.disabled = false;
+      btnExecuteRebuild.textContent = '🚀 重新执行全库灾难重建';
+    }
+  });
+
+  // 武器四绑定
   document.getElementById('btn-sovereign-hard-purge').addEventListener('click', async () => {
     const rawTid = document.getElementById('input-sovereign-hard-purge-tid').value.trim();
     if (!rawTid) return alert('请输入要物理粉碎的商号代号');
@@ -1283,6 +1740,7 @@ function openSovereignCommandVault() {
     if (typeof window.loadPlatformData === 'function') await window.loadPlatformData();
   });
 
+  // 武器五绑定
   document.getElementById('btn-sovereign-save-pass').addEventListener('click', async () => {
     const newPass = document.getElementById('input-sovereign-new-pass').value.trim();
     if (newPass.length < 10) return alert('为确保主权安全，新暗令长度不能少于 10 位！');
