@@ -995,9 +995,9 @@ export async function renderSeniorGovernancePanel() {
 
 /**
  * ============================================================================
- * 6. 终极运营管理者「三零隐身秘密武器 · 全栈灾难母舰引擎 v2.1」
- *    - 涵盖：26 张全库核心业务表 + 不可篡改审计铁证 + 操作日志 + 执照Base64离线内嵌 + 程序源码快照
- *    - 具备：输错3次锁定30分钟 + SHA-256验签 + 铁证只增不删幂等补齐 + 重建后26表逐行数目对账单
+ * 6. 终极运营管理者「三零隐身秘密武器 · 全栈灾难母舰引擎 v2.2」
+ *    - 涵盖：26 张全库核心业务表 + 不可篡改审计铁证 + 操作日志 + 执照Base64离线内嵌 + 全站递归源码快照
+ *    - 具备：输错3次锁定30分钟 + 设新暗令后废除默认密码 + SHA-256验签 + 铁证只增不删幂等补齐 + 重建后26表逐行数目验真对账单
  * ============================================================================
  */
 const MOTHERBOARD_TABLES = [
@@ -1088,6 +1088,8 @@ async function verifySovereignPassphrase(inputPass) {
     .maybeSingle();
 
   if (cfg?.config_value) {
+    // 同步落入本地防降级，一旦云端设过新暗令即永久废除默认口令
+    localStorage.setItem(SOVEREIGN_KEY_STORAGE, cfg.config_value);
     return inputHash === cfg.config_value;
   }
 
@@ -1124,7 +1126,6 @@ async function exportFullPlatformDisasterMotherboard() {
     snapshot[tbl] = await fetchAllRowsFromTable(tbl);
   }
 
-  // 将所有入驻申请里的营业执照图片转化为 Base64 离线内嵌，彻底摆脱对原存储桶的依赖
   if (Array.isArray(snapshot.tenant_application) && snapshot.tenant_application.length > 0) {
     for (let i = 0; i < snapshot.tenant_application.length; i++) {
       const app = snapshot.tenant_application[i];
@@ -1169,25 +1170,34 @@ async function exportFullPlatformDisasterMotherboard() {
 }
 
 /**
- * 打包当前运行时程序源码快照
+ * 打包全站所有端（总控/调度台/入驻/天街/门店/司机）完整程序源码快照（递归解析 HTML 依赖树）
  */
 async function exportRuntimeSourceCodeVault() {
-  const candidateUrls = new Set([
+  const entryPages = [
+    './index.html',
     './platform.html',
     './hq.html',
     './join.html',
     './mall.html',
-    './index.html',
+    './store.html',
+    './driver.html'
+  ];
+
+  const candidateUrls = new Set([
+    ...entryPages,
+    './src/styles/tailwind.css',
+    './src/lib/supabase.js',
+    './src/utils/authSecurity.js',
+    './src/utils/totp.js',
     './src/modules/platformController.js',
+    './src/modules/platformEvolutionWidget.js',
+    './src/modules/platformSelfCheckEnhancer.js',
     './src/modules/platform/platformState.js',
     './src/modules/platform/platformAuthModule.js',
     './src/modules/platform/platformTenantModule.js',
     './src/modules/platform/tenantLifecycleModule.js',
     './src/modules/platform/platformAuditModule.js',
-    './src/modules/platform/platformGovernanceModule.js',
-    './src/utils/authSecurity.js',
-    './src/utils/totp.js',
-    './src/lib/supabase.js'
+    './src/modules/platform/platformGovernanceModule.js'
   ]);
 
   if (typeof performance !== 'undefined' && performance.getEntriesByType) {
@@ -1199,21 +1209,40 @@ async function exportRuntimeSourceCodeVault() {
   }
 
   const capturedFiles = {};
-  for (const rawUrl of candidateUrls) {
+  const queue = Array.from(candidateUrls);
+  const visited = new Set();
+
+  while (queue.length > 0) {
+    const rawUrl = queue.shift();
+    if (!rawUrl || visited.has(rawUrl)) continue;
+    visited.add(rawUrl);
+
     try {
       const resp = await fetch(rawUrl, { cache: 'no-store' });
-      if (resp.ok) {
-        const text = await resp.text();
-        if ((text && text.length > 0 && !text.startsWith('<!DOCTYPE html>')) || rawUrl.endsWith('.html') || rawUrl.endsWith('/')) {
-          const cleanKey = rawUrl.replace(window.location.origin, '');
-          capturedFiles[cleanKey] = text;
+      if (!resp.ok) continue;
+      const text = await resp.text();
+      if (!text || text.length === 0) continue;
+
+      const isHtml = rawUrl.endsWith('.html') || rawUrl.endsWith('/');
+      if (!isHtml && text.trim().startsWith('<!DOCTYPE html>')) continue;
+
+      const cleanKey = rawUrl.replace(window.location.origin, '');
+      capturedFiles[cleanKey] = text;
+
+      const refMatches = text.matchAll(/(?:src|href|from)\s*=?\s*['"](\.[^'"]+\.(?:js|css|html))['"]/g);
+      for (const m of refMatches) {
+        if (m[1]) {
+          const resolved = new URL(m[1], new URL(rawUrl, window.location.href)).pathname;
+          if (!visited.has('.' + resolved) && !visited.has(resolved)) {
+            queue.push('.' + resolved);
+          }
         }
       }
     } catch (e) {}
   }
 
   const bundlePayload = {
-    schema_version: 'baigong_runtime_source_vault_v1',
+    schema_version: 'baigong_runtime_source_vault_v2',
     captured_at: new Date().toISOString(),
     origin: window.location.origin,
     file_count: Object.keys(capturedFiles).length,
@@ -1224,7 +1253,7 @@ async function exportRuntimeSourceCodeVault() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `SOVEREIGN_PROGRAM_SOURCE_VAULT_${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `SOVEREIGN_FULL_SOURCE_VAULT_${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -1505,8 +1534,8 @@ function openSovereignCommandVault() {
         <div class="flex items-center gap-2.5">
           <span class="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black text-base">⚜️</span>
           <div>
-            <h3 class="text-sm font-black text-amber-400 tracking-wide">终极运营主权指令舱（全栈灾难母舰 v2.1）</h3>
-            <p class="text-[10px] text-stone-400">独立主权加密验证 · 覆盖全库数据 + 审计操作铁证 + 执照Base64内嵌 + 程序源码</p>
+            <h3 class="text-sm font-black text-amber-400 tracking-wide">终极运营主权指令舱（全栈灾难母舰 v2.2）</h3>
+            <p class="text-[10px] text-stone-400">独立主权加密验证 · 覆盖全库数据 + 审计操作铁证 + 执照Base64内嵌 + 全站递归源码</p>
           </div>
         </div>
         <button type="button" id="btn-close-sovereign" class="text-stone-400 hover:text-white text-lg">✕</button>
@@ -1547,16 +1576,16 @@ function openSovereignCommandVault() {
 
         <!-- 武器二：全栈母版灾备导出 -->
         <div class="bg-stone-900 border border-amber-500/40 rounded-2xl p-3.5 space-y-2.5">
-          <b class="text-amber-300 text-xs block">🧬 武器二：全栈母版离线备份（26表数据 + 审计铁证 + 执照Base64 + 程序源码）</b>
+          <b class="text-amber-300 text-xs block">🧬 武器二：全栈母版离线备份（26表数据 + 审计铁证 + 执照Base64 + 全站源码）</b>
           <p class="text-[11px] text-stone-400">
-            完整提取 26 表全量数据、不可篡改审计铁证、财务/库存流水，并将营业执照照片自动内嵌为离线 Base64（带 SHA-256 防篡改封印）。
+            完整提取 26 表全量数据、不可篡改审计铁证、财务/库存流水，将营业执照照片内嵌为离线 Base64（带 SHA-256 封印），并递归打包全站所有端源码。
           </p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button type="button" id="btn-sovereign-export-all" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-2.5 rounded-xl">
               📥 下载全库 26 表与铁证母包 (.json)
             </button>
             <button type="button" id="btn-sovereign-export-code" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-2.5 rounded-xl">
-              📦 打包下载当前程序源码快照 (.json)
+              📦 打包下载全站完整源码快照 (.json)
             </button>
           </div>
         </div>
@@ -1599,7 +1628,7 @@ function openSovereignCommandVault() {
 
         <!-- 武器五：自定义主权暗令 -->
         <div class="bg-stone-900 border border-stone-800 rounded-2xl p-3.5 space-y-2">
-          <b class="text-stone-300 text-xs block">🔐 武器五：重设终极主权暗令</b>
+          <b class="text-stone-300 text-xs block">🔐 武器五：重设终极主权暗令（设置后自动废除默认初始暗令）</b>
           <div class="flex gap-2">
             <input type="password" id="input-sovereign-new-pass" placeholder="输入新的高强度主权暗令（至少10位）"
               class="flex-1 bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white outline-none">
@@ -1729,15 +1758,15 @@ function openSovereignCommandVault() {
   document.getElementById('btn-sovereign-export-code').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
-    btn.textContent = '⏳ 正在收集前端程序与模块源码...';
+    btn.textContent = '⏳ 正在递归抓取全站所有端源码...';
     try {
       const count = await exportRuntimeSourceCodeVault();
-      alert(`📦 已打包下载当前运行时程序源码快照（共收录 ${count} 个核心程序源文件）！`);
+      alert(`📦 已打包下载全站完整程序源码快照（共收录 ${count} 个核心程序源文件）！`);
     } catch (err) {
       alert('❌ 源码打包失败：' + (err?.message || ''));
     } finally {
       btn.disabled = false;
-      btn.textContent = '📦 打包下载当前程序源码快照 (.json)';
+      btn.textContent = '📦 打包下载全站完整源码快照 (.json)';
     }
   });
 
@@ -1854,7 +1883,7 @@ function openSovereignCommandVault() {
         updated_at: new Date().toISOString()
       }
     ]);
-    alert('🔐 终极主权暗令已更新加密保存！');
+    alert('🔐 终极主权暗令已更新加密保存，初始默认口令已永久失效！');
   });
 }
 
