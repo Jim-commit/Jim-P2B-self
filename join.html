@@ -255,7 +255,9 @@
   <script type="module">
     import { initJoinController } from './src/modules/joinController.js';
     import { mountPublicSupervisionWidget } from './src/modules/publicSupervisionWidget.js';
+    import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
 
+    enforceGlobalGovernance();
     mountPublicSupervisionWidget('入驻通道');
     initJoinController();
   </script>
