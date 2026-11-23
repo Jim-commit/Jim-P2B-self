@@ -7,6 +7,25 @@ import {
   recordAuditLog
 } from './platformState.js';
 
+function applyRoleUIVisibility(adminRow) {
+  const normalizedRole = adminRow?.admin_role === 'ops_manager' ? 'ops_manager' : 'senior_ops';
+  sessionStorage.setItem('p_auth_role', normalizedRole);
+
+  const isSenior = normalizedRole === 'senior_ops';
+  const roleBadge = document.getElementById('platform-role-badge');
+  if (roleBadge) {
+    roleBadge.textContent = isSenior ? '👑 高级运营管理' : '🛡️ 运营管理者';
+    roleBadge.className = isSenior
+      ? 'bg-amber-400/20 text-amber-300 text-[10px] px-2.5 py-0.5 rounded-full border border-amber-400/40 font-bold'
+      : 'bg-sky-500/20 text-sky-300 text-[10px] px-2.5 py-0.5 rounded-full border border-sky-400/40 font-bold';
+  }
+
+  // 一级运营管理者隐藏高级运维专属入口（归档回收站、团队权限分配、全量快照导控）
+  document.querySelectorAll('.senior-ops-only').forEach((el) => {
+    el.classList.toggle('hidden', !isSenior);
+  });
+}
+
 export async function checkPlatformAuthStatus() {
   const savedToken = sessionStorage.getItem(P_AUTH_SESSION_KEY);
   if (!savedToken) {
@@ -22,6 +41,7 @@ export async function checkPlatformAuthStatus() {
     .limit(1);
 
   if (data && data.length > 0) {
+    applyRoleUIVisibility(data[0]);
     document.getElementById('platform-auth-gate')?.classList.add('hidden');
     const pill = document.getElementById('totp-status-pill');
     const btnTotp = document.getElementById('btn-platform-totp');
@@ -159,6 +179,7 @@ export function initPlatformAuthBindings() {
     sessionStorage.setItem(P_AUTH_SESSION_KEY, token);
     sessionStorage.setItem('p_auth_account', account);
     sessionStorage.setItem('p_auth_name', data[0].admin_name || '总控执事');
+    applyRoleUIVisibility(data[0]);
     document.getElementById('platform-auth-gate').classList.add('hidden');
     alert(`✅ 凭证核验通过！欢迎：${data[0].admin_name}`);
     window.loadPlatformData();
@@ -169,6 +190,7 @@ export function initPlatformAuthBindings() {
     sessionStorage.removeItem(P_AUTH_SESSION_KEY);
     sessionStorage.removeItem('p_auth_account');
     sessionStorage.removeItem('p_auth_name');
+    sessionStorage.removeItem('p_auth_role');
     document.getElementById('platform-auth-gate')?.classList.remove('hidden');
   };
 
