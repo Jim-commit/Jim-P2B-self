@@ -50,8 +50,8 @@ export function mountStoreElderModeWidget() {
     <div id="elder-mode-overlay" class="hidden fixed inset-0 z-50 bg-[#f7f5f0] text-stone-900 overflow-y-auto pb-10">
       <div class="max-w-md mx-auto p-4 space-y-4">
         
-        <!-- 顶部大字报头与切换 -->
-        <div class="bg-[#1b4332] text-white p-4 rounded-3xl shadow-md flex justify-between items-center gap-2">
+        <!-- 顶部大字报头与吸顶切换栏（滚动时永远留在屏幕最上方） -->
+        <div class="sticky top-2 z-20 bg-[#1b4332] text-white p-4 rounded-3xl shadow-lg flex justify-between items-center gap-2">
           <div>
             <span class="text-xs text-emerald-200 block">百工天街 · 极简适老版</span>
             <h2 id="elder-store-title" class="text-xl font-bold tracking-wide mt-0.5">合作门店</h2>
@@ -134,6 +134,12 @@ export function mountStoreElderModeWidget() {
             <div class="py-6 text-center text-stone-400">正在查询本店待收货单据...</div>
           </div>
         </div>
+
+        <!-- 底部兜底切回按钮 -->
+        <button type="button" onclick="window.toggleElderMode(false)"
+          class="w-full py-3.5 bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-base rounded-2xl active:scale-95 transition">
+          📊 返回完整掌柜账台
+        </button>
 
       </div>
     </div>
