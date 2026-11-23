@@ -58,62 +58,62 @@ export function mountPlatformSelfCheckEnhancer() {
   const selfcheckSection = document.getElementById('p-tab-selfcheck');
   if (!selfcheckSection || document.getElementById('global-emergency-switchboard')) return;
 
-  // 1. 在双向公约上方插入「⚡ 全局应急与守护总闸」
+  // 1. 在双向公约上方插入「⚡ 全局应急与守护总闸」（暖石浅底 + 深翡翠绿细边儒雅融合版）
   const covenantGrid = selfcheckSection.children[1];
   const switchboardHtml = `
-    <div id="global-emergency-switchboard" class="bg-stone-900 text-white p-5 rounded-3xl shadow-md border border-stone-800 space-y-3">
-      <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-800 pb-2.5">
+    <div id="global-emergency-switchboard" class="bg-gradient-to-r from-[#faf8f5] via-amber-50/40 to-emerald-50/50 text-stone-800 p-5 rounded-3xl shadow-sm border border-emerald-800/25 space-y-3 transition-colors duration-300">
+      <div class="flex flex-wrap justify-between items-center gap-2 border-b border-emerald-800/15 pb-2.5">
         <div>
-          <h3 class="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+          <h3 class="text-sm font-bold text-emerald-950 flex items-center gap-1.5">
             <span>⚡</span> 全局应急与守护总闸（一屏掌控全网运行态）
           </h3>
-          <p class="text-[11px] text-stone-400">平时保持稳态不打扰一线；遇恶意抢注、违禁词冒头或全网保供调度时一秒切换</p>
+          <p class="text-[11px] text-stone-500">平时保持稳态不打扰一线；遇恶意抢注、违禁词冒头或全网保供调度时一秒切换</p>
         </div>
-        <span id="switchboard-sync-hint" class="text-[11px] font-mono text-emerald-400"></span>
+        <span id="switchboard-sync-hint" class="text-[11px] font-mono text-emerald-800 font-bold"></span>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <!-- 开关 1：全网入驻审核模式切换 -->
-        <div class="bg-stone-950 border border-stone-800 p-3.5 rounded-2xl flex flex-col justify-between gap-2.5">
+        <div id="card-join-strict-mode" class="bg-white border border-stone-200/90 p-3.5 rounded-2xl flex flex-col justify-between gap-2.5 shadow-2xs transition">
           <div>
             <div class="flex justify-between items-center">
-              <b class="text-white text-xs">🛡️ 全网入驻审核戒备</b>
-              <span id="badge-join-strict-mode" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">常规核验</span>
+              <b class="text-stone-900 text-xs">🛡️ 全网入驻审核戒备</b>
+              <span id="badge-join-strict-mode" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">常规核验</span>
             </div>
-            <p class="text-[11px] text-stone-400 mt-1 leading-relaxed">遇批量抢注公共产区名时，可一键切为「从严逐笔终审」。</p>
+            <p class="text-[11px] text-stone-500 mt-1 leading-relaxed">遇批量抢注公共产区名时，可一键切为「从严逐笔终审」。</p>
           </div>
           <button type="button" id="btn-toggle-join-strict" onclick="window.toggleGlobalJoinStrictMode()"
-            class="w-full py-2 bg-stone-800 hover:bg-stone-700 text-amber-300 font-bold text-xs rounded-xl border border-stone-700 active:scale-95 transition">
+            class="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs rounded-xl border border-stone-300 active:scale-95 transition">
             切换为【从严逐笔终审】
           </button>
         </div>
 
         <!-- 开关 2：AI 商道清朗全网急扫 -->
-        <div class="bg-stone-950 border border-stone-800 p-3.5 rounded-2xl flex flex-col justify-between gap-2.5">
+        <div class="bg-white border border-stone-200/90 p-3.5 rounded-2xl flex flex-col justify-between gap-2.5 shadow-2xs">
           <div>
             <div class="flex justify-between items-center">
-              <b class="text-white text-xs">🤖 AI 商道清朗全网急扫</b>
-              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">全网巡检</span>
+              <b class="text-stone-900 text-xs">🤖 AI 商道清朗全网急扫</b>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">全网巡检</span>
             </div>
-            <p class="text-[11px] text-stone-400 mt-1 leading-relaxed">立即扫描全网在架货品违禁词与异常低价疑点，并同步刷新体检状态。</p>
+            <p class="text-[11px] text-stone-500 mt-1 leading-relaxed">立即扫描全网在架货品违禁词与异常低价疑点，并同步刷新体检状态。</p>
           </div>
           <button type="button" onclick="window.triggerEmergencyComplianceScan()"
-            class="w-full py-2 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl active:scale-95 transition">
+            class="w-full py-2 bg-[#1b4332] hover:bg-[#143628] text-white font-bold text-xs rounded-xl shadow-xs active:scale-95 transition">
             🔍 立即执行全网清朗急扫
           </button>
         </div>
 
         <!-- 开关 3：签发全网商道公告 -->
-        <div class="bg-stone-950 border border-stone-800 p-3.5 rounded-2xl flex flex-col justify-between gap-2.5">
+        <div class="bg-white border border-stone-200/90 p-3.5 rounded-2xl flex flex-col justify-between gap-2.5 shadow-2xs">
           <div>
             <div class="flex justify-between items-center">
-              <b class="text-white text-xs">📢 签发全网商道公告</b>
-              <span id="badge-global-notice-state" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-800 text-stone-400">未挂公告</span>
+              <b class="text-stone-900 text-xs">📢 签发全网商道公告</b>
+              <span id="badge-global-notice-state" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 border border-stone-200">未挂公告</span>
             </div>
-            <p id="preview-global-notice" class="text-[11px] text-stone-400 mt-1 leading-relaxed truncate">向所有合作社与门店同步推送节假日保供或公约修订提醒。</p>
+            <p id="preview-global-notice" class="text-[11px] text-stone-500 mt-1 leading-relaxed truncate">向所有合作社与门店同步推送节假日保供或公约修订提醒。</p>
           </div>
           <button type="button" onclick="window.openGlobalNoticeEditor()"
-            class="w-full py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl active:scale-95 transition">
+            class="w-full py-2 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold text-xs rounded-xl border border-amber-500/60 shadow-xs active:scale-95 transition">
             ✍️ 编辑 / 撤下全网公告
           </button>
         </div>
@@ -135,7 +135,7 @@ export function mountPlatformSelfCheckEnhancer() {
         h3.insertAdjacentHTML(
           'beforeend',
           `<button type="button" onclick="window.openCovenantEditor('platform')"
-            class="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1 rounded-lg font-bold shrink-0">
+            class="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1 rounded-lg font-bold shrink-0 active:scale-95 transition">
             ✏️ 修订公约条款
           </button>`
         );
@@ -150,7 +150,7 @@ export function mountPlatformSelfCheckEnhancer() {
         h3.insertAdjacentHTML(
           'beforeend',
           `<button type="button" onclick="window.openCovenantEditor('store')"
-            class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1 rounded-lg font-bold shrink-0">
+            class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1 rounded-lg font-bold shrink-0 active:scale-95 transition">
             ✏️ 修订公约条款
           </button>`
         );
@@ -211,21 +211,36 @@ export function mountPlatformSelfCheckEnhancer() {
         }
       });
 
-      // 渲染入驻审核戒备态
+      // 渲染入驻审核戒备态（平时温润浅底，切入戒备态局部亮起警示色）
+      const modeCard = document.getElementById('card-join-strict-mode');
       const modeBadge = document.getElementById('badge-join-strict-mode');
       const modeBtn = document.getElementById('btn-toggle-join-strict');
       if (currentStrictMode === 'strict') {
+        if (modeCard) {
+          modeCard.classList.remove('border-stone-200/90');
+          modeCard.classList.add('border-rose-400', 'bg-rose-50/40');
+        }
         if (modeBadge) {
-          modeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse';
+          modeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 font-bold animate-pulse';
           modeBadge.innerText = '🚨 从严终审戒备中';
         }
-        if (modeBtn) modeBtn.innerText = '恢复为【常规核验放行】';
+        if (modeBtn) {
+          modeBtn.className = 'w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs active:scale-95 transition';
+          modeBtn.innerText = '恢复为【常规核验放行】';
+        }
       } else {
+        if (modeCard) {
+          modeCard.classList.remove('border-rose-400', 'bg-rose-50/40');
+          modeCard.classList.add('border-stone-200/90');
+        }
         if (modeBadge) {
-          modeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+          modeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold';
           modeBadge.innerText = '常规核验';
         }
-        if (modeBtn) modeBtn.innerText = '切换为【从严逐笔终审】';
+        if (modeBtn) {
+          modeBtn.className = 'w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs rounded-xl border border-stone-300 active:scale-95 transition';
+          modeBtn.innerText = '切换为【从严逐笔终审】';
+        }
       }
 
       // 渲染全网公告状态
@@ -233,13 +248,13 @@ export function mountPlatformSelfCheckEnhancer() {
       const noticePreview = document.getElementById('preview-global-notice');
       if (currentNoticeText.trim()) {
         if (noticeBadge) {
-          noticeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40';
+          noticeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-bold';
           noticeBadge.innerText = '全网广播中';
         }
         if (noticePreview) noticePreview.innerText = `当前公告：${currentNoticeText}`;
       } else {
         if (noticeBadge) {
-          noticeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-800 text-stone-400';
+          noticeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 border border-stone-200';
           noticeBadge.innerText = '未挂公告';
         }
         if (noticePreview) noticePreview.innerText = '向所有合作社与门店同步推送节假日保供或公约修订提醒。';
@@ -255,13 +270,21 @@ export function mountPlatformSelfCheckEnhancer() {
     }
   };
 
-  // 第 1 项增强：4 张自检卡片智能下钻（第 4 张检测到违禁词疑点 > 0 时自动变红并分流直达清朗巡检）
+  // 第 1 项精修：4 张自检卡片加上悬停微浮起与亮金边动效 + 智能下钻分流
   window.applySmartSelfCheckDrilldown = function () {
     const grid = document.getElementById('platform-selfcheck-grid');
     if (!grid) return;
 
     Array.from(grid.children).forEach((card, idx) => {
       card.style.cursor = 'pointer';
+      card.classList.add(
+        'hover:border-amber-400',
+        'hover:shadow-md',
+        'hover:-translate-y-0.5',
+        'transition-all',
+        'duration-200'
+      );
+
       if (idx === 0) {
         card.title = '点击进入「🎖️ 会员等级与会费」调整体验期与运维会费标准';
         card.onclick = () => window.switchTab?.('membership');
