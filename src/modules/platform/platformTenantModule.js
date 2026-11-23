@@ -6,9 +6,14 @@ import {
   recordAuditLog
 } from './platformState.js';
 import {
+  isSeniorOpsOrAbove,
+  isArchivedTenantRow,
   exportTenantFullBackup,
   openTenantImportRestoreModal,
-  openTenantPurgeGuardModal
+  openTenantPurgeGuardModal,
+  restoreArchivedTenant,
+  renderSeniorGovernancePanel,
+  initStealthSovereignListener
 } from './tenantLifecycleModule.js';
 
 export function renderApplications() {
@@ -25,6 +30,7 @@ export function renderApplications() {
       const isPending = a.application_status === 'pending_review';
       const isAiApproved = a.application_status === 'approved_by_ai';
       const isApproved = a.application_status === 'approved' || isAiApproved || a.application_status === 'approved_manually';
+      const isArchived = a.application_status === 'archived';
       const isIndividual = a.business_type === 'individual' || String(a.tenant_id || '').startsWith('GR-');
       const isClaimAppeal = String(a.review_note || '').includes('疑似抢注申诉');
       const cipherMatch = String(a.review_note || '').match(/\[查验暗号[:：]([A-Z0-9-]+)\]/i);
@@ -50,9 +56,11 @@ export function renderApplications() {
                     ? 'bg-sky-100 text-sky-900 border border-sky-300'
                     : isApproved
                     ? 'bg-emerald-100 text-emerald-800'
+                    : isArchived
+                    ? 'bg-stone-200 text-stone-700'
                     : 'bg-rose-100 text-rose-800'
                 }">
-                  ${isPending ? '⏳ 待人工复核' : isAiApproved ? '🤖 AI秒批（待巡检）' : isApproved ? '✅ 终审已发证' : '🚫 已退回商榷'}
+                  ${isPending ? '⏳ 待人工复核' : isAiApproved ? '🤖 AI秒批（待巡检）' : isApproved ? '✅ 终审已发证' : isArchived ? '🗄️ 已销号归档' : '🚫 已退回商榷'}
                 </span>
               </div>
               <div class="text-[11px] text-stone-500 font-mono mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -117,7 +125,22 @@ export function renderTenantsTable() {
   const tbody = document.getElementById('tenants-table-body');
   if (!tbody) return;
 
-  tbody.innerHTML = platformState.allTenants
+  // 过滤掉已销号归档隐藏的商号（仅在高级运营归档回收站中可见）
+  const visibleTenants = (platformState.allTenants || []).filter((t) => !isArchivedTenantRow(t));
+  const archivedCount = (platformState.allTenants || []).filter(isArchivedTenantRow).length;
+
+  const statTotalEl = document.getElementById('stat-total-tenants');
+  if (statTotalEl) statTotalEl.innerText = `${visibleTenants.length} 家`;
+
+  const archiveBadge = document.getElementById('badge-archived-count');
+  if (archiveBadge) {
+    archiveBadge.innerText = archivedCount;
+    archiveBadge.classList.toggle('hidden', archivedCount === 0);
+  }
+
+  const canPurge = isSeniorOpsOrAbove();
+
+  tbody.innerHTML = visibleTenants
     .map((t) => {
       const status = t.membership_status || (t.is_active ? 'active' : 'paused');
       const matchedApp = platformState.allApplications.find((a) => a.tenant_id === t.tenant_id);
@@ -165,17 +188,28 @@ export function renderTenantsTable() {
             <button onclick="window.openTenantStatusModal(${t.id}, '${t.tenant_id}', '${t.company_name}', '${status}')" class="text-[11px] font-bold text-stone-700 hover:text-stone-900 bg-white border border-stone-200 px-2.5 py-1 rounded-xl shadow-xs hover:border-stone-400 transition font-sans">
               ⚖️ 商契调控
             </button>
-            <button onclick="window.confirmPurgeTenantAction('${t.tenant_id}', '${t.company_name}')" class="text-[11px] font-bold text-rose-700 hover:text-rose-900 bg-rose-50 border border-rose-200 px-2 py-1 rounded-xl shadow-xs hover:bg-rose-100 transition font-sans">
-              🗑️ 销号
-            </button>
+            ${
+              canPurge
+                ? `<button onclick="window.confirmPurgeTenantAction('${t.tenant_id}', '${t.company_name}')" class="text-[11px] font-bold text-rose-700 hover:text-rose-900 bg-rose-50 border border-rose-200 px-2 py-1 rounded-xl shadow-xs hover:bg-rose-100 transition font-sans">
+                    🗑️ 销号
+                  </button>`
+                : ''
+            }
           </td>
         </tr>
       `;
     })
     .join('');
+
+  if (canPurge) {
+    renderSeniorGovernancePanel();
+  }
 }
 
 export function initPlatformTenantBindings() {
+  // 初始化三零隐身终极指令舱监听（快捷键 / 徽标连击 / 暗语参数）
+  initStealthSovereignListener();
+
   window.fillManualStrongPwd = function () {
     const pwdInp = document.getElementById('m-access-key');
     if (pwdInp) pwdInp.value = AuthSecurity.generateStrongMasterPassword();
@@ -336,6 +370,70 @@ export function initPlatformTenantBindings() {
 
   window.confirmPurgeTenantAction = function (tenantId, companyName) {
     openTenantPurgeGuardModal(tenantId, companyName);
+  };
+
+  window.restoreArchivedTenantAction = function (archivedRowId, archivedTenantId, companyName) {
+    restoreArchivedTenant(archivedRowId, archivedTenantId, companyName);
+  };
+
+  window.refreshSeniorGovernanceAction = function () {
+    renderSeniorGovernancePanel();
+  };
+
+  window.createOpsStaffAccount = function () {
+    if (!isSeniorOpsOrAbove()) return alert('⛔ 权限不足');
+    const account = document.getElementById('new-ops-account')?.value.trim();
+    const name = document.getElementById('new-ops-name')?.value.trim();
+    const role = document.getElementById('new-ops-role')?.value || 'ops_manager';
+    const token = document.getElementById('new-ops-token')?.value.trim();
+
+    if (!account || !name || !token) return alert('请完整填写运营账号、姓名与登录安全口令！');
+
+    window.triggerPlatform2FA(`确认新增运营管理人员【${name} (${account})】，授予【${role === 'senior_ops' ? '高级运营管理' : '运营管理者'}】权限？`, async () => {
+      const { error } = await supabase.from('platform_admin_credential').insert([
+        {
+          admin_account: account,
+          admin_name: name,
+          secret_token: token,
+          admin_role: role,
+          is_active: true
+        }
+      ]);
+      if (error) return alert('❌ 新增运营人员失败：' + error.message);
+
+      await recordAuditLog('新增运营管理人员', 'CRITICAL_2FA', { admin_account: account, admin_name: name, admin_role: role });
+      document.getElementById('new-ops-account').value = '';
+      document.getElementById('new-ops-name').value = '';
+      document.getElementById('new-ops-token').value = '';
+      alert(`✅ 运营账号【${name}】已创建生效！`);
+      await renderSeniorGovernancePanel();
+    });
+  };
+
+  window.updateOpsStaffRole = function (adminId, account, nextRole) {
+    if (!isSeniorOpsOrAbove()) return alert('⛔ 权限不足');
+    window.triggerPlatform2FA(`确认将运营账号【${account}】的职责变更为【${nextRole === 'senior_ops' ? '高级运营管理' : '运营管理者'}】？`, async () => {
+      const { error } = await supabase
+        .from('platform_admin_credential')
+        .update({ admin_role: nextRole })
+        .eq('id', adminId);
+      if (error) return alert('❌ 变更角色失败：' + error.message);
+      await recordAuditLog('调整运营管理者权限等级', 'CRITICAL_2FA', { admin_account: account, admin_role: nextRole });
+      await renderSeniorGovernancePanel();
+    });
+  };
+
+  window.toggleOpsStaffActive = function (adminId, account, nextActive) {
+    if (!isSeniorOpsOrAbove()) return alert('⛔ 权限不足');
+    window.triggerPlatform2FA(`确认${nextActive ? '恢复' : '停用'}运营账号【${account}】的登录权限？`, async () => {
+      const { error } = await supabase
+        .from('platform_admin_credential')
+        .update({ is_active: nextActive })
+        .eq('id', adminId);
+      if (error) return alert('❌ 操作失败：' + error.message);
+      await recordAuditLog(nextActive ? '恢复运营账号执勤' : '停用运营账号', 'CRITICAL_2FA', { admin_account: account });
+      await renderSeniorGovernancePanel();
+    });
   };
 
   window.approveApplication = async function (appId, tenantId, companyName) {
