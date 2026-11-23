@@ -14,19 +14,35 @@ const DEFAULT_STORE_COVENANT = [
   '第四条（真实用度排产）：如实提报周期真实用度计划，助力源头合作社与工坊按需采收生产，不囤积居奇、不恶意炒作。'
 ].join('\n');
 
-async function logGovernanceAudit(title, detail) {
+// 高危总闸操作统一走总控 2FA / 口令核身护栏
+function requireCommanderAuth(actionDesc, callback) {
+  if (typeof window.requestPlatform2FA === 'function') {
+    window.requestPlatform2FA(actionDesc, callback);
+    return;
+  }
+  const savedToken = sessionStorage.getItem('platform_admin_token') || '';
+  const input = prompt(`🛡️ 【绝对掌控 · 执事核身】\n${actionDesc}\n\n请输入总控管理令牌 (Token) 确认授权：`);
+  if (input === null) return;
+  if (!input.trim() || (savedToken && input.trim() !== savedToken)) {
+    alert('❌ 核身令牌不匹配，已拦截本次总闸指令！');
+    return;
+  }
+  callback();
+}
+
+async function logGovernanceAudit(title, detail, level = 'CRITICAL') {
   try {
     await supabase.from('platform_audit_logs').insert([
       {
         tenant_id: 'PLATFORM_HQ',
-        operator_name: '总控调度中枢',
-        risk_level: 'GOVERNANCE',
+        operator_name: '总控最高执事',
+        risk_level: level,
         action_title: title,
         detail_summary: detail
       }
     ]);
   } catch {
-    // 兼容审计表字段差异，静默兜底不阻断主流程
+    // 兼容审计表字段差异
   }
 }
 
@@ -58,33 +74,32 @@ export function mountPlatformSelfCheckEnhancer() {
   const selfcheckSection = document.getElementById('p-tab-selfcheck');
   if (!selfcheckSection || document.getElementById('global-emergency-switchboard')) return;
 
-  // 1. 在双向公约上方插入「⚡ 全局应急与守护总闸」（暖石浅底 + 深翡翠绿细边儒雅融合版）
   const covenantGrid = selfcheckSection.children[1];
   const switchboardHtml = `
     <div id="global-emergency-switchboard" class="bg-gradient-to-r from-[#faf8f5] via-amber-50/40 to-emerald-50/50 text-stone-800 p-5 rounded-3xl shadow-sm border border-emerald-800/25 space-y-3 transition-colors duration-300">
       <div class="flex flex-wrap justify-between items-center gap-2 border-b border-emerald-800/15 pb-2.5">
         <div>
           <h3 class="text-sm font-bold text-emerald-950 flex items-center gap-1.5">
-            <span>⚡</span> 全局应急与守护总闸（一屏掌控全网运行态）
+            <span>⚡</span> 全局应急与守护总闸（2FA 强核身 · 全站 7 端实时硬生效）
           </h3>
-          <p class="text-[11px] text-stone-500">平时保持稳态不打扰一线；遇恶意抢注、违禁词冒头或全网保供调度时一秒切换</p>
+          <p class="text-[11px] text-stone-500">平时温润稳态不打扰一线；遇突发风控、恶意抢注或极端保供时一秒硬控全网</p>
         </div>
         <span id="switchboard-sync-hint" class="text-[11px] font-mono text-emerald-800 font-bold"></span>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <!-- 开关 1：全网入驻审核模式切换 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <!-- 开关 1：全网入驻审核戒备 -->
         <div id="card-join-strict-mode" class="bg-white border border-stone-200/90 p-3.5 rounded-2xl flex flex-col justify-between gap-2.5 shadow-2xs transition">
           <div>
             <div class="flex justify-between items-center">
-              <b class="text-stone-900 text-xs">🛡️ 全网入驻审核戒备</b>
+              <b class="text-stone-900 text-xs">🛡️ 入驻审核戒备</b>
               <span id="badge-join-strict-mode" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">常规核验</span>
             </div>
-            <p class="text-[11px] text-stone-500 mt-1 leading-relaxed">遇批量抢注公共产区名时，可一键切为「从严逐笔终审」。</p>
+            <p class="text-[11px] text-stone-500 mt-1 leading-relaxed">遇批量抢注产区名时，一键切为「从严逐笔人工终审」。</p>
           </div>
           <button type="button" id="btn-toggle-join-strict" onclick="window.toggleGlobalJoinStrictMode()"
             class="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs rounded-xl border border-stone-300 active:scale-95 transition">
-            切换为【从严逐笔终审】
+            切换为【从严终审】
           </button>
         </div>
 
@@ -92,14 +107,14 @@ export function mountPlatformSelfCheckEnhancer() {
         <div class="bg-white border border-stone-200/90 p-3.5 rounded-2xl flex flex-col justify-between gap-2.5 shadow-2xs">
           <div>
             <div class="flex justify-between items-center">
-              <b class="text-stone-900 text-xs">🤖 AI 商道清朗全网急扫</b>
+              <b class="text-stone-900 text-xs">🤖 全网清朗急扫</b>
               <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">全网巡检</span>
             </div>
-            <p class="text-[11px] text-stone-500 mt-1 leading-relaxed">立即扫描全网在架货品违禁词与异常低价疑点，并同步刷新体检状态。</p>
+            <p class="text-[11px] text-stone-500 mt-1 leading-relaxed">立即扫雷在架货品违禁词与异常价格疑点，并同步体检。</p>
           </div>
           <button type="button" onclick="window.triggerEmergencyComplianceScan()"
             class="w-full py-2 bg-[#1b4332] hover:bg-[#143628] text-white font-bold text-xs rounded-xl shadow-xs active:scale-95 transition">
-            🔍 立即执行全网清朗急扫
+            🔍 立即执行全网急扫
           </button>
         </div>
 
@@ -107,14 +122,29 @@ export function mountPlatformSelfCheckEnhancer() {
         <div class="bg-white border border-stone-200/90 p-3.5 rounded-2xl flex flex-col justify-between gap-2.5 shadow-2xs">
           <div>
             <div class="flex justify-between items-center">
-              <b class="text-stone-900 text-xs">📢 签发全网商道公告</b>
+              <b class="text-stone-900 text-xs">📢 全网置顶广播</b>
               <span id="badge-global-notice-state" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 border border-stone-200">未挂公告</span>
             </div>
-            <p id="preview-global-notice" class="text-[11px] text-stone-500 mt-1 leading-relaxed truncate">向所有合作社与门店同步推送节假日保供或公约修订提醒。</p>
+            <p id="preview-global-notice" class="text-[11px] text-stone-500 mt-1 leading-relaxed truncate">向所有合作社与门店顶栏同步推送保供或公约修订通知。</p>
           </div>
           <button type="button" onclick="window.openGlobalNoticeEditor()"
             class="w-full py-2 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold text-xs rounded-xl border border-amber-500/60 shadow-xs active:scale-95 transition">
-            ✍️ 编辑 / 撤下全网公告
+            ✍️ 签发 / 撤下公告
+          </button>
+        </div>
+
+        <!-- 开关 4：全网紧急熔断（只读保供模式） -->
+        <div id="card-emergency-freeze" class="bg-white border border-stone-200/90 p-3.5 rounded-2xl flex flex-col justify-between gap-2.5 shadow-2xs transition">
+          <div>
+            <div class="flex justify-between items-center">
+              <b class="text-stone-900 text-xs">🛑 紧急只读熔断</b>
+              <span id="badge-emergency-freeze" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">全网畅通</span>
+            </div>
+            <p class="text-[11px] text-stone-500 mt-1 leading-relaxed">极端风控时冻结全网新注册与新上架，保留既有订单交割。</p>
+          </div>
+          <button type="button" id="btn-toggle-emergency-freeze" onclick="window.toggleGlobalEmergencyFreeze()"
+            class="w-full py-2 bg-stone-100 hover:bg-rose-50 hover:text-rose-800 hover:border-rose-300 text-stone-700 font-bold text-xs rounded-xl border border-stone-300 active:scale-95 transition">
+            启动【只读保供熔断】
           </button>
         </div>
       </div>
@@ -124,7 +154,6 @@ export function mountPlatformSelfCheckEnhancer() {
   if (covenantGrid) {
     covenantGrid.insertAdjacentHTML('beforebegin', switchboardHtml);
 
-    // 2. 给两份公约卡片加上 ID 与「✏️ 修订公约条款」在线编辑留痕能力
     const cards = covenantGrid.children;
     if (cards[0]) {
       const h3 = cards[0].querySelector('h3');
@@ -158,17 +187,16 @@ export function mountPlatformSelfCheckEnhancer() {
     }
   }
 
-  // 3. 插入公约在线修订弹窗
   const editorModalHtml = `
     <div id="modal-covenant-editor" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[130] flex items-center justify-center p-4">
       <div class="bg-white w-full max-w-lg rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
         <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-          <h3 id="covenant-editor-title" class="font-bold text-sm text-stone-900">✏️ 在线修订商道公约（修改自动写入天道明鉴审计）</h3>
+          <h3 id="covenant-editor-title" class="font-bold text-sm text-stone-900">✏️ 在线修订商道公约（2FA 核身 · 自动写入审计链）</h3>
           <button type="button" onclick="document.getElementById('modal-covenant-editor').classList.add('hidden')" class="text-stone-400 text-lg">✕</button>
         </div>
         <input type="hidden" id="covenant-editor-target" value="">
         <p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 p-2.5 rounded-xl">
-          每行一条条款（建议以「第X条（标题）：正文」格式书写）。保存后立即同步全网公示，并在「⚖️ 天道明鉴审计」留下不可篡改修订记录。
+          每行一条条款（建议以「第X条（标题）：正文」格式书写）。保存需经总控核身，生效后全网同步公示并写入防篡改审计流水。
         </p>
         <textarea id="covenant-editor-textarea" rows="8"
           class="w-full bg-stone-50 border border-stone-300 rounded-2xl p-3 text-xs leading-relaxed text-stone-900 outline-none focus:border-emerald-700"></textarea>
@@ -176,7 +204,7 @@ export function mountPlatformSelfCheckEnhancer() {
           <button type="button" onclick="document.getElementById('modal-covenant-editor').classList.add('hidden')"
             class="px-4 py-2 rounded-xl bg-stone-100 text-stone-600 font-bold">取消</button>
           <button type="button" id="btn-save-covenant" onclick="window.saveCovenantRevision()"
-            class="px-4 py-2 rounded-xl bg-stone-900 text-amber-300 font-bold">依礼颁布并记入审计链</button>
+            class="px-4 py-2 rounded-xl bg-stone-900 text-amber-300 font-bold">🛡️ 核身颁布并记入审计链</button>
         </div>
       </div>
     </div>
@@ -184,6 +212,7 @@ export function mountPlatformSelfCheckEnhancer() {
   document.body.insertAdjacentHTML('beforeend', editorModalHtml);
 
   let currentStrictMode = 'normal';
+  let currentFreezeMode = 'off';
   let currentNoticeText = '';
   let platformCovenantRaw = DEFAULT_PLATFORM_COVENANT;
   let storeCovenantRaw = DEFAULT_STORE_COVENANT;
@@ -195,6 +224,7 @@ export function mountPlatformSelfCheckEnhancer() {
         .select('config_key, config_value')
         .in('config_key', [
           'join_audit_strict_mode',
+          'global_emergency_freeze',
           'global_platform_notice',
           'covenant_platform_text',
           'covenant_store_text'
@@ -202,6 +232,7 @@ export function mountPlatformSelfCheckEnhancer() {
 
       (data || []).forEach((row) => {
         if (row.config_key === 'join_audit_strict_mode') currentStrictMode = row.config_value || 'normal';
+        if (row.config_key === 'global_emergency_freeze') currentFreezeMode = row.config_value || 'off';
         if (row.config_key === 'global_platform_notice') currentNoticeText = row.config_value || '';
         if (row.config_key === 'covenant_platform_text' && row.config_value?.trim()) {
           platformCovenantRaw = row.config_value.trim();
@@ -211,39 +242,33 @@ export function mountPlatformSelfCheckEnhancer() {
         }
       });
 
-      // 渲染入驻审核戒备态（平时温润浅底，切入戒备态局部亮起警示色）
+      // 1. 入驻审核戒备态
       const modeCard = document.getElementById('card-join-strict-mode');
       const modeBadge = document.getElementById('badge-join-strict-mode');
       const modeBtn = document.getElementById('btn-toggle-join-strict');
       if (currentStrictMode === 'strict') {
-        if (modeCard) {
-          modeCard.classList.remove('border-stone-200/90');
-          modeCard.classList.add('border-rose-400', 'bg-rose-50/40');
-        }
+        modeCard?.classList.add('border-rose-400', 'bg-rose-50/40');
         if (modeBadge) {
           modeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 font-bold animate-pulse';
-          modeBadge.innerText = '🚨 从严终审戒备中';
+          modeBadge.innerText = '🚨 从严终审中';
         }
         if (modeBtn) {
           modeBtn.className = 'w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs active:scale-95 transition';
-          modeBtn.innerText = '恢复为【常规核验放行】';
+          modeBtn.innerText = '恢复【常规核验】';
         }
       } else {
-        if (modeCard) {
-          modeCard.classList.remove('border-rose-400', 'bg-rose-50/40');
-          modeCard.classList.add('border-stone-200/90');
-        }
+        modeCard?.classList.remove('border-rose-400', 'bg-rose-50/40');
         if (modeBadge) {
           modeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold';
           modeBadge.innerText = '常规核验';
         }
         if (modeBtn) {
           modeBtn.className = 'w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs rounded-xl border border-stone-300 active:scale-95 transition';
-          modeBtn.innerText = '切换为【从严逐笔终审】';
+          modeBtn.innerText = '切换为【从严终审】';
         }
       }
 
-      // 渲染全网公告状态
+      // 2. 全网公告状态
       const noticeBadge = document.getElementById('badge-global-notice-state');
       const noticePreview = document.getElementById('preview-global-notice');
       if (currentNoticeText.trim()) {
@@ -257,10 +282,36 @@ export function mountPlatformSelfCheckEnhancer() {
           noticeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 border border-stone-200';
           noticeBadge.innerText = '未挂公告';
         }
-        if (noticePreview) noticePreview.innerText = '向所有合作社与门店同步推送节假日保供或公约修订提醒。';
+        if (noticePreview) noticePreview.innerText = '向所有合作社与门店顶栏同步推送保供或公约修订通知。';
       }
 
-      // 渲染双向公约正文
+      // 3. 紧急只读熔断状态
+      const freezeCard = document.getElementById('card-emergency-freeze');
+      const freezeBadge = document.getElementById('badge-emergency-freeze');
+      const freezeBtn = document.getElementById('btn-toggle-emergency-freeze');
+      if (currentFreezeMode === 'freeze') {
+        freezeCard?.classList.add('border-rose-500', 'bg-rose-50/60', 'ring-2', 'ring-rose-300');
+        if (freezeBadge) {
+          freezeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-600 text-white font-bold animate-pulse';
+          freezeBadge.innerText = '🛑 全网只读熔断中';
+        }
+        if (freezeBtn) {
+          freezeBtn.className = 'w-full py-2 bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs rounded-xl shadow active:scale-95 transition';
+          freezeBtn.innerText = '解除熔断 · 恢复全网写入';
+        }
+      } else {
+        freezeCard?.classList.remove('border-rose-500', 'bg-rose-50/60', 'ring-2', 'ring-rose-300');
+        if (freezeBadge) {
+          freezeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold';
+          freezeBadge.innerText = '全网畅通';
+        }
+        if (freezeBtn) {
+          freezeBtn.className = 'w-full py-2 bg-stone-100 hover:bg-rose-50 hover:text-rose-800 hover:border-rose-300 text-stone-700 font-bold text-xs rounded-xl border border-stone-300 active:scale-95 transition';
+          freezeBtn.innerText = '启动【只读保供熔断】';
+        }
+      }
+
+      // 4. 双向公约正文
       const pBody = document.getElementById('covenant-platform-body');
       const sBody = document.getElementById('covenant-store-body');
       if (pBody) pBody.innerHTML = renderLinesAsParagraphs(platformCovenantRaw);
@@ -270,7 +321,6 @@ export function mountPlatformSelfCheckEnhancer() {
     }
   };
 
-  // 第 1 项精修：4 张自检卡片加上悬停微浮起与亮金边动效 + 智能下钻分流
   window.applySmartSelfCheckDrilldown = function () {
     const grid = document.getElementById('platform-selfcheck-grid');
     if (!grid) return;
@@ -314,23 +364,50 @@ export function mountPlatformSelfCheckEnhancer() {
     });
   };
 
-  window.toggleGlobalJoinStrictMode = async function () {
+  window.toggleGlobalJoinStrictMode = function () {
     const nextMode = currentStrictMode === 'strict' ? 'normal' : 'strict';
     const desc =
       nextMode === 'strict'
-        ? '已切换为【从严人工逐笔终审戒备模式】，所有新入驻申请均需人工核验执照原件后方可立户。'
-        : '已恢复为【常规核验放行模式】。';
+        ? '切换全网入驻审核为【从严人工逐笔终审戒备模式】'
+        : '恢复全网入驻审核为【常规核验放行模式】';
 
-    const { error } = await supabase.from('platform_gov_configs').upsert({
-      config_key: 'join_audit_strict_mode',
-      config_value: nextMode,
-      description: '全网入驻审核模式：normal=常规核验放行，strict=防抢注从严逐笔终审'
+    requireCommanderAuth(desc, async () => {
+      const { error } = await supabase.from('platform_gov_configs').upsert({
+        config_key: 'join_audit_strict_mode',
+        config_value: nextMode,
+        description: '全网入驻审核模式：normal=常规核验放行，strict=防抢注从严逐笔终审'
+      });
+      if (error) return alert('切换失败：' + error.message);
+
+      await logGovernanceAudit('调整全网入驻审核戒备态', desc, 'HIGH');
+      await window.syncGlobalGovernanceState();
+      alert(`✅ 已执行：${desc}`);
     });
-    if (error) return alert('切换失败：' + error.message);
+  };
 
-    await logGovernanceAudit('切换全网入驻审核戒备态', desc);
-    await window.syncGlobalGovernanceState();
-    alert(`✅ ${desc}`);
+  window.toggleGlobalEmergencyFreeze = function () {
+    const nextFreeze = currentFreezeMode === 'freeze' ? 'off' : 'freeze';
+    const desc =
+      nextFreeze === 'freeze'
+        ? '启动【全网只读保供熔断】：立即冻结全站新主体注册与新货品上架，仅保留既有订单履约与平账！'
+        : '解除【全网只读保供熔断】：恢复全站正常入驻与发布功能。';
+
+    requireCommanderAuth(desc, async () => {
+      const { error } = await supabase.from('platform_gov_configs').upsert({
+        config_key: 'global_emergency_freeze',
+        config_value: nextFreeze,
+        description: '全网紧急熔断开关：off=正常协作，freeze=全网只读保供模式'
+      });
+      if (error) return alert('熔断切换失败：' + error.message);
+
+      await logGovernanceAudit(
+        nextFreeze === 'freeze' ? '启动全网紧急只读熔断' : '解除全网紧急只读熔断',
+        desc,
+        'CRITICAL'
+      );
+      await window.syncGlobalGovernanceState();
+      alert(`✅ 已执行：${desc}`);
+    });
   };
 
   window.triggerEmergencyComplianceScan = async function () {
@@ -345,27 +422,28 @@ export function mountPlatformSelfCheckEnhancer() {
     if (hint) hint.innerText = `✅ 全网急扫完成（${new Date().toLocaleTimeString('zh-CN', { hour12: false })}）`;
   };
 
-  window.openGlobalNoticeEditor = async function () {
+  window.openGlobalNoticeEditor = function () {
     const nextText = prompt(
-      '请输入要向全网合作社与社区门店推送的《商道公告》（清空内容并确定即撤下公告）：',
+      '请输入要向全网合作社与社区门店置顶广播的《商道公告》（清空内容并确定即撤下公告）：',
       currentNoticeText
     );
     if (nextText === null) return;
 
     const trimmed = nextText.trim();
-    const { error } = await supabase.from('platform_gov_configs').upsert({
-      config_key: 'global_platform_notice',
-      config_value: trimmed,
-      description: '全网商道公告横幅内容'
-    });
-    if (error) return alert('更新公告失败：' + error.message);
+    const actionDesc = trimmed ? `全网置顶签发《商道公告》：${trimmed}` : '撤下全网置顶《商道公告》';
 
-    await logGovernanceAudit(
-      trimmed ? '签发全网商道公告' : '撤下全网商道公告',
-      trimmed || '已清空全网公告横幅'
-    );
-    await window.syncGlobalGovernanceState();
-    alert(trimmed ? '📢 全网商道公告已生效并记入天道明鉴审计！' : '✅ 已撤下全网公告。');
+    requireCommanderAuth(actionDesc, async () => {
+      const { error } = await supabase.from('platform_gov_configs').upsert({
+        config_key: 'global_platform_notice',
+        config_value: trimmed,
+        description: '全网商道公告横幅内容'
+      });
+      if (error) return alert('更新公告失败：' + error.message);
+
+      await logGovernanceAudit(trimmed ? '签发全网置顶商道公告' : '撤下全网置顶公告', actionDesc, 'HIGH');
+      await window.syncGlobalGovernanceState();
+      alert(trimmed ? '📢 全网商道公告已实时推送至各端顶栏，并记入天道明鉴审计！' : '✅ 已撤下全网公告。');
+    });
   };
 
   window.openCovenantEditor = function (target) {
@@ -386,7 +464,7 @@ export function mountPlatformSelfCheckEnhancer() {
     modal.classList.remove('hidden');
   };
 
-  window.saveCovenantRevision = async function () {
+  window.saveCovenantRevision = function () {
     const target = document.getElementById('covenant-editor-target')?.value;
     const content = document.getElementById('covenant-editor-textarea')?.value.trim();
     const btn = document.getElementById('btn-save-covenant');
@@ -398,29 +476,31 @@ export function mountPlatformSelfCheckEnhancer() {
         ? '《百工百业数字公器 · 平台入驻与商道公约》'
         : '《合作门店与社区邻里驿站公约》';
 
-    if (btn) {
-      btn.disabled = true;
-      btn.innerText = '正在颁布并留痕...';
-    }
-    try {
-      const { error } = await supabase.from('platform_gov_configs').upsert({
-        config_key: configKey,
-        config_value: content,
-        description: `${covenantTitle}在线修订版正文`
-      });
-      if (error) throw error;
-
-      await logGovernanceAudit(`在线修订${covenantTitle}`, `新颁条款摘要：${content.slice(0, 80)}...`);
-      await window.syncGlobalGovernanceState();
-      document.getElementById('modal-covenant-editor')?.classList.add('hidden');
-      alert(`✅ ${covenantTitle}已正式更新生效，并已写入天道明鉴防篡改审计流水！`);
-    } catch (err) {
-      alert('保存失败：' + err.message);
-    } finally {
+    requireCommanderAuth(`在线修订${covenantTitle}并全网公示`, async () => {
       if (btn) {
-        btn.disabled = false;
-        btn.innerText = '依礼颁布并记入审计链';
+        btn.disabled = true;
+        btn.innerText = '正在颁布并留痕...';
       }
-    }
+      try {
+        const { error } = await supabase.from('platform_gov_configs').upsert({
+          config_key: configKey,
+          config_value: content,
+          description: `${covenantTitle}在线修订版正文`
+        });
+        if (error) throw error;
+
+        await logGovernanceAudit(`在线修订${covenantTitle}`, `新颁条款摘要：${content.slice(0, 80)}...`, 'CRITICAL');
+        await window.syncGlobalGovernanceState();
+        document.getElementById('modal-covenant-editor')?.classList.add('hidden');
+        alert(`✅ ${covenantTitle}已正式更新生效，并已写入天道明鉴防篡改审计流水！`);
+      } catch (err) {
+        alert('保存失败：' + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = '🛡️ 核身颁布并记入审计链';
+        }
+      }
+    });
   };
 }
