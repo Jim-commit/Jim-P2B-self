@@ -729,26 +729,11 @@
   <script type="module">
     import { initPlatformController } from './src/modules/platformController.js';
     import { mountPlatformEvolutionWidget } from './src/modules/platformEvolutionWidget.js';
+    import { mountPlatformSelfCheckEnhancer } from './src/modules/platformSelfCheckEnhancer.js';
 
     mountPlatformEvolutionWidget();
+    mountPlatformSelfCheckEnhancer();
     initPlatformController();
-
-    function bindSelfCheckDrilldown() {
-      const grid = document.getElementById('platform-selfcheck-grid');
-      if (!grid) return;
-      const targetTabs = ['membership', 'configs', 'tenants', 'audit'];
-      Array.from(grid.children).forEach((card, idx) => {
-        const tabKey = targetTabs[idx];
-        if (!tabKey) return;
-        card.style.cursor = 'pointer';
-        card.title = '点击直接进入对应治理战场查看明细或调控参数';
-        card.onclick = () => {
-          if (typeof window.switchTab === 'function') {
-            window.switchTab(tabKey);
-          }
-        };
-      });
-    }
 
     window.runInteractiveSelfCheck = async function () {
       const btn = document.getElementById('btn-run-selfcheck');
@@ -761,7 +746,12 @@
         if (typeof window.renderPlatformSelfCheck === 'function') {
           await window.renderPlatformSelfCheck();
         }
-        bindSelfCheckDrilldown();
+        if (typeof window.syncGlobalGovernanceState === 'function') {
+          await window.syncGlobalGovernanceState();
+        }
+        if (typeof window.applySmartSelfCheckDrilldown === 'function') {
+          window.applySmartSelfCheckDrilldown();
+        }
         const nowStr = new Date().toLocaleTimeString('zh-CN', { hour12: false });
         if (statusEl) {
           statusEl.innerText = `✅ 体检通过（${nowStr} 已核验 · 点击任意卡片可直达处置）`;
