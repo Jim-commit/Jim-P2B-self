@@ -204,23 +204,39 @@ export function initStoreCommunityExtension() {
     await loadAndRenderCommunityTools();
   };
 
-  window.exportStoreLocalBackup = function () {
+  window.exportStoreLocalBackup = async function () {
     const { storeName, bossName, agentTag } = getCurrentStoreMeta();
+
+    let mutualLedger = [];
+    try {
+      const { data } = await supabase
+        .from('local_inventory_pool')
+        .select('id, created_at, from_store_name, to_store_name, product_name, qty, measure_unit, offer_price, status')
+        .order('id', { ascending: false })
+        .limit(100);
+      mutualLedger = (data || []).filter(
+        (r) =>
+          String(r.from_store_name || '').includes(storeName) ||
+          String(r.to_store_name || '').includes(storeName)
+      );
+    } catch (e) {}
+
     const backupObj = {
       exportedAt: new Date().toISOString(),
       storeName,
       bossName,
       supplierTenantId: agentTag,
       myAgents: storeState.myAgents || [],
+      mutualAidAndSwapLedger: mutualLedger,
       localStorageSnapshot: { ...localStorage }
     };
     const blob = new Blob([JSON.stringify(backupObj, null, 2)], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${storeName}_独立往来账本备份_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `${storeName}_独立往来与邻里平账备份_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    alert('💾 本店独立往来账本与缓存记录已打包下载到本地！数据主权完全归您所有。');
+    alert(`💾 本店独立往来账本及 ${mutualLedger.length} 条邻里余缺互助流水已打包下载到本地！数据主权完全归您所有。`);
   };
 }
