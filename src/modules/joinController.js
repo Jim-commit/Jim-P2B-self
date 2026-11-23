@@ -9,21 +9,93 @@ let failedAttemptsCount = 0;
 let verifiedAuditSummary = '';
 let lastQueriedApps = [];
 let dynamicTrialDays = 7;
+let lastOcrExtractedText = '';
 
-async function loadDynamicTrialDays() {
+// 核心高频地理标志与老字号公共名基线词库（支持通过 platform_governance_config.protected_public_names 动态追加）
+let protectedPublicNames = [
+  '西湖龙井',
+  '阳澄湖',
+  '五常大米',
+  '茅台',
+  '五粮液',
+  '同仁堂',
+  '全聚德',
+  '东阿阿胶',
+  '安溪铁观音',
+  '武夷大红袍',
+  '赣南脐橙',
+  '洛川苹果',
+  '库尔勒香梨',
+  '吐鲁番葡萄',
+  '阳山蜜桃',
+  '烟台苹果',
+  '涪陵榨菜',
+  '镇江香醋',
+  '山西老陈醋',
+  '金华火腿',
+  '宣威火腿',
+  '郫县豆瓣',
+  '景德镇',
+  '宜兴紫砂',
+  '普洱茶',
+  '信阳毛尖',
+  '黄山毛峰',
+  '洞庭碧螺春',
+  '六安瓜片',
+  '祈门红茶',
+  '长白山人参',
+  '宁夏枸杞',
+  '和田玉',
+  '平遥牛肉',
+  '德州扒鸡',
+  '道口烧鸡',
+  '柳州螺蛳粉',
+  '兰州拉面',
+  '沙县小吃'
+];
+
+async function loadDynamicGovernanceConfig() {
   try {
     const { data } = await supabase
       .from('platform_governance_config')
-      .select('config_value')
-      .eq('config_key', 'trial_days')
-      .maybeSingle();
-    if (data && data.config_value) {
-      dynamicTrialDays = parseInt(data.config_value, 10) || 7;
-      document.querySelectorAll('.js-dynamic-trial-days').forEach((el) => {
-        el.innerText = `${dynamicTrialDays} 天`;
-      });
-    }
+      .select('config_key, config_value')
+      .in('config_key', ['trial_days', 'protected_public_names']);
+
+    (data || []).forEach((row) => {
+      if (row.config_key === 'trial_days' && row.config_value) {
+        dynamicTrialDays = parseInt(row.config_value, 10) || 7;
+        document.querySelectorAll('.js-dynamic-trial-days').forEach((el) => {
+          el.innerText = `${dynamicTrialDays} 天`;
+        });
+      } else if (row.config_key === 'protected_public_names' && row.config_value) {
+        const extra = String(row.config_value)
+          .split(/[,，、\n]+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (extra.length > 0) {
+          protectedPublicNames = Array.from(new Set([...protectedPublicNames, ...extra]));
+        }
+      }
+    });
   } catch (e) {}
+}
+
+function checkProtectedPublicNameConflict(companyName, businessType) {
+  const cleanInput = String(companyName || '').replace(/\s+/g, '');
+  if (!cleanInput) return null;
+
+  const hitWord = protectedPublicNames.find((kw) => kw && cleanInput.includes(kw));
+  if (!hitWord) return null;
+
+  // 若营业执照 OCR 原件识别文本中本身完整包含该名称，说明确系当地合法核准主体，名实相符直接放行
+  if (lastOcrExtractedText && lastOcrExtractedText.includes(hitWord)) {
+    return null;
+  }
+
+  return {
+    hitWord,
+    isInd: businessType === 'individual'
+  };
 }
 
 function generateCheckCipher() {
@@ -215,6 +287,7 @@ function renderInteractiveFeedback(passed, successes, issues, creditCode) {
 
 async function runInteractiveLicenseCheck(imgElement, base64Data) {
   const isInd = document.getElementById('v-business-type')?.value === 'individual';
+  lastOcrExtractedText = '';
   if (isInd) {
     renderInteractiveFeedback(false, [], [], '');
     return;
@@ -256,6 +329,7 @@ async function runInteractiveLicenseCheck(imgElement, base64Data) {
 
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('OCR_TIMEOUT')), 12000));
     recognizedText = await Promise.race([ocrPromise, timeoutPromise]);
+    lastOcrExtractedText = recognizedText;
   } catch (err) {
     isOcrTimeout = true;
   }
@@ -379,6 +453,25 @@ window.handleVendorRegister = async function (e, isClaimAppeal = false) {
     return alert('⚠️ 紧急备用手机号不能与主联络手机号相同，请填写另一个可联系到的手机号码！');
   }
 
+  // 老字号与产区公共名“名实互证”温婉护栏
+  let effectiveManualMode = isManualFallbackMode;
+  let publicNameAuditNote = '';
+  const conflict = checkProtectedPublicNameConflict(companyName, businessType);
+  if (conflict) {
+    const proceedManual = confirm(
+      `🌿 产区公共名与老字号“名实相符”温和提示：\n\n` +
+        `系统检测到您填写的名称中包含受保护的公共地理标志或老字号字样【${conflict.hitWord}】，但尚未在上传的执照原件文字中自动核对到该名称。\n\n` +
+        `• 若您尚未按执照全称填写，请点「取消」并严格修改为营业执照核准全称（或个人实名格式）；\n` +
+        `• 若您确系当地产区农户/非遗传承人或持有授权证明，请点「确定」，系统将自动转入【平台总控人工复核通道】为您核实开席。`
+    );
+    if (!proceedManual) {
+      document.getElementById('v-company-name')?.focus();
+      return;
+    }
+    effectiveManualMode = true;
+    publicNameAuditNote = `[需核验公共地标/字号:${conflict.hitWord}]`;
+  }
+
   const tenantId = AuthSecurity.generateLockedTenantId(businessType, creditCode, contactPerson);
   document.getElementById('v-tenant-id').value = tenantId;
 
@@ -403,6 +496,7 @@ window.handleVendorRegister = async function (e, isClaimAppeal = false) {
     const checkCipher = generateCheckCipher();
 
     const extraNotes = [`[查验暗号:${checkCipher}]`, `[备用手机:${backupPhone}]`, `[经营范围:${businessScope}]`];
+    if (publicNameAuditNote) extraNotes.push(publicNameAuditNote);
     if (sponsorOrg) extraNotes.push(`联保担保单位：${sponsorOrg}`);
     const finalAuditSummary = `${verifiedAuditSummary} | ${extraNotes.join(' ')}`;
 
@@ -417,7 +511,7 @@ window.handleVendorRegister = async function (e, isClaimAppeal = false) {
       sponsorOrg,
       businessType,
       accessKey: hashedAccessKey,
-      isManualFallback: isManualFallbackMode,
+      isManualFallback: effectiveManualMode,
       auditSummary: finalAuditSummary,
       licenseBase64: currentCompressedBase64,
       isClaimAppeal
@@ -436,7 +530,7 @@ window.handleVendorRegister = async function (e, isClaimAppeal = false) {
         alert(res?.msg || '提交未通过校验');
       }
       btn.disabled = false;
-      updateSubmitButtonState(true, isManualFallbackMode);
+      updateSubmitButtonState(true, effectiveManualMode);
       return;
     }
 
@@ -496,7 +590,7 @@ window.handleVendorRegister = async function (e, isClaimAppeal = false) {
   } catch (err) {
     alert('❌ 提交处理失败: ' + err.message);
     btn.disabled = false;
-    updateSubmitButtonState(true, isManualFallbackMode);
+    updateSubmitButtonState(true, effectiveManualMode);
   }
 };
 
@@ -753,7 +847,7 @@ window.cancelResubmitMode = function () {
 };
 
 export function initJoinController() {
-  loadDynamicTrialDays();
+  loadDynamicGovernanceConfig();
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('tab') === 'query') {
     window.switchJoinTab('query');
