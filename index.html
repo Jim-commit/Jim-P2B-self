@@ -933,10 +933,13 @@
     }
   </script>
 
-  <script type="module" src="./src/main.js"></script>
+ <script type="module" src="./src/main.js"></script>
   <script type="module">
     import { initStoreCommunityExtension } from './src/modules/store/storeCommunityExtension.js';
+    import { mountStoreElderModeWidget } from './src/modules/store/storeElderModeWidget.js';
+
     initStoreCommunityExtension();
+    mountStoreElderModeWidget();
   </script>
 </body>
 </html>
