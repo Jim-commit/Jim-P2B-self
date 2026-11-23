@@ -203,7 +203,7 @@
     </div>
   </div>
 
-  <!-- 独立的《公众监督与商道建言堂》三标签闭环弹窗（发起呈报 + 查私人回音 + 阳光脱敏公示栏） -->
+  <!-- 独立的《公众监督与商道建言堂》三标签闭环弹窗 -->
   <div id="modal-mall-public-supervision" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -214,7 +214,6 @@
         <button type="button" onclick="window.closeModal('modal-mall-public-supervision')" class="text-stone-400 text-lg">✕</button>
       </div>
 
-      <!-- 三标签切换：发起呈报 vs 查私人回音 vs 阳光脱敏公示 -->
       <div class="grid grid-cols-3 gap-1 bg-stone-100 p-1 rounded-2xl font-bold text-center text-[11px]">
         <button type="button" id="pub-sup-tab-submit" onclick="window.switchPubSupTab('submit')" class="py-2 rounded-xl bg-[#1b4332] text-white transition">
           ✍️ 监督 / 建言
@@ -227,7 +226,6 @@
         </button>
       </div>
 
-      <!-- 面板 A：提交监督或建言 -->
       <div id="pub-sup-pane-submit" class="space-y-2.5">
         <div>
           <label class="block text-stone-600 font-bold mb-1">反馈类别（聚焦平台底线监督与规则共建）：</label>
@@ -260,7 +258,6 @@
           📜 直呈平台监督与建言堂
         </button>
 
-        <!-- 提交成功后生成的回音凭证卡 -->
         <div id="pub-sup-receipt-card" class="hidden bg-amber-50 border border-amber-300 p-3 rounded-2xl space-y-1.5 text-center">
           <div class="text-emerald-950 font-bold">✅ 已直呈平台治理中枢（您的身份信息严格保密）：</div>
           <div class="bg-white border border-amber-300 py-1.5 px-3 rounded-xl font-mono text-base font-bold text-stone-900 tracking-wider" id="pub-sup-receipt-code">JY-0000</div>
@@ -271,7 +268,6 @@
         </div>
       </div>
 
-      <!-- 面板 B：查询个人私人回音 -->
       <div id="pub-sup-pane-query" class="hidden space-y-2.5">
         <div class="bg-stone-50 border border-stone-200 p-2 rounded-xl text-[10px] text-stone-500">
           🔒 <b>隐私保护：</b>仅凭您专属的回音码或预留手机号方可查阅，绝不对外泄露提交人信息。
@@ -287,7 +283,6 @@
         </div>
       </div>
 
-      <!-- 面板 C：阳光治理与信义脱敏公示栏 -->
       <div id="pub-sup-pane-public" class="hidden space-y-2.5">
         <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-2xl text-[10px] text-emerald-950 leading-relaxed">
           <b>⚖️ 对事不对人 · 脱敏公示：</b>本栏仅公开经平台核实并批准公示的典型建言采纳与商道调处结论；已严格隐藏提交人隐私及商号商业机密。
@@ -642,6 +637,9 @@
   <script type="module">
     import { supabase } from './src/lib/supabase.js';
     import { initMallController } from './src/modules/mallController.js';
+    import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
+
+    enforceGlobalGovernance();
 
     window.openPublicSupervisionModal = function (tab = 'submit') {
       window.openModal('modal-mall-public-supervision');
@@ -800,7 +798,6 @@
       }
     };
 
-    // 加载平台审核并标注【公开公示】的脱敏治理结论（严守隐私与商业机密，只展示脱敏结论）
     window.loadPublicGovernanceBulletins = async function () {
       const listEl = document.getElementById('pub-sup-public-list');
       if (!listEl) return;
@@ -833,7 +830,6 @@
 
         listEl.innerHTML = publicRows
           .map((r) => {
-            // 自动脱敏手机号等个人隐私数字串
             const cleanContent = String(r.content || '').replace(/1[3-9]\d{9}/g, '***').replace(/\[JY-\d+\]/g, '');
             const cleanReply = String(r.admin_reply || r.official_reply || '')
               .replace(/【公开公示】|\[公开公示\]/g, '')
