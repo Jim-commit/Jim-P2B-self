@@ -2,9 +2,7 @@ name: Daily Supabase Backup (7-Day Rolling)
 
 on:
   schedule:
-    # 每天北京时间凌晨 03:30 自动执行 (UTC 19:30)
     - cron: '30 19 * * *'
-  # 支持在 GitHub Actions 页面随时手动点击「Run workflow」立即备份
   workflow_dispatch:
 
 permissions:
@@ -15,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install PostgreSQL 17 client
         run: |
@@ -28,6 +26,10 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "❌ 错误：未检测到 SUPABASE_DB_URL 密钥，请先在 Settings -> Secrets -> Actions 中添加！"
+            exit 1
+          fi
           mkdir -p backups
           DAY_TAG=$(TZ='Asia/Shanghai' date +%a)
           FILE_PATH="backups/backup_${DAY_TAG}.sql"
