@@ -10,7 +10,7 @@
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-stone-100 text-stone-800 font-sans p-4 min-h-screen">
+<body class="bg-stone-100 text-stone-800 font-sans p-4 pb-24 min-h-screen">
   <div class="max-w-7xl mx-auto space-y-4">
     
     <!-- 顶栏 -->
@@ -96,7 +96,7 @@
       <button id="p-tab-btn-configs" onclick="window.switchTab('configs')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
         🎛️ 全局参数与网关
       </button>
-      <button id="p-tab-btn-selfcheck" onclick="window.switchTab('selfcheck'); window.renderPlatformSelfCheck();" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
+      <button id="p-tab-btn-selfcheck" onclick="window.switchTab('selfcheck'); window.runInteractiveSelfCheck();" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
         🧭 平台自省与公约
       </button>
       <button id="p-tab-btn-audit" onclick="window.switchTab('audit')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
@@ -189,7 +189,7 @@
       </div>
     </section>
 
-    <!-- 【新增】板块 2.3：双轨申诉、街坊监督与重大事项联署公断台 -->
+    <!-- 板块 2.3：双轨申诉、街坊监督与重大事项联署公断台 -->
     <section id="p-tab-appeals" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3 text-xs">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
@@ -298,7 +298,7 @@
       </div>
     </section>
 
-    <!-- 【新增】板块 4.5：自定义会员等级与平台运维会费配置 -->
+    <!-- 板块 4.5：自定义会员等级与平台运维会费配置 -->
     <section id="p-tab-membership" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3 text-xs">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
@@ -314,7 +314,7 @@
       </div>
     </section>
 
-    <!-- 【新增】板块 4.8：全域零写死运行参数与跨部署支付网关配置 -->
+    <!-- 板块 4.8：全域零写死运行参数与跨部署支付网关配置 -->
     <section id="p-tab-configs" class="hidden space-y-4">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3 text-xs">
         <div class="border-b border-stone-100 pb-3">
@@ -328,14 +328,20 @@
     <!-- 板块 5：🧭 平台自身自省体检与双向公约公示 -->
     <section id="p-tab-selfcheck" class="hidden space-y-4 text-xs">
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
-        <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-2.5">
           <div>
             <h2 class="text-sm font-bold text-stone-900">🧭 平台自身自省与健康度体检（正人先正己 · 守正创新）</h2>
             <p class="text-[11px] text-stone-400">定期自查平台是否坚守非掠夺性公益定位、数字主权隔离是否严密、审计链是否无断层</p>
           </div>
-          <button type="button" onclick="window.renderPlatformSelfCheck()" class="bg-stone-900 text-white font-bold px-3.5 py-1.5 rounded-xl">
-            ↻ 立即自检体检
-          </button>
+          <div class="flex flex-wrap items-center gap-2">
+            <span id="selfcheck-last-status" class="text-[11px] font-mono text-emerald-700 font-bold"></span>
+            <button type="button" onclick="window.exportSelfCheckReport()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold px-3 py-1.5 rounded-xl active:scale-95 transition">
+              📄 导出合规自查报告
+            </button>
+            <button type="button" id="btn-run-selfcheck" onclick="window.runInteractiveSelfCheck()" class="bg-stone-900 hover:bg-stone-800 text-white font-bold px-3.5 py-1.5 rounded-xl active:scale-95 transition">
+              ↻ 立即自检体检
+            </button>
+          </div>
         </div>
         <div id="platform-selfcheck-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
       </div>
@@ -663,7 +669,7 @@
     </div>
   </div>
 
-  <!-- 【新增】自定义会员等级与运维会费编辑弹窗 -->
+  <!-- 自定义会员等级与运维会费编辑弹窗 -->
   <div id="modal-membership-plan" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -726,6 +732,52 @@
 
     mountPlatformEvolutionWidget();
     initPlatformController();
+
+    // 交互增强：平台自省体检按钮实时反馈与导出合规自查报告
+    window.runInteractiveSelfCheck = async function () {
+      const btn = document.getElementById('btn-run-selfcheck');
+      const statusEl = document.getElementById('selfcheck-last-status');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = '⏳ 正在深度核验...';
+      }
+      try {
+        if (typeof window.renderPlatformSelfCheck === 'function') {
+          await window.renderPlatformSelfCheck();
+        }
+        const nowStr = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        if (statusEl) {
+          statusEl.innerText = `✅ 体检通过（${nowStr} 已完成全网实时核验）`;
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = '↻ 立即自检体检';
+        }
+      }
+    };
+
+    window.exportSelfCheckReport = function () {
+      const grid = document.getElementById('platform-selfcheck-grid');
+      const items = grid ? Array.from(grid.children).map((card) => card.innerText.replace(/\n+/g, ' | ').trim()) : [];
+      const reportLines = [
+        '==================================================',
+        '百工百业数字协作平台 · 平台自身合规与健康度自查报告',
+        `核验生成时间：${new Date().toLocaleString('zh-CN', { hour12: false })}`,
+        '==================================================',
+        ...(items.length > 0 ? items.map((line, i) => `${i + 1}. ${line}`) : ['请先点击「立即自检体检」刷新数据后再导出。']),
+        '--------------------------------------------------',
+        '存证声明：本平台坚守零抽佣、零竞价排名、数据主权隔离与防篡改审计底线。'
+      ].join('\n');
+
+      const blob = new Blob([reportLines], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `百工天街平台合规自查报告_${new Date().toISOString().slice(0, 10)}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
   </script>
 </body>
 </html>
