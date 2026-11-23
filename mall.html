@@ -195,7 +195,7 @@
         <button onclick="window.closeModal('modal-mall-covenant')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-2xl space-y-2 text-[11px] text-stone-700 leading-relaxed">
-        <p><b>一、源头平准 · 零抽佣：</b>本集市不收一分交易抽佣、不搞竞价排名，合作社、工坊与实名匠人直连邻里，阳光工价。</p>
+        <p><b>一、源头平准 · 零抽佣：</b>本集市不收一分交易抽佣、不搞流量竞价，合作社、工坊与实名匠人直连邻里，阳光工价。</p>
         <p><b>二、服务归店 · 邻里互助：</b>选择就近合作门店自提，服务润利全额归属该门店，支持社区小店可持续发展。</p>
         <p><b>三、物勒工名 · 公众监督：</b>每款良品均公开出品主体、经营范围与产地溯源印记；若发现虚假宣传或超范围经营，欢迎随时通过页脚「公众监督与建言堂」反馈核查。</p>
       </div>
@@ -203,7 +203,7 @@
     </div>
   </div>
 
-  <!-- 独立的《公众监督与商道建言堂》专用弹窗（直呈平台总控，与求购榜彻底并行隔离） -->
+  <!-- 独立的《公众监督与商道建言堂》专用弹窗（权责边界清晰，直呈平台总控，与求购榜彻底并行隔离） -->
   <div id="modal-mall-public-supervision" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -216,12 +216,15 @@
 
       <div class="space-y-2.5">
         <div>
-          <label class="block text-stone-600 font-bold mb-1">反馈类别：</label>
-          <select id="pub-sup-type" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold text-emerald-950 outline-none">
-            <option value="规范监督举报">🛡️ 虚假宣传 / 超范围经营 / 货不对板监督</option>
-            <option value="邻里服务建议">🏪 合作门店自提服务体验反馈</option>
-            <option value="平台规则建言">📜 平台公议规则与功能完善建言</option>
+          <label class="block text-stone-600 font-bold mb-1">反馈类别（聚焦平台底线监督与规则共建）：</label>
+          <select id="pub-sup-type" onchange="window.onPubSupTypeChange(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold text-emerald-950 outline-none">
+            <option value="底线违规监督">🛡️ 虚假宣传 / 超范围经营 / 冒名欺诈监督</option>
+            <option value="平台规则建言">📜 平台公议规则与运维会费标准建言</option>
+            <option value="功能体验建议">💡 平台功能优化与操作体验建议</option>
+            <option value="custom">✏️ 其他事项（点击自由输入主题）</option>
           </select>
+          <input type="text" id="pub-sup-custom-type" placeholder="请输入您自定义的反馈主题..." class="hidden mt-2 w-full bg-amber-50/70 border border-amber-300 rounded-xl px-3 py-2 font-bold text-stone-800 outline-none">
+          <span class="text-[10px] text-stone-400 block mt-1">注：具体订单收货或门店自提体验，请在「📦 查进度 → 验真晒单」中直接反馈给商家</span>
         </div>
 
         <div>
@@ -590,14 +593,27 @@
     import { supabase } from './src/lib/supabase.js';
     import { initMallController } from './src/modules/mallController.js';
 
+    window.onPubSupTypeChange = function (val) {
+      const customInp = document.getElementById('pub-sup-custom-type');
+      if (!customInp) return;
+      customInp.classList.toggle('hidden', val !== 'custom');
+      if (val === 'custom') customInp.focus();
+    };
+
     window.submitMallPublicSupervision = async function () {
-      const type = document.getElementById('pub-sup-type')?.value || '规范监督举报';
+      const rawType = document.getElementById('pub-sup-type')?.value || '底线违规监督';
+      const customType = document.getElementById('pub-sup-custom-type')?.value.trim();
       const target = document.getElementById('pub-sup-target')?.value.trim();
       const content = document.getElementById('pub-sup-content')?.value.trim();
       const contact = document.getElementById('pub-sup-contact')?.value.trim();
       const btn = document.getElementById('btn-submit-pub-sup');
 
+      if (rawType === 'custom' && !customType) {
+        return alert('请输入您自定义的反馈主题！');
+      }
       if (!content) return alert('请填写具体监督事项或建言内容！');
+
+      const finalType = rawType === 'custom' ? `自定义·${customType}` : rawType;
 
       if (btn) {
         btn.disabled = true;
@@ -605,7 +621,7 @@
       }
 
       try {
-        const fullText = `【天街公众通道 · ${type}】${target ? `[涉及对象：${target}] ` : ''}${content}`;
+        const fullText = `【天街公众通道 · ${finalType}】${target ? `[涉及对象：${target}] ` : ''}${content}`;
         const { error } = await supabase.from('platform_suggestion_board').insert([
           {
             tenant_id: target || 'PUBLIC_MALL',
@@ -618,6 +634,7 @@
 
         if (error) throw error;
 
+        document.getElementById('pub-sup-custom-type').value = '';
         document.getElementById('pub-sup-target').value = '';
         document.getElementById('pub-sup-content').value = '';
         document.getElementById('pub-sup-contact').value = '';
