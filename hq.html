@@ -2056,7 +2056,9 @@
       initHqGovernanceExtensionBindings,
       loadAndRenderHqGovernanceExtension
     } from './src/modules/hq/hqGovernanceExtension.js';
+    import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
 
+    enforceGlobalGovernance();
     initHqGovernanceExtensionBindings();
     await initHQController();
     await loadAndRenderHqGovernanceExtension();
