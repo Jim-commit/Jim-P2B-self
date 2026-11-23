@@ -758,30 +758,30 @@
         }
 
         listEl.innerHTML = matched
-          .map(
-            (r) => `
-            <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
-              <div class="flex justify-between items-center">
-                <span class="font-mono text-[10px] text-stone-400">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  r.reply_status === 'replied'
-                    ? 'bg-emerald-100 text-emerald-900'
-                    : 'bg-amber-100 text-amber-900'
-                }">
-                  ${r.reply_status === 'replied' ? '✅ 总控已批复结案' : '⏳ 治理中枢核查中'}
-                </span>
+          .map((r) => {
+            const replyText = r.admin_reply || r.official_reply || '';
+            const isReplied = r.reply_status === 'replied' || !!replyText;
+            return `
+              <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
+                <div class="flex justify-between items-center">
+                  <span class="font-mono text-[10px] text-stone-400">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    isReplied ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'
+                  }">
+                    ${isReplied ? '✅ 总控已批复结案' : '⏳ 治理中枢核查中'}
+                  </span>
+                </div>
+                <p class="text-[11px] text-stone-800 leading-relaxed">${r.content || ''}</p>
+                ${
+                  replyText
+                    ? `<div class="bg-emerald-50 border border-emerald-200 p-2 rounded-xl text-[11px] text-emerald-950">
+                         <b>🏛️ 平台官方回音：</b>${replyText}
+                       </div>`
+                    : `<div class="text-[10px] text-stone-400 italic">平台值守人员核实后将在此公布处理结果，请稍后再查。</div>`
+                }
               </div>
-              <p class="text-[11px] text-stone-800 leading-relaxed">${r.content || ''}</p>
-              ${
-                r.admin_reply
-                  ? `<div class="bg-emerald-50 border border-emerald-200 p-2 rounded-xl text-[11px] text-emerald-950">
-                       <b>🏛️ 平台官方回音：</b>${r.admin_reply}
-                     </div>`
-                  : `<div class="text-[10px] text-stone-400 italic">平台值守人员核实后将在此公布处理结果，请稍后再查。</div>`
-              }
-            </div>
-          `
-          )
+            `;
+          })
           .join('');
       } catch (err) {
         listEl.innerHTML = `<div class="py-4 text-center text-rose-600">查询失败：${err.message}</div>`;
