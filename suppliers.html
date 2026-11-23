@@ -195,7 +195,9 @@
   <script type="module">
     import { initSuppliersController } from './src/modules/suppliersController.js';
     import { mountPublicSupervisionWidget } from './src/modules/publicSupervisionWidget.js';
+    import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
 
+    enforceGlobalGovernance();
     mountPublicSupervisionWidget('百业供需名录');
     initSuppliersController();
   </script>
