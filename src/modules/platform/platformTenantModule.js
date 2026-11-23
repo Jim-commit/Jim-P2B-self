@@ -5,6 +5,11 @@ import {
   formatBusinessTypeLabel,
   recordAuditLog
 } from './platformState.js';
+import {
+  exportTenantFullBackup,
+  openTenantImportRestoreModal,
+  openTenantPurgeGuardModal
+} from './tenantLifecycleModule.js';
 
 export function renderApplications() {
   const container = document.getElementById('applications-list');
@@ -310,6 +315,18 @@ export function initPlatformTenantBindings() {
     }
   };
 
+  window.exportTenantBackupAction = async function (tenantId, companyName) {
+    try {
+      await exportTenantFullBackup(tenantId, companyName);
+    } catch (err) {
+      alert('❌ 导出商号快照失败：' + (err?.message || '请稍后重试'));
+    }
+  };
+
+  window.openTenantImportAction = function (tenantId, companyName) {
+    openTenantImportRestoreModal(tenantId, companyName);
+  };
+
   window.triggerPurgeFromModal = function () {
     const tenantKey = document.getElementById('adjust-tenant-id').value;
     const title = document.getElementById('adjust-tenant-title').innerText;
@@ -318,44 +335,7 @@ export function initPlatformTenantBindings() {
   };
 
   window.confirmPurgeTenantAction = function (tenantId, companyName) {
-    const cleanName = (companyName || '').split('(')[0].trim();
-
-    window.triggerPlatform2FA(`⚠️ 最高警戒：即将彻底销号商号【${cleanName || tenantId}】(${tenantId})，清空入驻审核与主体账本。请出示 2FA 口令确认：`, async () => {
-      const confirmCode = prompt(
-        `⚠️ 危险确认：商号【${cleanName || tenantId}】即将作废除名！\n\n` +
-          `该操作将物理清除 platform_tenant 与 tenant_application 记录。\n` +
-          `完成后合作社/工坊可持执照原件前往 join.html 重新扫描核验。\n\n` +
-          `若确认销号重置，请在下方输入大写：DELETE`
-      );
-
-      if (confirmCode !== 'DELETE') return alert('操作已取消，未做任何变更。');
-
-      try {
-        await supabase.from('tenant_application').delete().or(`tenant_id.eq.${tenantId},company_name.eq.${cleanName}`);
-        try {
-          await supabase.from('goods').delete().eq('tenant_id', tenantId);
-        } catch (e) {}
-        try {
-          await supabase.from('customers').delete().eq('tenant_id', tenantId);
-        } catch (e) {}
-
-        const { data: deletedRows, error: delError } = await supabase
-          .from('platform_tenant')
-          .delete()
-          .or(`tenant_id.eq.${tenantId},company_name.eq.${cleanName}`)
-          .select();
-
-        if (delError) throw new Error('数据库拒绝删除: ' + delError.message);
-        if (!deletedRows || deletedRows.length === 0) throw new Error(`未找到商号【${tenantId}】，或数据库 RLS 策略阻止了 DELETE 权限！`);
-
-        await recordAuditLog('商号作废除名销号', 'CRITICAL_2FA', { tenant_id: tenantId, company_name: cleanName });
-
-        alert(`✅ 商号【${cleanName}】已彻底清除（已销毁 ${deletedRows.length} 笔在册档案）！\n商号代号已完全释放，可返回 join.html 重新拍照验证。`);
-        await window.loadPlatformData();
-      } catch (err) {
-        alert('❌ 销号执行失败: ' + err.message);
-      }
-    });
+    openTenantPurgeGuardModal(tenantId, companyName);
   };
 
   window.approveApplication = async function (appId, tenantId, companyName) {
