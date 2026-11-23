@@ -808,6 +808,9 @@
   <script type="module">
     import { initDriverController } from './src/modules/driverController.js';
     import { initDriverCarpoolBindings } from './src/modules/driver/driverCarpoolExtension.js';
+    import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
+
+    enforceGlobalGovernance();
     initDriverController();
     initDriverCarpoolBindings();
     if ('serviceWorker' in navigator) {
