@@ -4,6 +4,7 @@ import { platformState, recordAuditLog } from './platformState.js';
 const ARCHIVE_TAG = '__ARCHIVED_';
 const SOVEREIGN_KEY_STORAGE = 'baigong_sovereign_master_hash';
 const SOVEREIGN_LOCK_STORAGE = 'baigong_sovereign_lockout_state';
+const SOVEREIGN_LAST_BACKUP_KEY = 'baigong_last_motherboard_backup_ts';
 const DEFAULT_SOVEREIGN_PASSPHRASE = 'SOVEREIGN#2026';
 
 export function getCurrentAdminRole() {
@@ -995,9 +996,9 @@ export async function renderSeniorGovernancePanel() {
 
 /**
  * ============================================================================
- * 6. 终极运营管理者「三零隐身秘密武器 · 全栈灾难母舰引擎 v2.2」
- *    - 涵盖：26 张全库核心业务表 + 不可篡改审计铁证 + 操作日志 + 执照Base64离线内嵌 + 全站递归源码快照
- *    - 具备：输错3次锁定30分钟 + 设新暗令后废除默认密码 + SHA-256验签 + 铁证只增不删幂等补齐 + 重建后26表逐行数目验真对账单
+ * 6. 终极运营管理者「三零隐身秘密武器 · 全栈灾难母舰引擎 v3.0 最终完全体」
+ *    - 涵盖：26表数据铁证母包 + 全站递归源码快照 + 内置 00_INIT_SCHEMA_AND_RPC.sql 一键三件套连下
+ *    - 具备：输错3次锁定30分钟 + 源库防误覆盖警戒 + 14天冷备巡检提醒 + 26表逐行数目验真对账
  * ============================================================================
  */
 const MOTHERBOARD_TABLES = [
@@ -1029,11 +1030,65 @@ const MOTHERBOARD_TABLES = [
   'sys_qr_session'
 ];
 
-// 物理锁定表：灾难重建时禁止 DELETE，仅允许幂等补充缺失铁证
 const IMMUTABLE_EVIDENCE_TABLES = new Set([
   'audit_immutable_log',
   'inventory_log'
 ]);
+
+const INIT_SCHEMA_SQL_TEMPLATE = `-- 百工百业数字协作平台 · 灾难重建全库底座初始化脚本 (00_INIT_SCHEMA_AND_RPC.sql)
+CREATE TABLE IF NOT EXISTS public.platform_admin_credential (id BIGSERIAL PRIMARY KEY, admin_account TEXT UNIQUE NOT NULL, admin_name TEXT, secret_token TEXT NOT NULL, admin_role TEXT DEFAULT 'ops_manager', totp_secret TEXT, totp_enabled BOOLEAN DEFAULT FALSE, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.platform_governance_config (config_key TEXT PRIMARY KEY, config_label TEXT, config_value TEXT, value_type TEXT DEFAULT 'text', category TEXT DEFAULT 'general', description TEXT, updated_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.platform_gov_configs (id BIGSERIAL PRIMARY KEY, config_key TEXT, config_value TEXT, remark TEXT, updated_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.platform_membership_plan (id BIGSERIAL PRIMARY KEY, plan_code TEXT UNIQUE, plan_name TEXT, tagline TEXT, fee NUMERIC(12,2) DEFAULT 0, billing_cycle TEXT DEFAULT 'yearly', max_staff INT DEFAULT 5, max_stations INT DEFAULT 20, sort_order INT DEFAULT 0, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.platform_category (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, level INT DEFAULT 1, parent_id BIGINT, service_mode TEXT DEFAULT '实体与电商双轨', sort_order INT DEFAULT 0, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.platform_category_dict (id BIGSERIAL PRIMARY KEY, name TEXT, level INT DEFAULT 1, parent_id BIGINT, sort_order INT DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.platform_standard_category (id BIGSERIAL PRIMARY KEY, name TEXT, level INT DEFAULT 1, parent_id BIGINT, sort_order INT DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.platform_tenant (id BIGSERIAL PRIMARY KEY, tenant_id TEXT UNIQUE NOT NULL, company_name TEXT NOT NULL, credit_code TEXT, business_type TEXT DEFAULT 'coop', service_mode TEXT DEFAULT '实体与电商双轨', contact_person TEXT, contact_name TEXT, phone TEXT, backup_phone TEXT, access_key TEXT, reset_claim_token TEXT, totp_secret TEXT, totp_enabled BOOLEAN DEFAULT FALSE, timelock_status TEXT, timelock_expires_at TIMESTAMPTZ, membership_fee NUMERIC(12,2) DEFAULT 0, membership_status TEXT DEFAULT 'active', session_epoch INT DEFAULT 1, admin_remark TEXT, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.tenant (id TEXT PRIMARY KEY, name TEXT, status TEXT DEFAULT 'active', created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.tenant_application (id BIGSERIAL PRIMARY KEY, tenant_id TEXT, company_name TEXT, credit_code TEXT, business_type TEXT, service_mode TEXT, contact_person TEXT, contact_phone TEXT, license_image_url TEXT, access_key TEXT, ai_audit_score INT DEFAULT 95, application_status TEXT DEFAULT 'pending_review', payment_status TEXT DEFAULT 'unpaid', membership_fee NUMERIC(12,2) DEFAULT 0, review_note TEXT, reviewed_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.driver (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, name TEXT NOT NULL, phone TEXT, plate_number TEXT, access_pin TEXT, status TEXT DEFAULT 'active', created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.product (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, name TEXT NOT NULL, category_l1 TEXT, category_l2 TEXT, unit TEXT DEFAULT '件', spec TEXT, image_url TEXT, tier_1_price NUMERIC(12,2) DEFAULT 0, tier_2_price NUMERIC(12,2), tier_3_price NUMERIC(12,2), cost_price NUMERIC(12,2) DEFAULT 0, stock_qty NUMERIC(12,2) DEFAULT 0, custom_specs JSONB, tags JSONB, public_notice TEXT, internal_note TEXT, status TEXT DEFAULT 'active', created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.store (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, name TEXT NOT NULL, contact_person TEXT, phone TEXT, address TEXT, region TEXT, credit_limit NUMERIC(12,2) DEFAULT 0, current_debt NUMERIC(12,2) DEFAULT 0, return_quota NUMERIC(12,2) DEFAULT 0, used_return_quota NUMERIC(12,2) DEFAULT 0, carrier_hold_count INT DEFAULT 0, basket_count INT DEFAULT 0, visible_product_ids JSONB, custom_pricing JSONB, access_pin TEXT, status TEXT DEFAULT 'active', created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.store_lead (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, store_name TEXT, contact_person TEXT, phone TEXT, address TEXT, remark TEXT, status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.store_order (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, order_no TEXT, store_id BIGINT, store_name TEXT, driver_name TEXT, items JSONB, items_return JSONB, items_exchange JSONB, total_amount NUMERIC(12,2) DEFAULT 0, paid_amount NUMERIC(12,2) DEFAULT 0, delivery_status TEXT DEFAULT 'pending', order_status TEXT DEFAULT 'active', remark TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.orders (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, order_no TEXT, store_id BIGINT, customer_name TEXT, customer_phone TEXT, total_amount NUMERIC(12,2) DEFAULT 0, paid_amount NUMERIC(12,2) DEFAULT 0, order_status TEXT DEFAULT 'pending', delivery_status TEXT DEFAULT 'pending', remark TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.order_item (id BIGSERIAL PRIMARY KEY, order_id BIGINT, product_id BIGINT, product_name TEXT, qty NUMERIC(12,2) DEFAULT 0, unit_price NUMERIC(12,2) DEFAULT 0, subtotal NUMERIC(12,2) DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.driver_collection_log (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, store_id BIGINT, store_name TEXT, driver_name TEXT, amount NUMERIC(12,2) DEFAULT 0, payment_method TEXT, remark TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.payment_record (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, store_id BIGINT, order_id BIGINT, amount NUMERIC(12,2) DEFAULT 0, payment_method TEXT, operator_name TEXT, remark TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.inventory_log (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, product_id BIGINT, product_name TEXT, change_type TEXT, delta_qty NUMERIC(12,2) DEFAULT 0, after_qty NUMERIC(12,2) DEFAULT 0, operator_name TEXT, remark TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.local_inventory_pool (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, from_store_id BIGINT, from_store_name TEXT, to_store_id BIGINT, to_store_name TEXT, product_id BIGINT, product_name TEXT, qty NUMERIC(12,2) DEFAULT 0, measure_unit TEXT DEFAULT '件', unit_price NUMERIC(12,2) DEFAULT 0, status TEXT DEFAULT 'open', created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.demand_forecast_plan (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, store_id BIGINT, store_name TEXT, plan_cycle TEXT, items JSONB, status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.platform_compliance_case (id BIGSERIAL PRIMARY KEY, tenant_id TEXT, company_name TEXT, case_type TEXT, title TEXT, description TEXT, evidence_urls JSONB, status TEXT DEFAULT 'open', ruling_note TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.platform_suggestion_board (id BIGSERIAL PRIMARY KEY, tenant_id TEXT, proposer_type TEXT, proposer_name TEXT, content TEXT, official_reply TEXT, reply_status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.audit_immutable_log (id BIGSERIAL PRIMARY KEY, tenant_id TEXT, operator_name TEXT, severity TEXT DEFAULT 'INFO', action_title TEXT, details JSONB, integrity_hash TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.sys_qr_session (id BIGSERIAL PRIMARY KEY, tenant_id TEXT, session_token TEXT, status TEXT, expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.login_qr_session (id BIGSERIAL PRIMARY KEY, tenant_id TEXT, session_token TEXT, status TEXT, expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW());
+
+DO $$ DECLARE tbl TEXT; BEGIN FOR tbl IN SELECT unnest(ARRAY['platform_admin_credential','platform_governance_config','platform_gov_configs','platform_membership_plan','platform_category','platform_category_dict','platform_standard_category','platform_tenant','tenant','tenant_application','driver','product','store','store_lead','store_order','orders','order_item','driver_collection_log','payment_record','inventory_log','local_inventory_pool','demand_forecast_plan','platform_compliance_case','platform_suggestion_board','audit_immutable_log','sys_qr_session','login_qr_session']) LOOP EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl); EXECUTE format('DROP POLICY IF EXISTS "allow_all_%s" ON public.%I;', tbl, tbl); EXECUTE format('CREATE POLICY "allow_all_%s" ON public.%I FOR ALL USING (true) WITH CHECK (true);', tbl, tbl); END LOOP; END $$;
+
+DROP FUNCTION IF EXISTS public.rpc_bump_session_epoch(TEXT, TEXT);
+CREATE OR REPLACE FUNCTION public.rpc_bump_session_epoch(p_tenant_id TEXT, p_reason TEXT DEFAULT '') RETURNS void AS $$ BEGIN UPDATE public.platform_tenant SET session_epoch = COALESCE(session_epoch, 1) + 1 WHERE tenant_id = p_tenant_id; END; $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP FUNCTION IF EXISTS public.rpc_sync_tenant_vault(TEXT, TEXT, TEXT);
+CREATE OR REPLACE FUNCTION public.rpc_sync_tenant_vault(p_tenant_id TEXT, p_access_key TEXT, p_backup_phone TEXT DEFAULT NULL) RETURNS void AS $$ BEGIN UPDATE public.platform_tenant SET access_key = p_access_key, backup_phone = COALESCE(p_backup_phone, backup_phone) WHERE tenant_id = p_tenant_id; END; $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.fn_block_audit_tamper() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'SECURITY_VIOLATION: Immutable evidence table is physically locked against UPDATE/DELETE.'; END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_lock_audit_immutable_log ON public.audit_immutable_log;
+CREATE TRIGGER trg_lock_audit_immutable_log BEFORE UPDATE OR DELETE ON public.audit_immutable_log FOR EACH ROW EXECUTE FUNCTION public.fn_block_audit_tamper();
+DROP TRIGGER IF EXISTS trg_lock_inventory_log_delete ON public.inventory_log;
+CREATE TRIGGER trg_lock_inventory_log_delete BEFORE DELETE ON public.inventory_log FOR EACH ROW EXECUTE FUNCTION public.fn_block_audit_tamper();`;
+
+function downloadTextBlob(content, filename, mimeType = 'application/json;charset=utf-8') {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 async function sha256Hex(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
@@ -1088,7 +1143,6 @@ async function verifySovereignPassphrase(inputPass) {
     .maybeSingle();
 
   if (cfg?.config_value) {
-    // 同步落入本地防降级，一旦云端设过新暗令即永久废除默认口令
     localStorage.setItem(SOVEREIGN_KEY_STORAGE, cfg.config_value);
     return inputHash === cfg.config_value;
   }
@@ -1097,9 +1151,6 @@ async function verifySovereignPassphrase(inputPass) {
   return inputHash === defaultHash;
 }
 
-/**
- * 辅助：将外部执照图片 URL 抓取转为离线 Base64 编码，确保脱离旧图床仍可完整展示
- */
 async function inlineImageAsDataUrl(url) {
   if (!url || String(url).startsWith('data:image/')) return url;
   try {
@@ -1117,9 +1168,6 @@ async function inlineImageAsDataUrl(url) {
   }
 }
 
-/**
- * 打包导出全平台 26 表全量数据 + 不可篡改审计铁证 + 执照离线内嵌图（带 SHA-256 防篡改验真封印）
- */
 async function exportFullPlatformDisasterMotherboard() {
   const snapshot = {};
   for (const tbl of MOTHERBOARD_TABLES) {
@@ -1140,10 +1188,12 @@ async function exportFullPlatformDisasterMotherboard() {
 
   const canonicalJson = JSON.stringify(snapshot);
   const integritySeal = await sha256Hex(`BAIGONG_MOTHERBOARD_SEAL::${canonicalJson}`);
+  const sourceEndpoint = supabase?.supabaseUrl || window.location.origin;
 
   const motherPayload = {
     schema_version: 'baigong_sovereign_disaster_motherboard_v2',
     created_at: new Date().toISOString(),
+    source_endpoint: sourceEndpoint,
     integrity_sha256: integritySeal,
     evidence_summary: {
       immutable_audit_logs: snapshot.audit_immutable_log.length,
@@ -1158,20 +1208,13 @@ async function exportFullPlatformDisasterMotherboard() {
     tables: snapshot
   };
 
-  const blob = new Blob([JSON.stringify(motherPayload, null, 2)], { type: 'application/json;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `SOVEREIGN_FULL_DISASTER_MOTHERBOARD_${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  downloadTextBlob(
+    JSON.stringify(motherPayload, null, 2),
+    `SOVEREIGN_FULL_DISASTER_MOTHERBOARD_${new Date().toISOString().slice(0, 10)}.json`
+  );
+  localStorage.setItem(SOVEREIGN_LAST_BACKUP_KEY, String(Date.now()));
 }
 
-/**
- * 打包全站所有端（总控/调度台/入驻/天街/门店/司机）完整程序源码快照（递归解析 HTML 依赖树）
- */
 async function exportRuntimeSourceCodeVault() {
   const entryPages = [
     './index.html',
@@ -1249,15 +1292,10 @@ async function exportRuntimeSourceCodeVault() {
     files: capturedFiles
   };
 
-  const blob = new Blob([JSON.stringify(bundlePayload, null, 2)], { type: 'application/json;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `SOVEREIGN_FULL_SOURCE_VAULT_${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  downloadTextBlob(
+    JSON.stringify(bundlePayload, null, 2),
+    `SOVEREIGN_FULL_SOURCE_VAULT_${new Date().toISOString().slice(0, 10)}.json`
+  );
   return bundlePayload.file_count;
 }
 
@@ -1284,9 +1322,6 @@ async function batchInsertTableRows(tableName, rows, preserveId = false) {
   return inserted;
 }
 
-/**
- * 幂等回填物理锁定铁证表（只增不删，永不触发防篡改触发器冲突）
- */
 async function appendMissingEvidenceRows(tableName, rows) {
   if (!Array.isArray(rows) || rows.length === 0) return 0;
   const existing = await fetchAllRowsFromTable(tableName);
@@ -1309,9 +1344,6 @@ async function appendMissingEvidenceRows(tableName, rows) {
   return added;
 }
 
-/**
- * 终极灾难母包一键全库重建引擎 + 26表逐行数目验真对账
- */
 async function executeFullMotherboardDisasterRebuild(motherJson, wipeBeforeRestore, logCallback) {
   if (!motherJson || !motherJson.tables) {
     throw new Error('无效的灾难恢复母包文件');
@@ -1489,7 +1521,6 @@ async function executeFullMotherboardDisasterRebuild(motherJson, wipeBeforeResto
   totalRestored += await appendMissingEvidenceRows('inventory_log', mappedInvLogs);
   totalRestored += await appendMissingEvidenceRows('audit_immutable_log', t.audit_immutable_log);
 
-  // 逐表行数验真对账单
   logCallback('📊 正在执行全库 26 张表逐行数目验真对账...');
   let mismatchCount = 0;
   for (const tbl of MOTHERBOARD_TABLES) {
@@ -1534,8 +1565,8 @@ function openSovereignCommandVault() {
         <div class="flex items-center gap-2.5">
           <span class="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black text-base">⚜️</span>
           <div>
-            <h3 class="text-sm font-black text-amber-400 tracking-wide">终极运营主权指令舱（全栈灾难母舰 v2.2）</h3>
-            <p class="text-[10px] text-stone-400">独立主权加密验证 · 覆盖全库数据 + 审计操作铁证 + 执照Base64内嵌 + 全站递归源码</p>
+            <h3 class="text-sm font-black text-amber-400 tracking-wide">终极运营主权指令舱（全栈灾难母舰 v3.0）</h3>
+            <p class="text-[10px] text-stone-400">独立主权加密验证 · 救生舱三件套一键连下 · 源库防误覆盖保护 · 26表验真对账</p>
           </div>
         </div>
         <button type="button" id="btn-close-sovereign" class="text-stone-400 hover:text-white text-lg">✕</button>
@@ -1574,18 +1605,24 @@ function openSovereignCommandVault() {
           </div>
         </div>
 
-        <!-- 武器二：全栈母版灾备导出 -->
+        <!-- 武器二：全栈母版离线备份（支持单键三件套全套落盘） -->
         <div class="bg-stone-900 border border-amber-500/40 rounded-2xl p-3.5 space-y-2.5">
-          <b class="text-amber-300 text-xs block">🧬 武器二：全栈母版离线备份（26表数据 + 审计铁证 + 执照Base64 + 全站源码）</b>
+          <b class="text-amber-300 text-xs block">🧬 武器二：全栈母版离线备份（救生舱三件套一键打包落盘）</b>
           <p class="text-[11px] text-stone-400">
-            完整提取 26 表全量数据、不可篡改审计铁证、财务/库存流水，将营业执照照片内嵌为离线 Base64（带 SHA-256 封印），并递归打包全站所有端源码。
+            完整包含 26 表全量数据、审计铁证、执照 Base64（带 SHA-256 封印）、全站递归源码及 <code class="text-amber-300">00_INIT_SCHEMA_AND_RPC.sql</code> 建库底座脚本。
           </p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <button type="button" id="btn-sovereign-export-all" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-2.5 rounded-xl">
-              📥 下载全库 26 表与铁证母包 (.json)
+          <button type="button" id="btn-sovereign-export-trinity" class="w-full bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black py-2.5 rounded-xl shadow">
+            ⚡ 一键导出救生舱全套三件套（母包 + 全站源码 + 建库SQL）
+          </button>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button type="button" id="btn-sovereign-export-all" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-2 rounded-xl">
+              📥 仅下载数据铁证母包
             </button>
-            <button type="button" id="btn-sovereign-export-code" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-2.5 rounded-xl">
-              📦 打包下载全站完整源码快照 (.json)
+            <button type="button" id="btn-sovereign-export-code" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-2 rounded-xl">
+              📦 仅下载全站源码快照
+            </button>
+            <button type="button" id="btn-sovereign-export-sql" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-2 rounded-xl">
+              🗄️ 仅下载建库底座SQL
             </button>
           </div>
         </div>
@@ -1594,7 +1631,7 @@ function openSovereignCommandVault() {
         <div class="bg-stone-900 border border-emerald-500/40 rounded-2xl p-3.5 space-y-2.5">
           <b class="text-emerald-400 text-xs block">🏗️ 武器三：从零开始 · 上传灾难母包一键全库重建（含 26 表逐行验真对账）</b>
           <p class="text-[11px] text-stone-400">
-            在新库建好基础空表后上传母包，自动验证 SHA-256 封印、按拓扑外键序重建数据、幂等补齐铁证并生成逐表行数验真对账单。
+            在新库运行 <code class="text-emerald-300">00_INIT_SCHEMA_AND_RPC.sql</code> 后上传母包，自动验证 SHA-256 封印、检测源库防误覆盖、幂等补齐铁证并生成逐表验真对账单。
           </p>
           <div class="flex flex-wrap items-center gap-2">
             <label class="flex-1 bg-stone-950 border border-dashed border-emerald-500/50 hover:border-emerald-400 rounded-xl px-3 py-2 cursor-pointer text-center font-bold text-emerald-300">
@@ -1740,34 +1777,59 @@ function openSovereignCommandVault() {
     alert('🔌 已清退全网所有商号与扫码登录会话，所有终端必须重新核验身份！');
   });
 
+  // 武器二：一键三件套连下
+  document.getElementById('btn-sovereign-export-trinity').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = '⏳ 正在打包下载救生舱三件套（母包 + 源码 + 建库SQL）...';
+    try {
+      await exportFullPlatformDisasterMotherboard();
+      const count = await exportRuntimeSourceCodeVault();
+      downloadTextBlob(INIT_SCHEMA_SQL_TEMPLATE, '00_INIT_SCHEMA_AND_RPC.sql', 'text/sql;charset=utf-8');
+      document.getElementById('sovereign-backup-overdue-badge')?.remove();
+      alert(`🎉 救生舱全套三件套已全部导出落盘！\n\n1. 全库 26 表与审计铁证母包 (.json)\n2. 全站完整源码快照 (.json，共 ${count} 个源文件)\n3. 00_INIT_SCHEMA_AND_RPC.sql 建库底座脚本`);
+    } catch (err) {
+      alert('❌ 导出过程中断：' + (err?.message || ''));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⚡ 一键导出救生舱全套三件套（母包 + 全站源码 + 建库SQL）';
+    }
+  });
+
   document.getElementById('btn-sovereign-export-all').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
-    btn.textContent = '⏳ 正在全库提取 26 张表、审计铁证与执照原件...';
+    btn.textContent = '⏳ 提取中...';
     try {
       await exportFullPlatformDisasterMotherboard();
-      alert('✅ 全平台 26 表数据 + 审计铁证 + 离线执照母包已导出下载（含 SHA-256 防篡改封印）！');
+      document.getElementById('sovereign-backup-overdue-badge')?.remove();
+      alert('✅ 全平台 26 表数据 + 审计铁证 + 离线执照母包已导出下载！');
     } catch (err) {
       alert('❌ 导出失败：' + (err?.message || ''));
     } finally {
       btn.disabled = false;
-      btn.textContent = '📥 下载全库 26 表与铁证母包 (.json)';
+      btn.textContent = '📥 仅下载数据铁证母包';
     }
   });
 
   document.getElementById('btn-sovereign-export-code').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
-    btn.textContent = '⏳ 正在递归抓取全站所有端源码...';
+    btn.textContent = '⏳ 抓取中...';
     try {
       const count = await exportRuntimeSourceCodeVault();
-      alert(`📦 已打包下载全站完整程序源码快照（共收录 ${count} 个核心程序源文件）！`);
+      alert(`📦 已打包下载全站完整程序源码快照（共收录 ${count} 个源文件）！`);
     } catch (err) {
       alert('❌ 源码打包失败：' + (err?.message || ''));
     } finally {
       btn.disabled = false;
-      btn.textContent = '📦 打包下载全站完整源码快照 (.json)';
+      btn.textContent = '📦 仅下载全站源码快照';
     }
+  });
+
+  document.getElementById('btn-sovereign-export-sql').addEventListener('click', () => {
+    downloadTextBlob(INIT_SCHEMA_SQL_TEMPLATE, '00_INIT_SCHEMA_AND_RPC.sql', 'text/sql;charset=utf-8');
+    alert('🗄️ 00_INIT_SCHEMA_AND_RPC.sql 新库底座初始化脚本已下载！');
   });
 
   const motherFileInput = document.getElementById('input-sovereign-mother-file');
@@ -1788,10 +1850,14 @@ function openSovereignCommandVault() {
       loadedMotherboardJson = parsed;
       motherFileLabel.textContent = `✅ 已载入：${file.name}`;
       const ev = parsed.evidence_summary || {};
+      const curEndpoint = supabase?.supabaseUrl || window.location.origin;
+      const isSameOrigin = parsed.source_endpoint && parsed.source_endpoint === curEndpoint;
+
       motherPreview.classList.remove('hidden');
       motherPreview.innerHTML = `
         <div class="text-emerald-300 font-bold">母包生成时间：${new Date(parsed.created_at).toLocaleString('zh-CN')}</div>
         <div class="text-stone-300">内含：在册/归档商号 <b>${ev.total_tenants ?? (parsed.tables.platform_tenant?.length || 0)}</b> 家 · 订单 <b>${ev.total_orders ?? 0}</b> 笔 · 不可篡改审计铁证 <b>${ev.immutable_audit_logs ?? (parsed.tables.audit_immutable_log?.length || 0)}</b> 条 · 财务与库存流水 <b>${(ev.financial_payment_records || 0) + (ev.inventory_operation_logs || 0)}</b> 条</div>
+        ${isSameOrigin ? '<div class="text-rose-400 font-bold">⚠️ 环境警戒：检测到当前连接的仍是母包导出时的【原生产库】，执行清扫覆盖将直接重置现有线上数据！</div>' : '<div class="text-sky-300">🌐 环境检测：当前处于全新独立数据库实例，可安全执行全量灾难重建。</div>'}
         <div class="text-amber-400 font-mono truncate">SHA-256 封印：${parsed.integrity_sha256 || 'v1兼容包'}</div>
       `;
       btnExecuteRebuild.disabled = false;
@@ -1805,6 +1871,12 @@ function openSovereignCommandVault() {
   btnExecuteRebuild.addEventListener('click', async () => {
     if (!loadedMotherboardJson) return;
     const wipeBefore = document.getElementById('chk-sovereign-wipe-before').checked;
+    const curEndpoint = supabase?.supabaseUrl || window.location.origin;
+    if (loadedMotherboardJson.source_endpoint && loadedMotherboardJson.source_endpoint === curEndpoint && wipeBefore) {
+      const doubleOk = confirm('⚠️ 终极防误触确认：检测到当前连接的是【原生产环境数据库】，且勾选了「清扫脏数据」。确定要用该母包覆盖当前线上库吗？');
+      if (!doubleOk) return;
+    }
+
     btnExecuteRebuild.disabled = true;
     btnExecuteRebuild.textContent = '⏳ 正在执行全栈灾难重建与 26 表验真，请勿关闭页面...';
     rebuildLogBox.classList.remove('hidden');
@@ -1888,7 +1960,7 @@ function openSovereignCommandVault() {
 }
 
 /**
- * 7. 注册静默唤醒监听（零 DOM 痕迹）
+ * 7. 注册静默唤醒监听（零 DOM 痕迹 + 14 天冷备逾期静默提醒）
  */
 export function initStealthSovereignListener() {
   window.addEventListener('keydown', (e) => {
@@ -1918,4 +1990,21 @@ export function initStealthSovereignListener() {
   if (window.location.hash === '#sovereign') {
     setTimeout(() => openSovereignCommandVault(), 300);
   }
+
+  // 超过 14 天未导出全站冷备时，仅在高级运营顶栏显示低调提醒徽标（不暴露任何隐秘指令舱入口）
+  setTimeout(() => {
+    if (!isSeniorOpsOrAbove()) return;
+    const lastTs = Number(localStorage.getItem(SOVEREIGN_LAST_BACKUP_KEY) || 0);
+    const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+    if (lastTs > 0 && Date.now() - lastTs > fourteenDaysMs) {
+      const roleBadge = document.getElementById('admin-role-badge');
+      if (roleBadge && !document.getElementById('sovereign-backup-overdue-badge')) {
+        const tip = document.createElement('span');
+        tip.id = 'sovereign-backup-overdue-badge';
+        tip.className = 'text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full ml-1.5';
+        tip.textContent = '💡 建议留存最新离线冷备';
+        roleBadge.insertAdjacentElement('afterend', tip);
+      }
+    }
+  }, 1500);
 }
