@@ -23,6 +23,7 @@ import {
   renderComplianceCases,
   initPlatformGovernanceBindings
 } from './platform/platformGovernanceModule.js';
+import { isArchivedTenantRow } from './platform/tenantLifecycleModule.js';
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
@@ -31,6 +32,7 @@ window.switchTab = function (tabName) {
   [
     'apps',
     'tenants',
+    'seniorops',
     'compliance',
     'appeals',
     'ecosystem',
@@ -64,6 +66,7 @@ window.previewFullImage = function (url) {
 };
 
 function renderEcosystemDashboard() {
+  const activeTenants = platformState.allTenants.filter((t) => !isArchivedTenantRow(t));
   const scheduledPlans = platformState.allEcoPlans.filter((p) => p.status === 'scheduled' || p.status === 'fulfilled');
   const matchedPool = platformState.allEcoPool.filter((p) => p.status === 'claimed' || p.status === 'completed');
   const repliedC2B = platformState.allEcoC2B.filter((d) => !!d.official_reply);
@@ -89,7 +92,7 @@ function renderEcosystemDashboard() {
 
   const rankBody = document.getElementById('ecosystem-rank-body');
   if (rankBody) {
-    const statsList = platformState.allTenants.map((t) => {
+    const statsList = activeTenants.map((t) => {
       const tid = t.tenant_id;
       const tPlans = platformState.allEcoPlans.filter((p) => p.tenant_id === tid);
       const tPlansDone = tPlans.filter((p) => p.status === 'scheduled' || p.status === 'fulfilled');
@@ -188,15 +191,16 @@ function renderEcosystemDashboard() {
 }
 
 function updateAISummaryInsight() {
-  const activeCount = platformState.allTenants.filter((t) => (t.membership_status || 'active') === 'active').length;
-  const trialCount = platformState.allTenants.filter((t) => t.membership_status === 'trial').length;
-  const timelockCount = platformState.allTenants.filter((t) => t.timelock_status === 'pending').length;
+  const activeTenants = platformState.allTenants.filter((t) => !isArchivedTenantRow(t));
+  const activeCount = activeTenants.filter((t) => (t.membership_status || 'active') === 'active').length;
+  const trialCount = activeTenants.filter((t) => t.membership_status === 'trial').length;
+  const timelockCount = activeTenants.filter((t) => t.timelock_status === 'pending').length;
   const severeCount = getFlaggedProductsList().filter((x) => x.isSevere).length;
   const openAppealsCount = (platformState.allComplianceCases || []).filter(
     (c) => c.status !== 'resolved_pass' && c.status !== 'resolved_reject'
   ).length;
 
-  let insight = `当前在册合作社、工坊与实名个体主体 ${platformState.allTenants.length} 家，和合畅运 ${activeCount} 家；全网用度计划 ${platformState.allEcoPlans.length} 份、余缺互调 ${platformState.allEcoPool.length} 笔。`;
+  let insight = `当前在册合作社、工坊与实名个体主体 ${activeTenants.length} 家，和合畅运 ${activeCount} 家；全网用度计划 ${platformState.allEcoPlans.length} 份、余缺互调 ${platformState.allEcoPool.length} 笔。`;
   if (timelockCount > 0) insight += ` ⏳ 有 ${timelockCount} 家商号正处于「无人值守时间锁观察期」（若急需抢收可用证件核验加急放行）；`;
   if (severeCount > 0) insight += ` ⚖️ 涉违高风险词疑点 ${severeCount} 款待平台人工终审（常规缺图琐事已由 AI 自动协同提示）；`;
   if (openAppealsCount > 0) insight += ` 🛡️ 商号凭证申诉/监督公断工单 ${openAppealsCount} 件待裁决；`;
@@ -210,9 +214,10 @@ window.renderPlatformSelfCheck = function () {
   const grid = document.getElementById('platform-selfcheck-grid');
   if (!grid) return;
 
-  const totalFees = platformState.allTenants.reduce((s, t) => s + parseFloat(t.membership_fee || 0), 0);
-  const individualCount = platformState.allTenants.filter((t) => t.business_type === 'individual' || String(t.tenant_id || '').startsWith('GR-')).length;
-  const coopFactoryCount = platformState.allTenants.length - individualCount;
+  const activeTenants = platformState.allTenants.filter((t) => !isArchivedTenantRow(t));
+  const totalFees = activeTenants.reduce((s, t) => s + parseFloat(t.membership_fee || 0), 0);
+  const individualCount = activeTenants.filter((t) => t.business_type === 'individual' || String(t.tenant_id || '').startsWith('GR-')).length;
+  const coopFactoryCount = activeTenants.length - individualCount;
   const activeProdsCount = platformState.allProducts.filter((p) => p.status === 'active').length;
   const severeCount = getFlaggedProductsList().filter((x) => x.isSevere).length;
   const complianceRate = activeProdsCount > 0 ? (((activeProdsCount - severeCount) / activeProdsCount) * 100).toFixed(1) : '100.0';
@@ -306,7 +311,8 @@ window.loadPlatformData = async function () {
   renderApplications();
 
   platformState.allTenants = tenantsRes.data || [];
-  document.getElementById('stat-total-tenants').innerText = `${platformState.allTenants.length} 家`;
+  const activeTenants = platformState.allTenants.filter((t) => !isArchivedTenantRow(t));
+  document.getElementById('stat-total-tenants').innerText = `${activeTenants.length} 家`;
   renderTenantsTable();
 
   platformState.allProducts = prodsRes.data || [];
@@ -347,7 +353,6 @@ window.loadPlatformData = async function () {
   renderEcosystemDashboard();
   window.renderPlatformSelfCheck();
 
-  // 【新增】渲染动态治理参数、自定义会员等级、双轨申诉与联署公断台
   platformState.allGovConfigs = cfgRes.data || [];
   renderGovernanceConfigs();
 
