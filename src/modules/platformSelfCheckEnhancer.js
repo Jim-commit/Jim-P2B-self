@@ -14,8 +14,10 @@ const DEFAULT_STORE_COVENANT = [
   '第四条（真实用度排产）：如实提报周期真实用度计划，助力源头合作社与工坊按需采收生产，不囤积居奇、不恶意炒作。'
 ].join('\n');
 
-async function sha256Hex(text) {
-  const msgBuffer = new TextEncoder().encode(String(text || '').trim().toUpperCase());
+async function sha256Hex(text, normalizeUpper = true) {
+  const raw = String(text || '').trim();
+  const normalized = normalizeUpper ? raw.toUpperCase() : raw;
+  const msgBuffer = new TextEncoder().encode(normalized);
   const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
   return Array.from(new Uint8Array(hashBuffer))
     .map((b) => b.toString(16).padStart(2, '0'))
@@ -35,6 +37,15 @@ function generatePlatformRecoveryCodes(count = 8) {
     codes.push(`PT-${p1}-${p2}`);
   }
   return codes;
+}
+
+function getCurrentStewardOperatorLabel() {
+  const coName = sessionStorage.getItem('platform_co_steward_name');
+  const coAcc = sessionStorage.getItem('platform_co_steward_account');
+  if (coName && coAcc) {
+    return `联席执事：${coName}(${coAcc})`;
+  }
+  return '总控最高执事';
 }
 
 function requireCommanderAuth(actionDesc, callback) {
@@ -57,7 +68,7 @@ async function logGovernanceAudit(title, detail, level = 'CRITICAL') {
     await supabase.from('platform_audit_logs').insert([
       {
         tenant_id: 'PLATFORM_HQ',
-        operator_name: '总控最高执事',
+        operator_name: getCurrentStewardOperatorLabel(),
         risk_level: level,
         action_title: title,
         detail_summary: detail
@@ -92,11 +103,211 @@ function renderLinesAsParagraphs(text) {
     .join('');
 }
 
+// 挂载「第二位联席执事人（双人互备）」配置与登录门禁兼容
+function mountCoStewardBackupModule() {
+  if (document.getElementById('modal-co-steward-setup')) return;
+
+  // 1. 在顶栏「绑定总控验证器」旁挂载「👥 联席执事互备」按钮
+  const totpBtn = document.getElementById('btn-platform-totp');
+  if (totpBtn && !document.getElementById('btn-co-steward-setup')) {
+    totpBtn.insertAdjacentHTML(
+      'afterend',
+      `
+      <button type="button" id="btn-co-steward-setup" onclick="window.openCoStewardModal()"
+        class="bg-stone-800 hover:bg-stone-700 text-emerald-300 text-xs px-3.5 py-2 rounded-xl font-bold border border-emerald-500/30 active:scale-95 transition flex items-center gap-1.5">
+        <span>👥</span> 联席执事互备
+      </button>
+      `
+    );
+  }
+
+  // 2. 插入联席执事人配置弹窗
+  const modalHtml = `
+    <div id="modal-co-steward-setup" class="hidden fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[135] flex items-center justify-center p-4">
+      <div class="bg-stone-900 border border-stone-800 w-full max-w-md rounded-3xl p-6 space-y-3.5 text-white shadow-2xl text-xs">
+        <div class="flex justify-between items-center border-b border-stone-800 pb-2.5">
+          <div>
+            <h3 class="font-bold text-sm text-emerald-300">👥 第二位联席执事人（双人互备防失联）</h3>
+            <p class="text-[10px] text-stone-400">主控手机丢失或外出失联时，联席执事可用独立账号令牌应急接管调度（操作独立留痕）</p>
+          </div>
+          <button type="button" onclick="document.getElementById('modal-co-steward-setup').classList.add('hidden')" class="text-stone-400 hover:text-white text-lg">✕</button>
+        </div>
+
+        <label class="flex items-center justify-between bg-stone-950 border border-stone-800 p-3 rounded-2xl cursor-pointer">
+          <span class="font-bold text-amber-300">启用第二位联席执事人双人互备：</span>
+          <input type="checkbox" id="co-steward-enabled" class="w-4 h-4 rounded text-emerald-500">
+        </label>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-stone-400 mb-1">联席执事登录账号 *：</label>
+            <input type="text" id="co-steward-account" placeholder="如：steward_li" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 font-mono text-white outline-none focus:border-emerald-400">
+          </div>
+          <div>
+            <label class="block text-stone-400 mb-1">联席执事姓名/称呼 *：</label>
+            <input type="text" id="co-steward-name" placeholder="如：李老匠人 / 副理事长" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-400">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-stone-400 mb-1">独立联席登录令牌 (至少 8 位 · 留空则保持原令牌不变)：</label>
+          <input type="password" id="co-steward-token" minlength="8" placeholder="设置联席执事专用安全口令（云端SHA-256单向加密）" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 font-mono text-amber-300 outline-none focus:border-emerald-400">
+        </div>
+
+        <p class="text-[11px] text-stone-400 bg-stone-950/90 border border-stone-800 p-2.5 rounded-xl leading-relaxed">
+          ⚖️ <b>权责分明：</b>联席执事登录后，所有总闸指令、入驻终审与公约修改均会在「天道明鉴审计」中明确记录其姓名与账号。
+        </p>
+
+        <div class="flex gap-2 pt-2 border-t border-stone-800">
+          <button type="button" onclick="window.saveCoStewardProfile()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow">
+            🛡️ 核身保存联席执事配置
+          </button>
+          <button type="button" onclick="document.getElementById('modal-co-steward-setup').classList.add('hidden')" class="px-4 py-2.5 rounded-xl bg-stone-800 text-stone-300 font-bold">
+            取消
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+  let currentCoSteward = { enabled: false, account: '', name: '', tokenHash: '' };
+
+  window.loadCoStewardProfile = async function () {
+    try {
+      const { data } = await supabase
+        .from('platform_gov_configs')
+        .select('config_value')
+        .eq('config_key', 'platform_co_steward_profile')
+        .maybeSingle();
+      if (data?.config_value) {
+        currentCoSteward = { ...currentCoSteward, ...JSON.parse(data.config_value) };
+      }
+      const btn = document.getElementById('btn-co-steward-setup');
+      if (btn) {
+        btn.innerHTML = currentCoSteward.enabled
+          ? `<span>👥</span> 联席互备：${escapeHtml(currentCoSteward.name || currentCoSteward.account)}`
+          : `<span>👥</span> 联席执事互备`;
+      }
+    } catch {
+      // 静默兜底
+    }
+  };
+
+  window.openCoStewardModal = async function () {
+    await window.loadCoStewardProfile();
+    const chk = document.getElementById('co-steward-enabled');
+    const accInp = document.getElementById('co-steward-account');
+    const nameInp = document.getElementById('co-steward-name');
+    const tokInp = document.getElementById('co-steward-token');
+    if (chk) chk.checked = !!currentCoSteward.enabled;
+    if (accInp) accInp.value = currentCoSteward.account || '';
+    if (nameInp) nameInp.value = currentCoSteward.name || '';
+    if (tokInp) tokInp.value = '';
+    document.getElementById('modal-co-steward-setup')?.classList.remove('hidden');
+  };
+
+  window.saveCoStewardProfile = function () {
+    const enabled = !!document.getElementById('co-steward-enabled')?.checked;
+    const account = (document.getElementById('co-steward-account')?.value || '').trim();
+    const name = (document.getElementById('co-steward-name')?.value || '').trim();
+    const newToken = (document.getElementById('co-steward-token')?.value || '').trim();
+
+    if (enabled && (!account || !name)) {
+      return alert('启用双人互备时，请填写联席执事登录账号与姓名！');
+    }
+    if (enabled && !newToken && !currentCoSteward.tokenHash) {
+      return alert('首次启用请为联席执事设置至少 8 位的独立登录令牌！');
+    }
+    if (newToken && newToken.length < 8) {
+      return alert('为保障总控安全，联席执事令牌请设置至少 8 位！');
+    }
+
+    requireCommanderAuth(
+      enabled ? `授权设定第二位联席执事人：${name} (${account})` : '停用第二位联席执事人互备账号',
+      async () => {
+        const tokenHash = newToken ? await sha256Hex(newToken, false) : currentCoSteward.tokenHash;
+        const nextProfile = { enabled, account, name, tokenHash };
+
+        const { error } = await supabase.from('platform_gov_configs').upsert({
+          config_key: 'platform_co_steward_profile',
+          config_value: JSON.stringify(nextProfile),
+          description: '第二位联席执事人（双人互备）配置（口令仅存SHA-256单向哈希）'
+        });
+        if (error) return alert('保存失败：' + error.message);
+
+        await logGovernanceAudit(
+          enabled ? '配置第二位联席执事人（双人互备）' : '停用联席执事人互备',
+          enabled ? `联席执事：${name}（账号：${account}）` : '已关闭联席执事人登录通道',
+          'CRITICAL'
+        );
+        await window.loadCoStewardProfile();
+        document.getElementById('modal-co-steward-setup')?.classList.add('hidden');
+        alert(enabled ? `✅ 已成功启用联席执事人【${name}】，双人互备生效！` : '✅ 已停用联席执事人通道。');
+      }
+    );
+  };
+
+  // 3. 包装总控登录函数：若输入的是联席执事账号与令牌，自动核验放行并标记当值执事身份
+  setTimeout(() => {
+    const origLogin = window.verifyPlatformAuthPwd;
+    if (typeof origLogin === 'function' && !origLogin._coStewardWrapped) {
+      const wrappedLogin = async function (event) {
+        if (event) event.preventDefault();
+        const acc = (document.getElementById('p-auth-account')?.value || '').trim();
+        const tok = (document.getElementById('p-auth-token')?.value || '').trim();
+
+        try {
+          const { data } = await supabase
+            .from('platform_gov_configs')
+            .select('config_value')
+            .eq('config_key', 'platform_co_steward_profile')
+            .maybeSingle();
+
+          if (data?.config_value) {
+            const prof = JSON.parse(data.config_value);
+            if (prof.enabled && prof.account && acc === prof.account && tok) {
+              const inputHash = await sha256Hex(tok, false);
+              if (inputHash === prof.tokenHash) {
+                sessionStorage.setItem('platform_admin_authed', '1');
+                sessionStorage.setItem('platform_admin_token', tok);
+                sessionStorage.setItem('platform_co_steward_account', prof.account);
+                sessionStorage.setItem('platform_co_steward_name', prof.name || prof.account);
+
+                document.getElementById('platform-auth-gate')?.classList.add('hidden');
+                await logGovernanceAudit(
+                  '联席执事人双人互备登录总控台',
+                  `联席执事 ${prof.name}(${prof.account}) 已通过核身进入调度中枢`,
+                  'HIGH'
+                );
+                if (typeof window.loadPlatformData === 'function') {
+                  await window.loadPlatformData();
+                }
+                return;
+              }
+            }
+          }
+        } catch {
+          // 交由主控标准登录逻辑继续处理
+        }
+
+        // 主控最高执事登录时清除联席执事标记
+        sessionStorage.removeItem('platform_co_steward_account');
+        sessionStorage.removeItem('platform_co_steward_name');
+        return origLogin.apply(this, [event]);
+      };
+      wrappedLogin._coStewardWrapped = true;
+      window.verifyPlatformAuthPwd = wrappedLogin;
+    }
+  }, 300);
+
+  window.loadCoStewardProfile();
+}
+
 // 挂载总控 TOTP 8组保命恢复码签发与遗失重绑双保险
 function mountPlatformTotpRecoveryGuard() {
   if (document.getElementById('modal-platform-recovery-codes')) return;
 
-  // 1. 恢复码签发展示弹窗
   const recoveryModalHtml = `
     <div id="modal-platform-recovery-codes" class="hidden fixed inset-0 bg-stone-950/90 backdrop-blur-sm z-[140] flex items-center justify-center p-4">
       <div class="bg-stone-900 border border-amber-400/50 w-full max-w-md rounded-3xl p-6 space-y-4 text-white shadow-2xl text-xs">
@@ -159,7 +370,7 @@ function mountPlatformTotpRecoveryGuard() {
   window.issueNewPlatformRecoveryCodes = async function () {
     const plainCodes = generatePlatformRecoveryCodes(8);
     latestGeneratedRecoveryCodes = plainCodes;
-    const hashes = await Promise.all(plainCodes.map((c) => sha256Hex(c)));
+    const hashes = await Promise.all(plainCodes.map((c) => sha256Hex(c, true)));
 
     await supabase.from('platform_gov_configs').upsert({
       config_key: 'platform_totp_recovery_hashes',
@@ -176,7 +387,6 @@ function mountPlatformTotpRecoveryGuard() {
     document.getElementById('modal-platform-recovery-codes')?.classList.remove('hidden');
   };
 
-  // 2. 包装原有的 verifyAndSavePlatformTotp：绑定成功瞬间自动签发 8 组恢复码
   setTimeout(() => {
     const origVerifyTotp = window.verifyAndSavePlatformTotp;
     if (typeof origVerifyTotp === 'function' && !origVerifyTotp._recoveryWrapped) {
@@ -193,7 +403,6 @@ function mountPlatformTotpRecoveryGuard() {
     }
   }, 300);
 
-  // 3. 在总控登录门禁底部注入「遗失验证器 · 凭应急恢复码重置验证器」通道
   const authGateCard = document.querySelector('#platform-auth-gate > div');
   if (authGateCard && !document.getElementById('btn-platform-totp-recover')) {
     authGateCard.insertAdjacentHTML(
@@ -216,7 +425,7 @@ function mountPlatformTotpRecoveryGuard() {
     if (!codeInput || !codeInput.trim()) return;
 
     const cleanCode = codeInput.trim().toUpperCase();
-    const inputHash = await sha256Hex(cleanCode);
+    const inputHash = await sha256Hex(cleanCode, true);
 
     const { data } = await supabase
       .from('platform_gov_configs')
@@ -237,7 +446,6 @@ function mountPlatformTotpRecoveryGuard() {
       return;
     }
 
-    // 作废已使用的这一组恢复码
     hashes.splice(matchIdx, 1);
     await supabase.from('platform_gov_configs').upsert({
       config_key: 'platform_totp_recovery_hashes',
@@ -245,7 +453,6 @@ function mountPlatformTotpRecoveryGuard() {
       description: '总控 TOTP 验证器一次性应急恢复码 SHA-256 哈希集合'
     });
 
-    // 清除本机旧 TOTP 锁定标记并放行进入重绑流程
     localStorage.removeItem('platform_totp_secret');
     localStorage.removeItem('platform_totp_enabled');
     await logGovernanceAudit(
@@ -262,6 +469,7 @@ function mountPlatformTotpRecoveryGuard() {
 
 export function mountPlatformSelfCheckEnhancer() {
   mountPlatformTotpRecoveryGuard();
+  mountCoStewardBackupModule();
 
   const selfcheckSection = document.getElementById('p-tab-selfcheck');
   if (!selfcheckSection || document.getElementById('global-emergency-switchboard')) return;
