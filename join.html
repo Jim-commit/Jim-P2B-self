@@ -184,8 +184,8 @@
           <span class="text-[10px] text-stone-400">名实相符 · 零抽佣 · 主权归己</span>
         </div>
         <p class="text-[11px] text-stone-400 leading-relaxed">
-          1. 平台不抽一分交易佣金、不搞流量竞价；入驻后享 <b class="js-dynamic-trial-days">7 天</b>免费开席体验，满意转正成为正式会员后仅收取<b>平台运维费用（以会员费形式）</b>，到期也可自主申请宽待延期或转为免费基础展销。<br/>
-          2. 坚决捍卫各方数据主权、商业机密与个人敏感信息，各自账本数据随时可一键带走，平台绝不窥探也不干涉商家内部事务；入驻方承诺严格以法定证件实名立户，不抢注、不冒名、不超经营范围发布信息。
+1. 平台不抽一分交易佣金、不搞流量竞价；入驻后享 <b class="js-dynamic-trial-days">7 天</b>免费开席体验，满意转正成为正式会员后仅收取<b>平台运维费用（以会员费形式）</b>，到期也可自主申请宽待延期或转为免费基础展销。<br/>
+2. 坚决捍卫各方数据主权、商业机密与个人敏感信息，各自账本数据随时可一键带走，平台绝不窥探也不干涉商家内部事务；入驻方承诺严格以法定证件实名立户，不抢注、不冒名、不超经营范围发布信息。
         </p>
         <label class="flex items-center gap-2 text-stone-200 font-bold cursor-pointer pt-1">
           <input type="checkbox" id="chk-agree-covenant" checked class="w-4 h-4 rounded text-amber-500">
@@ -243,16 +243,20 @@
       <div id="query-result-container" class="space-y-3"></div>
     </section>
 
-    <div class="text-center pt-2 border-t border-stone-800 flex justify-center gap-4 text-[11px]">
+    <div class="text-center pt-2 border-t border-stone-800 flex flex-wrap justify-center gap-4 text-[11px]">
       <a href="hq.html" class="text-amber-400 hover:text-amber-300 font-bold underline">前往平准调度中枢登录</a>
       <a href="driver.html" class="text-emerald-400 hover:text-emerald-300 font-bold underline">打开百工掌中宝</a>
       <a href="mall.html" class="text-stone-400 hover:text-stone-200 underline">逛逛百工天街集市</a>
+      <button type="button" onclick="window.openSharedPubSupModal('submit')" class="text-emerald-300 hover:text-emerald-200 font-bold underline">💬 公众监督与建言堂（含查回音与阳光公示）</button>
     </div>
 
   </div>
 
   <script type="module">
     import { initJoinController } from './src/modules/joinController.js';
+    import { mountPublicSupervisionWidget } from './src/modules/publicSupervisionWidget.js';
+
+    mountPublicSupervisionWidget('入驻通道');
     initJoinController();
   </script>
   <script>
