@@ -183,7 +183,7 @@
       <span>·</span>
       <button type="button" onclick="window.openModal('modal-mall-covenant')" class="hover:text-emerald-800 underline transition">📜 商道与邻里公约</button>
       <span>·</span>
-      <button type="button" onclick="window.openModal('modal-mall-public-supervision')" class="hover:text-emerald-800 underline transition">💬 公众监督与建言堂</button>
+      <button type="button" onclick="window.openPublicSupervisionModal('submit')" class="hover:text-emerald-800 underline transition">💬 公众监督与建言堂（含查回音）</button>
     </div>
   </div>
 
@@ -197,24 +197,35 @@
       <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-2xl space-y-2 text-[11px] text-stone-700 leading-relaxed">
         <p><b>一、源头平准 · 零抽佣：</b>本集市不收一分交易抽佣、不搞流量竞价，合作社、工坊与实名匠人直连邻里，阳光工价。</p>
         <p><b>二、服务归店 · 邻里互助：</b>选择就近合作门店自提，服务润利全额归属该门店，支持社区小店可持续发展。</p>
-        <p><b>三、物勒工名 · 公众监督：</b>每款良品均公开出品主体、经营范围与产地溯源印记；若发现虚假宣传或超范围经营，欢迎随时通过页脚「公众监督与建言堂」反馈核查。</p>
+        <p><b>三、物勒工名 · 公众监督：</b>每款良品均公开出品主体、经营范围与产地溯源印记；若发现虚假宣传或超范围经营，欢迎随时通过页脚「公众监督与建言堂」反馈并查询处理回音。</p>
       </div>
       <button onclick="window.closeModal('modal-mall-covenant')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl">我已阅知并共同守护</button>
     </div>
   </div>
 
-  <!-- 独立的《公众监督与商道建言堂》专用弹窗（权责边界清晰，直呈平台总控，与求购榜彻底并行隔离） -->
+  <!-- 独立的《公众监督与商道建言堂》双标签闭环弹窗（发起呈报 + 凭回音码/手机号查官方回复） -->
   <div id="modal-mall-public-supervision" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
         <div>
           <h3 class="font-bold text-sm text-emerald-950">💬 公众监督与商道建言堂</h3>
-          <p class="text-[10px] text-stone-400">直达平台公共治理与AI复核中枢 · 不公开挂入求购榜</p>
+          <p class="text-[10px] text-stone-400">事事有回音 · 直呈平台公共治理中枢（不混入求购榜）</p>
         </div>
         <button type="button" onclick="window.closeModal('modal-mall-public-supervision')" class="text-stone-400 text-lg">✕</button>
       </div>
 
-      <div class="space-y-2.5">
+      <!-- 双标签切换：发起呈报 vs 查官方回音 -->
+      <div class="grid grid-cols-2 gap-1.5 bg-stone-100 p-1 rounded-2xl font-bold text-center">
+        <button type="button" id="pub-sup-tab-submit" onclick="window.switchPubSupTab('submit')" class="py-2 rounded-xl bg-[#1b4332] text-white transition">
+          ✍️ 我要监督 / 建言
+        </button>
+        <button type="button" id="pub-sup-tab-query" onclick="window.switchPubSupTab('query')" class="py-2 rounded-xl text-stone-600 transition">
+          📬 查官方处理回音
+        </button>
+      </div>
+
+      <!-- 面板 A：提交监督或建言 -->
+      <div id="pub-sup-pane-submit" class="space-y-2.5">
         <div>
           <label class="block text-stone-600 font-bold mb-1">反馈类别（聚焦平台底线监督与规则共建）：</label>
           <select id="pub-sup-type" onchange="window.onPubSupTypeChange(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold text-emerald-950 outline-none">
@@ -238,14 +249,37 @@
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">您的称呼或联系方式（选填，方便回访核实）：</label>
-          <input type="text" id="pub-sup-contact" placeholder="如：王先生 138****0000（可匿名留空）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+          <label class="block text-stone-600 font-bold mb-1">联系手机号或称呼（留手机号可直接凭号查回音，亦可留空匿名）：</label>
+          <input type="text" id="pub-sup-contact" placeholder="如：13800000000 或 王先生（留空则生成匿名回音码）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+        </div>
+
+        <button type="button" id="btn-submit-pub-sup" onclick="window.submitMallPublicSupervision()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+          📜 直呈平台监督与建言堂
+        </button>
+
+        <!-- 提交成功后生成的回音凭证卡 -->
+        <div id="pub-sup-receipt-card" class="hidden bg-amber-50 border border-amber-300 p-3 rounded-2xl space-y-1.5 text-center">
+          <div class="text-emerald-950 font-bold">✅ 已直呈平台公共治理中枢！请留存您的《回音凭证码》：</div>
+          <div class="bg-white border border-amber-300 py-1.5 px-3 rounded-xl font-mono text-base font-bold text-stone-900 tracking-wider" id="pub-sup-receipt-code">JY-0000</div>
+          <p class="text-[10px] text-stone-600">日后随时点上方「📬 查官方处理回音」，输入此回音码或您留下的手机号即可查看平台答复。</p>
+          <button type="button" onclick="window.copyPubSupReceiptCode()" class="bg-amber-400 text-stone-950 font-bold px-3 py-1 rounded-lg text-[11px]">
+            📋 复制回音凭证码
+          </button>
         </div>
       </div>
 
-      <button type="button" id="btn-submit-pub-sup" onclick="window.submitMallPublicSupervision()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
-        📜 直呈平台监督与建言堂
-      </button>
+      <!-- 面板 B：查询官方处理回音 -->
+      <div id="pub-sup-pane-query" class="hidden space-y-2.5">
+        <div class="flex gap-2">
+          <input type="text" id="pub-sup-query-input" placeholder="输入回音码 (如 JY-0042) 或留下的手机号" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono outline-none font-bold">
+          <button type="button" onclick="window.queryPublicSupervisionReplies()" class="bg-[#1b4332] text-white font-bold px-3.5 py-2 rounded-xl active:scale-95">
+            查回音
+          </button>
+        </div>
+        <div id="pub-sup-reply-list" class="space-y-2 max-h-64 overflow-y-auto no-scrollbar">
+          <div class="py-6 text-center text-stone-400">输入回音凭证码或手机号，查看平台核查结果与答复</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -279,7 +313,7 @@
     </button>
   </footer>
 
-  <!-- 发布求购/定制需求弹窗（与公众监督弹窗彻底分离，互不干扰） -->
+  <!-- 发布求购/定制需求弹窗 -->
   <div id="modal-c2b-demand" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -593,11 +627,50 @@
     import { supabase } from './src/lib/supabase.js';
     import { initMallController } from './src/modules/mallController.js';
 
+    window.openPublicSupervisionModal = function (tab = 'submit') {
+      window.openModal('modal-mall-public-supervision');
+      window.switchPubSupTab(tab);
+    };
+
+    window.switchPubSupTab = function (tab) {
+      const isSubmit = tab === 'submit';
+      document.getElementById('pub-sup-pane-submit')?.classList.toggle('hidden', !isSubmit);
+      document.getElementById('pub-sup-pane-query')?.classList.toggle('hidden', isSubmit);
+
+      const btnSub = document.getElementById('pub-sup-tab-submit');
+      const btnQry = document.getElementById('pub-sup-tab-query');
+      if (btnSub) {
+        btnSub.className = isSubmit
+          ? 'py-2 rounded-xl bg-[#1b4332] text-white transition'
+          : 'py-2 rounded-xl text-stone-600 transition';
+      }
+      if (btnQry) {
+        btnQry.className = !isSubmit
+          ? 'py-2 rounded-xl bg-[#1b4332] text-white transition'
+          : 'py-2 rounded-xl text-stone-600 transition';
+      }
+
+      if (!isSubmit) {
+        const savedCode = localStorage.getItem('last_pub_sup_code') || '';
+        const qInp = document.getElementById('pub-sup-query-input');
+        if (qInp && !qInp.value && savedCode) {
+          qInp.value = savedCode;
+          window.queryPublicSupervisionReplies();
+        }
+      }
+    };
+
     window.onPubSupTypeChange = function (val) {
       const customInp = document.getElementById('pub-sup-custom-type');
       if (!customInp) return;
       customInp.classList.toggle('hidden', val !== 'custom');
       if (val === 'custom') customInp.focus();
+    };
+
+    window.copyPubSupReceiptCode = function () {
+      const code = document.getElementById('pub-sup-receipt-code')?.innerText || '';
+      if (!code) return;
+      navigator.clipboard.writeText(code).then(() => alert(`✅ 回音凭证码【${code}】已复制！`));
     };
 
     window.submitMallPublicSupervision = async function () {
@@ -614,6 +687,7 @@
       if (!content) return alert('请填写具体监督事项或建言内容！');
 
       const finalType = rawType === 'custom' ? `自定义·${customType}` : rawType;
+      const receiptCode = `JY-${String(Math.floor(1000 + Math.random() * 9000))}`;
 
       if (btn) {
         btn.disabled = true;
@@ -621,12 +695,12 @@
       }
 
       try {
-        const fullText = `【天街公众通道 · ${finalType}】${target ? `[涉及对象：${target}] ` : ''}${content}`;
+        const fullText = `[${receiptCode}]【天街公众通道 · ${finalType}】${target ? `[涉及对象：${target}] ` : ''}${content}`;
         const { error } = await supabase.from('platform_suggestion_board').insert([
           {
             tenant_id: target || 'PUBLIC_MALL',
             proposer_type: 'public_consumer',
-            proposer_name: contact || '天街匿名邻里',
+            proposer_name: contact || `天街匿名邻里(${receiptCode})`,
             content: fullText,
             reply_status: 'pending'
           }
@@ -634,12 +708,15 @@
 
         if (error) throw error;
 
+        localStorage.setItem('last_pub_sup_code', receiptCode);
         document.getElementById('pub-sup-custom-type').value = '';
         document.getElementById('pub-sup-target').value = '';
         document.getElementById('pub-sup-content').value = '';
-        document.getElementById('pub-sup-contact').value = '';
-        window.closeModal('modal-mall-public-supervision');
-        alert('🙏 感谢您的监督与建言！该信息已直呈平台总控治理台，不会公开暴露在求购榜上。');
+
+        const card = document.getElementById('pub-sup-receipt-card');
+        const codeEl = document.getElementById('pub-sup-receipt-code');
+        if (codeEl) codeEl.innerText = receiptCode;
+        if (card) card.classList.remove('hidden');
       } catch (err) {
         alert('提交失败：' + err.message);
       } finally {
@@ -647,6 +724,67 @@
           btn.disabled = false;
           btn.innerText = '📜 直呈平台监督与建言堂';
         }
+      }
+    };
+
+    window.queryPublicSupervisionReplies = async function () {
+      const kw = (document.getElementById('pub-sup-query-input')?.value || '').trim();
+      const listEl = document.getElementById('pub-sup-reply-list');
+      if (!listEl) return;
+      if (!kw) return alert('请输入回音凭证码（如 JY-0042）或您留下的手机号！');
+
+      listEl.innerHTML = '<div class="py-6 text-center text-stone-400">正在查询平台总控核查回音...</div>';
+
+      try {
+        const { data, error } = await supabase
+          .from('platform_suggestion_board')
+          .select('*')
+          .eq('proposer_type', 'public_consumer')
+          .order('id', { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+
+        const upperKw = kw.toUpperCase();
+        const matched = (data || []).filter(
+          (row) =>
+            String(row.content || '').toUpperCase().includes(upperKw) ||
+            String(row.proposer_name || '').toUpperCase().includes(upperKw)
+        );
+
+        if (matched.length === 0) {
+          listEl.innerHTML = '<div class="py-6 text-center text-stone-400">未检索到匹配的呈报记录，请核对回音凭证码或手机号。</div>';
+          return;
+        }
+
+        listEl.innerHTML = matched
+          .map(
+            (r) => `
+            <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="font-mono text-[10px] text-stone-400">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  r.reply_status === 'replied'
+                    ? 'bg-emerald-100 text-emerald-900'
+                    : 'bg-amber-100 text-amber-900'
+                }">
+                  ${r.reply_status === 'replied' ? '✅ 总控已批复结案' : '⏳ 治理中枢核查中'}
+                </span>
+              </div>
+              <p class="text-[11px] text-stone-800 leading-relaxed">${r.content || ''}</p>
+              ${
+                r.admin_reply
+                  ? `<div class="bg-emerald-50 border border-emerald-200 p-2 rounded-xl text-[11px] text-emerald-950">
+                       <b>🏛️ 平台官方回音：</b>${r.admin_reply}
+                     </div>`
+                  : `<div class="text-[10px] text-stone-400 italic">平台值守人员核实后将在此公布处理结果，请稍后再查。</div>`
+              }
+            </div>
+          `
+          )
+          .join('');
+      } catch (err) {
+        listEl.innerHTML = `<div class="py-4 text-center text-rose-600">查询失败：${err.message}</div>`;
       }
     };
 
