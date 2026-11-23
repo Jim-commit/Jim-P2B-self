@@ -16,9 +16,12 @@
     <!-- 顶栏 -->
     <header class="bg-stone-900 text-white p-5 rounded-3xl shadow-xl flex flex-wrap justify-between items-center gap-4 border border-stone-800">
       <div>
-        <div class="flex items-center gap-2.5">
-          <span class="w-7 h-7 rounded-lg bg-amber-400 text-stone-900 flex items-center justify-center font-bold text-sm shadow">🏛️</span>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <span id="platform-emblem-trigger" class="w-7 h-7 rounded-lg bg-amber-400 text-stone-900 flex items-center justify-center font-bold text-sm shadow cursor-pointer">🏛️</span>
           <h1 class="text-lg font-bold tracking-tight">平准与入驻总控调度中枢</h1>
+          <span id="platform-role-badge" class="bg-amber-400/20 text-amber-300 text-[10px] px-2.5 py-0.5 rounded-full border border-amber-400/40 font-bold">
+            👑 高级运营管理
+          </span>
           <span id="totp-status-pill" class="bg-stone-800 text-stone-400 text-[10px] px-2.5 py-0.5 rounded-full border border-stone-700 font-mono font-bold flex items-center gap-1">
             <span class="w-1.5 h-1.5 rounded-full bg-stone-500"></span> TOTP 未激活
           </span>
@@ -63,7 +66,7 @@
       <span class="text-[10px] text-stone-400 font-mono">辅佐人断 · 宽猛相济</span>
     </div>
 
-    <!-- 导航切换标签（完整保留原有 8 项 + 增量新增 3 项治理中枢） -->
+    <!-- 导航切换标签（完整保留原有 11 项 + 高级运营管理专属「归档回收站与团队权限」） -->
     <nav class="flex flex-wrap bg-white rounded-2xl shadow-sm border border-stone-200 p-1.5 gap-1.5 text-xs font-bold">
       <button id="p-tab-btn-apps" onclick="window.switchTab('apps')" class="flex-1 py-2 px-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1.5 whitespace-nowrap">
         📝 入驻资质查验
@@ -71,6 +74,10 @@
       </button>
       <button id="p-tab-btn-tenants" onclick="window.switchTab('tenants')" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap">
         🏢 在册主体名册
+      </button>
+      <button id="p-tab-btn-seniorops" onclick="window.switchTab('seniorops'); window.refreshSeniorGovernanceAction();" class="senior-ops-only flex-1 py-2 px-2 text-center rounded-xl text-amber-900 bg-amber-50/70 hover:bg-amber-100 border border-amber-200/70 transition flex items-center justify-center gap-1 whitespace-nowrap">
+        🗄️ 归档回收站与团队权限
+        <span id="badge-archived-count" class="bg-rose-600 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span>
       </button>
       <button id="p-tab-btn-compliance" onclick="window.switchTab('compliance'); window.runPlatformAIComplianceScan();" class="flex-1 py-2 px-2 text-center rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition flex items-center justify-center gap-1 whitespace-nowrap">
         🌿 商道清朗巡检
@@ -148,6 +155,73 @@
               </tr>
             </thead>
             <tbody id="tenants-table-body" class="divide-y divide-stone-100 font-mono"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 板块 2.1：高级运营管理专属 · 商号归档回收站与运营团队权限分配 -->
+    <section id="p-tab-seniorops" class="hidden senior-ops-only space-y-4">
+      <!-- 商号归档回收站 -->
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-2.5">
+          <div>
+            <h2 class="text-sm font-bold text-stone-900">🗄️ 商号归档回收站（软删冷备 · 一键无损复活）</h2>
+            <p class="text-[11px] text-stone-400">已执行销号归档的商号会在此冷备留存（原营业执照已释放可重注）；若需恢复历史账本，点击「一键无损复活」即可完整还原</p>
+          </div>
+          <button type="button" onclick="window.refreshSeniorGovernanceAction()" class="text-xs bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold px-3 py-1.5 rounded-xl">
+            ↻ 刷新回收站
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs whitespace-nowrap">
+            <thead class="bg-stone-50 border-b border-stone-200 text-stone-500 font-medium">
+              <tr>
+                <th class="p-3">原商号代号</th>
+                <th class="p-3">主体全称 / 信用代码</th>
+                <th class="p-3">归档留痕备注</th>
+                <th class="p-3 text-right">冷备快照 / 恢复操作</th>
+              </tr>
+            </thead>
+            <tbody id="archived-tenants-table-body" class="divide-y divide-stone-100 font-mono"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 运营团队权限分配台 -->
+      <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3 text-xs">
+        <div class="border-b border-stone-100 pb-2.5">
+          <h2 class="text-sm font-bold text-stone-900">👥 平台运营团队角色与权限分配</h2>
+          <p class="text-[11px] text-stone-400">运营管理者负责日常入驻查验与清朗巡检；高级运营管理享有商契调控、全量快照导控、销号归档与回收站恢复权限</p>
+        </div>
+
+        <div class="bg-stone-50 border border-stone-200 p-3 rounded-2xl grid grid-cols-1 sm:grid-cols-4 gap-2">
+          <input type="text" id="new-ops-account" placeholder="运营登录账号（英文/数字）" class="bg-white border border-stone-300 rounded-xl px-3 py-2 font-mono outline-none">
+          <input type="text" id="new-ops-name" placeholder="执事姓名（如：李专员）" class="bg-white border border-stone-300 rounded-xl px-3 py-2 outline-none">
+          <select id="new-ops-role" class="bg-white border border-stone-300 rounded-xl px-3 py-2 font-bold outline-none">
+            <option value="ops_manager">🛡️ 运营管理者（一级）</option>
+            <option value="senior_ops">👑 高级运营管理（二级）</option>
+          </select>
+          <div class="flex gap-1.5">
+            <input type="password" id="new-ops-token" placeholder="初始登录口令" class="flex-1 min-w-0 bg-white border border-stone-300 rounded-xl px-3 py-2 font-mono outline-none">
+            <button type="button" onclick="window.createOpsStaffAccount()" class="bg-stone-900 hover:bg-stone-800 text-amber-300 font-bold px-3 py-2 rounded-xl shrink-0">
+              + 授权
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs whitespace-nowrap">
+            <thead class="bg-stone-50 border-b border-stone-200 text-stone-500 font-medium">
+              <tr>
+                <th class="p-3">管理账号</th>
+                <th class="p-3">执事称呼</th>
+                <th class="p-3">当前权限等级</th>
+                <th class="p-3">执勤状态</th>
+                <th class="p-3 text-right">管理操作</th>
+              </tr>
+            </thead>
+            <tbody id="ops-team-table-body" class="divide-y divide-stone-100"></tbody>
           </table>
         </div>
       </div>
@@ -559,12 +633,22 @@
         <input type="text" id="adjust-note-input" placeholder="例：已查验工商底库在营无误，签收年契转正" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none">
       </div>
 
-      <div class="pt-2 border-t border-stone-100 flex items-center gap-2">
+      <div class="pt-2 border-t border-stone-100 flex flex-wrap items-center gap-2">
         <button type="button" onclick="window.saveTenantStatusAdjustment()" class="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl active:scale-95 transition shadow">
           依礼颁布生效
         </button>
-        <button type="button" onclick="window.triggerPurgeFromModal()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2.5 rounded-xl active:scale-95 transition">
-          🗑️ 销号清除
+        <button type="button"
+          onclick="window.exportTenantBackupAction(document.getElementById('adjust-tenant-id').value, document.getElementById('adjust-tenant-title').innerText.split('(')[0].trim())"
+          class="senior-ops-only bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2.5 py-2.5 rounded-xl active:scale-95 transition">
+          📥 导出快照
+        </button>
+        <button type="button"
+          onclick="window.openTenantImportAction(document.getElementById('adjust-tenant-id').value, document.getElementById('adjust-tenant-title').innerText.split('(')[0].trim())"
+          class="senior-ops-only bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold px-2.5 py-2.5 rounded-xl active:scale-95 transition">
+          📤 导入恢复
+        </button>
+        <button type="button" onclick="window.triggerPurgeFromModal()" class="senior-ops-only bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2.5 rounded-xl active:scale-95 transition">
+          🗑️ 销号归档
         </button>
       </div>
     </div>
