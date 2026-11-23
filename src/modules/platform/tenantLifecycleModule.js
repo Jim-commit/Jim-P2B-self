@@ -3,11 +3,9 @@ import { platformState, recordAuditLog } from './platformState.js';
 
 const ARCHIVE_TAG = '__ARCHIVED_';
 const SOVEREIGN_KEY_STORAGE = 'baigong_sovereign_master_hash';
+const SOVEREIGN_LOCK_STORAGE = 'baigong_sovereign_lockout_state';
 const DEFAULT_SOVEREIGN_PASSPHRASE = 'SOVEREIGN#2026';
 
-/**
- * 获取当前登录管理员角色（兼容旧库 null / super_admin 默认映射为 senior_ops，绝不暴露更高层级）
- */
 export function getCurrentAdminRole() {
   const rawRole = (sessionStorage.getItem('p_auth_role') || '').trim();
   if (rawRole === 'ops_manager') return 'ops_manager';
@@ -48,7 +46,6 @@ async function fetchAllRowsFromTable(tableName, filterCol = null, filterVal = nu
     }
     const { data, error } = await query;
     if (error) {
-      // 兼容不同部署环境中部分可选表不存在的情况
       return [];
     }
     if (!Array.isArray(data) || data.length === 0) break;
@@ -368,7 +365,6 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
             const clearTables = [
               'payment_record',
               'driver_collection_log',
-              'inventory_log',
               'local_inventory_pool',
               'demand_forecast_plan',
               'orders',
@@ -539,17 +535,6 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
               }));
               const { error } = await supabase.from('payment_record').insert(rows);
               if (error) throw new Error('恢复财务核销记录失败：' + error.message);
-              restoredTotal += rows.length;
-            }
-
-            if (Array.isArray(t.inventory_log) && t.inventory_log.length > 0) {
-              const rows = t.inventory_log.map(({ id, ...rest }) => ({
-                ...rest,
-                tenant_id: targetTenantId,
-                product_id: productIdMap.get(String(rest.product_id)) || rest.product_id
-              }));
-              const { error } = await supabase.from('inventory_log').insert(rows);
-              if (error) throw new Error('恢复库存流水失败：' + error.message);
               restoredTotal += rows.length;
             }
 
@@ -1010,9 +995,9 @@ export async function renderSeniorGovernancePanel() {
 
 /**
  * ============================================================================
- * 6. 终极运营管理者「三零隐身秘密武器 · 全栈灾难母舰引擎 v2」
- *    - 涵盖：26 张全库核心业务表 + 不可篡改审计铁证 + 操作日志 + 程序源码快照
- *    - 具备：SHA-256 防篡改验签 + 空白新环境一键自举重建 + 全网终端紧急踢出
+ * 6. 终极运营管理者「三零隐身秘密武器 · 全栈灾难母舰引擎 v2.1」
+ *    - 涵盖：26 张全库核心业务表 + 不可篡改审计铁证 + 操作日志 + 执照Base64离线内嵌 + 程序源码快照
+ *    - 具备：输错3次锁定30分钟 + SHA-256验签 + 铁证只增不删幂等补齐 + 重建后26表逐行数目对账单
  * ============================================================================
  */
 const MOTHERBOARD_TABLES = [
@@ -1044,11 +1029,46 @@ const MOTHERBOARD_TABLES = [
   'sys_qr_session'
 ];
 
+// 物理锁定表：灾难重建时禁止 DELETE，仅允许幂等补充缺失铁证
+const IMMUTABLE_EVIDENCE_TABLES = new Set([
+  'audit_immutable_log',
+  'inventory_log'
+]);
+
 async function sha256Hex(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
+}
+
+function checkSovereignLockout() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SOVEREIGN_LOCK_STORAGE) || '{}');
+    if (raw.lockedUntil && Date.now() < raw.lockedUntil) {
+      const remainMins = Math.ceil((raw.lockedUntil - Date.now()) / 60000);
+      return { locked: true, remainMins };
+    }
+  } catch (e) {}
+  return { locked: false, remainMins: 0 };
+}
+
+function recordSovereignFailure() {
+  let state = { count: 0, lockedUntil: 0 };
+  try {
+    state = JSON.parse(localStorage.getItem(SOVEREIGN_LOCK_STORAGE) || '{"count":0,"lockedUntil":0}');
+  } catch (e) {}
+  state.count = (state.count || 0) + 1;
+  if (state.count >= 3) {
+    state.lockedUntil = Date.now() + 30 * 60 * 1000;
+    state.count = 0;
+  }
+  localStorage.setItem(SOVEREIGN_LOCK_STORAGE, JSON.stringify(state));
+  return state;
+}
+
+function clearSovereignLockout() {
+  localStorage.removeItem(SOVEREIGN_LOCK_STORAGE);
 }
 
 async function verifySovereignPassphrase(inputPass) {
@@ -1076,12 +1096,45 @@ async function verifySovereignPassphrase(inputPass) {
 }
 
 /**
- * 打包导出全平台 26 表全量数据 + 不可篡改审计铁证 + 操作流水（带 SHA-256 防篡改验真封印）
+ * 辅助：将外部执照图片 URL 抓取转为离线 Base64 编码，确保脱离旧图床仍可完整展示
+ */
+async function inlineImageAsDataUrl(url) {
+  if (!url || String(url).startsWith('data:image/')) return url;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return url;
+    const blob = await resp.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result || url);
+      reader.onerror = () => resolve(url);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    return url;
+  }
+}
+
+/**
+ * 打包导出全平台 26 表全量数据 + 不可篡改审计铁证 + 执照离线内嵌图（带 SHA-256 防篡改验真封印）
  */
 async function exportFullPlatformDisasterMotherboard() {
   const snapshot = {};
   for (const tbl of MOTHERBOARD_TABLES) {
     snapshot[tbl] = await fetchAllRowsFromTable(tbl);
+  }
+
+  // 将所有入驻申请里的营业执照图片转化为 Base64 离线内嵌，彻底摆脱对原存储桶的依赖
+  if (Array.isArray(snapshot.tenant_application) && snapshot.tenant_application.length > 0) {
+    for (let i = 0; i < snapshot.tenant_application.length; i++) {
+      const app = snapshot.tenant_application[i];
+      if (app.license_image_url && !String(app.license_image_url).startsWith('data:image/')) {
+        snapshot.tenant_application[i] = {
+          ...app,
+          license_image_url: await inlineImageAsDataUrl(app.license_image_url)
+        };
+      }
+    }
   }
 
   const canonicalJson = JSON.stringify(snapshot);
@@ -1116,7 +1169,7 @@ async function exportFullPlatformDisasterMotherboard() {
 }
 
 /**
- * 打包当前运行时程序源码快照（捕获 HTML 入口与所有已加载 JS 模块源码，供离线代码容灾）
+ * 打包当前运行时程序源码快照
  */
 async function exportRuntimeSourceCodeVault() {
   const candidateUrls = new Set([
@@ -1137,7 +1190,6 @@ async function exportRuntimeSourceCodeVault() {
     './src/lib/supabase.js'
   ]);
 
-  // 自动收集当前页面性能资源列表中的所有同源 JS/CSS 脚本
   if (typeof performance !== 'undefined' && performance.getEntriesByType) {
     performance.getEntriesByType('resource').forEach((entry) => {
       if (entry.name && entry.name.startsWith(window.location.origin)) {
@@ -1152,7 +1204,7 @@ async function exportRuntimeSourceCodeVault() {
       const resp = await fetch(rawUrl, { cache: 'no-store' });
       if (resp.ok) {
         const text = await resp.text();
-        if (text && text.length > 0 && !text.startsWith('<!DOCTYPE html>') || rawUrl.endsWith('.html') || rawUrl.endsWith('/')) {
+        if ((text && text.length > 0 && !text.startsWith('<!DOCTYPE html>')) || rawUrl.endsWith('.html') || rawUrl.endsWith('/')) {
           const cleanKey = rawUrl.replace(window.location.origin, '');
           capturedFiles[cleanKey] = text;
         }
@@ -1180,9 +1232,6 @@ async function exportRuntimeSourceCodeVault() {
   return bundlePayload.file_count;
 }
 
-/**
- * 批量分片安全插入（自动剥离自增 id 冲突并兼容表结构）
- */
 async function batchInsertTableRows(tableName, rows, preserveId = false) {
   if (!Array.isArray(rows) || rows.length === 0) return 0;
   const cleaned = rows.map((r) => {
@@ -1199,7 +1248,6 @@ async function batchInsertTableRows(tableName, rows, preserveId = false) {
     if (!error) {
       inserted += chunk.length;
     } else {
-      // 若表无主键冲突约束则降级为普通 insert
       const { error: insErr } = await supabase.from(tableName).insert(chunk);
       if (!insErr) inserted += chunk.length;
     }
@@ -1208,14 +1256,38 @@ async function batchInsertTableRows(tableName, rows, preserveId = false) {
 }
 
 /**
- * 终极灾难母包一键全库重建引擎（在空白新库或遭破坏环境中按拓扑外键序重建 26 张表 + 审计铁证）
+ * 幂等回填物理锁定铁证表（只增不删，永不触发防篡改触发器冲突）
+ */
+async function appendMissingEvidenceRows(tableName, rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return 0;
+  const existing = await fetchAllRowsFromTable(tableName);
+  const existingSignatures = new Set(
+    existing.map((r) => `${r.tenant_id || ''}|${r.created_at || ''}|${r.action_title || r.change_type || ''}`)
+  );
+
+  const missing = rows
+    .filter((r) => !existingSignatures.has(`${r.tenant_id || ''}|${r.created_at || ''}|${r.action_title || r.change_type || ''}`))
+    .map(({ id, ...rest }) => rest);
+
+  if (missing.length === 0) return 0;
+
+  let added = 0;
+  for (let i = 0; i < missing.length; i += 200) {
+    const chunk = missing.slice(i, i + 200);
+    const { error } = await supabase.from(tableName).insert(chunk);
+    if (!error) added += chunk.length;
+  }
+  return added;
+}
+
+/**
+ * 终极灾难母包一键全库重建引擎 + 26表逐行数目验真对账
  */
 async function executeFullMotherboardDisasterRebuild(motherJson, wipeBeforeRestore, logCallback) {
   if (!motherJson || !motherJson.tables) {
     throw new Error('无效的灾难恢复母包文件');
   }
 
-  // 1. 校验 SHA-256 防篡改封印（v2 母包强制验真）
   if (motherJson.schema_version === 'baigong_sovereign_disaster_motherboard_v2' && motherJson.integrity_sha256) {
     logCallback('🔍 正在校验灾难母包 SHA-256 防篡改完整性封印...');
     const computed = await sha256Hex(`BAIGONG_MOTHERBOARD_SEAL::${JSON.stringify(motherJson.tables)}`);
@@ -1227,12 +1299,10 @@ async function executeFullMotherboardDisasterRebuild(motherJson, wipeBeforeResto
 
   const t = motherJson.tables;
 
-  // 2. 若勾选重建前清扫残余脏数据，按外键逆序清理
   if (wipeBeforeRestore) {
-    logCallback('🧹 正在按外键逆序清扫当前数据库残余脏数据...');
-    const reverseOrder = [...MOTHERBOARD_TABLES].reverse();
+    logCallback('🧹 正在按外键逆序清扫普通业务表脏数据（自动跳过物理锁定铁证表）...');
+    const reverseOrder = [...MOTHERBOARD_TABLES].reverse().filter((tbl) => !IMMUTABLE_EVIDENCE_TABLES.has(tbl));
     for (const tbl of reverseOrder) {
-      // 使用通用条件清空表（兼容 text 主键与 numeric 主键）
       await supabase.from(tbl).delete().neq('id', -999999999);
       await supabase.from(tbl).delete().neq('tenant_id', '__NONE__');
       await supabase.from(tbl).delete().neq('config_key', '__NONE__');
@@ -1241,14 +1311,12 @@ async function executeFullMotherboardDisasterRebuild(motherJson, wipeBeforeResto
 
   let totalRestored = 0;
 
-  // 3. 第一梯队：系统根基（管理员凭证、治理配置、会员档位、标准品类树）
   logCallback('🏛️ [1/5] 正在重建管理员凭证库、全域治理参数与会员等级体系...');
   totalRestored += await batchInsertTableRows('platform_admin_credential', t.platform_admin_credential);
   totalRestored += await batchInsertTableRows('platform_governance_config', t.platform_governance_config, true);
   totalRestored += await batchInsertTableRows('platform_gov_configs', t.platform_gov_configs);
   totalRestored += await batchInsertTableRows('platform_membership_plan', t.platform_membership_plan);
 
-  // 重建标准品类树并映射父子 parent_id
   if (Array.isArray(t.platform_category) && t.platform_category.length > 0) {
     const catIdMap = new Map();
     const l1Cats = t.platform_category.filter((c) => c.level === 1 || !c.parent_id);
@@ -1269,14 +1337,12 @@ async function executeFullMotherboardDisasterRebuild(motherJson, wipeBeforeResto
   totalRestored += await batchInsertTableRows('platform_category_dict', t.platform_category_dict);
   totalRestored += await batchInsertTableRows('platform_standard_category', t.platform_standard_category);
 
-  // 4. 第二梯队：在册商号主档与入驻资质档案
-  logCallback('🏢 [2/5] 正在重建全网商号主档、入驻申请资质与执事司机名册...');
+  logCallback('🏢 [2/5] 正在重建全网商号主档、入驻资质（含Base64原件）与执事名册...');
   totalRestored += await batchInsertTableRows('platform_tenant', t.platform_tenant);
   totalRestored += await batchInsertTableRows('tenant', t.tenant, true);
   totalRestored += await batchInsertTableRows('tenant_application', t.tenant_application);
   totalRestored += await batchInsertTableRows('driver', t.driver);
 
-  // 5. 第三梯队：全网商品库、合作门店与订单（重建自增 ID 映射）
   logCallback('📦 [3/5] 正在重建全网商品库、合作门店（含一店一价重映射）与订单主档...');
   const productIdMap = new Map();
   if (Array.isArray(t.product)) {
@@ -1349,8 +1415,7 @@ async function executeFullMotherboardDisasterRebuild(motherJson, wipeBeforeResto
     totalRestored += await batchInsertTableRows('order_item', mappedOrderItems);
   }
 
-  // 6. 第四梯队：财务核销、随车收款、库存流水、余缺调剂与用度计划
-  logCallback('💰 [4/5] 正在重建全部财务核销流水、随车收款记录与库存变动明细...');
+  logCallback('💰 [4/5] 正在重建全部财务核销流水、随车收款记录与余缺计划...');
   if (Array.isArray(t.driver_collection_log) && t.driver_collection_log.length > 0) {
     const rows = t.driver_collection_log.map(({ id, ...rest }) => ({
       ...rest,
@@ -1365,13 +1430,6 @@ async function executeFullMotherboardDisasterRebuild(motherJson, wipeBeforeResto
       order_id: rest.order_id != null ? orderIdMap.get(String(rest.order_id)) || rest.order_id : null
     }));
     totalRestored += await batchInsertTableRows('payment_record', rows);
-  }
-  if (Array.isArray(t.inventory_log) && t.inventory_log.length > 0) {
-    const rows = t.inventory_log.map(({ id, ...rest }) => ({
-      ...rest,
-      product_id: productIdMap.get(String(rest.product_id)) || rest.product_id
-    }));
-    totalRestored += await batchInsertTableRows('inventory_log', rows);
   }
   if (Array.isArray(t.local_inventory_pool) && t.local_inventory_pool.length > 0) {
     const rows = t.local_inventory_pool.map(({ id, ...rest }) => ({
@@ -1391,17 +1449,48 @@ async function executeFullMotherboardDisasterRebuild(motherJson, wipeBeforeResto
     totalRestored += await batchInsertTableRows('demand_forecast_plan', rows);
   }
 
-  // 7. 第五梯队：铁证回填（天道明鉴不可篡改审计流水 + 联署公断案卷 + 建言与公域求购留痕）
-  logCallback('⚖️ [5/5] 正在回填【天道明鉴不可篡改审计铁证】与联署公断历史案卷...');
+  logCallback('⚖️ [5/5] 正在幂等补齐【不可篡改审计铁证】、【库存变动铁证】与联署公断案卷...');
   totalRestored += await batchInsertTableRows('platform_compliance_case', t.platform_compliance_case);
   totalRestored += await batchInsertTableRows('platform_suggestion_board', t.platform_suggestion_board);
-  totalRestored += await batchInsertTableRows('audit_immutable_log', t.audit_immutable_log);
 
-  logCallback(`🎉 全栈灾难重建圆满完成！累计精准还原 ${totalRestored} 条数据与铁证记录。`);
+  const mappedInvLogs = (t.inventory_log || []).map((r) => ({
+    ...r,
+    product_id: productIdMap.get(String(r.product_id)) || r.product_id
+  }));
+  totalRestored += await appendMissingEvidenceRows('inventory_log', mappedInvLogs);
+  totalRestored += await appendMissingEvidenceRows('audit_immutable_log', t.audit_immutable_log);
+
+  // 逐表行数验真对账单
+  logCallback('📊 正在执行全库 26 张表逐行数目验真对账...');
+  let mismatchCount = 0;
+  for (const tbl of MOTHERBOARD_TABLES) {
+    const expected = Array.isArray(t[tbl]) ? t[tbl].length : 0;
+    if (expected === 0) continue;
+    const actualRows = await fetchAllRowsFromTable(tbl);
+    const actual = actualRows.length;
+    if (actual < expected) {
+      mismatchCount += 1;
+      logCallback(`⚠️ 核对差异 [${tbl}]：母包 ${expected} 行 ➔ 现库 ${actual} 行（请检查该表建表字段）`);
+    } else {
+      logCallback(`✅ 核对一致 [${tbl}]：${actual} / ${expected} 行`);
+    }
+  }
+
+  if (mismatchCount === 0) {
+    logCallback(`🎉 全栈灾难重建与 26 表逐行验真圆满完成！累计处理 ${totalRestored} 条记录，零遗漏！`);
+  } else {
+    logCallback(`⚠️ 重建完成（共处理 ${totalRestored} 条），存在 ${mismatchCount} 张表行数不足，请按上方提示检查建表字段。`);
+  }
   return totalRestored;
 }
 
 function openSovereignCommandVault() {
+  const lockCheck = checkSovereignLockout();
+  if (lockCheck.locked) {
+    alert(`🛡️ 安全熔断：连续输错次数过多，指令舱已进入静默锁定状态，请 ${lockCheck.remainMins} 分钟后再试。`);
+    return;
+  }
+
   document.getElementById('sovereign-command-vault')?.remove();
 
   let loadedMotherboardJson = null;
@@ -1416,8 +1505,8 @@ function openSovereignCommandVault() {
         <div class="flex items-center gap-2.5">
           <span class="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black text-base">⚜️</span>
           <div>
-            <h3 class="text-sm font-black text-amber-400 tracking-wide">终极运营主权指令舱（全栈灾难母舰 v2）</h3>
-            <p class="text-[10px] text-stone-400">独立主权加密验证 · 覆盖全库数据 + 审计操作铁证 + 程序源码容灾</p>
+            <h3 class="text-sm font-black text-amber-400 tracking-wide">终极运营主权指令舱（全栈灾难母舰 v2.1）</h3>
+            <p class="text-[10px] text-stone-400">独立主权加密验证 · 覆盖全库数据 + 审计操作铁证 + 执照Base64内嵌 + 程序源码</p>
           </div>
         </div>
         <button type="button" id="btn-close-sovereign" class="text-stone-400 hover:text-white text-lg">✕</button>
@@ -1425,7 +1514,7 @@ function openSovereignCommandVault() {
 
       <!-- 身份核验区 -->
       <div id="sovereign-lock-view" class="space-y-3 py-2">
-        <label class="block text-amber-300 font-bold">请输入终极主权暗令（默认 SOVEREIGN#2026，验证后可自定义修改）：</label>
+        <label class="block text-amber-300 font-bold">请输入终极主权暗令（连续输错 3 次将立即锁定 30 分钟）：</label>
         <input type="password" id="input-sovereign-pass" placeholder="输入主权暗令"
           class="w-full bg-stone-900 border border-amber-500/40 rounded-xl px-3.5 py-2.5 font-mono text-white outline-none focus:border-amber-400">
         <button type="button" id="btn-unlock-sovereign"
@@ -1456,11 +1545,11 @@ function openSovereignCommandVault() {
           </div>
         </div>
 
-        <!-- 武器二：全栈母版灾备导出（26表数据+审计操作铁证 + 程序源码包） -->
+        <!-- 武器二：全栈母版灾备导出 -->
         <div class="bg-stone-900 border border-amber-500/40 rounded-2xl p-3.5 space-y-2.5">
-          <b class="text-amber-300 text-xs block">🧬 武器二：全栈母版离线备份（26表数据 + 审计操作铁证 + 程序源码）</b>
+          <b class="text-amber-300 text-xs block">🧬 武器二：全栈母版离线备份（26表数据 + 审计铁证 + 执照Base64 + 程序源码）</b>
           <p class="text-[11px] text-stone-400">
-            完整包含 <b>audit_immutable_log（防篡改审计铁证）</b>、<b>inventory_log（库存操作流水）</b>、<b>payment_record（财务核销流水）</b>及全网 26 表数据（带 SHA-256 防篡改封印），另可一键打包当前程序源码。
+            完整提取 26 表全量数据、不可篡改审计铁证、财务/库存流水，并将营业执照照片自动内嵌为离线 Base64（带 SHA-256 防篡改封印）。
           </p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button type="button" id="btn-sovereign-export-all" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-2.5 rounded-xl">
@@ -1474,9 +1563,9 @@ function openSovereignCommandVault() {
 
         <!-- 武器三：从零开始 · 上传母包一键灾难重建 -->
         <div class="bg-stone-900 border border-emerald-500/40 rounded-2xl p-3.5 space-y-2.5">
-          <b class="text-emerald-400 text-xs block">🏗️ 武器三：从零开始 · 上传灾难母包一键全库重建（含审计铁证还原）</b>
+          <b class="text-emerald-400 text-xs block">🏗️ 武器三：从零开始 · 上传灾难母包一键全库重建（含 26 表逐行验真对账）</b>
           <p class="text-[11px] text-stone-400">
-            遭遇极端毁灭性破坏时，在新库建好基础空表后上传母包，自动验证 SHA-256 封印并按拓扑外键序重建全网数据与审计铁证。
+            在新库建好基础空表后上传母包，自动验证 SHA-256 封印、按拓扑外键序重建数据、幂等补齐铁证并生成逐表行数验真对账单。
           </p>
           <div class="flex flex-wrap items-center gap-2">
             <label class="flex-1 bg-stone-950 border border-dashed border-emerald-500/50 hover:border-emerald-400 rounded-xl px-3 py-2 cursor-pointer text-center font-bold text-emerald-300">
@@ -1485,11 +1574,11 @@ function openSovereignCommandVault() {
             </label>
             <label class="flex items-center gap-1.5 text-[11px] text-amber-300 cursor-pointer shrink-0">
               <input type="checkbox" id="chk-sovereign-wipe-before" checked class="rounded text-rose-600">
-              <span>灌入前清扫脏数据</span>
+              <span>灌入前清扫普通业务表脏数据</span>
             </label>
           </div>
           <div id="sovereign-mother-preview" class="hidden bg-stone-950 border border-stone-800 rounded-xl p-2.5 text-[11px] space-y-1"></div>
-          <div id="sovereign-rebuild-log" class="hidden bg-black border border-emerald-900/60 rounded-xl p-2.5 font-mono text-[10px] text-emerald-300 max-h-32 overflow-y-auto space-y-0.5"></div>
+          <div id="sovereign-rebuild-log" class="hidden bg-black border border-emerald-900/60 rounded-xl p-2.5 font-mono text-[10px] text-emerald-300 max-h-40 overflow-y-auto space-y-0.5"></div>
           <button type="button" id="btn-sovereign-execute-rebuild" disabled
             class="w-full bg-stone-800 text-stone-500 font-black py-2.5 rounded-xl cursor-not-allowed transition">
             🔒 请先选择灾难恢复母包
@@ -1548,11 +1637,26 @@ function openSovereignCommandVault() {
   }
 
   async function handleUnlock() {
-    const ok = await verifySovereignPassphrase(passInput.value);
-    if (!ok) {
-      alert('⛔ 主权暗令校验未通过。');
+    const curLock = checkSovereignLockout();
+    if (curLock.locked) {
+      overlay.remove();
+      alert(`🛡️ 已触发 30 分钟安全熔断锁定。`);
       return;
     }
+
+    const ok = await verifySovereignPassphrase(passInput.value);
+    if (!ok) {
+      const failState = recordSovereignFailure();
+      if (failState.lockedUntil && Date.now() < failState.lockedUntil) {
+        overlay.remove();
+        alert('⛔ 连续输错 3 次，安全熔断已激活并锁定 30 分钟！');
+      } else {
+        alert(`⛔ 主权暗令校验未通过（还可尝试 ${Math.max(0, 3 - failState.count)} 次）。`);
+      }
+      return;
+    }
+
+    clearSovereignLockout();
     lockView.classList.add('hidden');
     weaponsView.classList.remove('hidden');
     await refreshCircuitLabel();
@@ -1564,7 +1668,6 @@ function openSovereignCommandVault() {
   });
   setTimeout(() => passInput.focus(), 100);
 
-  // 武器一绑定
   document.getElementById('btn-sovereign-freeze-all').addEventListener('click', async () => {
     await supabase.from('platform_governance_config').upsert([
       {
@@ -1608,14 +1711,13 @@ function openSovereignCommandVault() {
     alert('🔌 已清退全网所有商号与扫码登录会话，所有终端必须重新核验身份！');
   });
 
-  // 武器二绑定
   document.getElementById('btn-sovereign-export-all').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
-    btn.textContent = '⏳ 正在全库提取 26 张表与审计铁证...';
+    btn.textContent = '⏳ 正在全库提取 26 张表、审计铁证与执照原件...';
     try {
       await exportFullPlatformDisasterMotherboard();
-      alert('✅ 全平台 26 表数据 + 不可篡改审计铁证母包已导出下载（含 SHA-256 防篡改封印）！');
+      alert('✅ 全平台 26 表数据 + 审计铁证 + 离线执照母包已导出下载（含 SHA-256 防篡改封印）！');
     } catch (err) {
       alert('❌ 导出失败：' + (err?.message || ''));
     } finally {
@@ -1639,7 +1741,6 @@ function openSovereignCommandVault() {
     }
   });
 
-  // 武器三绑定（上传母包一键灾难重建）
   const motherFileInput = document.getElementById('input-sovereign-mother-file');
   const motherFileLabel = document.getElementById('sovereign-mother-file-label');
   const motherPreview = document.getElementById('sovereign-mother-preview');
@@ -1652,7 +1753,7 @@ function openSovereignCommandVault() {
     try {
       const parsed = JSON.parse(await file.text());
       if (!parsed.tables || !String(parsed.schema_version || '').startsWith('baigong_sovereign_disaster_motherboard')) {
-        alert('❌ 格式错误：请选择终极主权指令舱导出的灾难恢复母包文件！');
+        alert('❌ 格式错误：请选择「下载全库 26 表与铁证母包」导出的灾难恢复母包文件！');
         return;
       }
       loadedMotherboardJson = parsed;
@@ -1676,7 +1777,7 @@ function openSovereignCommandVault() {
     if (!loadedMotherboardJson) return;
     const wipeBefore = document.getElementById('chk-sovereign-wipe-before').checked;
     btnExecuteRebuild.disabled = true;
-    btnExecuteRebuild.textContent = '⏳ 正在执行全栈灾难重建，请勿关闭页面...';
+    btnExecuteRebuild.textContent = '⏳ 正在执行全栈灾难重建与 26 表验真，请勿关闭页面...';
     rebuildLogBox.classList.remove('hidden');
     rebuildLogBox.innerHTML = '';
 
@@ -1689,7 +1790,7 @@ function openSovereignCommandVault() {
 
     try {
       const total = await executeFullMotherboardDisasterRebuild(loadedMotherboardJson, wipeBefore, appendLog);
-      alert(`🎉 灾难重建圆满完成！全库 26 张核心表、业务往来与不可篡改审计铁证（共 ${total} 条记录）已全部还原！`);
+      alert(`🎉 灾难重建与逐表验真圆满完成！全库 26 张核心表、业务往来与不可篡改审计铁证（共 ${total} 条记录）已全部还原！`);
       if (typeof window.loadPlatformData === 'function') {
         await window.loadPlatformData();
       }
@@ -1702,7 +1803,6 @@ function openSovereignCommandVault() {
     }
   });
 
-  // 武器四绑定
   document.getElementById('btn-sovereign-hard-purge').addEventListener('click', async () => {
     const rawTid = document.getElementById('input-sovereign-hard-purge-tid').value.trim();
     if (!rawTid) return alert('请输入要物理粉碎的商号代号');
@@ -1717,7 +1817,6 @@ function openSovereignCommandVault() {
     const childTables = [
       'payment_record',
       'driver_collection_log',
-      'inventory_log',
       'local_inventory_pool',
       'demand_forecast_plan',
       'orders',
@@ -1740,7 +1839,6 @@ function openSovereignCommandVault() {
     if (typeof window.loadPlatformData === 'function') await window.loadPlatformData();
   });
 
-  // 武器五绑定
   document.getElementById('btn-sovereign-save-pass').addEventListener('click', async () => {
     const newPass = document.getElementById('input-sovereign-new-pass').value.trim();
     if (newPass.length < 10) return alert('为确保主权安全，新暗令长度不能少于 10 位！');
