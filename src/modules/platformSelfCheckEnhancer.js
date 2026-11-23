@@ -14,7 +14,29 @@ const DEFAULT_STORE_COVENANT = [
   '第四条（真实用度排产）：如实提报周期真实用度计划，助力源头合作社与工坊按需采收生产，不囤积居奇、不恶意炒作。'
 ].join('\n');
 
-// 高危总闸操作统一走总控 2FA / 口令核身护栏
+async function sha256Hex(text) {
+  const msgBuffer = new TextEncoder().encode(String(text || '').trim().toUpperCase());
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function generatePlatformRecoveryCodes(count = 8) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const codes = [];
+  for (let i = 0; i < count; i++) {
+    let p1 = '';
+    let p2 = '';
+    for (let j = 0; j < 4; j++) {
+      p1 += chars[Math.floor(Math.random() * chars.length)];
+      p2 += chars[Math.floor(Math.random() * chars.length)];
+    }
+    codes.push(`PT-${p1}-${p2}`);
+  }
+  return codes;
+}
+
 function requireCommanderAuth(actionDesc, callback) {
   if (typeof window.requestPlatform2FA === 'function') {
     window.requestPlatform2FA(actionDesc, callback);
@@ -70,7 +92,177 @@ function renderLinesAsParagraphs(text) {
     .join('');
 }
 
+// 挂载总控 TOTP 8组保命恢复码签发与遗失重绑双保险
+function mountPlatformTotpRecoveryGuard() {
+  if (document.getElementById('modal-platform-recovery-codes')) return;
+
+  // 1. 恢复码签发展示弹窗
+  const recoveryModalHtml = `
+    <div id="modal-platform-recovery-codes" class="hidden fixed inset-0 bg-stone-950/90 backdrop-blur-sm z-[140] flex items-center justify-center p-4">
+      <div class="bg-stone-900 border border-amber-400/50 w-full max-w-md rounded-3xl p-6 space-y-4 text-white shadow-2xl text-xs">
+        <div class="flex items-center gap-2 border-b border-stone-800 pb-3">
+          <span class="text-2xl">🗝️</span>
+          <div>
+            <h3 class="font-bold text-sm text-amber-300">《总控最高执事 · 8组一次性保命应急恢复码》</h3>
+            <p class="text-[10px] text-stone-400">主力手机丢失或重装验证器时，凭任一组恢复码即可解锁重绑（云端零明文存储）</p>
+          </div>
+        </div>
+
+        <div id="platform-recovery-codes-grid" class="grid grid-cols-2 gap-2 bg-stone-950 p-3.5 rounded-2xl border border-stone-800 font-mono text-sm font-bold text-emerald-300 text-center"></div>
+
+        <p class="text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl leading-relaxed">
+          ⚠️ 请立即点击下方按钮下载离线存根文件，存入加密 U 盘或打印妥善保管。每组恢复码使用一次后自动作废！
+        </p>
+
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="window.downloadPlatformRecoveryCodesTxt()"
+            class="flex-1 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold shadow">
+            📄 一键下载《总控应急恢复码存根.txt》
+          </button>
+          <button type="button" onclick="document.getElementById('modal-platform-recovery-codes').classList.add('hidden')"
+            class="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold">
+            已妥善保存
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', recoveryModalHtml);
+
+  let latestGeneratedRecoveryCodes = [];
+
+  window.downloadPlatformRecoveryCodesTxt = function () {
+    if (!latestGeneratedRecoveryCodes.length) return;
+    const content = [
+      '======================================================',
+      '百工百业数字协作平台 · 总控最高执事一次性应急恢复码存根',
+      `签发生成时间：${new Date().toLocaleString('zh-CN', { hour12: false })}`,
+      '======================================================',
+      '用途说明：当绑定 TOTP 验证器的主力手机遗失或损坏时，',
+      '可在总控登录门禁底部点击【遗失验证器 · 凭应急恢复码重置】，',
+      '输入以下任意一组未使用的恢复码即可重新扫码绑定新手机。',
+      '------------------------------------------------------',
+      ...latestGeneratedRecoveryCodes.map((c, idx) => `第 ${idx + 1} 组：  ${c}`),
+      '------------------------------------------------------',
+      '安全提示：云端仅存储 SHA-256 单向摘要，每组用过即自动作废。'
+    ].join('\n');
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `百工天街总控应急恢复码存根_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  window.issueNewPlatformRecoveryCodes = async function () {
+    const plainCodes = generatePlatformRecoveryCodes(8);
+    latestGeneratedRecoveryCodes = plainCodes;
+    const hashes = await Promise.all(plainCodes.map((c) => sha256Hex(c)));
+
+    await supabase.from('platform_gov_configs').upsert({
+      config_key: 'platform_totp_recovery_hashes',
+      config_value: JSON.stringify(hashes),
+      description: '总控 TOTP 验证器一次性应急恢复码 SHA-256 哈希集合'
+    });
+
+    const grid = document.getElementById('platform-recovery-codes-grid');
+    if (grid) {
+      grid.innerHTML = plainCodes
+        .map((c) => `<div class="py-1.5 px-2 bg-stone-900 rounded-lg border border-stone-800">${c}</div>`)
+        .join('');
+    }
+    document.getElementById('modal-platform-recovery-codes')?.classList.remove('hidden');
+  };
+
+  // 2. 包装原有的 verifyAndSavePlatformTotp：绑定成功瞬间自动签发 8 组恢复码
+  setTimeout(() => {
+    const origVerifyTotp = window.verifyAndSavePlatformTotp;
+    if (typeof origVerifyTotp === 'function' && !origVerifyTotp._recoveryWrapped) {
+      const wrapped = async function (...args) {
+        const res = await origVerifyTotp.apply(this, args);
+        const setupModal = document.getElementById('modal-platform-totp-setup');
+        if (setupModal && setupModal.classList.contains('hidden')) {
+          await window.issueNewPlatformRecoveryCodes();
+        }
+        return res;
+      };
+      wrapped._recoveryWrapped = true;
+      window.verifyAndSavePlatformTotp = wrapped;
+    }
+  }, 300);
+
+  // 3. 在总控登录门禁底部注入「遗失验证器 · 凭应急恢复码重置验证器」通道
+  const authGateCard = document.querySelector('#platform-auth-gate > div');
+  if (authGateCard && !document.getElementById('btn-platform-totp-recover')) {
+    authGateCard.insertAdjacentHTML(
+      'beforeend',
+      `
+      <div class="pt-2 border-t border-stone-800 text-center">
+        <button type="button" id="btn-platform-totp-recover" onclick="window.openPlatformTotpRecoveryFlow()"
+          class="text-[11px] text-amber-300/90 hover:text-amber-200 underline font-bold">
+          🔑 手机遗失？凭《8组应急恢复码》重置并重绑验证器
+        </button>
+      </div>
+      `
+    );
+  }
+
+  window.openPlatformTotpRecoveryFlow = async function () {
+    const codeInput = prompt(
+      '🔑 【总控验证器应急重置通道】\n请输入您离线保存的任一组《应急恢复码》（格式如 PT-XXXX-XXXX）：'
+    );
+    if (!codeInput || !codeInput.trim()) return;
+
+    const cleanCode = codeInput.trim().toUpperCase();
+    const inputHash = await sha256Hex(cleanCode);
+
+    const { data } = await supabase
+      .from('platform_gov_configs')
+      .select('config_value')
+      .eq('config_key', 'platform_totp_recovery_hashes')
+      .maybeSingle();
+
+    let hashes = [];
+    try {
+      hashes = JSON.parse(data?.config_value || '[]');
+    } catch {
+      hashes = [];
+    }
+
+    const matchIdx = hashes.indexOf(inputHash);
+    if (matchIdx === -1) {
+      alert('❌ 应急恢复码无效或已被使用过！请核对离线存根后重试。');
+      return;
+    }
+
+    // 作废已使用的这一组恢复码
+    hashes.splice(matchIdx, 1);
+    await supabase.from('platform_gov_configs').upsert({
+      config_key: 'platform_totp_recovery_hashes',
+      config_value: JSON.stringify(hashes),
+      description: '总控 TOTP 验证器一次性应急恢复码 SHA-256 哈希集合'
+    });
+
+    // 清除本机旧 TOTP 锁定标记并放行进入重绑流程
+    localStorage.removeItem('platform_totp_secret');
+    localStorage.removeItem('platform_totp_enabled');
+    await logGovernanceAudit(
+      '总控验证器应急恢复码核销重置',
+      `已核销 1 组一次性恢复码（剩余 ${hashes.length} 组可用），放行重新绑定新手机验证器。`,
+      'CRITICAL'
+    );
+
+    alert(
+      `✅ 应急恢复码核验通过（该组已作废，剩余 ${hashes.length} 组可用）！\n请先使用总控账号与管理令牌登录，随后立即点击顶栏「🛡️ 绑定总控验证器」扫描新手机二维码。`
+    );
+  };
+}
+
 export function mountPlatformSelfCheckEnhancer() {
+  mountPlatformTotpRecoveryGuard();
+
   const selfcheckSection = document.getElementById('p-tab-selfcheck');
   if (!selfcheckSection || document.getElementById('global-emergency-switchboard')) return;
 
@@ -242,7 +434,6 @@ export function mountPlatformSelfCheckEnhancer() {
         }
       });
 
-      // 1. 入驻审核戒备态
       const modeCard = document.getElementById('card-join-strict-mode');
       const modeBadge = document.getElementById('badge-join-strict-mode');
       const modeBtn = document.getElementById('btn-toggle-join-strict');
@@ -268,7 +459,6 @@ export function mountPlatformSelfCheckEnhancer() {
         }
       }
 
-      // 2. 全网公告状态
       const noticeBadge = document.getElementById('badge-global-notice-state');
       const noticePreview = document.getElementById('preview-global-notice');
       if (currentNoticeText.trim()) {
@@ -285,7 +475,6 @@ export function mountPlatformSelfCheckEnhancer() {
         if (noticePreview) noticePreview.innerText = '向所有合作社与门店顶栏同步推送保供或公约修订通知。';
       }
 
-      // 3. 紧急只读熔断状态
       const freezeCard = document.getElementById('card-emergency-freeze');
       const freezeBadge = document.getElementById('badge-emergency-freeze');
       const freezeBtn = document.getElementById('btn-toggle-emergency-freeze');
@@ -311,7 +500,6 @@ export function mountPlatformSelfCheckEnhancer() {
         }
       }
 
-      // 4. 双向公约正文
       const pBody = document.getElementById('covenant-platform-body');
       const sBody = document.getElementById('covenant-store-body');
       if (pBody) pBody.innerHTML = renderLinesAsParagraphs(platformCovenantRaw);
