@@ -426,6 +426,13 @@ export function initCartOrderBindings() {
     if (!phone || phone.length < 7) return alert('请输入下单或发榜时预留的手机号！');
 
     listEl.innerHTML = '<div class="py-8 text-center text-stone-400">正在检索您的天街订单与求购需求...</div>';
+
+    if (mallState.pickupStores.length === 0) {
+      try {
+        mallState.pickupStores = await MallService.fetchPickupStores(mallState.currentTenantParam);
+      } catch (e) {}
+    }
+
     const { orders, demands } = await MallService.queryOrdersByPhone(phone);
 
     if (orders.length === 0 && demands.length === 0) {
@@ -482,6 +489,25 @@ export function initCartOrderBindings() {
           const encodedItems = encodeURIComponent(JSON.stringify(items));
           const safeItemsSummary = itemsText.replace(/'/g, '');
 
+          // 关联自提门店详细指引（店名、地址与一键拨号）
+          const storeObj = o.store_id
+            ? mallState.pickupStores.find((s) => String(s.id) === String(o.store_id))
+            : null;
+          const storePhone = storeObj?.phone || storeObj?.contact_phone || '';
+          const storeGuideBanner = isStorePickup
+            ? `<div class="bg-emerald-50/90 border border-emerald-200 px-2.5 py-1.5 rounded-xl text-[10px] text-emerald-950 flex justify-between items-center gap-2">
+                 <div class="min-w-0">
+                   <b class="block truncate">🏪 自提驿站：${storeObj?.name || '合作自提门店'}</b>
+                   ${storeObj?.address ? `<span class="text-stone-500 block truncate">📍 ${storeObj.address}</span>` : ''}
+                 </div>
+                 ${
+                   storePhone
+                     ? `<a href="tel:${storePhone}" class="shrink-0 bg-emerald-800 text-white font-bold px-2 py-1 rounded-lg">📞 联系门店</a>`
+                     : ''
+                 }
+               </div>`
+            : '';
+
           const pickupPinBanner = isStorePickup
             ? isPickedUp
               ? `<div class="text-[10px] bg-stone-200 text-stone-700 px-2.5 py-1 rounded-xl font-bold text-center">✅ 已凭核销码到店自提取货</div>`
@@ -506,6 +532,7 @@ export function initCartOrderBindings() {
                 </span>
               </div>
               <div class="text-stone-700">${itemsText || '标准良品组合'}</div>
+              ${storeGuideBanner}
               ${pickupPinBanner}
               <div class="text-[10px] text-stone-500">${o.note || ''}</div>
               <div class="flex justify-between items-center text-[10px] text-stone-400 font-mono pt-1.5 border-t border-stone-200/60">
