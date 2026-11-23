@@ -175,7 +175,7 @@
     <div id="c2b-demands-list" class="space-y-3"></div>
   </div>
 
-  <!-- 平台背书、双公约公示与建言堂直达页脚 -->
+  <!-- 平台背书、双公约公示与独立公众监督建言堂直达页脚 -->
   <div class="px-4 pt-3 pb-6 text-center text-[10px] text-stone-400 space-y-1">
     <div>百工天街 · 零交易抽佣 · 零竞价排名 · 服务归店源头直供集市</div>
     <div class="flex flex-wrap justify-center gap-3">
@@ -183,7 +183,7 @@
       <span>·</span>
       <button type="button" onclick="window.openModal('modal-mall-covenant')" class="hover:text-emerald-800 underline transition">📜 商道与邻里公约</button>
       <span>·</span>
-      <button type="button" onclick="window.openC2BDemandModal('【公众监督与建言】')" class="hover:text-emerald-800 underline transition">💬 公众监督与建言堂</button>
+      <button type="button" onclick="window.openModal('modal-mall-public-supervision')" class="hover:text-emerald-800 underline transition">💬 公众监督与建言堂</button>
     </div>
   </div>
 
@@ -195,11 +195,54 @@
         <button onclick="window.closeModal('modal-mall-covenant')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="bg-stone-50 border border-stone-200 p-3.5 rounded-2xl space-y-2 text-[11px] text-stone-700 leading-relaxed">
-        <p><b>一、源头平准 · 零抽佣：</b>本集市不收一分交易抽佣、不搞流量竞价，合作社、工坊与实名匠人直连邻里，阳光工价。</p>
+        <p><b>一、源头平准 · 零抽佣：</b>本集市不收一分交易抽佣、不搞竞价排名，合作社、工坊与实名匠人直连邻里，阳光工价。</p>
         <p><b>二、服务归店 · 邻里互助：</b>选择就近合作门店自提，服务润利全额归属该门店，支持社区小店可持续发展。</p>
         <p><b>三、物勒工名 · 公众监督：</b>每款良品均公开出品主体、经营范围与产地溯源印记；若发现虚假宣传或超范围经营，欢迎随时通过页脚「公众监督与建言堂」反馈核查。</p>
       </div>
       <button onclick="window.closeModal('modal-mall-covenant')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl">我已阅知并共同守护</button>
+    </div>
+  </div>
+
+  <!-- 独立的《公众监督与商道建言堂》专用弹窗（直呈平台总控，与求购榜彻底并行隔离） -->
+  <div id="modal-mall-public-supervision" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <div>
+          <h3 class="font-bold text-sm text-emerald-950">💬 公众监督与商道建言堂</h3>
+          <p class="text-[10px] text-stone-400">直达平台公共治理与AI复核中枢 · 不公开挂入求购榜</p>
+        </div>
+        <button type="button" onclick="window.closeModal('modal-mall-public-supervision')" class="text-stone-400 text-lg">✕</button>
+      </div>
+
+      <div class="space-y-2.5">
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">反馈类别：</label>
+          <select id="pub-sup-type" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold text-emerald-950 outline-none">
+            <option value="规范监督举报">🛡️ 虚假宣传 / 超范围经营 / 货不对板监督</option>
+            <option value="邻里服务建议">🏪 合作门店自提服务体验反馈</option>
+            <option value="平台规则建言">📜 平台公议规则与功能完善建言</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">涉及商号 / 专柜名称（若为平台建言可留空）：</label>
+          <input type="text" id="pub-sup-target" placeholder="如：XX合作社专柜 或 XX便民门店" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+        </div>
+
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">具体事实说明或建言内容 *：</label>
+          <textarea id="pub-sup-content" rows="3" placeholder="请客观描述发现的问题细节或您的宝贵建言..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-stone-600 font-bold mb-1">您的称呼或联系方式（选填，方便回访核实）：</label>
+          <input type="text" id="pub-sup-contact" placeholder="如：王先生 138****0000（可匿名留空）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+        </div>
+      </div>
+
+      <button type="button" id="btn-submit-pub-sup" onclick="window.submitMallPublicSupervision()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
+        📜 直呈平台监督与建言堂
+      </button>
     </div>
   </div>
 
@@ -233,7 +276,7 @@
     </button>
   </footer>
 
-  <!-- 发布求购/定制需求弹窗 -->
+  <!-- 发布求购/定制需求弹窗（与公众监督弹窗彻底分离，互不干扰） -->
   <div id="modal-c2b-demand" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 text-stone-800 shadow-2xl text-xs max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -544,7 +587,52 @@
   </script>
 
   <script type="module">
+    import { supabase } from './src/lib/supabase.js';
     import { initMallController } from './src/modules/mallController.js';
+
+    window.submitMallPublicSupervision = async function () {
+      const type = document.getElementById('pub-sup-type')?.value || '规范监督举报';
+      const target = document.getElementById('pub-sup-target')?.value.trim();
+      const content = document.getElementById('pub-sup-content')?.value.trim();
+      const contact = document.getElementById('pub-sup-contact')?.value.trim();
+      const btn = document.getElementById('btn-submit-pub-sup');
+
+      if (!content) return alert('请填写具体监督事项或建言内容！');
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = '正在呈交平台治理中枢...';
+      }
+
+      try {
+        const fullText = `【天街公众通道 · ${type}】${target ? `[涉及对象：${target}] ` : ''}${content}`;
+        const { error } = await supabase.from('platform_suggestion_board').insert([
+          {
+            tenant_id: target || 'PUBLIC_MALL',
+            proposer_type: 'public_consumer',
+            proposer_name: contact || '天街匿名邻里',
+            content: fullText,
+            reply_status: 'pending'
+          }
+        ]);
+
+        if (error) throw error;
+
+        document.getElementById('pub-sup-target').value = '';
+        document.getElementById('pub-sup-content').value = '';
+        document.getElementById('pub-sup-contact').value = '';
+        window.closeModal('modal-mall-public-supervision');
+        alert('🙏 感谢您的监督与建言！该信息已直呈平台总控治理台，不会公开暴露在求购榜上。');
+      } catch (err) {
+        alert('提交失败：' + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = '📜 直呈平台监督与建言堂';
+        }
+      }
+    };
+
     initMallController();
   </script>
   <script>
