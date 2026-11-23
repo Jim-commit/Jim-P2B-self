@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'baigong-pwa-v2026-12-sec-hardened';
+const CACHE_VERSION = 'baigong-pwa-v2026-13-local-css';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
