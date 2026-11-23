@@ -2057,11 +2057,13 @@
       loadAndRenderHqGovernanceExtension
     } from './src/modules/hq/hqGovernanceExtension.js';
     import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
+    import { initWechatBrowserGuide } from './src/lib/wechatBrowserGuard.js';
 
     enforceGlobalGovernance();
     initHqGovernanceExtensionBindings();
     await initHQController();
     await loadAndRenderHqGovernanceExtension();
+    initWechatBrowserGuide({ appName: '百工源头合作社工作台' });
   </script>
 </body>
 </html>
