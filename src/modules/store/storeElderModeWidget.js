@@ -15,19 +15,37 @@ function getStoreContext() {
   return { storeName, agentTag, storeId };
 }
 
+function mountBannerInsideMainCard() {
+  if (document.getElementById('btn-enter-elder-mode')) return;
+
+  const bannerHtml = `
+    <div class="px-3 pt-2">
+      <button type="button" id="btn-enter-elder-mode" onclick="window.toggleElderMode(true)"
+        class="w-full bg-amber-100 hover:bg-amber-200 border border-amber-400 text-amber-950 font-bold text-xs px-3.5 py-2 rounded-2xl flex items-center justify-between shadow-xs active:scale-98 transition">
+        <span class="flex items-center gap-1.5">
+          <span class="text-base">👵</span>
+          <span>字太小看不清？点此切换【极简大字版 · 3键直达】</span>
+        </span>
+        <span class="bg-amber-500 text-stone-950 px-2 py-0.5 rounded-lg text-[11px] font-extrabold shrink-0">切换 ➔</span>
+      </button>
+    </div>
+  `;
+
+  // 优先插在主容器顶部卡片与品类筛选栏之间（手机与电脑端均居中聚拢、零遮挡）
+  const mainContainer = document.querySelector('#app, main, .max-w-md, .max-w-lg') || document.body;
+  const headerEl = mainContainer.querySelector('header') || mainContainer.firstElementChild;
+  if (headerEl && headerEl.parentNode) {
+    headerEl.insertAdjacentHTML('afterend', bannerHtml);
+  } else {
+    mainContainer.insertAdjacentHTML('afterbegin', bannerHtml);
+  }
+}
+
 export function mountStoreElderModeWidget() {
   if (document.getElementById('elder-mode-overlay')) return;
 
-  // 1. 注入顶部悬浮切换按钮（不破坏原有 header 布局）
-  const togglePillHtml = `
-    <button type="button" id="btn-enter-elder-mode" onclick="window.toggleElderMode(true)"
-      class="fixed top-2.5 right-3 z-40 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold text-xs px-3 py-1.5 rounded-full shadow-lg border border-amber-500 flex items-center gap-1 active:scale-95 transition">
-      <span>👵</span> 极简大字版
-    </button>
-  `;
-  document.body.insertAdjacentHTML('beforeend', togglePillHtml);
+  mountBannerInsideMainCard();
 
-  // 2. 注入全屏极简适老 3 大核心动作面板
   const overlayHtml = `
     <div id="elder-mode-overlay" class="hidden fixed inset-0 z-50 bg-[#f7f5f0] text-stone-900 overflow-y-auto pb-10">
       <div class="max-w-md mx-auto p-4 space-y-4">
@@ -160,7 +178,6 @@ export function mountStoreElderModeWidget() {
     }
   };
 
-  // 原生中文语音转文字（兼容移动端浏览器与微信内置浏览器）
   window.startElderVoiceInput = function () {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     const btn = document.getElementById('btn-elder-voice');
