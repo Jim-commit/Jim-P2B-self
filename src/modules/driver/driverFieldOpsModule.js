@@ -147,6 +147,11 @@ export function initFieldOpsBindings() {
   };
 
   window.submitPalmStockVoucher = async function () {
+    // 动作级精准熔断检查：仓库库存与盘点调整 (inventory_move)
+    if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('inventory_move', driverState.currentAgent))) {
+      return;
+    }
+
     const prodId = parseInt(document.getElementById('palm-wh-prod-select')?.value || 0);
     const subType = document.getElementById('palm-wh-subtype')?.value || '采收/完工入库';
     const qty = parseInt(document.getElementById('palm-wh-qty')?.value || 0);
@@ -356,6 +361,14 @@ export function initFieldOpsBindings() {
     if (isNaN(amt) || amt <= 0) return alert('请输入有效的催收回款金额！');
     if (!salesSignPad.hasSigned()) return alert('请请门店掌柜在下方框内手写签名确认回款金额！');
 
+    // 动作级精准熔断检查：外勤催收登记 (driver_collect) + 大额限流
+    if (
+      window.checkBusinessCircuit &&
+      !(await window.checkBusinessCircuit('driver_collect', driverState.currentAgent, { amount: amt }))
+    ) {
+      return;
+    }
+
     const { error } = await supabase.from('driver_collection_log').insert([
       {
         tenant_id: driverState.currentAgent,
@@ -412,6 +425,14 @@ export function initFieldOpsBindings() {
 
     if (!s || !detail) return alert('请选择涉及门店并填写定损货品与破损说明！');
     if (!qcSignPad.hasSigned()) return alert('请请门店掌柜在下方签字框手写签名确认定损结论！');
+
+    // 动作级精准熔断检查：往来财务核销与定损冲账 (finance_settle) + 大额限流
+    if (
+      window.checkBusinessCircuit &&
+      !(await window.checkBusinessCircuit('finance_settle', driverState.currentAgent, { amount: deductAmt }))
+    ) {
+      return;
+    }
 
     let signUrl = '';
     try {
