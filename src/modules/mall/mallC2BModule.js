@@ -162,6 +162,11 @@ export function initC2BBindings() {
 
     if (!comment) return alert('请写下一句您的真实收货或到店自提体验！');
 
+    // 动作级精准熔断检查：公域晒单发布 (public_post)
+    if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('public_post', tenantId || null))) {
+      return;
+    }
+
     const payload = {
       proposer_type: 'mall_review',
       proposer_name: '天街验真邻里',
@@ -245,6 +250,12 @@ export function initC2BBindings() {
             (t.tenant_id || '').toUpperCase() === targetText.toUpperCase()
         )
       : null;
+
+    // 动作级精准熔断检查：公域求购发榜 (public_post)
+    const targetTid = matchedTenant ? matchedTenant.tenant_id : (mallState.currentTenantParam || null);
+    if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('public_post', targetTid))) {
+      return;
+    }
 
     const categoryTag = matchedTenant
       ? `C2B专柜:${matchedTenant.tenant_id}(${matchedTenant.company_name})`
