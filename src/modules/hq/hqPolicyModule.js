@@ -2,87 +2,15 @@ import { HQService } from '../../services/hqService.js';
 import { hqState, DEFAULT_GLOBAL_POLICY } from './hqState.js';
 
 export const NINE_2FA_ITEMS = [
-  {
-    key: 'twoFaCashOn',
-    domId: 'gp-2fa-cash-on',
-    layer: 'L1 · 资金与价盘安全',
-    code: '2FA-01',
-    title: '大额财务销账 / 坏账冲抵',
-    desc: '财务点清回款销账或核准定损冲减欠款超过阈值时触发动态口令',
-    scope: '总舵账房结算'
-  },
-  {
-    key: 'twoFaPriceOn',
-    domId: 'gp-2fa-price-on',
-    layer: 'L1 · 资金与价盘安全',
-    code: '2FA-02',
-    title: '大幅下调平准基准价',
-    desc: '下调批发或网上基准价幅度超过安全百分比时触发防误调/防恶意砸价核验',
-    scope: '总舵 ➔ 门店订货台 / 天街专柜'
-  },
-  {
-    key: 'twoFaCreditOn',
-    domId: 'gp-2fa-credit-on',
-    layer: 'L1 · 资金与价盘安全',
-    code: '2FA-03',
-    title: '超授信额度特批放行',
-    desc: '合作门店赊账超出分级授信上限仍需特批发货时强制大当家核身',
-    scope: '门店订货台 ➔ 总舵 / 掌中宝'
-  },
-  {
-    key: 'twoFaLimitOn',
-    domId: 'gp-2fa-limit-on',
-    layer: 'L1 · 资金与价盘安全',
-    code: '2FA-04',
-    title: '调高合作门店信用额度',
-    desc: '上调单家合作门店赊账信用天花板时触发双因素授权',
-    scope: '总舵 ➔ 门店订货台'
-  },
-  {
-    key: 'twoFaStockAuditOn',
-    domId: 'gp-2fa-stock-audit-on',
-    layer: 'L2 · 货品与资产边界',
-    code: '2FA-05',
-    title: '库存盘亏核销 / 强行平仓',
-    desc: '仓储盘点出现库存报损核销或强制修正账面库存时触发核验',
-    scope: '总舵仓储台账'
-  },
-  {
-    key: 'twoFaDeleteOn',
-    domId: 'gp-2fa-delete-on',
-    layer: 'L2 · 货品与资产边界',
-    code: '2FA-06',
-    title: '删除在供货品 / 清理档案',
-    desc: '永久下架删除商品或清理往来档案时防止误删或恶意清空',
-    scope: '总舵 ➔ 全端货架'
-  },
-  {
-    key: 'twoFaPolicyOn',
-    domId: 'gp-2fa-policy-on',
-    layer: 'L3 · 规则与数据主权',
-    code: '2FA-07',
-    title: '改写全局经营策略与风控规则',
-    desc: '修改分级折扣、多载具押金、返利比例及本页 9 项风控开关时触发核验',
-    scope: '全端全局策略生效'
-  },
-  {
-    key: 'twoFaExportOn',
-    domId: 'gp-2fa-export-on',
-    layer: 'L3 · 规则与数据主权',
-    code: '2FA-08',
-    title: '导出全量核心账本与分润表',
-    desc: '批量导出客户档案、价格体系及返利核算 CSV 时防数据批量外泄',
-    scope: '总舵数据主权保护'
-  },
-  {
-    key: 'twoFaEmergencyBrakeOn',
-    domId: 'gp-2fa-emergency-brake-on',
-    layer: 'L4 · 全局应急熔断',
-    code: '2FA-09',
-    title: '🚨 紧急止损拉闸（全盘熔断锁单）',
-    desc: '遭遇异常刷单、行情剧烈波动或突发事故时，一键熔断全网新单入口（拉闸与合闸均需 2FA）',
-    scope: '立即锁定门店订货台与天街专柜下单'
-  }
+  { key: 'twoFaCashOn', domId: 'gp-2fa-cash-on', layer: 'L1 · 资金与价盘安全', code: '2FA-01', title: '大额财务销账 / 坏账冲抵', desc: '财务点清回款销账或核准定损冲减欠款超过阈值时触发动态口令', scope: '总舵账房结算' },
+  { key: 'twoFaPriceOn', domId: 'gp-2fa-price-on', layer: 'L1 · 资金与价盘安全', code: '2FA-02', title: '大幅下调平准基准价', desc: '下调批发或网上基准价幅度超过安全百分比时触发防误调/防恶意砸价核验', scope: '总舵 ➔ 门店订货台 / 天街专柜' },
+  { key: 'twoFaCreditOn', domId: 'gp-2fa-credit-on', layer: 'L1 · 资金与价盘安全', code: '2FA-03', title: '超授信额度特批放行', desc: '合作门店赊账超出分级授信上限仍需特批发货时强制大当家核身', scope: '门店订货台 ➔ 总舵 / 掌中宝' },
+  { key: 'twoFaLimitOn', domId: 'gp-2fa-limit-on', layer: 'L1 · 资金与价盘安全', code: '2FA-04', title: '调高合作门店信用额度', desc: '上调单家合作门店赊账信用天花板时触发双因素授权', scope: '总舵 ➔ 门店订货台' },
+  { key: 'twoFaStockAuditOn', domId: 'gp-2fa-stock-audit-on', layer: 'L2 · 货品与资产边界', code: '2FA-05', title: '库存盘亏核销 / 强行平仓', desc: '仓储盘点出现库存报损核销或强制修正账面库存时触发核验', scope: '总舵仓储台账' },
+  { key: 'twoFaDeleteOn', domId: 'gp-2fa-delete-on', layer: 'L2 · 货品与资产边界', code: '2FA-06', title: '删除在供货品 / 清理档案', desc: '永久下架删除商品或清理往来档案时防止误删或恶意清空', scope: '总舵 ➔ 全端货架' },
+  { key: 'twoFaPolicyOn', domId: 'gp-2fa-policy-on', layer: 'L3 · 规则与数据主权', code: '2FA-07', title: '改写全局经营策略与风控规则', desc: '修改分级折扣、多载具押金、返利比例及本页 9 项风控开关时触发核验', scope: '全端全局策略生效' },
+  { key: 'twoFaExportOn', domId: 'gp-2fa-export-on', layer: 'L3 · 规则与数据主权', code: '2FA-08', title: '导出全量核心账本与分润表', desc: '批量导出客户档案、价格体系及返利核算 CSV 时防数据批量外泄', scope: '总舵数据主权保护' },
+  { key: 'twoFaEmergencyBrakeOn', domId: 'gp-2fa-emergency-brake-on', layer: 'L4 · 全局应急熔断', code: '2FA-09', title: '🚨 紧急止损拉闸（全盘熔断锁单）', desc: '遭遇异常刷单、行情剧烈波动或突发事故时，一键熔断全网新单入口（拉闸与合闸均需 2FA）', scope: '立即锁定门店订货台与天街专柜下单' }
 ];
 
 const PRESET_DISPLAY_NAMES = {
@@ -92,36 +20,173 @@ const PRESET_DISPLAY_NAMES = {
   cylinder: '水桶/气瓶循环押金策略'
 };
 
+export function polishHQHeaderVisualBalance() {
+  const header = document.getElementById('hq-main-header') || document.querySelector('header');
+  const secHost = document.getElementById('hq-security-banner-host');
+  if (!header || !secHost) return;
+
+  const mergeInnerBanner = () => {
+    const firstCard = secHost.firstElementChild;
+    if (!firstCard) return;
+    firstCard.className = 'mb-3 pb-2.5 border-b border-emerald-700/50 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-100/90';
+    firstCard.querySelectorAll('span, p, div').forEach((el) => {
+      if (el.classList.contains('text-stone-600') || el.classList.contains('text-stone-700')) {
+        el.classList.remove('text-stone-600', 'text-stone-700');
+        el.classList.add('text-emerald-100/90');
+      }
+    });
+    const brakeBtn = firstCard.querySelector('button');
+    if (brakeBtn) {
+      brakeBtn.className = 'bg-rose-950/90 hover:bg-rose-700 text-rose-100 border border-rose-500/70 px-3 py-1 rounded-xl font-bold text-xs shadow-xs active:scale-95 transition flex items-center gap-1';
+    }
+    header.insertAdjacentElement('afterbegin', firstCard);
+  };
+
+  mergeInnerBanner();
+  if (!secHost.dataset.observed) {
+    new MutationObserver(() => mergeInnerBanner()).observe(secHost, { childList: true });
+    secHost.dataset.observed = '1';
+  }
+}
+
+export function applyIndustryTerminology(tenant) {
+  const entityVal = document.getElementById('entity-type-selector')?.value || '';
+  const selectText = document.getElementById('entity-type-selector')?.selectedOptions?.[0]?.text || '';
+  const bizType = `${entityVal} ${tenant?.business_type || ''} ${tenant?.industry_type || ''} ${selectText}`.trim();
+
+  const isAgri = entityVal === 'coop' || /coop|农|合作社|生鲜|果蔬|粮油|种植|养殖/.test(bizType);
+  const isFactory = entityVal === 'factory' || /factory|工坊|制造|加工|生产|厂/.test(bizType);
+
+  const terms = isAgri
+    ? {
+        industryCategory: 'agri',
+        pauseBtnHtml: '<span>🍵</span> 农忙暂歇设置',
+        pauseStatus: '农忙采收 / 休市暂歇',
+        pauseDefaultReason: '产区农忙采收集中加工中',
+        harvestBtnHtml: '<span>🌾</span> 采收排产总单',
+        harvestAggBtnHtml: '<span>🌾</span> 采收排产汇总单',
+        harvestModalTitle: '🌾 源头采收 / 产区排产汇总单',
+        mediaBtnHtml: '<span>🎥</span> 产区实拍与外链',
+        counterModalTitle: '🎥 产区水土档案与外部平台外链矩阵',
+        aidBadge: '🌾 丰产助农平准认领开启',
+        aidSettingTitle: '🌾 丰产助农/助工平准特惠',
+        promoTabName: '② 丰歉平准与阶梯价',
+        groupPackTitle: '🏛️ 企事业单位 / 食堂阳光集采包',
+        groupPackDesc: '一键汇总营业执照核验、联保背书与全品阳光工价报价单。'
+      }
+    : isFactory
+    ? {
+        industryCategory: 'factory',
+        pauseBtnHtml: '<span>🏭</span> 检修 / 盘点暂歇',
+        pauseStatus: '产线检修 / 仓库盘点暂歇',
+        pauseDefaultReason: '车间产线检修与仓库盘点中',
+        harvestBtnHtml: '<span>⚙️</span> 车间排产总单',
+        harvestAggBtnHtml: '<span>⚙️</span> 车间排产汇总单',
+        harvestModalTitle: '⚙️ 源头工坊 / 车间排产汇总单',
+        mediaBtnHtml: '<span>🏭</span> 工厂实拍与外链',
+        counterModalTitle: '🏭 工厂车间档案与外部平台外链矩阵',
+        aidBadge: '🏭 产能平准集采认领开启',
+        aidSettingTitle: '🏭 产能平准集采特惠',
+        promoTabName: '② 产能平准与阶梯价',
+        groupPackTitle: '🏛️ 政企单位 / 工程集采报价包',
+        groupPackDesc: '一键汇总企业资质核验、出厂质保背书与全品出厂集采报价单。'
+      }
+    : {
+        industryCategory: 'commerce',
+        pauseBtnHtml: '<span>⏸️</span> 盘点 / 休市暂歇',
+        pauseStatus: '仓库盘点 / 休市暂歇',
+        pauseDefaultReason: '仓库盘点清仓与休市整理中',
+        harvestBtnHtml: '<span>📋</span> 用度备货总单',
+        harvestAggBtnHtml: '<span>📋</span> 用度备货汇总单',
+        harvestModalTitle: '📋 真实用度备货 / 排产汇总单',
+        mediaBtnHtml: '<span>🏢</span> 企业实拍与外链',
+        counterModalTitle: '🏢 企业仓储档案与外部平台外链矩阵',
+        aidBadge: '📦 余缺平准调剂认领开启',
+        aidSettingTitle: '📦 阶段平准集采认领特惠',
+        promoTabName: '② 阶段调剂与阶梯价',
+        groupPackTitle: '🏛️ 政企单位 / 大客户阳光集采包',
+        groupPackDesc: '一键汇总营业执照核验、主体信义背书与全品阳光集采报价单。'
+      };
+
+  window.__hqIndustryTerms = terms;
+  if (hqState.globalPolicy) hqState.globalPolicy.industryTerms = terms;
+
+  const mapHtml = {
+    'btn-seasonal-pause': terms.pauseBtnHtml,
+    'btn-top-plan-agg': terms.harvestBtnHtml,
+    'btn-settle-plan-agg': terms.harvestAggBtnHtml,
+    'btn-top-counter': terms.mediaBtnHtml
+  };
+  Object.entries(mapHtml).forEach(([id, html]) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+
+  const mapText = {
+    'plan-agg-modal-title': terms.harvestModalTitle,
+    'counter-modal-title': terms.counterModalTitle,
+    'gp-tab-promo': terms.promoTabName,
+    'gp-aid-title-lbl': terms.aidSettingTitle
+  };
+  Object.entries(mapText).forEach(([id, txt]) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = txt;
+  });
+
+  const rewriteAdvisorCards = () => {
+    const advisorBox = document.getElementById('ai-advisor-cards');
+    if (!advisorBox) return;
+    advisorBox.querySelectorAll('b, h3, h4, div').forEach((el) => {
+      if (el.children.length === 0 && el.innerText.includes('食堂阳光集采包')) {
+        el.innerText = terms.groupPackTitle;
+      }
+    });
+    advisorBox.querySelectorAll('p, span, div').forEach((el) => {
+      if (el.children.length === 0 && el.innerText.includes('全品阳光工价报价单')) {
+        el.innerText = terms.groupPackDesc;
+      }
+    });
+  };
+
+  rewriteAdvisorCards();
+  const advisorBox = document.getElementById('ai-advisor-cards');
+  if (advisorBox && !advisorBox.dataset.termObserved) {
+    new MutationObserver(() => rewriteAdvisorCards()).observe(advisorBox, { childList: true, subtree: true });
+    advisorBox.dataset.termObserved = '1';
+  }
+}
+
 export function renderActivePolicyBadgesBar() {
   const bar = document.getElementById('active-policy-badges-bar');
   if (!bar) return;
 
   const gp = hqState.globalPolicy;
+  const terms = window.__hqIndustryTerms || { aidBadge: '📦 余缺平准调剂认领开启' };
   const chips = [];
 
   if (gp.activePolicyName) {
-    chips.push(`<span class="bg-amber-300 text-stone-950 px-2.5 py-0.5 rounded-full font-bold">📌 在用方案：${gp.activePolicyName}</span>`);
+    chips.push(`<span class="bg-amber-300 text-stone-950 px-2.5 py-0.5 rounded-full font-bold shadow-2xs">📌 在用方案：${gp.activePolicyName}</span>`);
   }
   if (gp.emergencyBrakeActive) {
     chips.push('<span class="bg-rose-600 text-white border border-rose-300 px-2.5 py-0.5 rounded-full font-bold animate-pulse">🚨 紧急止损已拉闸（全网新单熔断中）</span>');
   }
   if (gp.storeTierEnabled !== false) {
-    chips.push('<span class="bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 px-2 py-0.5 rounded-full">🟢 门店分级折扣生效中</span>');
+    chips.push('<span class="bg-white/10 text-emerald-100 border border-white/15 px-2.5 py-0.5 rounded-full">🟢 门店分级折扣生效中</span>');
   }
   if (gp.harvestAidOn) {
-    chips.push('<span class="bg-amber-400/25 text-amber-200 border border-amber-400/40 px-2 py-0.5 rounded-full">🌾 丰产助农平准认领开启</span>');
+    chips.push(`<span class="bg-white/10 text-emerald-100 border border-white/15 px-2.5 py-0.5 rounded-full">${terms.aidBadge}</span>`);
   }
   if (parseInt(gp.rationLimitQty || 0) > 0) {
-    chips.push(`<span class="bg-rose-500/25 text-rose-200 border border-rose-400/30 px-2 py-0.5 rounded-full">🛡️ 紧缺定额限购 ${gp.rationLimitQty} 件</span>`);
+    chips.push(`<span class="bg-white/10 text-amber-200 border border-amber-300/30 px-2.5 py-0.5 rounded-full">🛡️ 紧缺定额限购 ${gp.rationLimitQty} 件</span>`);
   }
   if (gp.onlinePriceEnabled) {
-    chips.push('<span class="bg-blue-500/20 text-blue-200 border border-blue-400/30 px-2 py-0.5 rounded-full">🌐 网上多档价格策略生效中</span>');
+    chips.push('<span class="bg-white/10 text-emerald-100 border border-white/15 px-2.5 py-0.5 rounded-full">🌐 网上多档价格生效中</span>');
   }
   if (gp.rebateEnabled !== false) {
-    chips.push('<span class="bg-amber-400/20 text-amber-200 border border-amber-400/30 px-2 py-0.5 rounded-full">🎁 进货返利策略生效中</span>');
+    chips.push('<span class="bg-white/10 text-emerald-100 border border-white/15 px-2.5 py-0.5 rounded-full">🎁 进货返利生效中</span>');
   }
   if (gp.campaignActive) {
-    chips.push('<span class="bg-rose-500/25 text-rose-200 border border-rose-400/30 px-2 py-0.5 rounded-full">🔥 促销活动进行中</span>');
+    chips.push('<span class="bg-white/10 text-amber-200 border border-amber-300/30 px-2.5 py-0.5 rounded-full">🔥 促销活动进行中</span>');
   }
 
   const enabled2faCount = NINE_2FA_ITEMS.filter((item) =>
@@ -129,12 +194,9 @@ export function renderActivePolicyBadgesBar() {
       ? !!gp[item.key]
       : gp[item.key] !== false
   ).length;
-  chips.push(`<span class="bg-indigo-500/25 text-indigo-200 border border-indigo-400/30 px-2 py-0.5 rounded-full font-mono">🛡️ 2FA防线 ${enabled2faCount}/9 已布防</span>`);
+  chips.push(`<span class="bg-white/10 text-emerald-200 border border-white/15 px-2 py-0.5 rounded-full font-mono">🛡️ 2FA防线 ${enabled2faCount}/9 已布防</span>`);
 
-  bar.innerHTML =
-    chips.length > 0
-      ? chips.join('')
-      : '<span class="text-emerald-200/70">当前按基准原价直出（未启用额外折扣策略）</span>';
+  bar.innerHTML = chips.join('');
 }
 
 export function syncSeasonalPauseBannerUI() {
@@ -143,6 +205,8 @@ export function syncSeasonalPauseBannerUI() {
   const banner = document.getElementById('hq-seasonal-pause-banner');
   const textEl = document.getElementById('hq-seasonal-pause-text');
   if (!banner || !textEl) return;
+
+  const terms = window.__hqIndustryTerms || { pauseStatus: '盘点 / 休市暂歇' };
 
   if (gp.emergencyBrakeActive) {
     banner.classList.remove('hidden');
@@ -153,7 +217,7 @@ export function syncSeasonalPauseBannerUI() {
 
   if (sp && sp.isPaused) {
     banner.classList.remove('hidden');
-    textEl.innerText = `🍵 当前处于【暂歇接单】状态：${sp.reason || '农忙/盘点中'}${sp.resumeDate ? `（预计 ${sp.resumeDate} 恢复接单）` : ''}`;
+    textEl.innerText = `⏸️ 当前处于【${terms.pauseStatus}】状态：${sp.reason || '仓库盘点/休市整理中'}${sp.resumeDate ? `（预计 ${sp.resumeDate} 恢复接单）` : ''}`;
   } else {
     banner.classList.add('hidden');
   }
@@ -180,7 +244,7 @@ export function loadGlobalPolicyFromTenant(tenant) {
   const cloudPolicy = tenant?.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
   const gp = {
     ...JSON.parse(JSON.stringify(DEFAULT_GLOBAL_POLICY)),
-    activePolicyName: '商号自定义现行策略',
+    activePolicyName: '商号现行默认策略',
     twoFaEmergencyBrakeOn: true,
     emergencyBrakeActive: false,
     emergencyBrakeReason: '',
@@ -188,7 +252,7 @@ export function loadGlobalPolicyFromTenant(tenant) {
     ...cloudPolicy
   };
 
-  if (!gp.activePolicyName) gp.activePolicyName = '商号自定义现行策略';
+  if (!gp.activePolicyName) gp.activePolicyName = '商号现行默认策略';
   if (gp.twoFaEmergencyBrakeOn === undefined) gp.twoFaEmergencyBrakeOn = true;
   if (!gp.tier1Name || gp.tier1Name === '平准供货底价') gp.tier1Name = '批发平准基准价';
   if (!gp.tier2Name || gp.tier2Name === '集采惠价') gp.tier2Name = '网上平准零售基准价';
@@ -206,6 +270,8 @@ export function loadGlobalPolicyFromTenant(tenant) {
   hqState.carrierLabel = mainCarrier.name;
   localStorage.setItem('hq_carrier_label_' + hqState.currentAgent, hqState.carrierLabel);
 
+  polishHQHeaderVisualBalance();
+  applyIndustryTerminology(tenant);
   renderActivePolicyBadgesBar();
   syncSeasonalPauseBannerUI();
 
@@ -225,16 +291,10 @@ export function loadGlobalPolicyFromTenant(tenant) {
   if (opt2) opt2.innerText = gp.tier2Name;
 }
 
-/**
- * 顶部策略牌匾与折叠式样板库：
- * - 默认只醒目展示「🟢 本商号当前在用策略」
- * - 参考样板与自存方案默认收起，点击「切换/套用其他方案 ▾」时再展开，选定后自动收起
- */
 function renderCustomPresetsBar(isExpanded = false, pendingPreviewName = '') {
   const bar = document.getElementById('policy-presets-bar');
   if (!bar) return;
 
-  // 隐藏外层原本可能自带的冗余提示文字
   const parentBox = bar.parentElement;
   if (parentBox) {
     Array.from(parentBox.children).forEach((child) => {
@@ -247,7 +307,7 @@ function renderCustomPresetsBar(isExpanded = false, pendingPreviewName = '') {
     customPresets = JSON.parse(localStorage.getItem('hq_custom_presets_' + hqState.currentAgent) || '[]');
   } catch (e) {}
 
-  const activeName = hqState.globalPolicy.activePolicyName || '商号自定义现行策略';
+  const activeName = hqState.globalPolicy.activePolicyName || '商号现行默认策略';
 
   bar.className = 'w-full space-y-2 text-xs';
   bar.innerHTML = `
@@ -317,10 +377,12 @@ function renderCustomPresetsBar(isExpanded = false, pendingPreviewName = '') {
 }
 
 function enhancePolicyModalHierarchy() {
+  const terms = window.__hqIndustryTerms || { promoTabName: '② 阶段调剂与阶梯价' };
+  const promoTabBtn = document.getElementById('gp-tab-promo');
+  if (promoTabBtn) promoTabBtn.innerText = terms.promoTabName;
+
   const riskTabBtn = document.getElementById('gp-tab-risk');
-  if (riskTabBtn) {
-    riskTabBtn.innerText = '④ 价盘与9项2FA风控';
-  }
+  if (riskTabBtn) riskTabBtn.innerText = '④ 价盘与9项2FA风控';
 
   const tabMetaMap = {
     tiers: {
@@ -328,7 +390,7 @@ function enhancePolicyModalHierarchy() {
       scope: '保存即同步至【合作门店订货台（自动折算分级价/校验授信）】与【百工掌中宝（交割单打印档案）】'
     },
     promo: {
-      layer: '第二层 · 丰歉平准与阶梯价层',
+      layer: `第二层 · ${terms.promoTabName.replace(/^②\s*/, '')}层`,
       scope: '保存即同步至【合作门店订货台 / 百工天街专柜（阶梯折算与限购）】及【本台绩效返利核算】'
     },
     carriers: {
@@ -347,14 +409,17 @@ function enhancePolicyModalHierarchy() {
 
   Object.entries(tabMetaMap).forEach(([tabKey, info]) => {
     const pane = document.getElementById(`gp-pane-${tabKey}`);
-    if (!pane || pane.querySelector('.gp-layer-banner')) return;
-    const banner = document.createElement('div');
-    banner.className = 'gp-layer-banner mb-3 bg-stone-900 text-white px-3.5 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-[11px]';
+    if (!pane) return;
+    let banner = pane.querySelector('.gp-layer-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.className = 'gp-layer-banner mb-3 bg-stone-900 text-white px-3.5 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-[11px]';
+      pane.insertAdjacentElement('afterbegin', banner);
+    }
     banner.innerHTML = `
       <span class="font-bold text-amber-300">🧭 ${info.layer}</span>
       <span class="text-stone-300 text-[10px]">生效边界：${info.scope}</span>
     `;
-    pane.insertAdjacentElement('afterbegin', banner);
   });
 
   const riskPane = document.getElementById('gp-pane-risk');
@@ -447,6 +512,16 @@ function enhancePolicyModalHierarchy() {
 }
 
 export function initPolicyBindings(callbacks) {
+  const entitySelect = document.getElementById('entity-type-selector');
+  entitySelect?.addEventListener('change', async () => {
+    applyIndustryTerminology(hqState.currentTenantData);
+    renderActivePolicyBadgesBar();
+    syncSeasonalPauseBannerUI();
+    try {
+      await HQService.updateTenantWithVerify(hqState.currentAgent, { custom_settings: hqState.globalPolicy });
+    } catch (e) {}
+  });
+
   window.togglePresetDrawer = function () {
     const drawer = document.getElementById('gp-preset-drawer');
     const isCurrentlyHidden = drawer ? drawer.classList.contains('hidden') : true;
@@ -507,16 +582,28 @@ export function initPolicyBindings(callbacks) {
   };
 
   window.openSeasonalPauseModal = function () {
-    const sp = hqState.globalPolicy.seasonalPause || { isPaused: false, reason: '产区农忙采收集中加工中', resumeDate: '' };
+    const terms = window.__hqIndustryTerms || {
+      pauseBtnHtml: '<span>⏸️</span> 盘点 / 休市暂歇',
+      pauseDefaultReason: '仓库盘点清仓与休市整理中'
+    };
+    const sp = hqState.globalPolicy.seasonalPause || { isPaused: false, reason: terms.pauseDefaultReason, resumeDate: '' };
+    const modal = document.getElementById('modal-seasonal-pause');
+    const titleEl = modal?.querySelector('h3');
+    if (titleEl) titleEl.innerHTML = `${terms.pauseBtnHtml}（全网挂牌公示）`;
+
     document.getElementById('sp-is-paused').checked = !!sp.isPaused;
-    document.getElementById('sp-reason').value = sp.reason || '';
+    document.getElementById('sp-reason').value = sp.reason || terms.pauseDefaultReason;
     document.getElementById('sp-resume-date').value = sp.resumeDate || '';
     window.openModal('modal-seasonal-pause');
   };
 
   window.saveSeasonalPauseSettings = async function () {
+    const terms = window.__hqIndustryTerms || {
+      pauseStatus: '盘点 / 休市暂歇',
+      pauseDefaultReason: '仓库盘点清仓与休市整理中'
+    };
     const isPaused = document.getElementById('sp-is-paused').checked;
-    const reason = document.getElementById('sp-reason').value.trim() || '产区农忙/仓库盘点暂歇';
+    const reason = document.getElementById('sp-reason').value.trim() || terms.pauseDefaultReason;
     const resumeDate = document.getElementById('sp-resume-date').value || '';
 
     hqState.globalPolicy.seasonalPause = { isPaused, reason, resumeDate };
@@ -529,7 +616,7 @@ export function initPolicyBindings(callbacks) {
 
     syncSeasonalPauseBannerUI();
     window.closeModal('modal-seasonal-pause');
-    alert(isPaused ? `🍵 已挂出【暂歇接单】告示（${reason}），门店订货台与天街专柜已同步显示！` : '🟢 已解除暂歇告示，恢复正常接单营业！');
+    alert(isPaused ? `⏸️ 已挂出【${terms.pauseStatus}】告示（${reason}），门店订货台与天街专柜已同步显示！` : '🟢 已解除暂歇告示，恢复正常接单营业！');
   };
 
   window.exportFullTenantBackup = function () {
@@ -560,7 +647,7 @@ export function initPolicyBindings(callbacks) {
 
   window.saveCurrentAsCustomPreset = function () {
     const defaultSuggest = hqState.globalPolicy.activePolicyName || '';
-    const name = prompt('为当前这套策略组合起个方案名称（如：日常平销策略 / 秋收助农模式）：', defaultSuggest);
+    const name = prompt('为当前这套策略组合起个方案名称（如：日常平销策略 / 节前备货模式）：', defaultSuggest);
     if (!name || !name.trim()) return;
     const cleanName = name.trim();
 
@@ -924,7 +1011,7 @@ export function initPolicyBindings(callbacks) {
         activePolicyName: PRESET_DISPLAY_NAMES.cylinder,
         storeTierEnabled: true,
         storeTiers: [
-          { name: '大型餐饮食堂户', creditLimit: 5000, discountRate: 0.94, returnQuota: 500 },
+          { name: '大型企业/机构集采户', creditLimit: 5000, discountRate: 0.94, returnQuota: 500 },
           { name: '配送分销网点', creditLimit: 3000, discountRate: 0.96, returnQuota: 300 }
         ],
         storeCustomFields: ['容器押金单编号', '配送楼层/电梯备注'],
@@ -1033,7 +1120,8 @@ export function initPolicyBindings(callbacks) {
 
       const nextPolicy = {
         ...hqState.globalPolicy,
-        activePolicyName: hqState.globalPolicy.activePolicyName || '商号自定义现行策略',
+        industryTerms: window.__hqIndustryTerms || hqState.globalPolicy.industryTerms,
+        activePolicyName: hqState.globalPolicy.activePolicyName || '商号现行默认策略',
         storeTierEnabled: document.getElementById('gp-store-tier-enabled').checked,
         storeTiers: tiers.length > 0 ? tiers : DEFAULT_GLOBAL_POLICY.storeTiers,
         storeCustomFields,
@@ -1127,7 +1215,7 @@ export function initPolicyBindings(callbacks) {
         hqState.currentTenantData.media_url = media_url;
         hqState.currentTenantData.custom_settings = hqState.globalPolicy;
       }
-      alert('✅ 产区水土档案与外部社交平台矩阵已同步至数字专柜与合作名片！');
+      alert('✅ 企业/产区档案与外部社交平台矩阵已同步至数字专柜与合作名片！');
       window.closeModal('modal-counter-profile');
     } catch (err) {
       alert('⚠️ 储存失败：' + err.message);
