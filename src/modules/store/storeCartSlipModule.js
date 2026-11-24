@@ -10,6 +10,16 @@ import {
   notifyVendorWebhook
 } from './storeState.js';
 
+function getActiveReturnReasons() {
+  const custom = storeState.currentTenantSettings?.returnReasons;
+  return Array.isArray(custom) && custom.length > 0 ? custom : RETURN_REASONS;
+}
+
+function getActiveExchangeReasons() {
+  const custom = storeState.currentTenantSettings?.returnReasons;
+  return Array.isArray(custom) && custom.length > 0 ? custom : EXCHANGE_REASONS;
+}
+
 async function uploadProofBlobToStorage(base64Data) {
   if (!base64Data || !base64Data.startsWith('data:image')) return base64Data;
   try {
@@ -160,13 +170,15 @@ export async function checkVendorProposalBadge() {
 
 export function initCartSlipBindings(callbacks) {
   window.initProdItemState = (id) => {
+    const retReasons = getActiveReturnReasons();
+    const excReasons = getActiveExchangeReasons();
     if (!storeState.cart[id]) {
       storeState.cart[id] = {
         order: 0,
         return: 0,
         exchange: 0,
-        returnReason: RETURN_REASONS[0],
-        exchangeReason: EXCHANGE_REASONS[0],
+        returnReason: retReasons[0],
+        exchangeReason: excReasons[0],
         returnPrice: null
       };
     }
@@ -234,12 +246,14 @@ export function initCartSlipBindings(callbacks) {
 
     storeState.cart[id].return = parsedQty;
     if (parsedQty > 0) {
+      const reasons = getActiveReturnReasons();
+      const listPrompt = reasons.map((r, i) => `${i + 1}. ${r}`).join('\n');
       const reasonIndex = prompt(
-        `请选择合规验退原由：\n1. ${RETURN_REASONS[0]}\n2. ${RETURN_REASONS[1]}\n3. ${RETURN_REASONS[2]}\n4. ${RETURN_REASONS[3]}\n请输入序号(1-4):`,
+        `请选择合规验退原由：\n${listPrompt}\n请输入序号(1-${reasons.length}):`,
         '1'
       );
       const idx = parseInt(reasonIndex) - 1;
-      storeState.cart[id].returnReason = RETURN_REASONS[idx] || RETURN_REASONS[0];
+      storeState.cart[id].returnReason = reasons[idx] || reasons[0];
     }
 
     saveAgentCart();
@@ -280,12 +294,14 @@ export function initCartSlipBindings(callbacks) {
 
     storeState.cart[id].exchange = parsedQty;
     if (parsedQty > 0) {
+      const reasons = getActiveExchangeReasons();
+      const listPrompt = reasons.map((r, i) => `${i + 1}. ${r}`).join('\n');
       const reasonIndex = prompt(
-        `请选择调换原由：\n1. ${EXCHANGE_REASONS[0]}\n2. ${EXCHANGE_REASONS[1]}\n3. ${EXCHANGE_REASONS[2]}\n请输入序号(1-3):`,
+        `请选择调换原由：\n${listPrompt}\n请输入序号(1-${reasons.length}):`,
         '1'
       );
       const idx = parseInt(reasonIndex) - 1;
-      storeState.cart[id].exchangeReason = EXCHANGE_REASONS[idx] || EXCHANGE_REASONS[0];
+      storeState.cart[id].exchangeReason = reasons[idx] || reasons[0];
     }
 
     saveAgentCart();
@@ -341,7 +357,12 @@ export function initCartSlipBindings(callbacks) {
 
     const curSettlementSelect = document.getElementById('slip-settlement-select');
     if (curSettlementSelect) {
-      const validEntries = Object.entries(SETTLEMENT_CONFIG).filter(([key]) => allowed.includes(key));
+      const customMethods = storeState.currentTenantSettings?.settlementMethods;
+      const validEntries =
+        Array.isArray(customMethods) && customMethods.length > 0
+          ? customMethods.map((m) => [m.code, { label: m.label }])
+          : Object.entries(SETTLEMENT_CONFIG).filter(([key]) => allowed.includes(key));
+
       curSettlementSelect.innerHTML = validEntries
         .map(([key, val]) => `<option value="${key}" ${key === storeState.currentSettlementType ? 'selected' : ''}>${val.label}</option>`)
         .join('');
@@ -474,7 +495,6 @@ export function initCartSlipBindings(callbacks) {
     const returnTotal = returnItems.reduce((a, b) => a + b.price * b.qty, 0);
     const netTotal = Math.max(0, orderTotal - returnTotal);
 
-    // 动作级精准熔断检查：合作门店端下单 (store_write) + 大额限流保护
     if (
       window.checkBusinessCircuit &&
       !(await window.checkBusinessCircuit('store_write', storeState.currentAgent, { amount: netTotal }))
@@ -575,7 +595,6 @@ export function initCartSlipBindings(callbacks) {
   };
 
   window.verifyMallPickupPin = async function (orderId, orderNoSeed) {
-    // 动作级精准熔断检查：门店核销自提 (store_write)
     if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('store_write', storeState.currentAgent))) {
       return;
     }
