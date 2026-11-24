@@ -7,6 +7,15 @@ import {
   whitelistAiAlertKey
 } from '../../services/tenantRulesService.js';
 
+function inferSettlementCodeFromLabel(label, idx) {
+  const txt = String(label || '').trim();
+  if (txt.includes('现') || txt.includes('扫码') || txt.includes('货到付款')) return 'cash';
+  if (txt.includes('换') || txt.includes('抵')) return 'barter_or_labor';
+  if (txt.includes('回单') || txt.includes('统对')) return 'receipt_only';
+  if (txt.includes('赊') || txt.includes('挂账') || txt.includes('月结')) return 'credit';
+  return `custom_${idx + 1}`;
+}
+
 export function renderHqBusinessRulesAndRiskRadar() {
   const host = document.getElementById('ai-advisor-cards');
   if (!host) return;
@@ -88,7 +97,7 @@ export function renderHqBusinessRulesAndRiskRadar() {
 }
 
 export function initHqBusinessRulesBindings() {
-  window.applyAiSwitchStoreCash = async function (storeId, alertKey) {
+  window.applyAiSwitchStoreCash = async function (storeId) {
     if (!confirm('确认采纳 AI 建议，将该门店默认结算方式切换为「随车现结」以防范坏账风险？')) return;
     const { error } = await supabase
       .from('store')
@@ -123,7 +132,8 @@ export function initHqBusinessRulesBindings() {
     document.getElementById('modal-hq-business-rules')?.remove();
 
     const cfg = getNormalizedTenantRules(hqState.currentTenantData?.custom_settings || {});
-    const methodsText = cfg.settlementMethods.map((m) => `${m.code}:${m.label}`).join('\n');
+    // 直接展示纯中文结算方式名称，无需展示英文前缀
+    const methodsText = cfg.settlementMethods.map((m) => m.label).join('\n');
     const reasonsText = cfg.returnReasons.join('\n');
 
     const modal = document.createElement('div');
@@ -187,12 +197,12 @@ export function initHqBusinessRulesBindings() {
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
-            <label class="text-stone-600 font-bold block mb-1">自定义结算方式（每行格式：代码:名称）</label>
-            <textarea id="cfg-settlements" rows="4" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 font-mono text-[11px]">${methodsText}</textarea>
+            <label class="text-stone-600 font-bold block mb-1">自定义结算方式（每行写一种即可）</label>
+            <textarea id="cfg-settlements" rows="4" placeholder="例如：\n周期赊销记账\n随车现结/扫码" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-[11px]">${methodsText}</textarea>
           </div>
           <div>
             <label class="text-stone-600 font-bold block mb-1">自定义退换货原由（每行一项）</label>
-            <textarea id="cfg-reasons" rows="4" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-[11px]">${reasonsText}</textarea>
+            <textarea id="cfg-reasons" rows="4" placeholder="例如：\n田间采收品相瑕疵\n运输途中压损" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-[11px]">${reasonsText}</textarea>
           </div>
         </div>
 
@@ -217,7 +227,7 @@ export function initHqBusinessRulesBindings() {
     document.getElementById('cfg-expiry-days').value = p.expiryWarnDays;
     document.getElementById('cfg-qc-limit').value = p.qcAutoApproveLimit;
     document.getElementById('cfg-ai-sens').value = p.aiRiskSensitivity;
-    document.getElementById('cfg-settlements').value = p.settlementMethods.map((m) => `${m.code}:${m.label}`).join('\n');
+    document.getElementById('cfg-settlements').value = p.settlementMethods.map((m) => m.label).join('\n');
     document.getElementById('cfg-reasons').value = p.returnReasons.join('\n');
   };
 
@@ -237,11 +247,19 @@ export function initHqBusinessRulesBindings() {
       .split(/\r?\n/)
       .map((l) => l.trim())
       .filter(Boolean);
+
     const settlementMethods = settlementLines.map((line, idx) => {
-      const [code, ...rest] = line.split(':');
+      // 兼容旧格式 "code:名称" 以及新的纯中文 "名称"
+      if (/^[a-zA-Z0-9_]+[:：]/.test(line)) {
+        const [code, ...rest] = line.split(/[:：]/);
+        return {
+          code: code.trim(),
+          label: (rest.join(':') || code).trim()
+        };
+      }
       return {
-        code: (code || `custom_${idx}`).trim(),
-        label: (rest.join(':') || code || '自定义结算').trim()
+        code: inferSettlementCodeFromLabel(line, idx),
+        label: line
       };
     });
 
@@ -272,6 +290,6 @@ export function initHqBusinessRulesBindings() {
     if (hqState.currentTenantData) hqState.currentTenantData.custom_settings = nextSettings;
     document.getElementById('modal-hq-business-rules')?.remove();
     alert('✅ 本店自主经营行规与 AI 风控阈值已保存！天街拼单线、外勤载具规则与 AI 雷达已即时同步更新。');
-    renderHqBusinessRulesAndRiskRadar();
+    if (typeof window.loadHQData === 'function') await window.loadHQData();
   };
 }
