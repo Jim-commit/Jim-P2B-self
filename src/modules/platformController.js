@@ -23,10 +23,15 @@ import {
   renderComplianceCases,
   initPlatformGovernanceBindings
 } from './platform/platformGovernanceModule.js';
-import { isArchivedTenantRow } from './platform/tenantLifecycleModule.js';
+import {
+  isArchivedTenantRow,
+  openDelegatedTenantQuarantineModal
+} from './platform/tenantLifecycleModule.js';
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
+window.openDelegatedTenantQuarantineModal = (tenantId, companyName) =>
+  openDelegatedTenantQuarantineModal(tenantId, companyName);
 
 window.switchTab = function (tabName) {
   [
