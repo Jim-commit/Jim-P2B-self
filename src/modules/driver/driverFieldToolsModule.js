@@ -1,3 +1,4 @@
+import { supabase } from '../../lib/supabase.js';
 import { printReceiptViaWebBluetooth } from '../../services/ultimateEcosystemService.js';
 import { getNormalizedTenantRules } from '../../services/tenantRulesService.js';
 
@@ -27,6 +28,52 @@ export function syncDriverFieldToolsVisibility() {
   }
 }
 
+async function syncPalmTenantPolicy() {
+  const tenantId = document.getElementById('tenant-display')?.innerText?.trim();
+  if (!tenantId || tenantId === '--') return;
+
+  try {
+    const { data: tenant } = await supabase
+      .from('platform_tenant')
+      .select('tenant_id, company_name, custom_settings')
+      .eq('tenant_id', tenantId)
+      .single();
+
+    if (!tenant) return;
+    const policy = tenant.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
+    window.__palmTenantPolicy = policy;
+    window.__palmTenantCompany = tenant.company_name || tenant.tenant_id;
+
+    const rules = getNormalizedTenantRules(policy);
+    const warnLimit = rules.carrierWarnThreshold || 12;
+    const mainCarrier = Array.isArray(policy.carriers) && policy.carriers[0] ? policy.carriers[0] : { name: '周转筐', deposit: 15 };
+
+    const infoEl = document.getElementById('driver-field-policy-summary');
+    if (infoEl) {
+      infoEl.innerHTML = `${mainCarrier.name}押金 <b>¥${mainCarrier.deposit}</b> · 回收线 ≥ <b>${warnLimit}</b> 件`;
+    }
+
+    // 若大当家启动了紧急止损拉闸，在掌中宝顶栏下方同步提示（旧单交割照常运行）
+    const header = document.querySelector('header');
+    let brakeBanner = document.getElementById('palm-emergency-brake-banner');
+    if (policy.emergencyBrakeActive) {
+      if (!brakeBanner && header) {
+        brakeBanner = document.createElement('div');
+        brakeBanner.id = 'palm-emergency-brake-banner';
+        header.insertAdjacentElement('afterend', brakeBanner);
+      }
+      if (brakeBanner) {
+        brakeBanner.className = 'mx-3 mt-2 bg-rose-950 text-white border border-rose-500 px-3 py-2 rounded-2xl text-[11px] leading-relaxed';
+        brakeBanner.innerHTML = `🚨 <b>商号紧急止损拉闸中</b>：${policy.emergencyBrakeReason || '全网新单已熔断'}（随车旧单交割与收款照常进行）`;
+      }
+    } else {
+      brakeBanner?.remove();
+    }
+  } catch (err) {
+    console.warn('掌中宝同步商号策略跳过:', err?.message);
+  }
+}
+
 export function mountDriverFieldToolsBar(context = {}) {
   if (document.getElementById('driver-field-tools-bar')) return;
   const host =
@@ -43,7 +90,7 @@ export function mountDriverFieldToolsBar(context = {}) {
   bar.innerHTML = `
     <div class="flex items-center gap-1.5 text-amber-950 font-bold">
       <span>🚚 外勤助手：</span>
-      <span class="text-[11px] font-normal">载具回收线 ≥ <b>${warnLimit}</b> 件</span>
+      <span id="driver-field-policy-summary" class="text-[11px] font-normal">载具回收线 ≥ <b>${warnLimit}</b> 件</span>
     </div>
     <div class="flex items-center gap-1.5">
       <button type="button" onclick="window.openDriverCarpoolSafe()" class="bg-cyan-700 hover:bg-cyan-800 text-white font-bold px-2.5 py-1 rounded-xl text-[11px] shadow-2xs active:scale-95 transition">
@@ -61,7 +108,7 @@ export function mountDriverFieldToolsBar(context = {}) {
     document.body.insertAdjacentElement('afterbegin', bar);
   }
 
-  // 监听岗位切换与面板显隐变化，自动控制工具条出现或隐藏
+  // 监听岗位切换、面板显隐及商号登录变化
   const ownerSelect = document.getElementById('owner-role-preview-select');
   ownerSelect?.addEventListener('change', () => setTimeout(syncDriverFieldToolsVisibility, 50));
 
@@ -75,8 +122,17 @@ export function mountDriverFieldToolsBar(context = {}) {
     }
   });
 
+  const tenantDisp = document.getElementById('tenant-display');
+  if (tenantDisp) {
+    new MutationObserver(() => syncPalmTenantPolicy()).observe(tenantDisp, { childList: true, characterData: true, subtree: true });
+  }
+
   syncDriverFieldToolsVisibility();
-  setTimeout(syncDriverFieldToolsVisibility, 500);
+  syncPalmTenantPolicy();
+  setTimeout(() => {
+    syncDriverFieldToolsVisibility();
+    syncPalmTenantPolicy();
+  }, 800);
 }
 
 export function initDriverFieldToolsBindings(getLastSlipFn) {
@@ -98,10 +154,18 @@ export function initDriverFieldToolsBindings(getLastSlipFn) {
 
   window.printLastDriverSlipBluetooth = async function () {
     const slip = typeof getLastSlipFn === 'function' ? getLastSlipFn() : window.__lastDriverDeliverySlip;
+    const policy = window.__palmTenantPolicy || {};
+    const companyName = window.__palmTenantCompany || '百工百业直供主体';
+    const headerSub = policy.slipHeaderSub || '源头直供 · 诚信相照 · 货真价实';
+    const footerNote = policy.slipFooterNote || '门店掌柜确认：已当面点清货品与载具数量';
+    const stampText = policy.slipStampText || '调度专用章';
+
     const receiptText = slip
       ? [
           `================================`,
-          `【百工百业 · 随车交割电子凭单】`,
+          `【${companyName}】`,
+          `${headerSub}`,
+          `--------------------------------`,
           `交割时间：${new Date().toLocaleString('zh-CN')}`,
           `收货门店：${slip.storeName || '合作门店'}`,
           `单据编号：#${slip.orderNo || '-'}`,
@@ -109,13 +173,16 @@ export function initDriverFieldToolsBindings(getLastSlipFn) {
           `发新载具：${slip.carrierOut || 0} 件 | 回收旧载具：${slip.carrierReturn || 0} 件`,
           `送货师傅：${slip.driverName || '当值司机'}`,
           `--------------------------------`,
-          `门店掌柜确认：已当面点清货品与载具数量`
+          `${footerNote}`,
+          `[电子核验印章：${stampText}]`
         ].join('\n')
       : [
           `================================`,
-          `【百工百业 · 外勤蓝牙小票机测试单】`,
+          `【${companyName} · 蓝牙小票机测试单】`,
+          `${headerSub}`,
           `测试时间：${new Date().toLocaleString('zh-CN')}`,
-          `设备状态：Web Bluetooth 蓝牙通道正常`
+          `设备状态：Web Bluetooth 蓝牙通道正常`,
+          `[电子核验印章：${stampText}]`
         ].join('\n');
 
     try {
