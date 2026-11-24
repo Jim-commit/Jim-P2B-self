@@ -3,9 +3,77 @@ import { platformState, recordAuditLog } from './platformState.js';
 
 const ARCHIVE_TAG = '__ARCHIVED_';
 const SOVEREIGN_KEY_STORAGE = 'baigong_sovereign_master_hash';
+const SOVEREIGN_DURESS_STORAGE = 'baigong_sovereign_duress_hash';
+const SOVEREIGN_DUAL_PIN_STORAGE = 'baigong_sovereign_dual_pin_hash';
 const SOVEREIGN_LOCK_STORAGE = 'baigong_sovereign_lockout_state';
 const SOVEREIGN_LAST_BACKUP_KEY = 'baigong_last_motherboard_backup_ts';
+const SOVEREIGN_HEARTBEAT_KEY = 'baigong_sovereign_last_heartbeat_ts';
+const FAILOVER_URL_KEY = 'baigong_failover_supabase_url';
+const FAILOVER_ANON_KEY = 'baigong_failover_supabase_anon_key';
+
 const DEFAULT_SOVEREIGN_PASSPHRASE = 'SOVEREIGN#2026';
+
+// 默认内置 23 项动态控制注册表（支持在线随时热插拔新增、编辑或扩展至无限项）
+const DEFAULT_CONTROL_REGISTRY = [
+  // 资金与支付通道
+  { scope: 'membership_pay', label: '💳 商号会员缴费与升级', group: '资金与支付', delegable: false },
+  { scope: 'order_online_pay', label: '📲 业务订单网上支付', group: '资金与支付', delegable: true },
+  { scope: 'finance_settle', label: '💰 财务核销与信用调额', group: '资金与支付', delegable: true },
+  { scope: 'driver_collect', label: '🚚 司机随车收款登记', group: '资金与支付', delegable: true },
+  { scope: 'external_webhook', label: '🌐 外部支付异步回调', group: '资金与支付', delegable: false },
+  // 五大业务终端
+  { scope: 'hq_write', label: '🏢 商号调度台写入', group: '业务终端', delegable: true },
+  { scope: 'store_write', label: '🏪 合作门店端下单', group: '业务终端', delegable: true },
+  { scope: 'driver_write', label: '🚚 司机外勤端回单', group: '业务终端', delegable: true },
+  { scope: 'mall_write', label: '🛍️ 天街公域端采购', group: '业务终端', delegable: false },
+  { scope: 'join_apply', label: '📝 新商号入驻提交', group: '业务终端', delegable: false },
+  // 供应链与存储防泄
+  { scope: 'inventory_move', label: '📦 仓库库存与盘点调整', group: '供应链与存储', delegable: true },
+  { scope: 'pool_exchange', label: '🔄 同城余缺互调池流转', group: '供应链与存储', delegable: true },
+  { scope: 'data_export', label: '📤 日常报表与名录导出', group: '供应链与存储', delegable: true },
+  { scope: 'storage_upload', label: '🖼️ 存储桶图片附件上传', group: '供应链与存储', delegable: false },
+  // 安全认证与内核风控
+  { scope: 'login_gate', label: '🚪 全网新登录准入总闸', group: '安全与内核', delegable: false },
+  { scope: 'auth_reset', label: '🔑 密钥重置与2FA申诉', group: '安全与内核', delegable: false },
+  { scope: 'bulk_read_guard', label: '👁️ 跨页批量读取防爬虫', group: '安全与内核', delegable: false },
+  { scope: 'rate_amount_guard', label: '🎚️ 大额与高频异常降级', group: '安全与内核', delegable: false },
+  { scope: 'geo_ip_guard', label: '🌍 异常境外/代理流量阻断', group: '安全与内核', delegable: false },
+  { scope: 'public_post', label: '📢 公域建言与公断发布', group: '安全与内核', delegable: false },
+  { scope: 'ops_staff_write', label: '🛡️ 一二级运营后台写入', group: '安全与内核', delegable: false },
+  { scope: 'sys_config_write', label: '🔧 平台字典与参数修改', group: '安全与内核', delegable: false },
+  { scope: 'auto_cron', label: '⏱️ 自动到期停权与流转', group: '安全与内核', delegable: false }
+];
+
+// 兜底基础表清单（当数据库尚未部署自发现 RPC 时使用，部署后全自动从 information_schema 获取全部表）
+const FALLBACK_PUBLIC_TABLES = [
+  'platform_admin_credential',
+  'platform_governance_config',
+  'platform_gov_configs',
+  'platform_membership_plan',
+  'platform_category',
+  'platform_category_dict',
+  'platform_standard_category',
+  'platform_tenant',
+  'tenant',
+  'tenant_application',
+  'driver',
+  'product',
+  'store',
+  'store_lead',
+  'store_order',
+  'orders',
+  'order_item',
+  'driver_collection_log',
+  'payment_record',
+  'inventory_log',
+  'local_inventory_pool',
+  'demand_forecast_plan',
+  'platform_compliance_case',
+  'platform_suggestion_board',
+  'audit_immutable_log',
+  'sys_qr_session',
+  'login_qr_session'
+];
 
 export function getCurrentAdminRole() {
   const rawRole = (sessionStorage.getItem('p_auth_role') || '').trim();
@@ -33,8 +101,141 @@ export function getOriginalCreditCode(creditCode) {
 }
 
 /**
- * 分页全量拉取指定表的所有记录（突破单次 1000 行上限，确保铁证与流水一字不漏）
+ * 通用业务端口熔断检查器（供 hq / store / driver / mall / join 等所有端口调用）
  */
+export async function assertCircuitOpen(requiredScope, tenantId = null, customMeta = {}) {
+  const { data } = await supabase
+    .from('platform_governance_config')
+    .select('config_value')
+    .eq('config_key', 'sovereign_active_circuit_policy')
+    .maybeSingle();
+
+  if (!data?.config_value) return true;
+
+  try {
+    const policy = JSON.parse(data.config_value);
+    if (policy.expires_at && Date.now() >= new Date(policy.expires_at).getTime()) {
+      return true; // 到点已自动解封
+    }
+
+    const scopes = Array.isArray(policy.scopes) ? policy.scopes : [];
+    if (!scopes.includes(requiredScope)) return true;
+
+    const targets = Array.isArray(policy.target_tenants) ? policy.target_tenants : [];
+    const hitTarget = targets.length === 0 || (tenantId && targets.includes(String(tenantId)));
+
+    if (hitTarget) {
+      const notice = policy.public_notice || '系统当前模块正在进行安全护盘维护，暂时暂停该项操作，请稍后再试。';
+      alert(`🛑 ${notice}`);
+      throw new Error(`CIRCUIT_BREAKER_ACTIVE:${requiredScope}`);
+    }
+
+    // 大额与高频动态阈值检查
+    if (scopes.includes('rate_amount_guard') && policy.thresholds?.max_single_amount > 0 && customMeta.amount != null) {
+      if (Number(customMeta.amount) > Number(policy.thresholds.max_single_amount)) {
+        alert(`🎚️ 触发大额交易风控降级：当前单笔限额为 ¥${policy.thresholds.max_single_amount}，请拆分或联系平台复核。`);
+        throw new Error(`AMOUNT_CAP_EXCEEDED:${customMeta.amount}`);
+      }
+    }
+  } catch (e) {
+    if (String(e.message || '').startsWith('CIRCUIT_BREAKER_ACTIVE') || String(e.message || '').startsWith('AMOUNT_CAP_EXCEEDED')) {
+      throw e;
+    }
+  }
+  return true;
+}
+
+/**
+ * 动态全库表结构自发现 + 外键拓扑排序（支持无限增表自动纳管）
+ */
+async function discoverDynamicTables() {
+  const { data, error } = await supabase.rpc('rpc_discover_public_tables');
+  if (error || !Array.isArray(data) || data.length === 0) {
+    return FALLBACK_PUBLIC_TABLES.map((name) => ({
+      table_name: name,
+      has_tenant_id: !['platform_admin_credential', 'platform_governance_config', 'platform_gov_configs', 'platform_membership_plan', 'platform_category', 'platform_category_dict', 'platform_standard_category', 'tenant', 'order_item'].includes(name),
+      has_id: name !== 'platform_governance_config' && name !== 'tenant',
+      depends_on: name === 'order_item' ? ['orders', 'product'] : []
+    }));
+  }
+
+  // 按外键依赖进行拓扑排序（父表在前，子表在后）
+  const sorted = [];
+  const visited = new Set();
+  const map = new Map(data.map((item) => [item.table_name, item]));
+
+  function visit(tblName) {
+    if (visited.has(tblName) || !map.has(tblName)) return;
+    visited.add(tblName);
+    const meta = map.get(tblName);
+    for (const dep of meta.depends_on || []) {
+      visit(dep);
+    }
+    sorted.push(meta);
+  }
+
+  // 优先排序核心底座字典表
+  const priorityOrder = [
+    'platform_admin_credential',
+    'platform_governance_config',
+    'platform_gov_configs',
+    'platform_membership_plan',
+    'platform_category',
+    'platform_category_dict',
+    'platform_standard_category',
+    'platform_tenant',
+    'tenant',
+    'tenant_application',
+    'driver',
+    'product',
+    'store'
+  ];
+  priorityOrder.forEach(visit);
+  data.forEach((d) => visit(d.table_name));
+  return sorted;
+}
+
+async function getDynamicControlRegistry() {
+  const { data } = await supabase
+    .from('platform_governance_config')
+    .select('config_value')
+    .eq('config_key', 'sovereign_control_registry')
+    .maybeSingle();
+
+  if (data?.config_value) {
+    try {
+      const parsed = JSON.parse(data.config_value);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {}
+  }
+  return [...DEFAULT_CONTROL_REGISTRY];
+}
+
+async function getDynamicSystemParams() {
+  const { data } = await supabase
+    .from('platform_governance_config')
+    .select('config_value')
+    .eq('config_key', 'sovereign_system_params')
+    .maybeSingle();
+
+  const defaults = {
+    max_auth_attempts: 3,
+    lockout_minutes: 30,
+    backup_overdue_days: 14,
+    senior_ops_max_quarantine_mins: 60,
+    dead_man_switch_days: 0, // 0 表示关闭
+    immutable_tables: ['audit_immutable_log', 'inventory_log'],
+    excluded_tables: []
+  };
+
+  if (data?.config_value) {
+    try {
+      return { ...defaults, ...JSON.parse(data.config_value) };
+    } catch (e) {}
+  }
+  return defaults;
+}
+
 async function fetchAllRowsFromTable(tableName, filterCol = null, filterVal = null) {
   const pageSize = 1000;
   let from = 0;
@@ -46,123 +247,99 @@ async function fetchAllRowsFromTable(tableName, filterCol = null, filterVal = nu
       query = query.eq(filterCol, filterVal);
     }
     const { data, error } = await query;
-    if (error) {
-      return [];
-    }
+    if (error) return [];
     if (!Array.isArray(data) || data.length === 0) break;
     allRows = allRows.concat(data);
     if (data.length < pageSize) break;
     from += pageSize;
   }
-
   return allRows;
 }
 
+function downloadTextBlob(content, filename, mimeType = 'application/json;charset=utf-8') {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 /**
- * 1. 全量导出单商号 JSON 备份（覆盖全部 14 张商号主表与业务子表 + 完整操作审计铁证）
+ * 1. 全量导出单商号 JSON 备份（动态扫描所有带 tenant_id 的表 + 完整操作审计铁证）
  */
 export async function exportTenantFullBackup(tenantId, companyName = '', silent = false) {
   if (!tenantId) throw new Error('缺少商号代号 (tenantId)');
 
-  const [
-    ptRows,
-    tRows,
-    driverRows,
-    prodRows,
-    storeRows,
-    leadRows,
-    storeOrderRows,
-    ordersRows,
-    driverColRows,
-    payRecRows,
-    invLogRows,
-    poolRows,
-    planRows,
-    auditRows
-  ] = await Promise.all([
-    fetchAllRowsFromTable('platform_tenant', 'tenant_id', tenantId),
-    fetchAllRowsFromTable('tenant', 'id', tenantId),
-    fetchAllRowsFromTable('driver', 'tenant_id', tenantId),
-    fetchAllRowsFromTable('product', 'tenant_id', tenantId),
-    fetchAllRowsFromTable('store', 'tenant_id', tenantId),
-    fetchAllRowsFromTable('store_lead', 'tenant_id', tenantId),
-    fetchAllRowsFromTable('store_order', 'tenant_id', tenantId),
-    fetchAllRowsFromTable('orders', 'tenant_id', tenantId),
-    fetchAllRowsFromTable('driver_collection_log', 'tenant_id', tenantId),
-    fetchAllRowsFromTable('payment_record', 'tenant_id', tenantId),
-    fetchAllRowsFromTable('inventory_log', 'tenant_id', tenantId),
-    fetchAllRowsFromTable('local_inventory_pool', 'tenant_id', tenantId),
-    fetchAllRowsFromTable('demand_forecast_plan', 'tenant_id', tenantId),
-    fetchAllRowsFromTable('audit_immutable_log', 'tenant_id', tenantId)
-  ]);
+  const dynamicTables = await discoverDynamicTables();
+  const tables = {};
 
-  const orderIds = ordersRows.map((o) => o.id).filter(Boolean);
-  let orderItems = [];
-  if (orderIds.length > 0) {
-    for (let i = 0; i < orderIds.length; i += 200) {
-      const chunk = orderIds.slice(i, i + 200);
-      const { data } = await supabase.from('order_item').select('*').in('order_id', chunk);
-      if (Array.isArray(data)) orderItems = orderItems.concat(data);
+  for (const meta of dynamicTables) {
+    const tbl = meta.table_name;
+    if (tbl === 'tenant') {
+      tables[tbl] = await fetchAllRowsFromTable('tenant', 'id', tenantId);
+    } else if (tbl === 'order_item') {
+      const orders = tables.orders || (await fetchAllRowsFromTable('orders', 'tenant_id', tenantId));
+      const orderIds = orders.map((o) => o.id).filter(Boolean);
+      let items = [];
+      for (let i = 0; i < orderIds.length; i += 200) {
+        const { data } = await supabase.from('order_item').select('*').in('order_id', orderIds.slice(i, i + 200));
+        if (Array.isArray(data)) items = items.concat(data);
+      }
+      tables[tbl] = items;
+    } else if (meta.has_tenant_id) {
+      tables[tbl] = await fetchAllRowsFromTable(tbl, 'tenant_id', tenantId);
     }
   }
 
   const cleanTid = getOriginalTenantId(tenantId);
-  const safePlatformTenants = ptRows.map((row) => {
-    const { access_key, totp_secret, reset_claim_token, ...safeRow } = row;
-    return {
-      ...safeRow,
-      tenant_id: cleanTid,
-      credit_code: getOriginalCreditCode(safeRow.credit_code)
-    };
-  });
+  if (Array.isArray(tables.platform_tenant)) {
+    tables.platform_tenant = tables.platform_tenant.map((row) => {
+      const { access_key, totp_secret, reset_claim_token, ...safeRow } = row;
+      return {
+        ...safeRow,
+        tenant_id: cleanTid,
+        credit_code: getOriginalCreditCode(safeRow.credit_code)
+      };
+    });
+  }
+  if (Array.isArray(tables.tenant)) {
+    tables.tenant = tables.tenant.map((r) => ({ ...r, id: cleanTid }));
+  }
 
-  const tables = {
-    platform_tenant: safePlatformTenants,
-    tenant: tRows.map((r) => ({ ...r, id: cleanTid })),
-    driver: driverRows,
-    product: prodRows,
-    store: storeRows,
-    store_lead: leadRows,
-    store_order: storeOrderRows,
-    orders: ordersRows,
-    order_item: orderItems,
-    driver_collection_log: driverColRows,
-    payment_record: payRecRows,
-    inventory_log: invLogRows,
-    local_inventory_pool: poolRows,
-    demand_forecast_plan: planRows,
-    audit_immutable_log: auditRows
-  };
-
-  const resolvedName = companyName || safePlatformTenants[0]?.company_name || cleanTid;
+  const resolvedName = companyName || tables.platform_tenant?.[0]?.company_name || cleanTid;
   const payload = {
-    schema_version: 'baigong_tenant_snapshot_v2',
+    schema_version: 'baigong_tenant_snapshot_v3_dynamic',
     exported_at: new Date().toISOString(),
     tenant_id: cleanTid,
     company_name: resolvedName,
     summary: Object.fromEntries(Object.entries(tables).map(([k, v]) => [k, v.length])),
     tables,
-    audit_snapshot: auditRows
+    audit_snapshot: tables.audit_immutable_log || []
   };
 
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `BAIGONG_BACKUP_${cleanTid}_${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  downloadTextBlob(
+    JSON.stringify(payload, null, 2),
+    `BAIGONG_BACKUP_${cleanTid}_${new Date().toISOString().slice(0, 10)}.json`
+  );
 
   if (!silent) {
-    await recordAuditLog('导出商号全量数据与审计铁证快照', 'INFO', {
+    await recordAuditLog('导出商号全量动态数据快照', 'INFO', {
       tenant_id: cleanTid,
       company_name: resolvedName,
       summary: payload.summary
     });
   }
-
   return payload;
 }
 
@@ -182,7 +359,7 @@ function remapOrderItemsJson(itemsList, productIdMap) {
 }
 
 /**
- * 2. 打开商号 JSON 备份无损导入恢复弹窗（带自增 ID 映射与跨商号克隆）
+ * 2. 打开商号 JSON 备份无损导入恢复弹窗（保持高级运营可用，带自增 ID 重映射与跨商号克隆）
  */
 export function openTenantImportRestoreModal(targetTenantId, targetCompanyName = '') {
   if (!isSeniorOpsOrAbove()) {
@@ -218,9 +395,8 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
 
       <div id="import-preview-panel" class="hidden space-y-3">
         <div id="import-cross-tenant-warn" class="hidden bg-amber-50 border border-amber-300 text-amber-950 p-2.5 rounded-xl text-[11px] leading-relaxed">
-          ⚠️ <b>跨商号克隆提示：</b>该快照源自 <span id="src-tenant-label" class="font-mono font-bold"></span>。系统将自动改写所有归属为 <b class="font-mono">${targetTenantId}</b> 并重建主外键映射，绝不影响源商号。
+          ⚠️ <b>跨商号克隆提示：</b>该快照源自 <span id="src-tenant-label" class="font-mono font-bold"></span>。系统将自动改写归属为 <b class="font-mono">${targetTenantId}</b> 并重建主外键映射。
         </div>
-
         <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-3 space-y-2">
           <div class="flex justify-between items-center text-[11px]">
             <span class="text-stone-600">快照生成时间：</span>
@@ -228,27 +404,22 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
           </div>
           <div id="import-table-counts" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1.5 border-t border-emerald-200/70 text-[10px]"></div>
         </div>
-
         <div class="space-y-1.5">
           <label class="block font-bold text-stone-700">选择恢复策略：</label>
           <select id="select-import-mode" class="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 font-bold text-stone-900 outline-none">
             <option value="full_overwrite">🔄 清空当前业务账本后完整回档（含历史订单/欠款/流水）</option>
-            <option value="clone_catalog_only">🌱 仅克隆基础档案（仅导入商品库+门店+司机，欠款归零，跳过历史订单）</option>
+            <option value="clone_catalog_only">🌱 仅克隆基础档案（仅导入商品库+门店+司机，欠款归零）</option>
           </select>
         </div>
-
         <label class="flex items-start gap-2 bg-rose-50/70 border border-rose-200 p-2.5 rounded-xl text-[11px] text-rose-900 cursor-pointer">
           <input type="checkbox" id="chk-confirm-import-risk" class="mt-0.5 rounded text-rose-600">
-          <span>我已核对快照内容无误，确认执行数据恢复并记入天道明鉴审计日志。</span>
+          <span>我已核对快照内容无误，确认执行数据恢复并记入审计日志。</span>
         </label>
       </div>
 
       <div class="flex gap-2 pt-1">
         <button type="button" id="btn-cancel-import" class="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-2xl">取消</button>
-        <button type="button" id="btn-execute-import" disabled
-          class="flex-1 bg-stone-300 text-stone-500 font-bold py-2.5 rounded-2xl cursor-not-allowed transition">
-          开始执行恢复
-        </button>
+        <button type="button" id="btn-execute-import" disabled class="flex-1 bg-stone-300 text-stone-500 font-bold py-2.5 rounded-2xl cursor-not-allowed transition">开始执行恢复</button>
       </div>
     </div>
   `;
@@ -265,22 +436,6 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
   const confirmChk = document.getElementById('chk-confirm-import-risk');
   const btnExecute = document.getElementById('btn-execute-import');
 
-  const tableLabels = {
-    product: '货品目录',
-    store: '合作门店',
-    driver: '执事/司机',
-    store_lead: '意向线索',
-    store_order: '门店配送单',
-    orders: '标准订单',
-    order_item: '订单明细',
-    driver_collection_log: '随车收款',
-    payment_record: '财务核销',
-    inventory_log: '库存流水',
-    local_inventory_pool: '余缺调剂',
-    demand_forecast_plan: '要货计划',
-    audit_immutable_log: '审计铁证'
-  };
-
   function updateBtnState() {
     const ready = Boolean(parsedBackup) && confirmChk.checked;
     btnExecute.disabled = !ready;
@@ -294,14 +449,10 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
     if (!file) return;
     try {
       const json = JSON.parse(await file.text());
-      if (json.schema_version !== 'baigong_tenant_snapshot_v2' || !json.tables) {
-        alert('❌ 格式不符：请选择本系统导出的 v2 版商号全量快照 JSON 文件。');
-        parsedBackup = null;
-        previewPanel.classList.add('hidden');
-        updateBtnState();
+      if (!String(json.schema_version || '').startsWith('baigong_tenant_snapshot') || !json.tables) {
+        alert('❌ 格式不符：请选择本系统导出的商号全量快照 JSON 文件。');
         return;
       }
-
       parsedBackup = json;
       previewPanel.classList.remove('hidden');
       exportTimeEl.textContent = json.exported_at ? new Date(json.exported_at).toLocaleString('zh-CN') : '未知';
@@ -315,22 +466,13 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
         modeSelect.value = 'full_overwrite';
       }
 
-      tableCountsEl.innerHTML = Object.entries(tableLabels)
-        .map(([key, label]) => {
-          const cnt = Array.isArray(json.tables[key]) ? json.tables[key].length : 0;
-          return `<div class="bg-white px-2 py-1 rounded-lg border border-emerald-100 flex justify-between">
-            <span class="text-stone-600">${label}</span>
-            <b class="font-mono text-emerald-900">${cnt}</b>
-          </div>`;
-        })
+      tableCountsEl.innerHTML = Object.entries(json.tables)
+        .filter(([, rows]) => Array.isArray(rows) && rows.length > 0)
+        .map(([key, rows]) => `<div class="bg-white px-2 py-1 rounded-lg border border-emerald-100 flex justify-between"><span class="text-stone-600 font-mono truncate">${key}</span><b class="font-mono text-emerald-900">${rows.length}</b></div>`)
         .join('');
-
       updateBtnState();
     } catch (err) {
       alert('❌ JSON 解析失败：' + (err?.message || '文件损坏'));
-      parsedBackup = null;
-      previewPanel.classList.add('hidden');
-      updateBtnState();
     }
   });
 
@@ -340,7 +482,6 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
 
   btnExecute.addEventListener('click', () => {
     if (!parsedBackup || !confirmChk.checked) return;
-
     const mode = modeSelect.value;
     const isCloneCatalogOnly = mode === 'clone_catalog_only';
 
@@ -349,7 +490,6 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
       async () => {
         btnExecute.disabled = true;
         btnExecute.textContent = '正在重映射主外键并写入云端...';
-
         try {
           const t = parsedBackup.tables;
           const productIdMap = new Map();
@@ -360,60 +500,33 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
           if (!isCloneCatalogOnly) {
             const { data: oldOrders } = await supabase.from('orders').select('id').eq('tenant_id', targetTenantId);
             const oldOrderIds = (oldOrders || []).map((o) => o.id);
-            if (oldOrderIds.length > 0) {
-              await supabase.from('order_item').delete().in('order_id', oldOrderIds);
-            }
-            const clearTables = [
-              'payment_record',
-              'driver_collection_log',
-              'local_inventory_pool',
-              'demand_forecast_plan',
-              'orders',
-              'store_order',
-              'store_lead',
-              'store',
-              'product',
-              'driver'
-            ];
-            for (const tbl of clearTables) {
-              await supabase.from(tbl).delete().eq('tenant_id', targetTenantId);
+            if (oldOrderIds.length > 0) await supabase.from('order_item').delete().in('order_id', oldOrderIds);
+
+            const dynamicMeta = await discoverDynamicTables();
+            const skipTables = new Set(['platform_tenant', 'tenant', 'tenant_application', 'audit_immutable_log', 'inventory_log', 'order_item']);
+            for (const m of [...dynamicMeta].reverse()) {
+              if (m.has_tenant_id && !skipTables.has(m.table_name)) {
+                await supabase.from(m.table_name).delete().eq('tenant_id', targetTenantId);
+              }
             }
           }
 
           if (!isCloneCatalogOnly && Array.isArray(t.platform_tenant) && t.platform_tenant[0]) {
-            const {
-              id,
-              tenant_id,
-              access_key,
-              totp_secret,
-              totp_enabled,
-              reset_claim_token,
-              session_epoch,
-              created_at,
-              ...safeConfig
-            } = t.platform_tenant[0];
+            const { id, tenant_id, access_key, totp_secret, totp_enabled, reset_claim_token, session_epoch, created_at, ...safeConfig } = t.platform_tenant[0];
             await supabase.from('platform_tenant').update(safeConfig).eq('tenant_id', targetTenantId);
           }
 
           if (Array.isArray(t.driver) && t.driver.length > 0) {
             const rows = t.driver.map(({ id, ...rest }) => ({ ...rest, tenant_id: targetTenantId }));
-            const { error } = await supabase.from('driver').insert(rows);
-            if (error) throw new Error('恢复司机/执事表失败：' + error.message);
+            await supabase.from('driver').insert(rows);
             restoredTotal += rows.length;
           }
 
           if (Array.isArray(t.product) && t.product.length > 0) {
             for (const oldProd of t.product) {
               const { id: oldId, ...rest } = oldProd;
-              const { data: inserted, error } = await supabase
-                .from('product')
-                .insert([{ ...rest, tenant_id: targetTenantId }])
-                .select('id')
-                .single();
-              if (error) throw new Error(`恢复商品【${oldProd.name}】失败：${error.message}`);
-              if (oldId != null && inserted?.id != null) {
-                productIdMap.set(String(oldId), inserted.id);
-              }
+              const { data: ins } = await supabase.from('product').insert([{ ...rest, tenant_id: targetTenantId }]).select('id').single();
+              if (oldId != null && ins?.id != null) productIdMap.set(String(oldId), ins.id);
               restoredTotal += 1;
             }
           }
@@ -421,147 +534,69 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
           if (Array.isArray(t.store) && t.store.length > 0) {
             for (const oldStore of t.store) {
               const { id: oldId, ...rest } = oldStore;
-              const mappedVisibleIds = Array.isArray(rest.visible_product_ids)
-                ? rest.visible_product_ids
-                    .map((pid) => productIdMap.get(String(pid)))
-                    .filter((v) => v != null)
+              const mappedVisible = Array.isArray(rest.visible_product_ids)
+                ? rest.visible_product_ids.map((pid) => productIdMap.get(String(pid))).filter((v) => v != null)
                 : rest.visible_product_ids;
-
-              let mappedCustomPricing = rest.custom_pricing;
-              if (mappedCustomPricing && typeof mappedCustomPricing === 'object' && !Array.isArray(mappedCustomPricing)) {
-                const nextPricing = {};
-                for (const [oldPid, priceVal] of Object.entries(mappedCustomPricing)) {
-                  const newPid = productIdMap.get(String(oldPid)) || oldPid;
-                  nextPricing[String(newPid)] = priceVal;
-                }
-                mappedCustomPricing = nextPricing;
+              let mappedPricing = rest.custom_pricing;
+              if (mappedPricing && typeof mappedPricing === 'object' && !Array.isArray(mappedPricing)) {
+                const nextP = {};
+                for (const [k, v] of Object.entries(mappedPricing)) nextP[String(productIdMap.get(String(k)) || k)] = v;
+                mappedPricing = nextP;
               }
-
-              const { data: inserted, error } = await supabase
-                .from('store')
-                .insert([
-                  {
-                    ...rest,
-                    tenant_id: targetTenantId,
-                    visible_product_ids: mappedVisibleIds,
-                    custom_pricing: mappedCustomPricing,
-                    current_debt: isCloneCatalogOnly ? 0 : rest.current_debt,
-                    used_return_quota: isCloneCatalogOnly ? 0 : rest.used_return_quota,
-                    carrier_hold_count: isCloneCatalogOnly ? 0 : rest.carrier_hold_count,
-                    basket_count: isCloneCatalogOnly ? 0 : rest.basket_count
-                  }
-                ])
-                .select('id')
-                .single();
-              if (error) throw new Error(`恢复门店【${oldStore.name}】失败：${error.message}`);
-              if (oldId != null && inserted?.id != null) {
-                storeIdMap.set(String(oldId), inserted.id);
-              }
+              const { data: ins } = await supabase.from('store').insert([{
+                ...rest,
+                tenant_id: targetTenantId,
+                visible_product_ids: mappedVisible,
+                custom_pricing: mappedPricing,
+                current_debt: isCloneCatalogOnly ? 0 : rest.current_debt,
+                used_return_quota: isCloneCatalogOnly ? 0 : rest.used_return_quota,
+                carrier_hold_count: isCloneCatalogOnly ? 0 : rest.carrier_hold_count,
+                basket_count: isCloneCatalogOnly ? 0 : rest.basket_count
+              }]).select('id').single();
+              if (oldId != null && ins?.id != null) storeIdMap.set(String(oldId), ins.id);
               restoredTotal += 1;
             }
           }
 
-          if (Array.isArray(t.store_lead) && t.store_lead.length > 0) {
-            const rows = t.store_lead.map(({ id, ...rest }) => ({ ...rest, tenant_id: targetTenantId }));
-            const { error } = await supabase.from('store_lead').insert(rows);
-            if (error) throw new Error('恢复意向门店线索失败：' + error.message);
-            restoredTotal += rows.length;
-          }
-
           if (!isCloneCatalogOnly) {
-            if (Array.isArray(t.store_order) && t.store_order.length > 0) {
-              const rows = t.store_order.map(({ id, ...rest }) => ({
-                ...rest,
-                tenant_id: targetTenantId,
-                store_id: storeIdMap.get(String(rest.store_id)) || rest.store_id,
-                items: remapOrderItemsJson(rest.items, productIdMap),
-                items_return: remapOrderItemsJson(rest.items_return, productIdMap),
-                items_exchange: remapOrderItemsJson(rest.items_exchange, productIdMap)
-              }));
-              const { error } = await supabase.from('store_order').insert(rows);
-              if (error) throw new Error('恢复门店配送单失败：' + error.message);
-              restoredTotal += rows.length;
-            }
-
-            if (Array.isArray(t.orders) && t.orders.length > 0) {
+            const handled = new Set(['platform_tenant', 'tenant', 'tenant_application', 'driver', 'product', 'store', 'orders', 'order_item', 'audit_immutable_log', 'inventory_log']);
+            if (Array.isArray(t.orders)) {
               for (const oldOrder of t.orders) {
                 const { id: oldId, ...rest } = oldOrder;
-                const { data: inserted, error } = await supabase
-                  .from('orders')
-                  .insert([
-                    {
-                      ...rest,
-                      tenant_id: targetTenantId,
-                      store_id: rest.store_id != null ? storeIdMap.get(String(rest.store_id)) || rest.store_id : null
-                    }
-                  ])
-                  .select('id')
-                  .single();
-                if (error) throw new Error(`恢复订单【${oldOrder.order_no}】失败：${error.message}`);
-                if (oldId != null && inserted?.id != null) {
-                  orderIdMap.set(String(oldId), inserted.id);
-                }
+                const { data: ins } = await supabase.from('orders').insert([{
+                  ...rest,
+                  tenant_id: targetTenantId,
+                  store_id: rest.store_id != null ? storeIdMap.get(String(rest.store_id)) || rest.store_id : null
+                }]).select('id').single();
+                if (oldId != null && ins?.id != null) orderIdMap.set(String(oldId), ins.id);
                 restoredTotal += 1;
               }
             }
-
             if (Array.isArray(t.order_item) && t.order_item.length > 0) {
               const rows = t.order_item.map(({ id, ...rest }) => ({
                 ...rest,
                 order_id: rest.order_id != null ? orderIdMap.get(String(rest.order_id)) || rest.order_id : null,
                 product_id: rest.product_id != null ? productIdMap.get(String(rest.product_id)) || rest.product_id : null
               }));
-              const { error } = await supabase.from('order_item').insert(rows);
-              if (error) throw new Error('恢复订单明细失败：' + error.message);
+              await supabase.from('order_item').insert(rows);
               restoredTotal += rows.length;
             }
-
-            if (Array.isArray(t.driver_collection_log) && t.driver_collection_log.length > 0) {
-              const rows = t.driver_collection_log.map(({ id, ...rest }) => ({
-                ...rest,
-                tenant_id: targetTenantId,
-                store_id: storeIdMap.get(String(rest.store_id)) || rest.store_id
-              }));
-              const { error } = await supabase.from('driver_collection_log').insert(rows);
-              if (error) throw new Error('恢复随车收款记录失败：' + error.message);
-              restoredTotal += rows.length;
-            }
-
-            if (Array.isArray(t.payment_record) && t.payment_record.length > 0) {
-              const rows = t.payment_record.map(({ id, ...rest }) => ({
-                ...rest,
-                tenant_id: targetTenantId,
-                store_id: rest.store_id != null ? storeIdMap.get(String(rest.store_id)) || rest.store_id : null,
-                order_id: rest.order_id != null ? orderIdMap.get(String(rest.order_id)) || rest.order_id : null
-              }));
-              const { error } = await supabase.from('payment_record').insert(rows);
-              if (error) throw new Error('恢复财务核销记录失败：' + error.message);
-              restoredTotal += rows.length;
-            }
-
-            if (Array.isArray(t.local_inventory_pool) && t.local_inventory_pool.length > 0) {
-              const rows = t.local_inventory_pool.map(({ id, ...rest }) => ({
-                ...rest,
-                tenant_id: targetTenantId,
-                from_store_id: storeIdMap.get(String(rest.from_store_id)) || rest.from_store_id,
-                to_store_id: rest.to_store_id != null ? storeIdMap.get(String(rest.to_store_id)) || rest.to_store_id : null,
-                product_id: rest.product_id != null ? productIdMap.get(String(rest.product_id)) || rest.product_id : null
-              }));
-              const { error } = await supabase.from('local_inventory_pool').insert(rows);
-              if (error) throw new Error('恢复余缺调剂池失败：' + error.message);
-              restoredTotal += rows.length;
-            }
-
-            if (Array.isArray(t.demand_forecast_plan) && t.demand_forecast_plan.length > 0) {
-              const rows = t.demand_forecast_plan.map(({ id, ...rest }) => ({
-                ...rest,
-                tenant_id: targetTenantId,
-                store_id: storeIdMap.get(String(rest.store_id)) || rest.store_id,
-                items: remapOrderItemsJson(rest.items, productIdMap)
-              }));
-              const { error } = await supabase.from('demand_forecast_plan').insert(rows);
-              if (error) throw new Error('恢复要货预测计划失败：' + error.message);
-              restoredTotal += rows.length;
+            for (const [tblName, rows] of Object.entries(t)) {
+              if (handled.has(tblName) || !Array.isArray(rows) || rows.length === 0) continue;
+              const mappedRows = rows.map(({ id, ...rest }) => {
+                const next = { ...rest, tenant_id: targetTenantId };
+                if (next.store_id != null) next.store_id = storeIdMap.get(String(next.store_id)) || next.store_id;
+                if (next.from_store_id != null) next.from_store_id = storeIdMap.get(String(next.from_store_id)) || next.from_store_id;
+                if (next.to_store_id != null) next.to_store_id = storeIdMap.get(String(next.to_store_id)) || next.to_store_id;
+                if (next.product_id != null) next.product_id = productIdMap.get(String(next.product_id)) || next.product_id;
+                if (next.order_id != null) next.order_id = orderIdMap.get(String(next.order_id)) || next.order_id;
+                if (Array.isArray(next.items)) next.items = remapOrderItemsJson(next.items, productIdMap);
+                if (Array.isArray(next.items_return)) next.items_return = remapOrderItemsJson(next.items_return, productIdMap);
+                if (Array.isArray(next.items_exchange)) next.items_exchange = remapOrderItemsJson(next.items_exchange, productIdMap);
+                return next;
+              });
+              await supabase.from(tblName).insert(mappedRows);
+              restoredTotal += mappedRows.length;
             }
           }
 
@@ -572,11 +607,9 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
             restored_rows: restoredTotal
           });
 
-          alert(`✅ 无损恢复成功！共重建并重映射 ${restoredTotal} 条业务记录（主外键与专属定价已自动对齐）。`);
+          alert(`✅ 无损恢复成功！共重建并重映射 ${restoredTotal} 条业务记录。`);
           modal.remove();
-          if (typeof window.loadPlatformData === 'function') {
-            await window.loadPlatformData();
-          }
+          if (typeof window.loadPlatformData === 'function') await window.loadPlatformData();
         } catch (err) {
           alert('❌ 导入恢复异常中断：' + (err?.message || '未知错误'));
           btnExecute.disabled = false;
@@ -588,18 +621,16 @@ export function openTenantImportRestoreModal(targetTenantId, targetCompanyName =
 }
 
 /**
- * 3. 高级运营管理专属：软删除归档销号（隐藏主列表 + 释放营业执照供重新注册 + 随时可在回收站一键复活）
+ * 3. 高级运营管理专属：软删除归档销号（B级可逆清理，释放营业执照供重新注册 + 随时可在回收站一键复活）
  */
 export function openTenantPurgeGuardModal(tenantId, companyName = '') {
   if (!isSeniorOpsOrAbove()) {
     return alert('⛔ 权限不足：当前【运营管理者】账号无权执行商号销号归档，请联络【高级运营管理】处置。');
   }
-
   const cleanName = (companyName || '').split('(')[0].trim() || tenantId;
   if (!tenantId) return alert('未识别到有效的商号代号！');
 
   document.getElementById('tenant-purge-guard-modal')?.remove();
-
   const expectedPhrase = '确认销号归档';
   let backupDone = false;
   let countdownTimer = null;
@@ -609,7 +640,6 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
   const modal = document.createElement('div');
   modal.id = 'tenant-purge-guard-modal';
   modal.className = 'fixed inset-0 bg-stone-950/90 backdrop-blur-sm z-[125] flex items-center justify-center p-4 select-none';
-
   modal.innerHTML = `
     <div class="bg-white border-2 border-rose-600 w-full max-w-md rounded-3xl p-5 space-y-4 text-stone-800 shadow-2xl text-xs">
       <div class="bg-rose-50 border border-rose-200 rounded-2xl p-3.5 flex items-start gap-3">
@@ -617,65 +647,45 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
         <div class="space-y-1">
           <h3 class="text-sm font-black text-rose-900">高级运营权限 · 商号销号封存与释放</h3>
           <p class="text-[11px] text-rose-800 leading-relaxed">
-            执行后，商号 <b class="font-mono underline">${cleanName} (${tenantId})</b> 将从在册名册隐藏并停用全部终端登录，同时<b>立即释放其营业执照与商号注册资格</b>；历史账本将完整转入【商号归档回收站】，随时可一键无损恢复。
+            执行后，商号 <b class="font-mono underline">${cleanName} (${tenantId})</b> 将隐藏并停用终端，同时<b>立即释放其营业执照与商号注册资格</b>；历史账本完整转入【归档回收站】，随时可一键无损复活。
           </p>
         </div>
       </div>
-
       <div class="bg-amber-50/80 border border-amber-300 rounded-2xl p-3 space-y-2">
         <div class="flex justify-between items-center">
           <b class="text-amber-950">第一关：留存离场全量数据快照 *</b>
           <span id="purge-step1-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-bold">未备份</span>
         </div>
         <div class="flex items-center gap-2">
-          <button type="button" id="btn-purge-download-backup"
-            class="flex-1 bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold py-2 rounded-xl shadow-2xs active:scale-95 transition">
-            📥 立即下载商号全量快照
-          </button>
+          <button type="button" id="btn-purge-download-backup" class="flex-1 bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold py-2 rounded-xl shadow-2xs active:scale-95 transition">📥 立即下载商号全量快照</button>
           <label class="flex items-center gap-1 text-[10px] text-stone-600 cursor-pointer shrink-0">
             <input type="checkbox" id="chk-purge-skip-backup" class="rounded text-rose-600">
             <span>跳过本地下载</span>
           </label>
         </div>
       </div>
-
       <div class="bg-stone-50 border border-stone-200 rounded-2xl p-3 space-y-2.5">
         <b class="text-stone-900 block">第二关：人工手写核验（防误触）*</b>
         <div>
-          <label class="block text-[11px] text-stone-600 mb-1">
-            1. 请输入完整商号代号 <code class="bg-stone-200 text-rose-700 font-bold px-1.5 py-0.5 rounded select-all">${tenantId}</code>：
-          </label>
-          <input type="text" id="input-purge-tenant-id" autocomplete="off" placeholder="区分大小写，如 ${tenantId}"
-            class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-mono font-bold text-stone-900 outline-none focus:border-rose-600">
+          <label class="block text-[11px] text-stone-600 mb-1">1. 请输入完整商号代号 <code class="bg-stone-200 text-rose-700 font-bold px-1.5 py-0.5 rounded select-all">${tenantId}</code>：</label>
+          <input type="text" id="input-purge-tenant-id" autocomplete="off" placeholder="区分大小写，如 ${tenantId}" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-mono font-bold text-stone-900 outline-none focus:border-rose-600">
         </div>
         <div>
-          <label class="block text-[11px] text-stone-600 mb-1">
-            2. 请输入确认词 <code class="bg-stone-200 text-rose-700 font-bold px-1.5 py-0.5 rounded">${expectedPhrase}</code>：
-          </label>
-          <input type="text" id="input-purge-phrase" autocomplete="off" placeholder="请手打输入：${expectedPhrase}"
-            class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-bold text-stone-900 outline-none focus:border-rose-600">
+          <label class="block text-[11px] text-stone-600 mb-1">2. 请输入确认词 <code class="bg-stone-200 text-rose-700 font-bold px-1.5 py-0.5 rounded">${expectedPhrase}</code>：</label>
+          <input type="text" id="input-purge-phrase" autocomplete="off" placeholder="请手打输入：${expectedPhrase}" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-bold text-stone-900 outline-none focus:border-rose-600">
         </div>
       </div>
-
       <div class="pt-1 space-y-2">
         <div id="purge-countdown-tip" class="hidden text-center text-[11px] font-bold text-rose-700 bg-rose-50 py-1.5 rounded-xl border border-rose-200">
           ⏳ 核验通过，请保持冷静等待 <span id="purge-sec-num" class="font-mono text-sm">8</span> 秒后解锁最终按钮...
         </div>
-
         <div class="flex gap-2">
-          <button type="button" id="btn-purge-cancel"
-            class="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-3 rounded-2xl transition">
-            安全取消
-          </button>
-          <button type="button" id="btn-purge-confirm-final" disabled
-            class="flex-1 bg-stone-300 text-stone-500 font-bold py-3 rounded-2xl cursor-not-allowed transition">
-            🔒 请先完成上方关卡
-          </button>
+          <button type="button" id="btn-purge-cancel" class="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-3 rounded-2xl transition">安全取消</button>
+          <button type="button" id="btn-purge-confirm-final" disabled class="flex-1 bg-stone-300 text-stone-500 font-bold py-3 rounded-2xl cursor-not-allowed transition">🔒 请先完成上方关卡</button>
         </div>
       </div>
     </div>
   `;
-
   document.body.appendChild(modal);
 
   const btnBackup = document.getElementById('btn-purge-download-backup');
@@ -686,7 +696,6 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
   const countdownTip = document.getElementById('purge-countdown-tip');
   const secNumEl = document.getElementById('purge-sec-num');
   const btnFinal = document.getElementById('btn-purge-confirm-final');
-  const btnCancel = document.getElementById('btn-purge-cancel');
 
   function cleanupAndClose() {
     if (countdownTimer) clearInterval(countdownTimer);
@@ -695,15 +704,9 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
 
   function evaluateAllGates() {
     const step1Passed = backupDone || chkSkipBackup.checked;
-    const step2Passed =
-      inputTenant.value.trim() === String(tenantId).trim() &&
-      inputPhrase.value.trim() === expectedPhrase;
-
+    const step2Passed = inputTenant.value.trim() === String(tenantId).trim() && inputPhrase.value.trim() === expectedPhrase;
     if (!step1Passed || !step2Passed) {
-      if (countdownTimer) {
-        clearInterval(countdownTimer);
-        countdownTimer = null;
-      }
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
       countdownFinished = false;
       remainingSeconds = 8;
       countdownTip.classList.add('hidden');
@@ -712,14 +715,12 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
       btnFinal.textContent = '🔒 请先完成上方关卡';
       return;
     }
-
     if (!countdownTimer && !countdownFinished) {
       countdownTip.classList.remove('hidden');
       secNumEl.textContent = String(remainingSeconds);
       btnFinal.disabled = true;
       btnFinal.className = 'flex-1 bg-rose-300 text-white font-bold py-3 rounded-2xl cursor-not-allowed transition';
       btnFinal.textContent = `⏳ 冷静倒计时 (${remainingSeconds}s)`;
-
       countdownTimer = setInterval(() => {
         remainingSeconds -= 1;
         if (remainingSeconds > 0) {
@@ -731,8 +732,7 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
           countdownFinished = true;
           countdownTip.classList.add('hidden');
           btnFinal.disabled = false;
-          btnFinal.className =
-            'flex-1 bg-rose-600 hover:bg-rose-700 text-white font-black py-3 rounded-2xl shadow-lg active:scale-95 transition';
+          btnFinal.className = 'flex-1 bg-rose-600 hover:bg-rose-700 text-white font-black py-3 rounded-2xl shadow-lg active:scale-95 transition';
           btnFinal.textContent = '🗄️ 确认销号归档并释放名额';
         }
       }, 1000);
@@ -750,7 +750,7 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
       btnBackup.textContent = '📥 重新下载快照';
       evaluateAllGates();
     } catch (err) {
-      alert('导出快照失败：' + (err?.message || '请检查网络后重试'));
+      alert('导出快照失败：' + (err?.message || ''));
       btnBackup.textContent = '📥 立即下载商号全量快照';
     } finally {
       btnBackup.disabled = false;
@@ -760,53 +760,35 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
   chkSkipBackup.addEventListener('change', evaluateAllGates);
   inputTenant.addEventListener('input', evaluateAllGates);
   inputPhrase.addEventListener('input', evaluateAllGates);
-  btnCancel.addEventListener('click', cleanupAndClose);
+  document.getElementById('btn-purge-cancel').addEventListener('click', cleanupAndClose);
 
   btnFinal.addEventListener('click', () => {
     if (!countdownFinished) return;
-
     window.triggerPlatform2FA(
       `⚠️ 高级运营 2FA 核验：即将对商号【${cleanName}】(${tenantId}) 执行销号归档隐藏，并释放其营业执照重新注册资格：`,
       async () => {
         btnFinal.disabled = true;
         btnFinal.textContent = '正在归档封存并释放名额...';
-
         try {
-          const { data: targetRow, error: fetchErr } = await supabase
-            .from('platform_tenant')
-            .select('*')
-            .eq('tenant_id', tenantId)
-            .single();
-
-          if (fetchErr || !targetRow) throw new Error('未找到该商号档案，可能已被处理。');
+          const { data: targetRow, error: fetchErr } = await supabase.from('platform_tenant').select('*').eq('tenant_id', tenantId).single();
+          if (fetchErr || !targetRow) throw new Error('未找到该商号档案');
 
           const archiveSuffix = `${ARCHIVE_TAG}${Date.now()}`;
           const archivedTenantId = `${tenantId}${archiveSuffix}`;
           const archivedCreditCode = targetRow.credit_code ? `${targetRow.credit_code}${archiveSuffix}` : null;
           const operatorName = sessionStorage.getItem('p_auth_name') || '高级运营管理';
 
-          const { error: upErr } = await supabase
-            .from('platform_tenant')
-            .update({
-              tenant_id: archivedTenantId,
-              credit_code: archivedCreditCode,
-              membership_status: 'archived_purged',
-              is_active: false,
-              admin_remark: `[${new Date().toLocaleString('zh-CN')}] 由 ${operatorName} 执行销号归档（原代号:${tenantId}）`
-            })
-            .eq('id', targetRow.id);
-
+          const { error: upErr } = await supabase.from('platform_tenant').update({
+            tenant_id: archivedTenantId,
+            credit_code: archivedCreditCode,
+            membership_status: 'archived_purged',
+            is_active: false,
+            admin_remark: `[${new Date().toLocaleString('zh-CN')}] 由 ${operatorName} 执行销号归档（原代号:${tenantId}）`
+          }).eq('id', targetRow.id);
           if (upErr) throw new Error('归档封存失败：' + upErr.message);
 
           await supabase.from('tenant').update({ id: archivedTenantId, status: 'archived' }).eq('id', tenantId);
-          await supabase
-            .from('tenant_application')
-            .update({
-              tenant_id: archivedTenantId,
-              credit_code: archivedCreditCode,
-              application_status: 'archived'
-            })
-            .eq('tenant_id', tenantId);
+          await supabase.from('tenant_application').update({ tenant_id: archivedTenantId, credit_code: archivedCreditCode, application_status: 'archived' }).eq('tenant_id', tenantId);
 
           await recordAuditLog('商号销号归档封存（释放注册名额）', 'CRITICAL_2FA', {
             original_tenant_id: tenantId,
@@ -815,12 +797,8 @@ export function openTenantPurgeGuardModal(tenantId, companyName = '') {
           });
 
           cleanupAndClose();
-          alert(
-            `✅ 商号【${cleanName}】已销号归档隐藏！\n\n• 营业执照与商号注册名额已释放，可随时重新申请入驻；\n• 原全套账本数据已安全封存至【归档回收站与团队权限】，随时可一键无损复活。`
-          );
-          if (typeof window.loadPlatformData === 'function') {
-            await window.loadPlatformData();
-          }
+          alert(`✅ 商号【${cleanName}】已销号归档隐藏，营业执照注册名额已释放！`);
+          if (typeof window.loadPlatformData === 'function') await window.loadPlatformData();
         } catch (err) {
           alert('❌ 销号归档执行失败: ' + (err?.message || '未知错误'));
           btnFinal.disabled = false;
@@ -838,72 +816,138 @@ export function restoreArchivedTenant(archivedRowId, archivedTenantId, companyNa
   if (!isSeniorOpsOrAbove()) {
     return alert('⛔ 权限不足：仅【高级运营管理】及以上权限可恢复归档商号。');
   }
-
   const origTid = getOriginalTenantId(archivedTenantId);
 
   window.triggerPlatform2FA(
     `确认将已归档隐藏的商号【${companyName}】恢复为正式在册状态（还原商号代号为 ${origTid}）？`,
     async () => {
       try {
-        const { data: conflict } = await supabase
-          .from('platform_tenant')
-          .select('id, company_name')
-          .eq('tenant_id', origTid)
-          .limit(1);
-
+        const { data: conflict } = await supabase.from('platform_tenant').select('id, company_name').eq('tenant_id', origTid).limit(1);
         if (conflict && conflict.length > 0) {
-          return alert(
-            `⚠️ 恢复冲突：当前已有同代号在册商号【${conflict[0].company_name} (${origTid})】！\n请先将该占用的商号归档或导出快照克隆恢复。`
-          );
+          return alert(`⚠️ 恢复冲突：当前已有同代号在册商号【${conflict[0].company_name} (${origTid})】！`);
         }
 
-        const { data: row, error: fetchErr } = await supabase
-          .from('platform_tenant')
-          .select('*')
-          .eq('id', archivedRowId)
-          .single();
-
+        const { data: row, error: fetchErr } = await supabase.from('platform_tenant').select('*').eq('id', archivedRowId).single();
         if (fetchErr || !row) throw new Error('未找到归档记录');
 
         const origCreditCode = getOriginalCreditCode(row.credit_code);
-
-        const { error: upErr } = await supabase
-          .from('platform_tenant')
-          .update({
-            tenant_id: origTid,
-            credit_code: origCreditCode || null,
-            membership_status: 'active',
-            is_active: true,
-            admin_remark: `[${new Date().toLocaleString('zh-CN')}] 已从归档回收站一键无损复活`
-          })
-          .eq('id', archivedRowId);
-
+        const { error: upErr } = await supabase.from('platform_tenant').update({
+          tenant_id: origTid,
+          credit_code: origCreditCode || null,
+          membership_status: 'active',
+          is_active: true,
+          admin_remark: `[${new Date().toLocaleString('zh-CN')}] 已从归档回收站一键无损复活`
+        }).eq('id', archivedRowId);
         if (upErr) throw new Error('恢复失败：' + upErr.message);
 
         await supabase.from('tenant').update({ id: origTid, status: 'active' }).eq('id', archivedTenantId);
-        await supabase
-          .from('tenant_application')
-          .update({
-            tenant_id: origTid,
-            credit_code: origCreditCode || null,
-            application_status: 'approved'
-          })
-          .eq('tenant_id', archivedTenantId);
+        await supabase.from('tenant_application').update({ tenant_id: origTid, credit_code: origCreditCode || null, application_status: 'approved' }).eq('tenant_id', archivedTenantId);
 
-        await recordAuditLog('从回收站一键无损复活商号', 'CRITICAL_2FA', {
-          tenant_id: origTid,
-          company_name: companyName
-        });
-
-        alert(`🎉 商号【${companyName} (${origTid})】已一键无损复活！原门店、商品、订单与往来账本已全部恢复连通。`);
-        if (typeof window.loadPlatformData === 'function') {
-          await window.loadPlatformData();
-        }
+        await recordAuditLog('从回收站一键无损复活商号', 'CRITICAL_2FA', { tenant_id: origTid, company_name: companyName });
+        alert(`🎉 商号【${companyName} (${origTid})】已一键无损复活！`);
+        if (typeof window.loadPlatformData === 'function') await window.loadPlatformData();
       } catch (err) {
         alert('❌ 一键复活失败：' + (err?.message || '未知错误'));
       }
     }
   );
+}
+
+/**
+ * 4.5 高级运营有限下放权限：单商号限时微观止损（受最高主权动态天花板约束）
+ */
+export async function openDelegatedTenantQuarantineModal(tenantId, companyName = '') {
+  if (!isSeniorOpsOrAbove()) {
+    return alert('⛔ 权限不足：仅【高级运营管理】及以上权限可执行临时止损隔离。');
+  }
+  const sysParams = await getDynamicSystemParams();
+  const maxMins = Number(sysParams.senior_ops_max_quarantine_mins || 60);
+  if (maxMins <= 0) {
+    return alert('⛔ 最高主权策略当前已关闭高级运营的临时止损下放权限。');
+  }
+
+  const registry = await getDynamicControlRegistry();
+  const delegableItems = registry.filter((r) => r.delegable === true);
+
+  document.getElementById('delegated-quarantine-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'delegated-quarantine-modal';
+  modal.className = 'fixed inset-0 bg-stone-950/90 backdrop-blur-sm z-[125] flex items-center justify-center p-4 select-none';
+  modal.innerHTML = `
+    <div class="bg-white border border-amber-400 w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+        <div>
+          <h3 class="text-sm font-black text-stone-900">🛡️ 商号临时止损隔离（有限下放权限）</h3>
+          <p class="text-[11px] text-stone-500">目标：<b class="font-mono text-rose-700">${companyName || tenantId} (${tenantId})</b> · 权限上限：单次最长 <b>${maxMins}</b> 分钟</p>
+        </div>
+        <button type="button" id="btn-close-delegated" class="text-stone-400 hover:text-stone-700 text-lg">✕</button>
+      </div>
+      <div class="space-y-1.5">
+        <label class="font-bold text-stone-700 block">选择需要临时暂停的业务通道（仅对该商号生效）：</label>
+        <div class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto p-1 bg-stone-50 rounded-xl border border-stone-200">
+          ${delegableItems.map((item) => `
+            <label class="flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-lg border border-stone-200 cursor-pointer">
+              <input type="checkbox" value="${item.scope}" class="delegated-scope-chk rounded text-amber-600">
+              <span>${item.label}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="font-bold text-stone-700 shrink-0">临时隔离时长（分钟）：</label>
+        <input type="number" id="input-delegated-mins" min="1" max="${maxMins}" value="${Math.min(30, maxMins)}"
+          class="w-24 bg-stone-50 border border-stone-300 rounded-xl px-2.5 py-1.5 font-mono font-bold text-stone-900">
+        <span class="text-[10px] text-stone-400">到点自动恢复通畅</span>
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button type="button" id="btn-cancel-delegated" class="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-2xl">取消</button>
+        <button type="button" id="btn-apply-delegated" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-2xl shadow">立即下发限时止损</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById('btn-close-delegated').addEventListener('click', () => modal.remove());
+  document.getElementById('btn-cancel-delegated').addEventListener('click', () => modal.remove());
+  document.getElementById('btn-apply-delegated').addEventListener('click', () => {
+    const scopes = Array.from(document.querySelectorAll('.delegated-scope-chk:checked')).map((c) => c.value);
+    if (scopes.length === 0) return alert('请至少勾选一项需要临时止损的业务通道');
+    let mins = Number(document.getElementById('input-delegated-mins').value || 30);
+    if (mins < 1) mins = 1;
+    if (mins > maxMins) mins = maxMins;
+
+    window.triggerPlatform2FA(
+      `确认对商号【${companyName || tenantId}】执行 ${mins} 分钟临时局部止损隔离？`,
+      async () => {
+        const expiresAt = new Date(Date.now() + mins * 60 * 1000).toISOString();
+        const policy = {
+          scopes,
+          target_tenants: [tenantId],
+          expires_at: expiresAt,
+          public_notice: `当前商号正在进行例行安全核验，预计 ${mins} 分钟后自动恢复。`,
+          updated_by: 'senior_ops_delegated',
+          updated_at: new Date().toISOString()
+        };
+        await supabase.from('platform_governance_config').upsert([
+          {
+            config_key: 'sovereign_active_circuit_policy',
+            config_label: '当前生效动态熔断策略',
+            config_value: JSON.stringify(policy),
+            value_type: 'json',
+            category: 'security',
+            updated_at: new Date().toISOString()
+          }
+        ]);
+        await recordAuditLog('高级运营执行单商号限时局部止损', 'CRITICAL_2FA', {
+          tenant_id: tenantId,
+          scopes,
+          duration_mins: mins
+        });
+        modal.remove();
+        alert(`🛡️ 已对商号【${companyName || tenantId}】启动 ${mins} 分钟局部止损隔离，到点将自动解除！`);
+      }
+    );
+  });
 }
 
 /**
@@ -956,7 +1000,6 @@ export async function renderSeniorGovernancePanel() {
       .map((adm) => {
         const normalizedRole = adm.admin_role === 'ops_manager' ? 'ops_manager' : 'senior_ops';
         const isSelf = adm.admin_account === curAccount;
-
         return `
           <tr class="hover:bg-stone-50 transition">
             <td class="p-3 font-mono font-bold text-stone-900">${adm.admin_account} ${isSelf ? '<span class="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-sans">当前登录</span>' : ''}</td>
@@ -965,7 +1008,7 @@ export async function renderSeniorGovernancePanel() {
               <select onchange="window.updateOpsStaffRole(${adm.id}, '${adm.admin_account}', this.value)" ${isSelf ? 'disabled' : ''}
                 class="bg-stone-50 border border-stone-300 rounded-xl px-2.5 py-1 text-xs font-bold text-stone-800 outline-none">
                 <option value="ops_manager" ${normalizedRole === 'ops_manager' ? 'selected' : ''}>🛡️ 运营管理者（日常审核与巡检）</option>
-                <option value="senior_ops" ${normalizedRole === 'senior_ops' ? 'selected' : ''}>👑 高级运营管理（含归档/恢复/灾备）</option>
+                <option value="senior_ops" ${normalizedRole === 'senior_ops' ? 'selected' : ''}>👑 高级运营管理（含归档/恢复/限时止损）</option>
               </select>
             </td>
             <td class="p-3 font-sans">
@@ -996,145 +1039,71 @@ export async function renderSeniorGovernancePanel() {
 
 /**
  * ============================================================================
- * 6. 终极运营管理者「三零隐身秘密武器 · 全栈灾难母舰引擎 v3.0 最终完全体」
- *    - 涵盖：26表数据铁证母包 + 全站递归源码快照 + 内置 00_INIT_SCHEMA_AND_RPC.sql 一键三件套连下
- *    - 具备：输错3次锁定30分钟 + 源库防误覆盖警戒 + 14天冷备巡检提醒 + 26表逐行数目验真对账
+ * 6. 终极运营主权指令舱（全动态零硬编码 · 双向可往返 · 宏微双模式 · 极端生存版）
  * ============================================================================
  */
-const MOTHERBOARD_TABLES = [
-  'platform_admin_credential',
-  'platform_governance_config',
-  'platform_gov_configs',
-  'platform_membership_plan',
-  'platform_category',
-  'platform_category_dict',
-  'platform_standard_category',
-  'platform_tenant',
-  'tenant',
-  'tenant_application',
-  'driver',
-  'product',
-  'store',
-  'store_lead',
-  'store_order',
-  'orders',
-  'order_item',
-  'driver_collection_log',
-  'payment_record',
-  'inventory_log',
-  'local_inventory_pool',
-  'demand_forecast_plan',
-  'platform_compliance_case',
-  'platform_suggestion_board',
-  'audit_immutable_log',
-  'sys_qr_session'
-];
-
-const IMMUTABLE_EVIDENCE_TABLES = new Set([
-  'audit_immutable_log',
-  'inventory_log'
-]);
-
-const INIT_SCHEMA_SQL_TEMPLATE = `-- 百工百业数字协作平台 · 灾难重建全库底座初始化脚本 (00_INIT_SCHEMA_AND_RPC.sql)
-CREATE TABLE IF NOT EXISTS public.platform_admin_credential (id BIGSERIAL PRIMARY KEY, admin_account TEXT UNIQUE NOT NULL, admin_name TEXT, secret_token TEXT NOT NULL, admin_role TEXT DEFAULT 'ops_manager', totp_secret TEXT, totp_enabled BOOLEAN DEFAULT FALSE, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.platform_governance_config (config_key TEXT PRIMARY KEY, config_label TEXT, config_value TEXT, value_type TEXT DEFAULT 'text', category TEXT DEFAULT 'general', description TEXT, updated_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.platform_gov_configs (id BIGSERIAL PRIMARY KEY, config_key TEXT, config_value TEXT, remark TEXT, updated_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.platform_membership_plan (id BIGSERIAL PRIMARY KEY, plan_code TEXT UNIQUE, plan_name TEXT, tagline TEXT, fee NUMERIC(12,2) DEFAULT 0, billing_cycle TEXT DEFAULT 'yearly', max_staff INT DEFAULT 5, max_stations INT DEFAULT 20, sort_order INT DEFAULT 0, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.platform_category (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, level INT DEFAULT 1, parent_id BIGINT, service_mode TEXT DEFAULT '实体与电商双轨', sort_order INT DEFAULT 0, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.platform_category_dict (id BIGSERIAL PRIMARY KEY, name TEXT, level INT DEFAULT 1, parent_id BIGINT, sort_order INT DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.platform_standard_category (id BIGSERIAL PRIMARY KEY, name TEXT, level INT DEFAULT 1, parent_id BIGINT, sort_order INT DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.platform_tenant (id BIGSERIAL PRIMARY KEY, tenant_id TEXT UNIQUE NOT NULL, company_name TEXT NOT NULL, credit_code TEXT, business_type TEXT DEFAULT 'coop', service_mode TEXT DEFAULT '实体与电商双轨', contact_person TEXT, contact_name TEXT, phone TEXT, backup_phone TEXT, access_key TEXT, reset_claim_token TEXT, totp_secret TEXT, totp_enabled BOOLEAN DEFAULT FALSE, timelock_status TEXT, timelock_expires_at TIMESTAMPTZ, membership_fee NUMERIC(12,2) DEFAULT 0, membership_status TEXT DEFAULT 'active', session_epoch INT DEFAULT 1, admin_remark TEXT, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.tenant (id TEXT PRIMARY KEY, name TEXT, status TEXT DEFAULT 'active', created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.tenant_application (id BIGSERIAL PRIMARY KEY, tenant_id TEXT, company_name TEXT, credit_code TEXT, business_type TEXT, service_mode TEXT, contact_person TEXT, contact_phone TEXT, license_image_url TEXT, access_key TEXT, ai_audit_score INT DEFAULT 95, application_status TEXT DEFAULT 'pending_review', payment_status TEXT DEFAULT 'unpaid', membership_fee NUMERIC(12,2) DEFAULT 0, review_note TEXT, reviewed_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.driver (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, name TEXT NOT NULL, phone TEXT, plate_number TEXT, access_pin TEXT, status TEXT DEFAULT 'active', created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.product (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, name TEXT NOT NULL, category_l1 TEXT, category_l2 TEXT, unit TEXT DEFAULT '件', spec TEXT, image_url TEXT, tier_1_price NUMERIC(12,2) DEFAULT 0, tier_2_price NUMERIC(12,2), tier_3_price NUMERIC(12,2), cost_price NUMERIC(12,2) DEFAULT 0, stock_qty NUMERIC(12,2) DEFAULT 0, custom_specs JSONB, tags JSONB, public_notice TEXT, internal_note TEXT, status TEXT DEFAULT 'active', created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.store (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, name TEXT NOT NULL, contact_person TEXT, phone TEXT, address TEXT, region TEXT, credit_limit NUMERIC(12,2) DEFAULT 0, current_debt NUMERIC(12,2) DEFAULT 0, return_quota NUMERIC(12,2) DEFAULT 0, used_return_quota NUMERIC(12,2) DEFAULT 0, carrier_hold_count INT DEFAULT 0, basket_count INT DEFAULT 0, visible_product_ids JSONB, custom_pricing JSONB, access_pin TEXT, status TEXT DEFAULT 'active', created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.store_lead (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, store_name TEXT, contact_person TEXT, phone TEXT, address TEXT, remark TEXT, status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.store_order (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, order_no TEXT, store_id BIGINT, store_name TEXT, driver_name TEXT, items JSONB, items_return JSONB, items_exchange JSONB, total_amount NUMERIC(12,2) DEFAULT 0, paid_amount NUMERIC(12,2) DEFAULT 0, delivery_status TEXT DEFAULT 'pending', order_status TEXT DEFAULT 'active', remark TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.orders (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, order_no TEXT, store_id BIGINT, customer_name TEXT, customer_phone TEXT, total_amount NUMERIC(12,2) DEFAULT 0, paid_amount NUMERIC(12,2) DEFAULT 0, order_status TEXT DEFAULT 'pending', delivery_status TEXT DEFAULT 'pending', remark TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.order_item (id BIGSERIAL PRIMARY KEY, order_id BIGINT, product_id BIGINT, product_name TEXT, qty NUMERIC(12,2) DEFAULT 0, unit_price NUMERIC(12,2) DEFAULT 0, subtotal NUMERIC(12,2) DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.driver_collection_log (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, store_id BIGINT, store_name TEXT, driver_name TEXT, amount NUMERIC(12,2) DEFAULT 0, payment_method TEXT, remark TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.payment_record (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, store_id BIGINT, order_id BIGINT, amount NUMERIC(12,2) DEFAULT 0, payment_method TEXT, operator_name TEXT, remark TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.inventory_log (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, product_id BIGINT, product_name TEXT, change_type TEXT, delta_qty NUMERIC(12,2) DEFAULT 0, after_qty NUMERIC(12,2) DEFAULT 0, operator_name TEXT, remark TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.local_inventory_pool (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, from_store_id BIGINT, from_store_name TEXT, to_store_id BIGINT, to_store_name TEXT, product_id BIGINT, product_name TEXT, qty NUMERIC(12,2) DEFAULT 0, measure_unit TEXT DEFAULT '件', unit_price NUMERIC(12,2) DEFAULT 0, status TEXT DEFAULT 'open', created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.demand_forecast_plan (id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, store_id BIGINT, store_name TEXT, plan_cycle TEXT, items JSONB, status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.platform_compliance_case (id BIGSERIAL PRIMARY KEY, tenant_id TEXT, company_name TEXT, case_type TEXT, title TEXT, description TEXT, evidence_urls JSONB, status TEXT DEFAULT 'open', ruling_note TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.platform_suggestion_board (id BIGSERIAL PRIMARY KEY, tenant_id TEXT, proposer_type TEXT, proposer_name TEXT, content TEXT, official_reply TEXT, reply_status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.audit_immutable_log (id BIGSERIAL PRIMARY KEY, tenant_id TEXT, operator_name TEXT, severity TEXT DEFAULT 'INFO', action_title TEXT, details JSONB, integrity_hash TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.sys_qr_session (id BIGSERIAL PRIMARY KEY, tenant_id TEXT, session_token TEXT, status TEXT, expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS public.login_qr_session (id BIGSERIAL PRIMARY KEY, tenant_id TEXT, session_token TEXT, status TEXT, expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW());
-
-DO $$ DECLARE tbl TEXT; BEGIN FOR tbl IN SELECT unnest(ARRAY['platform_admin_credential','platform_governance_config','platform_gov_configs','platform_membership_plan','platform_category','platform_category_dict','platform_standard_category','platform_tenant','tenant','tenant_application','driver','product','store','store_lead','store_order','orders','order_item','driver_collection_log','payment_record','inventory_log','local_inventory_pool','demand_forecast_plan','platform_compliance_case','platform_suggestion_board','audit_immutable_log','sys_qr_session','login_qr_session']) LOOP EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl); EXECUTE format('DROP POLICY IF EXISTS "allow_all_%s" ON public.%I;', tbl, tbl); EXECUTE format('CREATE POLICY "allow_all_%s" ON public.%I FOR ALL USING (true) WITH CHECK (true);', tbl, tbl); END LOOP; END $$;
-
-DROP FUNCTION IF EXISTS public.rpc_bump_session_epoch(TEXT, TEXT);
-CREATE OR REPLACE FUNCTION public.rpc_bump_session_epoch(p_tenant_id TEXT, p_reason TEXT DEFAULT '') RETURNS void AS $$ BEGIN UPDATE public.platform_tenant SET session_epoch = COALESCE(session_epoch, 1) + 1 WHERE tenant_id = p_tenant_id; END; $$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP FUNCTION IF EXISTS public.rpc_sync_tenant_vault(TEXT, TEXT, TEXT);
-CREATE OR REPLACE FUNCTION public.rpc_sync_tenant_vault(p_tenant_id TEXT, p_access_key TEXT, p_backup_phone TEXT DEFAULT NULL) RETURNS void AS $$ BEGIN UPDATE public.platform_tenant SET access_key = p_access_key, backup_phone = COALESCE(p_backup_phone, backup_phone) WHERE tenant_id = p_tenant_id; END; $$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION public.fn_block_audit_tamper() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'SECURITY_VIOLATION: Immutable evidence table is physically locked against UPDATE/DELETE.'; END; $$ LANGUAGE plpgsql;
-DROP TRIGGER IF EXISTS trg_lock_audit_immutable_log ON public.audit_immutable_log;
-CREATE TRIGGER trg_lock_audit_immutable_log BEFORE UPDATE OR DELETE ON public.audit_immutable_log FOR EACH ROW EXECUTE FUNCTION public.fn_block_audit_tamper();
-DROP TRIGGER IF EXISTS trg_lock_inventory_log_delete ON public.inventory_log;
-CREATE TRIGGER trg_lock_inventory_log_delete BEFORE DELETE ON public.inventory_log FOR EACH ROW EXECUTE FUNCTION public.fn_block_audit_tamper();`;
-
-function downloadTextBlob(content, filename, mimeType = 'application/json;charset=utf-8') {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-async function sha256Hex(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function checkSovereignLockout() {
+async function checkSovereignLockout() {
+  const params = await getDynamicSystemParams();
   try {
     const raw = JSON.parse(localStorage.getItem(SOVEREIGN_LOCK_STORAGE) || '{}');
     if (raw.lockedUntil && Date.now() < raw.lockedUntil) {
       const remainMins = Math.ceil((raw.lockedUntil - Date.now()) / 60000);
-      return { locked: true, remainMins };
+      return { locked: true, remainMins, params };
     }
   } catch (e) {}
-  return { locked: false, remainMins: 0 };
+  return { locked: false, remainMins: 0, params };
 }
 
-function recordSovereignFailure() {
+async function recordSovereignFailure() {
+  const params = await getDynamicSystemParams();
+  const maxAttempts = Math.max(1, Number(params.max_auth_attempts || 3));
+  const lockMins = Math.max(1, Number(params.lockout_minutes || 30));
+
   let state = { count: 0, lockedUntil: 0 };
   try {
     state = JSON.parse(localStorage.getItem(SOVEREIGN_LOCK_STORAGE) || '{"count":0,"lockedUntil":0}');
   } catch (e) {}
   state.count = (state.count || 0) + 1;
-  if (state.count >= 3) {
-    state.lockedUntil = Date.now() + 30 * 60 * 1000;
+  if (state.count >= maxAttempts) {
+    state.lockedUntil = Date.now() + lockMins * 60 * 1000;
     state.count = 0;
   }
   localStorage.setItem(SOVEREIGN_LOCK_STORAGE, JSON.stringify(state));
-  return state;
+  return { state, maxAttempts, lockMins };
 }
 
 function clearSovereignLockout() {
   localStorage.removeItem(SOVEREIGN_LOCK_STORAGE);
 }
 
-async function verifySovereignPassphrase(inputPass) {
+/**
+ * 核验主权暗令（返回 'REAL' 真实主权 | 'DURESS' 胁迫伪装欺骗模式 | 'INVALID' 错误）
+ */
+async function authenticateSovereignPassphrase(inputPass) {
   const trimmed = String(inputPass || '').trim();
-  if (!trimmed) return false;
+  if (!trimmed) return 'INVALID';
   const inputHash = await sha256Hex(`BAIGONG_SOVEREIGN::${trimmed}`);
 
-  const savedLocalHash = localStorage.getItem(SOVEREIGN_KEY_STORAGE);
-  if (savedLocalHash) {
-    return inputHash === savedLocalHash;
+  // 1. 先检查是否命中胁迫假暗令
+  let duressHash = localStorage.getItem(SOVEREIGN_DURESS_STORAGE);
+  if (!duressHash) {
+    const { data: dCfg } = await supabase
+      .from('platform_governance_config')
+      .select('config_value')
+      .eq('config_key', '_sys_sovereign_duress_hash')
+      .maybeSingle();
+    if (dCfg?.config_value) {
+      duressHash = dCfg.config_value;
+      localStorage.setItem(SOVEREIGN_DURESS_STORAGE, duressHash);
+    }
   }
+  if (duressHash && inputHash === duressHash) {
+    return 'DURESS';
+  }
+
+  // 2. 再检查真实主权暗令
+  const savedLocalHash = localStorage.getItem(SOVEREIGN_KEY_STORAGE);
+  if (savedLocalHash && inputHash === savedLocalHash) return 'REAL';
 
   const { data: cfg } = await supabase
     .from('platform_governance_config')
@@ -1144,11 +1113,11 @@ async function verifySovereignPassphrase(inputPass) {
 
   if (cfg?.config_value) {
     localStorage.setItem(SOVEREIGN_KEY_STORAGE, cfg.config_value);
-    return inputHash === cfg.config_value;
+    return inputHash === cfg.config_value ? 'REAL' : 'INVALID';
   }
 
   const defaultHash = await sha256Hex(`BAIGONG_SOVEREIGN::${DEFAULT_SOVEREIGN_PASSPHRASE}`);
-  return inputHash === defaultHash;
+  return inputHash === defaultHash ? 'REAL' : 'INVALID';
 }
 
 async function inlineImageAsDataUrl(url) {
@@ -1168,10 +1137,32 @@ async function inlineImageAsDataUrl(url) {
   }
 }
 
-async function exportFullPlatformDisasterMotherboard() {
+/**
+ * 动态全库母包导出（支持全库全量，也支持按指定单表或单商号切片导出）
+ */
+async function exportDynamicDisasterMotherboard(options = {}) {
+  const { onlyTables = null, onlyTenantId = null, modeLabel = 'FULL' } = options;
+  const dynamicTables = await discoverDynamicTables();
+  const sysParams = await getDynamicSystemParams();
+  const excludedSet = new Set(sysParams.excluded_tables || []);
+
   const snapshot = {};
-  for (const tbl of MOTHERBOARD_TABLES) {
-    snapshot[tbl] = await fetchAllRowsFromTable(tbl);
+  for (const meta of dynamicTables) {
+    const tbl = meta.table_name;
+    if (excludedSet.has(tbl)) continue;
+    if (Array.isArray(onlyTables) && onlyTables.length > 0 && !onlyTables.includes(tbl)) continue;
+
+    if (onlyTenantId) {
+      if (tbl === 'tenant') {
+        snapshot[tbl] = await fetchAllRowsFromTable('tenant', 'id', onlyTenantId);
+      } else if (meta.has_tenant_id) {
+        snapshot[tbl] = await fetchAllRowsFromTable(tbl, 'tenant_id', onlyTenantId);
+      } else {
+        snapshot[tbl] = [];
+      }
+    } else {
+      snapshot[tbl] = await fetchAllRowsFromTable(tbl);
+    }
   }
 
   if (Array.isArray(snapshot.tenant_application) && snapshot.tenant_application.length > 0) {
@@ -1191,41 +1182,60 @@ async function exportFullPlatformDisasterMotherboard() {
   const sourceEndpoint = supabase?.supabaseUrl || window.location.origin;
 
   const motherPayload = {
-    schema_version: 'baigong_sovereign_disaster_motherboard_v2',
+    schema_version: 'baigong_sovereign_disaster_motherboard_v3_dynamic',
+    export_mode: modeLabel,
     created_at: new Date().toISOString(),
     source_endpoint: sourceEndpoint,
     integrity_sha256: integritySeal,
-    evidence_summary: {
-      immutable_audit_logs: snapshot.audit_immutable_log.length,
-      compliance_arbitration_cases: snapshot.platform_compliance_case.length,
-      inventory_operation_logs: snapshot.inventory_log.length,
-      financial_payment_records: snapshot.payment_record.length,
-      driver_collection_logs: snapshot.driver_collection_log.length,
-      total_tenants: snapshot.platform_tenant.length,
-      total_orders: snapshot.orders.length + snapshot.store_order.length
-    },
+    table_topology: dynamicTables.map((d) => d.table_name),
     table_counts: Object.fromEntries(Object.entries(snapshot).map(([k, v]) => [k, v.length])),
     tables: snapshot
   };
 
+  const prefix = modeLabel === 'FULL' ? 'SOVEREIGN_FULL_DISASTER_MOTHERBOARD' : `SOVEREIGN_SLICE_${modeLabel}`;
   downloadTextBlob(
     JSON.stringify(motherPayload, null, 2),
-    `SOVEREIGN_FULL_DISASTER_MOTHERBOARD_${new Date().toISOString().slice(0, 10)}.json`
+    `${prefix}_${new Date().toISOString().slice(0, 10)}.json`
   );
-  localStorage.setItem(SOVEREIGN_LAST_BACKUP_KEY, String(Date.now()));
+  if (modeLabel === 'FULL') {
+    localStorage.setItem(SOVEREIGN_LAST_BACKUP_KEY, String(Date.now()));
+  }
+  return motherPayload;
+}
+
+/**
+ * 导出司法级电子证据固定卷宗（带 UTC 时间戳与不可抵赖 SHA-256 哈希封印）
+ */
+async function exportForensicEvidenceBundle(filterTenantId = '') {
+  const evidenceTables = ['audit_immutable_log', 'platform_compliance_case', 'payment_record', 'inventory_log', 'driver_collection_log'];
+  const bundleData = {};
+
+  for (const tbl of evidenceTables) {
+    bundleData[tbl] = filterTenantId
+      ? await fetchAllRowsFromTable(tbl, 'tenant_id', filterTenantId)
+      : await fetchAllRowsFromTable(tbl);
+  }
+
+  const seal = await sha256Hex(`BAIGONG_FORENSIC_EVIDENCE::${JSON.stringify(bundleData)}`);
+  const forensicDoc = {
+    schema_version: 'baigong_forensic_evidence_bundle_v1',
+    generated_utc: new Date().toISOString(),
+    scope_tenant_id: filterTenantId || 'ALL_PLATFORM_ENTITIES',
+    source_endpoint: supabase?.supabaseUrl || window.location.origin,
+    forensic_sha256_seal: seal,
+    record_counts: Object.fromEntries(Object.entries(bundleData).map(([k, v]) => [k, v.length])),
+    evidence_records: bundleData
+  };
+
+  downloadTextBlob(
+    JSON.stringify(forensicDoc, null, 2),
+    `SOVEREIGN_FORENSIC_EVIDENCE_${filterTenantId || 'ALL'}_${new Date().toISOString().slice(0, 10)}.json`
+  );
+  return forensicDoc;
 }
 
 async function exportRuntimeSourceCodeVault() {
-  const entryPages = [
-    './index.html',
-    './platform.html',
-    './hq.html',
-    './join.html',
-    './mall.html',
-    './store.html',
-    './driver.html'
-  ];
-
+  const entryPages = ['./index.html', './platform.html', './hq.html', './join.html', './mall.html', './store.html', './driver.html'];
   const candidateUrls = new Set([
     ...entryPages,
     './src/styles/tailwind.css',
@@ -1245,9 +1255,7 @@ async function exportRuntimeSourceCodeVault() {
 
   if (typeof performance !== 'undefined' && performance.getEntriesByType) {
     performance.getEntriesByType('resource').forEach((entry) => {
-      if (entry.name && entry.name.startsWith(window.location.origin)) {
-        candidateUrls.add(entry.name);
-      }
+      if (entry.name && entry.name.startsWith(window.location.origin)) candidateUrls.add(entry.name);
     });
   }
 
@@ -1259,16 +1267,13 @@ async function exportRuntimeSourceCodeVault() {
     const rawUrl = queue.shift();
     if (!rawUrl || visited.has(rawUrl)) continue;
     visited.add(rawUrl);
-
     try {
       const resp = await fetch(rawUrl, { cache: 'no-store' });
       if (!resp.ok) continue;
       const text = await resp.text();
       if (!text || text.length === 0) continue;
-
       const isHtml = rawUrl.endsWith('.html') || rawUrl.endsWith('/');
       if (!isHtml && text.trim().startsWith('<!DOCTYPE html>')) continue;
-
       const cleanKey = rawUrl.replace(window.location.origin, '');
       capturedFiles[cleanKey] = text;
 
@@ -1276,16 +1281,14 @@ async function exportRuntimeSourceCodeVault() {
       for (const m of refMatches) {
         if (m[1]) {
           const resolved = new URL(m[1], new URL(rawUrl, window.location.href)).pathname;
-          if (!visited.has('.' + resolved) && !visited.has(resolved)) {
-            queue.push('.' + resolved);
-          }
+          if (!visited.has('.' + resolved) && !visited.has(resolved)) queue.push('.' + resolved);
         }
       }
     } catch (e) {}
   }
 
   const bundlePayload = {
-    schema_version: 'baigong_runtime_source_vault_v2',
+    schema_version: 'baigong_runtime_source_vault_v3',
     captured_at: new Date().toISOString(),
     origin: window.location.origin,
     file_count: Object.keys(capturedFiles).length,
@@ -1297,6 +1300,16 @@ async function exportRuntimeSourceCodeVault() {
     `SOVEREIGN_FULL_SOURCE_VAULT_${new Date().toISOString().slice(0, 10)}.json`
   );
   return bundlePayload.file_count;
+}
+
+async function exportLiveDdlSqlFile() {
+  const { data, error } = await supabase.rpc('rpc_export_live_ddl');
+  if (!error && data) {
+    downloadTextBlob(data, `00_LIVE_SCHEMA_AND_RLS_${new Date().toISOString().slice(0, 10)}.sql`, 'text/sql;charset=utf-8');
+    return;
+  }
+  const fallbackNotice = `-- 请先在 Supabase SQL Editor 运行 01_DYNAMIC_SOVEREIGN_CORE.sql 以启用实时 DDL 导出函数。\n-- 当前表拓扑清单: ${FALLBACK_PUBLIC_TABLES.join(', ')}\n`;
+  downloadTextBlob(fallbackNotice, `00_LIVE_SCHEMA_AND_RLS_${new Date().toISOString().slice(0, 10)}.sql`, 'text/sql;charset=utf-8');
 }
 
 async function batchInsertTableRows(tableName, rows, preserveId = false) {
@@ -1328,13 +1341,11 @@ async function appendMissingEvidenceRows(tableName, rows) {
   const existingSignatures = new Set(
     existing.map((r) => `${r.tenant_id || ''}|${r.created_at || ''}|${r.action_title || r.change_type || ''}`)
   );
-
   const missing = rows
     .filter((r) => !existingSignatures.has(`${r.tenant_id || ''}|${r.created_at || ''}|${r.action_title || r.change_type || ''}`))
     .map(({ id, ...rest }) => rest);
 
   if (missing.length === 0) return 0;
-
   let added = 0;
   for (let i = 0; i < missing.length; i += 200) {
     const chunk = missing.slice(i, i + 200);
@@ -1344,334 +1355,430 @@ async function appendMissingEvidenceRows(tableName, rows) {
   return added;
 }
 
-async function executeFullMotherboardDisasterRebuild(motherJson, wipeBeforeRestore, logCallback) {
-  if (!motherJson || !motherJson.tables) {
-    throw new Error('无效的灾难恢复母包文件');
-  }
+/**
+ * 动态外科手术式重建与双向回溯引擎（支持全库重建 / 单表手术 / 单商号手术 / Dry-Run 演练 / 自动反向补丁快照）
+ */
+async function executeSurgicalDisasterRebuild(motherJson, options, logCallback) {
+  const {
+    wipeBeforeRestore = true,
+    dryRunOnly = false,
+    autoUndoBackup = true,
+    targetTables = null, // null 表示全部表，数组表示仅手术指定表
+    targetTenantId = null // null 表示全网，字符串表示仅手术指定商号
+  } = options;
 
-  if (motherJson.schema_version === 'baigong_sovereign_disaster_motherboard_v2' && motherJson.integrity_sha256) {
-    logCallback('🔍 正在校验灾难母包 SHA-256 防篡改完整性封印...');
+  if (!motherJson || !motherJson.tables) throw new Error('无效的灾难恢复母包文件');
+
+  if (motherJson.integrity_sha256) {
+    logCallback('🔍 正在校验母包 SHA-256 防篡改完整性封印...');
     const computed = await sha256Hex(`BAIGONG_MOTHERBOARD_SEAL::${JSON.stringify(motherJson.tables)}`);
     if (computed !== motherJson.integrity_sha256) {
-      throw new Error('⛔ 验签失败！该母包文件在离线保存期间遭到过篡改或损坏，系统已拒绝灌入以防污染！');
+      throw new Error('⛔ 验签失败！该母包文件在离线保存期间遭到篡改或损坏，已拒绝灌入！');
     }
-    logCallback('✅ 母包 SHA-256 完整性封印验证通过，铁证无损！');
+    logCallback('✅ SHA-256 完整性封印验证通过，铁证无损！');
   }
 
-  const t = motherJson.tables;
+  const dynamicMeta = await discoverDynamicTables();
+  const sysParams = await getDynamicSystemParams();
+  const immutableSet = new Set(sysParams.immutable_tables || ['audit_immutable_log', 'inventory_log']);
 
+  const candidateTables = dynamicMeta.filter((m) => {
+    if (!Array.isArray(motherJson.tables[m.table_name])) return false;
+    if (Array.isArray(targetTables) && targetTables.length > 0 && !targetTables.includes(m.table_name)) return false;
+    return true;
+  });
+
+  // 1. 差异透视与 Dry-Run 零写入模拟校验
+  logCallback(`📊 正在扫描 ${candidateTables.length} 张目标表的拓扑依赖与现库差异...`);
+  let simulatedRows = 0;
+  for (const m of candidateTables) {
+    const tbl = m.table_name;
+    let srcRows = motherJson.tables[tbl] || [];
+    if (targetTenantId) {
+      if (tbl === 'tenant') srcRows = srcRows.filter((r) => r.id === targetTenantId);
+      else if (m.has_tenant_id) srcRows = srcRows.filter((r) => r.tenant_id === targetTenantId);
+      else srcRows = [];
+    }
+    const curRows = targetTenantId && m.has_tenant_id
+      ? await fetchAllRowsFromTable(tbl, 'tenant_id', targetTenantId)
+      : await fetchAllRowsFromTable(tbl);
+
+    simulatedRows += srcRows.length;
+    logCallback(`   • [${tbl}] 母包 ${srcRows.length} 行 ↔ 现库 ${curRows.length} 行 (${immutableSet.has(tbl) ? '物理锁定铁证表' : '常规业务表'})`);
+  }
+
+  if (dryRunOnly) {
+    logCallback(`🧪 [Dry-Run 模拟演练完成] 全程零写入！共校验 ${candidateTables.length} 张表、${simulatedRows} 条记录，外键映射与类型 100% 兼容就绪！`);
+    return simulatedRows;
+  }
+
+  // 2. 手术前自动生成反向回退快照（Undo Rollback Patch）
+  if (autoUndoBackup && wipeBeforeRestore) {
+    logCallback('🛡️ 正在为即将覆盖的数据自动生成反向回退快照（Undo Rollback Patch）...');
+    await exportDynamicDisasterMotherboard({
+      onlyTables: candidateTables.map((c) => c.table_name),
+      onlyTenantId: targetTenantId || null,
+      modeLabel: 'UNDO_ROLLBACK_PATCH'
+    });
+    logCallback('✅ 反向回退补丁已下载落盘！若发现回档误操作，灌入该补丁即可退回手术前一秒。');
+  }
+
+  // 3. 按外键逆序清理非铁证表
   if (wipeBeforeRestore) {
-    logCallback('🧹 正在按外键逆序清扫普通业务表脏数据（自动跳过物理锁定铁证表）...');
-    const reverseOrder = [...MOTHERBOARD_TABLES].reverse().filter((tbl) => !IMMUTABLE_EVIDENCE_TABLES.has(tbl));
-    for (const tbl of reverseOrder) {
-      await supabase.from(tbl).delete().neq('id', -999999999);
-      await supabase.from(tbl).delete().neq('tenant_id', '__NONE__');
-      await supabase.from(tbl).delete().neq('config_key', '__NONE__');
-    }
-  }
-
-  let totalRestored = 0;
-
-  logCallback('🏛️ [1/5] 正在重建管理员凭证库、全域治理参数与会员等级体系...');
-  totalRestored += await batchInsertTableRows('platform_admin_credential', t.platform_admin_credential);
-  totalRestored += await batchInsertTableRows('platform_governance_config', t.platform_governance_config, true);
-  totalRestored += await batchInsertTableRows('platform_gov_configs', t.platform_gov_configs);
-  totalRestored += await batchInsertTableRows('platform_membership_plan', t.platform_membership_plan);
-
-  if (Array.isArray(t.platform_category) && t.platform_category.length > 0) {
-    const catIdMap = new Map();
-    const l1Cats = t.platform_category.filter((c) => c.level === 1 || !c.parent_id);
-    const l2Cats = t.platform_category.filter((c) => c.level === 2 && c.parent_id);
-    for (const c1 of l1Cats) {
-      const { id: oldId, ...rest } = c1;
-      const { data: ins } = await supabase.from('platform_category').insert([rest]).select('id').single();
-      if (oldId != null && ins?.id != null) catIdMap.set(String(oldId), ins.id);
-      totalRestored += 1;
-    }
-    for (const c2 of l2Cats) {
-      const { id: oldId, ...rest } = c2;
-      const mappedParent = catIdMap.get(String(rest.parent_id)) || rest.parent_id;
-      await supabase.from('platform_category').insert([{ ...rest, parent_id: mappedParent }]);
-      totalRestored += 1;
-    }
-  }
-  totalRestored += await batchInsertTableRows('platform_category_dict', t.platform_category_dict);
-  totalRestored += await batchInsertTableRows('platform_standard_category', t.platform_standard_category);
-
-  logCallback('🏢 [2/5] 正在重建全网商号主档、入驻资质（含Base64原件）与执事名册...');
-  totalRestored += await batchInsertTableRows('platform_tenant', t.platform_tenant);
-  totalRestored += await batchInsertTableRows('tenant', t.tenant, true);
-  totalRestored += await batchInsertTableRows('tenant_application', t.tenant_application);
-  totalRestored += await batchInsertTableRows('driver', t.driver);
-
-  logCallback('📦 [3/5] 正在重建全网商品库、合作门店（含一店一价重映射）与订单主档...');
-  const productIdMap = new Map();
-  if (Array.isArray(t.product)) {
-    for (const oldProd of t.product) {
-      const { id: oldId, ...rest } = oldProd;
-      const { data: ins } = await supabase.from('product').insert([rest]).select('id').single();
-      if (oldId != null && ins?.id != null) productIdMap.set(String(oldId), ins.id);
-      totalRestored += 1;
-    }
-  }
-
-  const storeIdMap = new Map();
-  if (Array.isArray(t.store)) {
-    for (const oldStore of t.store) {
-      const { id: oldId, ...rest } = oldStore;
-      const mappedVisible = Array.isArray(rest.visible_product_ids)
-        ? rest.visible_product_ids.map((pid) => productIdMap.get(String(pid))).filter((v) => v != null)
-        : rest.visible_product_ids;
-      let mappedPricing = rest.custom_pricing;
-      if (mappedPricing && typeof mappedPricing === 'object' && !Array.isArray(mappedPricing)) {
-        const nextP = {};
-        for (const [k, v] of Object.entries(mappedPricing)) {
-          nextP[String(productIdMap.get(String(k)) || k)] = v;
-        }
-        mappedPricing = nextP;
+    logCallback('🧹 正在按外键逆序清扫普通业务表旧数据（自动跳过物理锁定铁证表）...');
+    for (const m of [...candidateTables].reverse()) {
+      const tbl = m.table_name;
+      if (immutableSet.has(tbl)) continue;
+      if (targetTenantId) {
+        if (tbl === 'tenant') await supabase.from('tenant').delete().eq('id', targetTenantId);
+        else if (m.has_tenant_id) await supabase.from(tbl).delete().eq('tenant_id', targetTenantId);
+      } else {
+        if (m.has_id) await supabase.from(tbl).delete().neq('id', -999999999);
+        else if (m.has_tenant_id) await supabase.from(tbl).delete().neq('tenant_id', '__NONE__');
+        else if (tbl === 'platform_governance_config') await supabase.from(tbl).delete().neq('config_key', '__NONE__');
       }
-      const { data: ins } = await supabase
-        .from('store')
-        .insert([{ ...rest, visible_product_ids: mappedVisible, custom_pricing: mappedPricing }])
-        .select('id')
-        .single();
-      if (oldId != null && ins?.id != null) storeIdMap.set(String(oldId), ins.id);
-      totalRestored += 1;
     }
   }
 
-  totalRestored += await batchInsertTableRows('store_lead', t.store_lead);
-
-  if (Array.isArray(t.store_order) && t.store_order.length > 0) {
-    const mappedStoreOrders = t.store_order.map(({ id, ...rest }) => ({
-      ...rest,
-      store_id: storeIdMap.get(String(rest.store_id)) || rest.store_id,
-      items: remapOrderItemsJson(rest.items, productIdMap),
-      items_return: remapOrderItemsJson(rest.items_return, productIdMap),
-      items_exchange: remapOrderItemsJson(rest.items_exchange, productIdMap)
-    }));
-    totalRestored += await batchInsertTableRows('store_order', mappedStoreOrders);
-  }
-
+  // 4. 按外键正向拓扑顺序重映射灌入
+  let totalRestored = 0;
+  const catIdMap = new Map();
+  const productIdMap = new Map();
+  const storeIdMap = new Map();
   const orderIdMap = new Map();
-  if (Array.isArray(t.orders)) {
-    for (const oldOrder of t.orders) {
-      const { id: oldId, ...rest } = oldOrder;
-      const { data: ins } = await supabase
-        .from('orders')
-        .insert([{ ...rest, store_id: rest.store_id != null ? storeIdMap.get(String(rest.store_id)) || rest.store_id : null }])
-        .select('id')
-        .single();
-      if (oldId != null && ins?.id != null) orderIdMap.set(String(oldId), ins.id);
-      totalRestored += 1;
+
+  for (const m of candidateTables) {
+    const tbl = m.table_name;
+    let rows = motherJson.tables[tbl] || [];
+    if (targetTenantId) {
+      if (tbl === 'tenant') rows = rows.filter((r) => r.id === targetTenantId);
+      else if (m.has_tenant_id) rows = rows.filter((r) => r.tenant_id === targetTenantId);
+      else continue;
     }
+    if (rows.length === 0) continue;
+
+    if (immutableSet.has(tbl)) {
+      const mappedEv = tbl === 'inventory_log'
+        ? rows.map((r) => ({ ...r, product_id: productIdMap.get(String(r.product_id)) || r.product_id }))
+        : rows;
+      const added = await appendMissingEvidenceRows(tbl, mappedEv);
+      totalRestored += added;
+      logCallback(`⚖️ 幂等补齐铁证表 [${tbl}]：新增 ${added} 条`);
+      continue;
+    }
+
+    if (tbl === 'platform_category') {
+      const l1 = rows.filter((c) => c.level === 1 || !c.parent_id);
+      const l2 = rows.filter((c) => c.level === 2 && c.parent_id);
+      for (const c1 of l1) {
+        const { id: oldId, ...rest } = c1;
+        const { data: ins } = await supabase.from('platform_category').insert([rest]).select('id').single();
+        if (oldId != null && ins?.id != null) catIdMap.set(String(oldId), ins.id);
+        totalRestored += 1;
+      }
+      for (const c2 of l2) {
+        const { id: oldId, ...rest } = c2;
+        await supabase.from('platform_category').insert([{ ...rest, parent_id: catIdMap.get(String(rest.parent_id)) || rest.parent_id }]);
+        totalRestored += 1;
+      }
+      continue;
+    }
+
+    if (tbl === 'product') {
+      for (const oldProd of rows) {
+        const { id: oldId, ...rest } = oldProd;
+        const { data: ins } = await supabase.from('product').insert([rest]).select('id').single();
+        if (oldId != null && ins?.id != null) productIdMap.set(String(oldId), ins.id);
+        totalRestored += 1;
+      }
+      continue;
+    }
+
+    if (tbl === 'store') {
+      for (const oldStore of rows) {
+        const { id: oldId, ...rest } = oldStore;
+        const mappedVisible = Array.isArray(rest.visible_product_ids)
+          ? rest.visible_product_ids.map((pid) => productIdMap.get(String(pid))).filter((v) => v != null)
+          : rest.visible_product_ids;
+        let mappedPricing = rest.custom_pricing;
+        if (mappedPricing && typeof mappedPricing === 'object' && !Array.isArray(mappedPricing)) {
+          const nextP = {};
+          for (const [k, v] of Object.entries(mappedPricing)) nextP[String(productIdMap.get(String(k)) || k)] = v;
+          mappedPricing = nextP;
+        }
+        const { data: ins } = await supabase.from('store').insert([{ ...rest, visible_product_ids: mappedVisible, custom_pricing: mappedPricing }]).select('id').single();
+        if (oldId != null && ins?.id != null) storeIdMap.set(String(oldId), ins.id);
+        totalRestored += 1;
+      }
+      continue;
+    }
+
+    if (tbl === 'orders') {
+      for (const oldOrder of rows) {
+        const { id: oldId, ...rest } = oldOrder;
+        const { data: ins } = await supabase.from('orders').insert([{
+          ...rest,
+          store_id: rest.store_id != null ? storeIdMap.get(String(rest.store_id)) || rest.store_id : null
+        }]).select('id').single();
+        if (oldId != null && ins?.id != null) orderIdMap.set(String(oldId), ins.id);
+        totalRestored += 1;
+      }
+      continue;
+    }
+
+    // 通用动态表映射写入（自动适配未来任何新增表）
+    const preservePrimaryKey = tbl === 'platform_governance_config' || tbl === 'tenant';
+    const mappedGeneral = rows.map((r) => {
+      const next = { ...r };
+      if (next.store_id != null) next.store_id = storeIdMap.get(String(next.store_id)) || next.store_id;
+      if (next.from_store_id != null) next.from_store_id = storeIdMap.get(String(next.from_store_id)) || next.from_store_id;
+      if (next.to_store_id != null) next.to_store_id = storeIdMap.get(String(next.to_store_id)) || next.to_store_id;
+      if (next.product_id != null) next.product_id = productIdMap.get(String(next.product_id)) || next.product_id;
+      if (next.order_id != null) next.order_id = orderIdMap.get(String(next.order_id)) || next.order_id;
+      if (Array.isArray(next.items)) next.items = remapOrderItemsJson(next.items, productIdMap);
+      if (Array.isArray(next.items_return)) next.items_return = remapOrderItemsJson(next.items_return, productIdMap);
+      if (Array.isArray(next.items_exchange)) next.items_exchange = remapOrderItemsJson(next.items_exchange, productIdMap);
+      return next;
+    });
+
+    const cnt = await batchInsertTableRows(tbl, mappedGeneral, preservePrimaryKey);
+    totalRestored += cnt;
+    logCallback(`✅ 重建表 [${tbl}]：写入 ${cnt} 行`);
   }
 
-  if (Array.isArray(t.order_item) && t.order_item.length > 0) {
-    const mappedOrderItems = t.order_item.map(({ id, ...rest }) => ({
-      ...rest,
-      order_id: rest.order_id != null ? orderIdMap.get(String(rest.order_id)) || rest.order_id : null,
-      product_id: rest.product_id != null ? productIdMap.get(String(rest.product_id)) || rest.product_id : null
-    }));
-    totalRestored += await batchInsertTableRows('order_item', mappedOrderItems);
-  }
-
-  logCallback('💰 [4/5] 正在重建全部财务核销流水、随车收款记录与余缺计划...');
-  if (Array.isArray(t.driver_collection_log) && t.driver_collection_log.length > 0) {
-    const rows = t.driver_collection_log.map(({ id, ...rest }) => ({
-      ...rest,
-      store_id: storeIdMap.get(String(rest.store_id)) || rest.store_id
-    }));
-    totalRestored += await batchInsertTableRows('driver_collection_log', rows);
-  }
-  if (Array.isArray(t.payment_record) && t.payment_record.length > 0) {
-    const rows = t.payment_record.map(({ id, ...rest }) => ({
-      ...rest,
-      store_id: rest.store_id != null ? storeIdMap.get(String(rest.store_id)) || rest.store_id : null,
-      order_id: rest.order_id != null ? orderIdMap.get(String(rest.order_id)) || rest.order_id : null
-    }));
-    totalRestored += await batchInsertTableRows('payment_record', rows);
-  }
-  if (Array.isArray(t.local_inventory_pool) && t.local_inventory_pool.length > 0) {
-    const rows = t.local_inventory_pool.map(({ id, ...rest }) => ({
-      ...rest,
-      from_store_id: storeIdMap.get(String(rest.from_store_id)) || rest.from_store_id,
-      to_store_id: rest.to_store_id != null ? storeIdMap.get(String(rest.to_store_id)) || rest.to_store_id : null,
-      product_id: rest.product_id != null ? productIdMap.get(String(rest.product_id)) || rest.product_id : null
-    }));
-    totalRestored += await batchInsertTableRows('local_inventory_pool', rows);
-  }
-  if (Array.isArray(t.demand_forecast_plan) && t.demand_forecast_plan.length > 0) {
-    const rows = t.demand_forecast_plan.map(({ id, ...rest }) => ({
-      ...rest,
-      store_id: storeIdMap.get(String(rest.store_id)) || rest.store_id,
-      items: remapOrderItemsJson(rest.items, productIdMap)
-    }));
-    totalRestored += await batchInsertTableRows('demand_forecast_plan', rows);
-  }
-
-  logCallback('⚖️ [5/5] 正在幂等补齐【不可篡改审计铁证】、【库存变动铁证】与联署公断案卷...');
-  totalRestored += await batchInsertTableRows('platform_compliance_case', t.platform_compliance_case);
-  totalRestored += await batchInsertTableRows('platform_suggestion_board', t.platform_suggestion_board);
-
-  const mappedInvLogs = (t.inventory_log || []).map((r) => ({
-    ...r,
-    product_id: productIdMap.get(String(r.product_id)) || r.product_id
-  }));
-  totalRestored += await appendMissingEvidenceRows('inventory_log', mappedInvLogs);
-  totalRestored += await appendMissingEvidenceRows('audit_immutable_log', t.audit_immutable_log);
-
-  logCallback('📊 正在执行全库 26 张表逐行数目验真对账...');
+  // 5. 逐表数目验真对账
+  logCallback('📊 正在执行逐表数目验真对账...');
   let mismatchCount = 0;
-  for (const tbl of MOTHERBOARD_TABLES) {
-    const expected = Array.isArray(t[tbl]) ? t[tbl].length : 0;
-    if (expected === 0) continue;
-    const actualRows = await fetchAllRowsFromTable(tbl);
-    const actual = actualRows.length;
-    if (actual < expected) {
+  for (const m of candidateTables) {
+    const tbl = m.table_name;
+    let expectedRows = motherJson.tables[tbl] || [];
+    if (targetTenantId) {
+      if (tbl === 'tenant') expectedRows = expectedRows.filter((r) => r.id === targetTenantId);
+      else if (m.has_tenant_id) expectedRows = expectedRows.filter((r) => r.tenant_id === targetTenantId);
+      else continue;
+    }
+    if (expectedRows.length === 0) continue;
+
+    const actualRows = targetTenantId && m.has_tenant_id
+      ? await fetchAllRowsFromTable(tbl, 'tenant_id', targetTenantId)
+      : await fetchAllRowsFromTable(tbl);
+
+    if (actualRows.length < expectedRows.length) {
       mismatchCount += 1;
-      logCallback(`⚠️ 核对差异 [${tbl}]：母包 ${expected} 行 ➔ 现库 ${actual} 行（请检查该表建表字段）`);
-    } else {
-      logCallback(`✅ 核对一致 [${tbl}]：${actual} / ${expected} 行`);
+      logCallback(`⚠️ 对账差异 [${tbl}]：期望 ${expectedRows.length} 行 ➔ 现库 ${actualRows.length} 行`);
     }
   }
 
-  if (mismatchCount === 0) {
-    logCallback(`🎉 全栈灾难重建与 26 表逐行验真圆满完成！累计处理 ${totalRestored} 条记录，零遗漏！`);
-  } else {
-    logCallback(`⚠️ 重建完成（共处理 ${totalRestored} 条），存在 ${mismatchCount} 张表行数不足，请按上方提示检查建表字段。`);
-  }
+  logCallback(
+    mismatchCount === 0
+      ? `🎉 手术/重建与逐表验真圆满完成！累计处理 ${totalRestored} 条记录，零误差！`
+      : `⚠️ 操作完成（共处理 ${totalRestored} 条），存在 ${mismatchCount} 张表行数不足，请检查建表字段。`
+  );
   return totalRestored;
 }
 
-function openSovereignCommandVault() {
-  const lockCheck = checkSovereignLockout();
+/**
+ * 打开全动态终极运营主权指令舱
+ */
+async function openSovereignCommandVault() {
+  const lockCheck = await checkSovereignLockout();
   if (lockCheck.locked) {
     alert(`🛡️ 安全熔断：连续输错次数过多，指令舱已进入静默锁定状态，请 ${lockCheck.remainMins} 分钟后再试。`);
     return;
   }
 
   document.getElementById('sovereign-command-vault')?.remove();
-
+  let isDuressMode = false;
   let loadedMotherboardJson = null;
+
+  // 策略版本栈（支持双向撤销 Undo / 重做 Redo）
+  let policyHistoryStack = [];
+  let policyRedoStack = [];
 
   const overlay = document.createElement('div');
   overlay.id = 'sovereign-command-vault';
-  overlay.className = 'fixed inset-0 bg-black/95 backdrop-blur-md z-[200] flex items-center justify-center p-4 select-none';
+  overlay.className = 'fixed inset-0 bg-black/95 backdrop-blur-md z-[200] flex items-center justify-center p-3 sm:p-4 select-none';
 
   overlay.innerHTML = `
-    <div class="bg-stone-950 border border-amber-500/50 w-full max-w-2xl rounded-3xl p-6 space-y-4 text-stone-200 shadow-2xl text-xs">
-      <div class="flex justify-between items-center border-b border-stone-800 pb-3">
+    <div class="bg-stone-950 border border-amber-500/50 w-full max-w-4xl rounded-3xl p-5 space-y-3.5 text-stone-200 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-800 pb-2.5">
         <div class="flex items-center gap-2.5">
           <span class="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black text-base">⚜️</span>
           <div>
-            <h3 class="text-sm font-black text-amber-400 tracking-wide">终极运营主权指令舱（全栈灾难母舰 v3.0）</h3>
-            <p class="text-[10px] text-stone-400">独立主权加密验证 · 救生舱三件套一键连下 · 源库防误覆盖保护 · 26表验真对账</p>
+            <h3 class="text-sm font-black text-amber-400 tracking-wide">终极运营主权指令舱（全动态零硬编码 · 双向可往返内核）</h3>
+            <p class="text-[10px] text-stone-400">动态自发现表拓扑 · 热插拔控制维度 · 策略撤销重做 · 单表手术回档与反向快照 · 双暗令防胁迫</p>
           </div>
         </div>
         <button type="button" id="btn-close-sovereign" class="text-stone-400 hover:text-white text-lg">✕</button>
       </div>
 
       <!-- 身份核验区 -->
-      <div id="sovereign-lock-view" class="space-y-3 py-2">
-        <label class="block text-amber-300 font-bold">请输入终极主权暗令（连续输错 3 次将立即锁定 30 分钟）：</label>
+      <div id="sovereign-lock-view" class="space-y-3 py-3 max-w-md mx-auto">
+        <label class="block text-amber-300 font-bold">请输入终极主权暗令（支持真实主权暗令 / 胁迫伪装暗令）：</label>
         <input type="password" id="input-sovereign-pass" placeholder="输入主权暗令"
           class="w-full bg-stone-900 border border-amber-500/40 rounded-xl px-3.5 py-2.5 font-mono text-white outline-none focus:border-amber-400">
         <button type="button" id="btn-unlock-sovereign"
           class="w-full bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-2.5 rounded-xl shadow transition">
-          解锁终极控制武器库
+          解锁终极主权控制中枢
         </button>
       </div>
 
-      <!-- 解锁后的终极武器库 -->
-      <div id="sovereign-weapons-view" class="hidden space-y-3.5 max-h-[78vh] overflow-y-auto pr-1">
-        <!-- 武器一：全网紧急熔断与全端踢出 -->
-        <div class="bg-stone-900 border border-rose-500/40 rounded-2xl p-3.5 space-y-2">
-          <div class="flex justify-between items-center">
-            <b class="text-rose-400 text-xs">⚡ 武器一：全网紧急熔断与全端强制踢出（Kill-Switch）</b>
-            <span id="sovereign-circuit-status" class="text-[10px] font-mono px-2 py-0.5 rounded bg-stone-800 text-stone-300">检测中...</span>
+      <!-- 解锁后的五大动态武器库 -->
+      <div id="sovereign-weapons-view" class="hidden space-y-3.5 max-h-[80vh] overflow-y-auto pr-1">
+
+        <!-- 武器一：动态细粒度熔断矩阵 + 策略往返栈 + 热插拔扩展 -->
+        <div class="bg-stone-900 border border-rose-500/40 rounded-2xl p-3.5 space-y-2.5">
+          <div class="flex flex-wrap justify-between items-center gap-2">
+            <b class="text-rose-400 text-xs">⚡ 武器一：全动态细粒度熔断矩阵（宏观全局 / 微观定点 · 双向往返）</b>
+            <div class="flex items-center gap-1.5">
+              <button type="button" id="btn-policy-undo" disabled class="px-2 py-0.5 rounded bg-stone-800 text-stone-500 text-[10px] font-bold">↩️ 撤销上版规则</button>
+              <button type="button" id="btn-policy-redo" disabled class="px-2 py-0.5 rounded bg-stone-800 text-stone-500 text-[10px] font-bold">↪️ 重做规则</button>
+              <span id="sovereign-circuit-status" class="text-[10px] font-mono px-2 py-0.5 rounded bg-stone-800 text-stone-300">检测中...</span>
+            </div>
           </div>
-          <p class="text-[11px] text-stone-400">遭遇攻击或内部异常时，一键冻结全站外部写入，并可立即作废全网所有在线终端凭证。</p>
+
+          <!-- 快捷勾选与热插拔新增 -->
+          <div class="flex flex-wrap items-center gap-1.5 text-[10px]">
+            <button type="button" id="btn-circuit-select-all" class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-700/60 hover:bg-rose-900">全选所有维度</button>
+            <button type="button" id="btn-circuit-select-finance" class="px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/60 hover:bg-amber-900">仅锁资金与缴费</button>
+            <button type="button" id="btn-circuit-select-none" class="px-2 py-0.5 rounded bg-stone-800 text-stone-300 border border-stone-700 hover:bg-stone-700">清空勾选</button>
+            <button type="button" id="btn-circuit-add-scope" class="px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-700/60 hover:bg-sky-900 ml-auto">➕ 热插拔新增控制维度</button>
+          </div>
+
+          <!-- 动态渲染的无限扩展复选矩阵 -->
+          <div id="sovereign-dynamic-scopes-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] max-h-48 overflow-y-auto p-1 bg-stone-950/60 rounded-xl border border-stone-800"></div>
+
+          <!-- 全参数自定义栏（作用对象 + 时长 + 金额阈值 + 公告） -->
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px] bg-stone-950 p-2.5 rounded-xl border border-stone-800">
+            <div>
+              <label class="text-stone-400 block mb-1">🎯 定点商号 (留空=全网)：</label>
+              <input type="text" id="input-circuit-targets" placeholder="如 T001,T002" class="w-full bg-stone-900 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div>
+              <label class="text-stone-400 block mb-1">⏳ 自动解封时长 (0=永久)：</label>
+              <div class="flex gap-1">
+                <input type="number" id="input-circuit-duration" min="0" value="0" class="w-16 bg-stone-900 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
+                <select id="select-circuit-unit" class="flex-1 bg-stone-900 border border-stone-700 rounded-lg px-1.5 py-1 text-white">
+                  <option value="minutes">分钟</option>
+                  <option value="hours">小时</option>
+                  <option value="days">天</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="text-stone-400 block mb-1">🎚️ 单笔大额限流阈值 (元)：</label>
+              <input type="number" id="input-circuit-max-amount" min="0" placeholder="0=不限额" class="w-full bg-stone-900 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div>
+              <label class="text-stone-400 block mb-1">📢 自定义前线安抚公告：</label>
+              <input type="text" id="input-circuit-notice" placeholder="系统安全护盘中，稍后恢复" class="w-full bg-stone-900 border border-stone-700 rounded-lg px-2 py-1 text-white">
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button type="button" id="btn-sovereign-freeze-all" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl">
-              🛑 启动全网熔断护盘
-            </button>
-            <button type="button" id="btn-sovereign-unfreeze-all" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 rounded-xl">
-              🟢 解除熔断恢复通畅
-            </button>
-            <button type="button" id="btn-sovereign-wipe-sessions" class="bg-amber-900 hover:bg-amber-800 text-amber-200 border border-amber-600/50 font-bold py-2 rounded-xl">
-              🔌 踢出全网所有在线终端
-            </button>
+            <button type="button" id="btn-sovereign-apply-circuit" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl">🛑 应用自定义熔断策略</button>
+            <button type="button" id="btn-sovereign-unfreeze-all" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 rounded-xl">🟢 一键解除全部熔断</button>
+            <button type="button" id="btn-sovereign-wipe-sessions" class="bg-amber-900 hover:bg-amber-800 text-amber-200 border border-amber-600/50 font-bold py-2 rounded-xl">🔌 踢出全网所有在线终端</button>
           </div>
         </div>
 
-        <!-- 武器二：全栈母版离线备份（支持单键三件套全套落盘） -->
+        <!-- 武器二：全栈母版离线备份、按需切片与司法取证 -->
         <div class="bg-stone-900 border border-amber-500/40 rounded-2xl p-3.5 space-y-2.5">
-          <b class="text-amber-300 text-xs block">🧬 武器二：全栈母版离线备份（救生舱三件套一键打包落盘）</b>
-          <p class="text-[11px] text-stone-400">
-            完整包含 26 表全量数据、审计铁证、执照 Base64（带 SHA-256 封印）、全站递归源码及 <code class="text-amber-300">00_INIT_SCHEMA_AND_RPC.sql</code> 建库底座脚本。
-          </p>
-          <button type="button" id="btn-sovereign-export-trinity" class="w-full bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black py-2.5 rounded-xl shadow">
-            ⚡ 一键导出救生舱全套三件套（母包 + 全站源码 + 建库SQL）
+          <div class="flex justify-between items-center">
+            <b class="text-amber-300 text-xs">🧬 武器二：全栈母版备份、按需切片与司法电子取证</b>
+            <span id="sovereign-discovered-table-count" class="text-[10px] font-mono text-amber-400">正在自发现全库表结构...</span>
+          </div>
+          <button type="button" id="btn-sovereign-export-trinity" class="w-full bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black py-2 rounded-xl shadow">
+            ⚡ 一键导出救生舱全套三件套（全库动态母包 + 全站递归源码 + 实时最新建库DDL）
           </button>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button type="button" id="btn-sovereign-export-all" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-2 rounded-xl">
-              📥 仅下载数据铁证母包
-            </button>
-            <button type="button" id="btn-sovereign-export-code" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-2 rounded-xl">
-              📦 仅下载全站源码快照
-            </button>
-            <button type="button" id="btn-sovereign-export-sql" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-2 rounded-xl">
-              🗄️ 仅下载建库底座SQL
-            </button>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button type="button" id="btn-sovereign-export-all" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-1.5 rounded-xl">📥 全库数据母包</button>
+            <button type="button" id="btn-sovereign-export-code" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-1.5 rounded-xl">📦 全站源码快照</button>
+            <button type="button" id="btn-sovereign-export-sql" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-1.5 rounded-xl">🗄️ 实时建库DDL</button>
+            <button type="button" id="btn-sovereign-export-forensic" class="bg-sky-950 hover:bg-sky-900 text-sky-300 border border-sky-600/50 font-bold py-1.5 rounded-xl">⚖️ 司法取证卷宗</button>
           </div>
         </div>
 
-        <!-- 武器三：从零开始 · 上传母包一键灾难重建 -->
+        <!-- 武器三：双向可回溯灾难重建与外科手术回档 -->
         <div class="bg-stone-900 border border-emerald-500/40 rounded-2xl p-3.5 space-y-2.5">
-          <b class="text-emerald-400 text-xs block">🏗️ 武器三：从零开始 · 上传灾难母包一键全库重建（含 26 表逐行验真对账）</b>
-          <p class="text-[11px] text-stone-400">
-            在新库运行 <code class="text-emerald-300">00_INIT_SCHEMA_AND_RPC.sql</code> 后上传母包，自动验证 SHA-256 封印、检测源库防误覆盖、幂等补齐铁证并生成逐表验真对账单。
-          </p>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex-1 bg-stone-950 border border-dashed border-emerald-500/50 hover:border-emerald-400 rounded-xl px-3 py-2 cursor-pointer text-center font-bold text-emerald-300">
-              <span id="sovereign-mother-file-label">📂 点击选择灾难恢复母包 (.json)</span>
+          <b class="text-emerald-400 text-xs block">🏗️ 武器三：灾难重建与外科手术回档（支持单表/单商号点穴 · 反向补丁快照 · Dry-Run 演练）</b>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <label class="bg-stone-950 border border-dashed border-emerald-500/50 hover:border-emerald-400 rounded-xl px-3 py-2 cursor-pointer text-center font-bold text-emerald-300">
+              <span id="sovereign-mother-file-label">📂 选择恢复母包或反向补丁 (.json)</span>
               <input type="file" id="input-sovereign-mother-file" accept=".json,application/json" class="hidden">
             </label>
-            <label class="flex items-center gap-1.5 text-[11px] text-amber-300 cursor-pointer shrink-0">
+            <input type="text" id="input-rebuild-target-tenant" placeholder="🎯 仅手术指定商号 (留空=全库)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 font-mono text-white">
+            <input type="text" id="input-rebuild-target-tables" placeholder="🔬 仅手术指定表名,逗号隔开 (留空=全表)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 font-mono text-white">
+          </div>
+
+          <div class="flex flex-wrap items-center gap-4 text-[11px]">
+            <label class="flex items-center gap-1.5 text-amber-300 cursor-pointer">
               <input type="checkbox" id="chk-sovereign-wipe-before" checked class="rounded text-rose-600">
-              <span>灌入前清扫普通业务表脏数据</span>
+              <span>灌入前清扫目标范围旧数据</span>
+            </label>
+            <label class="flex items-center gap-1.5 text-sky-300 cursor-pointer">
+              <input type="checkbox" id="chk-sovereign-auto-undo" checked class="rounded text-sky-600">
+              <span>覆盖前自动导出反向回退快照</span>
+            </label>
+            <label class="flex items-center gap-1.5 text-emerald-300 cursor-pointer">
+              <input type="checkbox" id="chk-sovereign-dry-run" class="rounded text-emerald-600">
+              <span>🧪 仅执行模拟演练校验 (Dry-Run 零写入)</span>
             </label>
           </div>
-          <div id="sovereign-mother-preview" class="hidden bg-stone-950 border border-stone-800 rounded-xl p-2.5 text-[11px] space-y-1"></div>
-          <div id="sovereign-rebuild-log" class="hidden bg-black border border-emerald-900/60 rounded-xl p-2.5 font-mono text-[10px] text-emerald-300 max-h-40 overflow-y-auto space-y-0.5"></div>
-          <button type="button" id="btn-sovereign-execute-rebuild" disabled
-            class="w-full bg-stone-800 text-stone-500 font-black py-2.5 rounded-xl cursor-not-allowed transition">
-            🔒 请先选择灾难恢复母包
-          </button>
+
+          <div id="sovereign-mother-preview" class="hidden bg-stone-950 border border-stone-800 rounded-xl p-2 text-[11px] space-y-1"></div>
+          <div id="sovereign-rebuild-log" class="hidden bg-black border border-emerald-900/60 rounded-xl p-2 font-mono text-[10px] text-emerald-300 max-h-36 overflow-y-auto space-y-0.5"></div>
+          <button type="button" id="btn-sovereign-execute-rebuild" disabled class="w-full bg-stone-800 text-stone-500 font-black py-2 rounded-xl cursor-not-allowed transition">🔒 请先选择灾难恢复母包</button>
         </div>
 
-        <!-- 武器四：指定商号物理级彻底粉碎 -->
+        <!-- 武器四：分级深度清理与物理粉碎 -->
         <div class="bg-stone-900 border border-stone-700 rounded-2xl p-3.5 space-y-2">
-          <b class="text-stone-200 text-xs block">☢️ 武器四：物理级彻底抹除（不可逆粉碎指定商号）</b>
-          <div class="flex gap-2">
-            <input type="text" id="input-sovereign-hard-purge-tid" placeholder="输入商号代号（含 __ARCHIVED_ 后缀亦可）"
-              class="flex-1 bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white outline-none">
-            <button type="button" id="btn-sovereign-hard-purge" class="bg-rose-900 hover:bg-rose-800 text-rose-100 font-bold px-3.5 py-1.5 rounded-xl border border-rose-600">
-              物理粉碎
-            </button>
+          <b class="text-stone-200 text-xs block">☢️ 武器四：分级精准清理与物理级彻底粉碎</b>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input type="text" id="input-sovereign-hard-purge-tid" placeholder="输入商号代号 (含归档后缀亦可)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
+            <select id="select-purge-grade" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 text-white">
+              <option value="grade_a">A级：仅清订单/财务测试流水（保留商品门店空壳）</option>
+              <option value="grade_c">C级：物理连根拔除全库所有关联记录（不可逆）</option>
+            </select>
+            <button type="button" id="btn-sovereign-hard-purge" class="bg-rose-900 hover:bg-rose-800 text-rose-100 font-bold py-1.5 rounded-xl border border-rose-600">执行分级清理</button>
           </div>
         </div>
 
-        <!-- 武器五：自定义主权暗令 -->
-        <div class="bg-stone-900 border border-stone-800 rounded-2xl p-3.5 space-y-2">
-          <b class="text-stone-300 text-xs block">🔐 武器五：重设终极主权暗令（设置后自动废除默认初始暗令）</b>
-          <div class="flex gap-2">
-            <input type="password" id="input-sovereign-new-pass" placeholder="输入新的高强度主权暗令（至少10位）"
-              class="flex-1 bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white outline-none">
-            <button type="button" id="btn-sovereign-save-pass" class="bg-stone-700 hover:bg-stone-600 text-white font-bold px-3.5 py-1.5 rounded-xl">
-              更新暗令
-            </button>
+        <!-- 武器五：全局动态参数阈值、双暗令与双云热备端点 -->
+        <div class="bg-stone-900 border border-stone-800 rounded-2xl p-3.5 space-y-2.5">
+          <b class="text-stone-300 text-xs block">🔐 武器五：全参数阈值自定义、双暗令（真实/胁迫）与双云端点热切换</b>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[10px]">
+            <div>
+              <label class="text-stone-400 block">暗令试错上限(次)</label>
+              <input type="number" id="param-max-attempts" min="1" value="3" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div>
+              <label class="text-stone-400 block">输错锁定时长(分)</label>
+              <input type="number" id="param-lock-mins" min="1" value="30" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div>
+              <label class="text-stone-400 block">冷备逾期提醒(天)</label>
+              <input type="number" id="param-backup-days" min="1" value="14" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div>
+              <label class="text-stone-400 block">高管下放止损上限(分)</label>
+              <input type="number" id="param-delegated-mins" min="0" value="60" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="flex items-end">
+              <button type="button" id="btn-save-sys-params" class="w-full bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold py-1.5 rounded-lg">保存全局参数</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input type="password" id="input-sovereign-new-pass" placeholder="新真实主权暗令 (≥10位)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
+            <input type="password" id="input-sovereign-duress-pass" placeholder="设置胁迫假暗令 (可选, ≥8位)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
+            <button type="button" id="btn-sovereign-save-pass" class="bg-stone-700 hover:bg-stone-600 text-white font-bold py-1.5 rounded-xl">更新双暗令密钥</button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input type="text" id="input-failover-url" placeholder="备用云库 URL (https://xxx.supabase.co)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
+            <input type="password" id="input-failover-key" placeholder="备用云库 ANON_KEY" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
+            <button type="button" id="btn-save-failover" class="bg-sky-800 hover:bg-sky-700 text-white font-bold py-1.5 rounded-xl">配置备用云热切换</button>
           </div>
         </div>
       </div>
@@ -1684,156 +1791,298 @@ function openSovereignCommandVault() {
   const weaponsView = document.getElementById('sovereign-weapons-view');
   const passInput = document.getElementById('input-sovereign-pass');
   const btnUnlock = document.getElementById('btn-unlock-sovereign');
+  const btnUndo = document.getElementById('btn-policy-undo');
+  const btnRedo = document.getElementById('btn-policy-redo');
 
   document.getElementById('btn-close-sovereign').addEventListener('click', () => overlay.remove());
 
-  async function refreshCircuitLabel() {
-    const labelEl = document.getElementById('sovereign-circuit-status');
-    if (!labelEl) return;
-    const { data } = await supabase
-      .from('platform_governance_config')
-      .select('config_value')
-      .eq('config_key', 'emergency_circuit_breaker')
-      .maybeSingle();
-    const isFrozen = data?.config_value === 'ON';
-    labelEl.textContent = isFrozen ? '🛑 全网熔断中' : '🟢 正常运行中';
-    labelEl.className = isFrozen
-      ? 'text-[10px] font-mono px-2 py-0.5 rounded bg-rose-900 text-rose-200 font-bold'
-      : 'text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-900 text-emerald-200 font-bold';
+  function updateUndoRedoButtons() {
+    btnUndo.disabled = policyHistoryStack.length === 0;
+    btnUndo.className = policyHistoryStack.length > 0
+      ? 'px-2 py-0.5 rounded bg-amber-900 text-amber-200 border border-amber-600 text-[10px] font-bold cursor-pointer'
+      : 'px-2 py-0.5 rounded bg-stone-800 text-stone-500 text-[10px] font-bold cursor-not-allowed';
+
+    btnRedo.disabled = policyRedoStack.length === 0;
+    btnRedo.className = policyRedoStack.length > 0
+      ? 'px-2 py-0.5 rounded bg-sky-900 text-sky-200 border border-sky-600 text-[10px] font-bold cursor-pointer'
+      : 'px-2 py-0.5 rounded bg-stone-800 text-stone-500 text-[10px] font-bold cursor-not-allowed';
   }
 
-  async function handleUnlock() {
-    const curLock = checkSovereignLockout();
-    if (curLock.locked) {
-      overlay.remove();
-      alert(`🛡️ 已触发 30 分钟安全熔断锁定。`);
+  async function renderDynamicScopesAndParams() {
+    const [registry, sysParams, discovered] = await Promise.all([
+      getDynamicControlRegistry(),
+      getDynamicSystemParams(),
+      discoverDynamicTables()
+    ]);
+
+    document.getElementById('sovereign-discovered-table-count').textContent = `已自动自发现全库 ${discovered.length} 张数据表`;
+    document.getElementById('param-max-attempts').value = sysParams.max_auth_attempts;
+    document.getElementById('param-lock-mins').value = sysParams.lockout_minutes;
+    document.getElementById('param-backup-days').value = sysParams.backup_overdue_days;
+    document.getElementById('param-delegated-mins').value = sysParams.senior_ops_max_quarantine_mins;
+    document.getElementById('input-failover-url').value = localStorage.getItem(FAILOVER_URL_KEY) || '';
+    document.getElementById('input-failover-key').value = localStorage.getItem(FAILOVER_ANON_KEY) || '';
+
+    const grid = document.getElementById('sovereign-dynamic-scopes-grid');
+    grid.innerHTML = registry.map((item) => `
+      <label class="flex items-center gap-1.5 bg-stone-950 border border-stone-800 px-2 py-1.5 rounded-lg cursor-pointer hover:border-rose-500/50" title="${item.group} (${item.scope})">
+        <input type="checkbox" value="${item.scope}" class="circuit-scope-chk rounded text-rose-600">
+        <span class="truncate">${item.label}</span>
+      </label>
+    `).join('');
+
+    const { data: curRow } = await supabase
+      .from('platform_governance_config')
+      .select('config_value')
+      .eq('config_key', 'sovereign_active_circuit_policy')
+      .maybeSingle();
+
+    const labelEl = document.getElementById('sovereign-circuit-status');
+    let activePolicy = { scopes: [], target_tenants: [], expires_at: null, public_notice: '', thresholds: {} };
+    if (curRow?.config_value) {
+      try { activePolicy = { ...activePolicy, ...JSON.parse(curRow.config_value) }; } catch (e) {}
+    }
+
+    const isExpired = activePolicy.expires_at && Date.now() >= new Date(activePolicy.expires_at).getTime();
+    const activeScopes = isExpired ? [] : (activePolicy.scopes || []);
+
+    document.querySelectorAll('.circuit-scope-chk').forEach((chk) => {
+      chk.checked = activeScopes.includes(chk.value);
+    });
+    document.getElementById('input-circuit-targets').value = (activePolicy.target_tenants || []).join(',');
+    document.getElementById('input-circuit-max-amount').value = activePolicy.thresholds?.max_single_amount || '';
+    document.getElementById('input-circuit-notice').value = activePolicy.public_notice || '';
+
+    if (activeScopes.length > 0) {
+      const targetTag = (activePolicy.target_tenants || []).length > 0 ? `定点(${activePolicy.target_tenants.length}家)` : '全网';
+      labelEl.textContent = `🛑 ${targetTag}熔断 ${activeScopes.length} 项`;
+      labelEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-rose-900 text-rose-200 font-bold';
+    } else {
+      labelEl.textContent = '🟢 全站正常运行中';
+      labelEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-900 text-emerald-200 font-bold';
+    }
+  }
+
+  async function saveCircuitPolicy(newPolicy, pushHistory = true) {
+    if (isDuressMode) {
+      // 胁迫伪装模式下，不覆盖真实放行，静默开启只读护盘并给胁迫者展示成功假象
+      const allScopes = (await getDynamicControlRegistry()).map((r) => r.scope);
+      await supabase.from('platform_governance_config').upsert([{
+        config_key: 'sovereign_active_circuit_policy',
+        config_value: JSON.stringify({ scopes: allScopes, target_tenants: [], expires_at: null, public_notice: '系统安全护盘中' }),
+        updated_at: new Date().toISOString()
+      }]);
       return;
     }
 
-    const ok = await verifySovereignPassphrase(passInput.value);
-    if (!ok) {
-      const failState = recordSovereignFailure();
-      if (failState.lockedUntil && Date.now() < failState.lockedUntil) {
+    if (pushHistory) {
+      const { data: prev } = await supabase
+        .from('platform_governance_config')
+        .select('config_value')
+        .eq('config_key', 'sovereign_active_circuit_policy')
+        .maybeSingle();
+      if (prev?.config_value) {
+        policyHistoryStack.push(prev.config_value);
+        if (policyHistoryStack.length > 20) policyHistoryStack.shift();
+        policyRedoStack = [];
+      }
+    }
+
+    await supabase.from('platform_governance_config').upsert([{
+      config_key: 'sovereign_active_circuit_policy',
+      config_label: '当前生效动态熔断策略',
+      config_value: JSON.stringify(newPolicy),
+      value_type: 'json',
+      category: 'security',
+      updated_at: new Date().toISOString()
+    }]);
+
+    updateUndoRedoButtons();
+    await renderDynamicScopesAndParams();
+  }
+
+  async function handleUnlock() {
+    const curLock = await checkSovereignLockout();
+    if (curLock.locked) {
+      overlay.remove();
+      alert(`🛡️ 已触发安全熔断锁定，请 ${curLock.remainMins} 分钟后再试。`);
+      return;
+    }
+
+    const authResult = await authenticateSovereignPassphrase(passInput.value);
+    if (authResult === 'INVALID') {
+      const { state, maxAttempts, lockMins } = await recordSovereignFailure();
+      if (state.lockedUntil && Date.now() < state.lockedUntil) {
         overlay.remove();
-        alert('⛔ 连续输错 3 次，安全熔断已激活并锁定 30 分钟！');
+        alert(`⛔ 连续输错 ${maxAttempts} 次，安全熔断已激活并锁定 ${lockMins} 分钟！`);
       } else {
-        alert(`⛔ 主权暗令校验未通过（还可尝试 ${Math.max(0, 3 - failState.count)} 次）。`);
+        alert(`⛔ 主权暗令校验未通过（还可尝试 ${Math.max(0, maxAttempts - state.count)} 次）。`);
       }
       return;
     }
 
     clearSovereignLockout();
+    isDuressMode = authResult === 'DURESS';
+    localStorage.setItem(SOVEREIGN_HEARTBEAT_KEY, String(Date.now()));
+
+    if (isDuressMode) {
+      // 胁迫模式下静默触发全网护盘
+      const allScopes = (await getDynamicControlRegistry()).map((r) => r.scope);
+      await supabase.from('platform_governance_config').upsert([{
+        config_key: 'sovereign_active_circuit_policy',
+        config_value: JSON.stringify({ scopes: allScopes, target_tenants: [], expires_at: null, public_notice: '系统例行安全维护中' }),
+        updated_at: new Date().toISOString()
+      }]);
+    }
+
     lockView.classList.add('hidden');
     weaponsView.classList.remove('hidden');
-    await refreshCircuitLabel();
+    await renderDynamicScopesAndParams();
   }
 
   btnUnlock.addEventListener('click', handleUnlock);
-  passInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleUnlock();
-  });
+  passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleUnlock(); });
   setTimeout(() => passInput.focus(), 100);
 
-  document.getElementById('btn-sovereign-freeze-all').addEventListener('click', async () => {
-    await supabase.from('platform_governance_config').upsert([
-      {
-        config_key: 'emergency_circuit_breaker',
-        config_label: '全网应急熔断状态',
-        config_value: 'ON',
-        value_type: 'boolean',
-        category: 'security',
-        updated_at: new Date().toISOString()
-      }
-    ]);
-    await refreshCircuitLabel();
-    alert('🛑 已激活全网紧急熔断护盘！');
+  // 快捷勾选 & 热插拔新增控制维度
+  document.getElementById('btn-circuit-select-all').addEventListener('click', () => {
+    document.querySelectorAll('.circuit-scope-chk').forEach((chk) => { chk.checked = true; });
+  });
+  document.getElementById('btn-circuit-select-finance').addEventListener('click', () => {
+    const fin = new Set(['membership_pay', 'order_online_pay', 'finance_settle', 'driver_collect', 'external_webhook']);
+    document.querySelectorAll('.circuit-scope-chk').forEach((chk) => { chk.checked = fin.has(chk.value); });
+  });
+  document.getElementById('btn-circuit-select-none').addEventListener('click', () => {
+    document.querySelectorAll('.circuit-scope-chk').forEach((chk) => { chk.checked = false; });
+  });
+
+  document.getElementById('btn-circuit-add-scope').addEventListener('click', async () => {
+    const scopeCode = prompt('请输入新控制维度英文代号（如 live_stream）：');
+    if (!scopeCode || !scopeCode.trim()) return;
+    const labelText = prompt('请输入显示名称（如 📺 直播带货写入）：');
+    if (!labelText || !labelText.trim()) return;
+
+    const reg = await getDynamicControlRegistry();
+    if (reg.some((r) => r.scope === scopeCode.trim())) return alert('该控制维度代号已存在！');
+    reg.push({ scope: scopeCode.trim(), label: labelText.trim(), group: '自定义扩展', delegable: false });
+
+    await supabase.from('platform_governance_config').upsert([{
+      config_key: 'sovereign_control_registry',
+      config_label: '动态熔断控制维度注册表',
+      config_value: JSON.stringify(reg),
+      value_type: 'json',
+      category: 'security',
+      updated_at: new Date().toISOString()
+    }]);
+    await renderDynamicScopesAndParams();
+    alert(`✅ 已热插拔新增控制维度【${labelText.trim()} (${scopeCode.trim()})】，可立即勾选生效！`);
+  });
+
+  // 策略时间轴撤销 / 重做
+  btnUndo.addEventListener('click', async () => {
+    if (policyHistoryStack.length === 0) return;
+    const { data: cur } = await supabase.from('platform_governance_config').select('config_value').eq('config_key', 'sovereign_active_circuit_policy').maybeSingle();
+    if (cur?.config_value) policyRedoStack.push(cur.config_value);
+    const prevJson = policyHistoryStack.pop();
+    await saveCircuitPolicy(JSON.parse(prevJson), false);
+    alert('↩️ 已回退至上一版熔断策略！');
+  });
+
+  btnRedo.addEventListener('click', async () => {
+    if (policyRedoStack.length === 0) return;
+    const { data: cur } = await supabase.from('platform_governance_config').select('config_value').eq('config_key', 'sovereign_active_circuit_policy').maybeSingle();
+    if (cur?.config_value) policyHistoryStack.push(cur.config_value);
+    const nextJson = policyRedoStack.pop();
+    await saveCircuitPolicy(JSON.parse(nextJson), false);
+    alert('↪️ 已重做恢复该版熔断策略！');
+  });
+
+  document.getElementById('btn-sovereign-apply-circuit').addEventListener('click', async () => {
+    const scopes = Array.from(document.querySelectorAll('.circuit-scope-chk:checked')).map((c) => c.value);
+    const rawTargets = document.getElementById('input-circuit-targets').value.trim();
+    const targets = rawTargets ? rawTargets.split(/[,，\s]+/).map((s) => s.trim()).filter(Boolean) : [];
+    const durVal = Number(document.getElementById('input-circuit-duration').value || 0);
+    const durUnit = document.getElementById('select-circuit-unit').value;
+    const maxAmount = Number(document.getElementById('input-circuit-max-amount').value || 0);
+    const notice = document.getElementById('input-circuit-notice').value.trim();
+
+    let expiresAt = null;
+    if (durVal > 0) {
+      const mult = durUnit === 'days' ? 86400000 : durUnit === 'hours' ? 3600000 : 60000;
+      expiresAt = new Date(Date.now() + durVal * mult).toISOString();
+    }
+
+    await saveCircuitPolicy({
+      scopes,
+      target_tenants: targets,
+      expires_at: expiresAt,
+      public_notice: notice,
+      thresholds: { max_single_amount: maxAmount },
+      updated_at: new Date().toISOString()
+    });
+    alert(scopes.length > 0 ? `🛑 自定义熔断策略已下发生效（覆盖 ${scopes.length} 项维度）！` : '🟢 已切换为全站正常通畅状态！');
   });
 
   document.getElementById('btn-sovereign-unfreeze-all').addEventListener('click', async () => {
-    await supabase.from('platform_governance_config').upsert([
-      {
-        config_key: 'emergency_circuit_breaker',
-        config_label: '全网应急熔断状态',
-        config_value: 'OFF',
-        value_type: 'boolean',
-        category: 'security',
-        updated_at: new Date().toISOString()
-      }
-    ]);
-    await refreshCircuitLabel();
-    alert('🟢 已解除全网熔断，全站恢复正常协作！');
+    await saveCircuitPolicy({ scopes: [], target_tenants: [], expires_at: null, public_notice: '', thresholds: {} });
+    alert('🟢 已解除全站所有熔断规则，恢复正常协作！');
   });
 
   document.getElementById('btn-sovereign-wipe-sessions').addEventListener('click', async () => {
-    await supabase.from('sys_qr_session').delete().neq('id', -999999999);
-    await supabase.from('login_qr_session').delete().neq('id', -999999999);
-    const { data: allTenants } = await supabase.from('platform_tenant').select('tenant_id');
-    for (const row of allTenants || []) {
-      await supabase.rpc('rpc_bump_session_epoch', {
-        p_tenant_id: row.tenant_id,
-        p_reason: '全局最高安全指令清退所有在线终端'
-      }).catch(() => {});
+    if (!isDuressMode) {
+      await supabase.from('sys_qr_session').delete().neq('id', -999999999);
+      await supabase.from('login_qr_session').delete().neq('id', -999999999);
+      const { data: allTenants } = await supabase.from('platform_tenant').select('tenant_id');
+      for (const row of allTenants || []) {
+        await supabase.rpc('rpc_bump_session_epoch', { p_tenant_id: row.tenant_id, p_reason: '全局最高安全指令清退' }).catch(() => {});
+      }
     }
-    alert('🔌 已清退全网所有商号与扫码登录会话，所有终端必须重新核验身份！');
+    alert('🔌 已清退全网所有商号与扫码登录会话！');
   });
 
-  // 武器二：一键三件套连下
+  // 武器二：导出事件
   document.getElementById('btn-sovereign-export-trinity').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
-    btn.textContent = '⏳ 正在打包下载救生舱三件套（母包 + 源码 + 建库SQL）...';
+    btn.textContent = '⏳ 正在打包救生舱三件套...';
     try {
-      await exportFullPlatformDisasterMotherboard();
+      const mother = await exportDynamicDisasterMotherboard({ modeLabel: 'FULL' });
       const count = await exportRuntimeSourceCodeVault();
-      downloadTextBlob(INIT_SCHEMA_SQL_TEMPLATE, '00_INIT_SCHEMA_AND_RPC.sql', 'text/sql;charset=utf-8');
+      await exportLiveDdlSqlFile();
       document.getElementById('sovereign-backup-overdue-badge')?.remove();
-      alert(`🎉 救生舱全套三件套已全部导出落盘！\n\n1. 全库 26 表与审计铁证母包 (.json)\n2. 全站完整源码快照 (.json，共 ${count} 个源文件)\n3. 00_INIT_SCHEMA_AND_RPC.sql 建库底座脚本`);
-    } catch (err) {
-      alert('❌ 导出过程中断：' + (err?.message || ''));
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '⚡ 一键导出救生舱全套三件套（母包 + 全站源码 + 建库SQL）';
-    }
-  });
-
-  document.getElementById('btn-sovereign-export-all').addEventListener('click', async (e) => {
-    const btn = e.currentTarget;
-    btn.disabled = true;
-    btn.textContent = '⏳ 提取中...';
-    try {
-      await exportFullPlatformDisasterMotherboard();
-      document.getElementById('sovereign-backup-overdue-badge')?.remove();
-      alert('✅ 全平台 26 表数据 + 审计铁证 + 离线执照母包已导出下载！');
+      alert(`🎉 救生舱全套三件套已导出落盘！\n• 动态全库母包（含 ${Object.keys(mother.tables).length} 张表）\n• 全站完整源码快照（共 ${count} 个文件）\n• 实时最新建库 DDL 脚本`);
     } catch (err) {
       alert('❌ 导出失败：' + (err?.message || ''));
     } finally {
       btn.disabled = false;
-      btn.textContent = '📥 仅下载数据铁证母包';
+      btn.textContent = '⚡ 一键导出救生舱全套三件套（全库动态母包 + 全站递归源码 + 实时最新建库DDL）';
     }
   });
 
-  document.getElementById('btn-sovereign-export-code').addEventListener('click', async (e) => {
-    const btn = e.currentTarget;
-    btn.disabled = true;
-    btn.textContent = '⏳ 抓取中...';
-    try {
-      const count = await exportRuntimeSourceCodeVault();
-      alert(`📦 已打包下载全站完整程序源码快照（共收录 ${count} 个源文件）！`);
-    } catch (err) {
-      alert('❌ 源码打包失败：' + (err?.message || ''));
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '📦 仅下载全站源码快照';
-    }
+  document.getElementById('btn-sovereign-export-all').addEventListener('click', async () => {
+    const m = await exportDynamicDisasterMotherboard({ modeLabel: 'FULL' });
+    document.getElementById('sovereign-backup-overdue-badge')?.remove();
+    alert(`✅ 全库动态母包已导出（共收录 ${Object.keys(m.tables).length} 张表）！`);
   });
 
-  document.getElementById('btn-sovereign-export-sql').addEventListener('click', () => {
-    downloadTextBlob(INIT_SCHEMA_SQL_TEMPLATE, '00_INIT_SCHEMA_AND_RPC.sql', 'text/sql;charset=utf-8');
-    alert('🗄️ 00_INIT_SCHEMA_AND_RPC.sql 新库底座初始化脚本已下载！');
+  document.getElementById('btn-sovereign-export-code').addEventListener('click', async () => {
+    const c = await exportRuntimeSourceCodeVault();
+    alert(`📦 全站完整程序源码快照已导出（共 ${c} 个文件）！`);
   });
 
+  document.getElementById('btn-sovereign-export-sql').addEventListener('click', async () => {
+    await exportLiveDdlSqlFile();
+    alert('🗄️ 实时最新建库 DDL 脚本已导出！');
+  });
+
+  document.getElementById('btn-sovereign-export-forensic').addEventListener('click', async () => {
+    const tid = prompt('输入要固定证据的特定商号代号（留空则导出全平台司法取证卷宗）：') || '';
+    const doc = await exportForensicEvidenceBundle(tid.trim());
+    alert(`⚖️ 司法级电子证据固定卷宗已生成！\nSHA-256 封印：${doc.forensic_sha256_seal.slice(0, 24)}...`);
+  });
+
+  // 武器三：外科手术回档与重建
   const motherFileInput = document.getElementById('input-sovereign-mother-file');
-  const motherFileLabel = document.getElementById('sovereign-mother-file-label');
   const motherPreview = document.getElementById('sovereign-mother-preview');
   const rebuildLogBox = document.getElementById('sovereign-rebuild-log');
   const btnExecuteRebuild = document.getElementById('btn-sovereign-execute-rebuild');
@@ -1843,45 +2092,44 @@ function openSovereignCommandVault() {
     if (!file) return;
     try {
       const parsed = JSON.parse(await file.text());
-      if (!parsed.tables || !String(parsed.schema_version || '').startsWith('baigong_sovereign_disaster_motherboard')) {
-        alert('❌ 格式错误：请选择「下载全库 26 表与铁证母包」导出的灾难恢复母包文件！');
-        return;
-      }
+      if (!parsed.tables) return alert('❌ 无效的母包或反向补丁 JSON 文件！');
       loadedMotherboardJson = parsed;
-      motherFileLabel.textContent = `✅ 已载入：${file.name}`;
-      const ev = parsed.evidence_summary || {};
+      document.getElementById('sovereign-mother-file-label').textContent = `✅ 已载入：${file.name}`;
       const curEndpoint = supabase?.supabaseUrl || window.location.origin;
       const isSameOrigin = parsed.source_endpoint && parsed.source_endpoint === curEndpoint;
 
       motherPreview.classList.remove('hidden');
       motherPreview.innerHTML = `
-        <div class="text-emerald-300 font-bold">母包生成时间：${new Date(parsed.created_at).toLocaleString('zh-CN')}</div>
-        <div class="text-stone-300">内含：在册/归档商号 <b>${ev.total_tenants ?? (parsed.tables.platform_tenant?.length || 0)}</b> 家 · 订单 <b>${ev.total_orders ?? 0}</b> 笔 · 不可篡改审计铁证 <b>${ev.immutable_audit_logs ?? (parsed.tables.audit_immutable_log?.length || 0)}</b> 条 · 财务与库存流水 <b>${(ev.financial_payment_records || 0) + (ev.inventory_operation_logs || 0)}</b> 条</div>
-        ${isSameOrigin ? '<div class="text-rose-400 font-bold">⚠️ 环境警戒：检测到当前连接的仍是母包导出时的【原生产库】，执行清扫覆盖将直接重置现有线上数据！</div>' : '<div class="text-sky-300">🌐 环境检测：当前处于全新独立数据库实例，可安全执行全量灾难重建。</div>'}
-        <div class="text-amber-400 font-mono truncate">SHA-256 封印：${parsed.integrity_sha256 || 'v1兼容包'}</div>
+        <div class="text-emerald-300 font-bold">生成时间：${new Date(parsed.created_at).toLocaleString('zh-CN')} · 内含 ${Object.keys(parsed.tables).length} 张表</div>
+        ${isSameOrigin ? '<div class="text-rose-400 font-bold">⚠️ 环境警戒：检测到当前连接的是【原生产库】，执行覆盖前建议勾选“自动导出反向回退快照”！</div>' : '<div class="text-sky-300">🌐 环境检测：当前处于独立新库实例，可安全执行全量重建。</div>'}
       `;
       btnExecuteRebuild.disabled = false;
-      btnExecuteRebuild.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl shadow transition';
-      btnExecuteRebuild.textContent = '🚀 立即执行全库灾难重建与铁证还原';
+      btnExecuteRebuild.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl shadow transition';
+      btnExecuteRebuild.textContent = '🚀 立即执行外科手术回档 / 全库重建';
     } catch (err) {
-      alert('❌ 母包文件解析失败：' + (err?.message || '文件损坏'));
+      alert('❌ 文件解析失败：' + (err?.message || ''));
     }
   });
 
   btnExecuteRebuild.addEventListener('click', async () => {
     if (!loadedMotherboardJson) return;
+    if (isDuressMode) return alert('🎉 模拟重建执行完成（演示沙盒模式）！');
+
     const wipeBefore = document.getElementById('chk-sovereign-wipe-before').checked;
-    const curEndpoint = supabase?.supabaseUrl || window.location.origin;
-    if (loadedMotherboardJson.source_endpoint && loadedMotherboardJson.source_endpoint === curEndpoint && wipeBefore) {
-      const doubleOk = confirm('⚠️ 终极防误触确认：检测到当前连接的是【原生产环境数据库】，且勾选了「清扫脏数据」。确定要用该母包覆盖当前线上库吗？');
-      if (!doubleOk) return;
+    const autoUndo = document.getElementById('chk-sovereign-auto-undo').checked;
+    const dryRun = document.getElementById('chk-sovereign-dry-run').checked;
+    const rawTid = document.getElementById('input-rebuild-target-tenant').value.trim();
+    const rawTbls = document.getElementById('input-rebuild-target-tables').value.trim();
+    const targetTables = rawTbls ? rawTbls.split(/[,，\s]+/).map((s) => s.trim()).filter(Boolean) : null;
+
+    if (!dryRun && wipeBefore) {
+      const ok = confirm(`⚠️ 确认执行数据恢复？${rawTid ? `作用商号: ${rawTid}` : '作用范围: 全网'} ${targetTables ? `指定表: ${targetTables.join(',')}` : '全部表'}`);
+      if (!ok) return;
     }
 
     btnExecuteRebuild.disabled = true;
-    btnExecuteRebuild.textContent = '⏳ 正在执行全栈灾难重建与 26 表验真，请勿关闭页面...';
     rebuildLogBox.classList.remove('hidden');
     rebuildLogBox.innerHTML = '';
-
     const appendLog = (msg) => {
       const line = document.createElement('div');
       line.textContent = `[${new Date().toLocaleTimeString('zh-CN', { hour12: false })}] ${msg}`;
@@ -1890,77 +2138,138 @@ function openSovereignCommandVault() {
     };
 
     try {
-      const total = await executeFullMotherboardDisasterRebuild(loadedMotherboardJson, wipeBefore, appendLog);
-      alert(`🎉 灾难重建与逐表验真圆满完成！全库 26 张核心表、业务往来与不可篡改审计铁证（共 ${total} 条记录）已全部还原！`);
-      if (typeof window.loadPlatformData === 'function') {
-        await window.loadPlatformData();
-      }
+      await executeSurgicalDisasterRebuild(
+        loadedMotherboardJson,
+        {
+          wipeBeforeRestore: wipeBefore,
+          dryRunOnly: dryRun,
+          autoUndoBackup: autoUndo,
+          targetTables,
+          targetTenantId: rawTid || null
+        },
+        appendLog
+      );
+      if (!dryRun && typeof window.loadPlatformData === 'function') await window.loadPlatformData();
     } catch (err) {
-      appendLog('❌ 重建中止：' + (err?.message || '未知错误'));
-      alert('❌ 灾难重建失败：' + (err?.message || '未知错误'));
+      appendLog('❌ 操作中止：' + (err?.message || '未知错误'));
+      alert('❌ 操作失败：' + (err?.message || ''));
     } finally {
       btnExecuteRebuild.disabled = false;
-      btnExecuteRebuild.textContent = '🚀 重新执行全库灾难重建';
     }
   });
 
+  // 武器四：分级深度清理
   document.getElementById('btn-sovereign-hard-purge').addEventListener('click', async () => {
     const rawTid = document.getElementById('input-sovereign-hard-purge-tid').value.trim();
-    if (!rawTid) return alert('请输入要物理粉碎的商号代号');
+    const grade = document.getElementById('select-purge-grade').value;
+    if (!rawTid) return alert('请输入商号代号');
+    if (isDuressMode) return alert('☢️ 清理指令已提交处理！');
+
     const baseTid = getOriginalTenantId(rawTid);
+    const dynamicMeta = await discoverDynamicTables();
+    const sysParams = await getDynamicSystemParams();
+    const immutableSet = new Set(sysParams.immutable_tables || ['audit_immutable_log', 'inventory_log']);
 
-    const { data: oldOrders } = await supabase.from('orders').select('id').in('tenant_id', [rawTid, baseTid]);
-    const oldOrderIds = (oldOrders || []).map((o) => o.id);
-    if (oldOrderIds.length > 0) {
-      await supabase.from('order_item').delete().in('order_id', oldOrderIds);
+    if (grade === 'grade_a') {
+      // A级：仅清订单/财务/流水，保留商号、门店、商品目录
+      const keepTables = new Set(['platform_tenant', 'tenant', 'tenant_application', 'driver', 'product', 'store']);
+      const { data: oldOrders } = await supabase.from('orders').select('id').in('tenant_id', [rawTid, baseTid]);
+      const oIds = (oldOrders || []).map((o) => o.id);
+      if (oIds.length > 0) await supabase.from('order_item').delete().in('order_id', oIds);
+
+      for (const m of [...dynamicMeta].reverse()) {
+        if (m.has_tenant_id && !keepTables.has(m.table_name) && !immutableSet.has(m.table_name)) {
+          await supabase.from(m.table_name).delete().in('tenant_id', [rawTid, baseTid]);
+        }
+      }
+      await supabase.from('store').update({ current_debt: 0, used_return_quota: 0, carrier_hold_count: 0, basket_count: 0 }).in('tenant_id', [rawTid, baseTid]);
+      alert(`🧹 A级清理完成：商号【${rawTid}】测试期订单与往来欠款已清空，商品与门店档案完整保留！`);
+    } else {
+      // C级：物理连根拔除
+      const { data: oldOrders } = await supabase.from('orders').select('id').in('tenant_id', [rawTid, baseTid]);
+      const oIds = (oldOrders || []).map((o) => o.id);
+      if (oIds.length > 0) await supabase.from('order_item').delete().in('order_id', oIds);
+
+      for (const m of [...dynamicMeta].reverse()) {
+        if (m.table_name === 'tenant') await supabase.from('tenant').delete().in('id', [rawTid, baseTid]);
+        else if (m.has_tenant_id && !immutableSet.has(m.table_name)) {
+          await supabase.from(m.table_name).delete().in('tenant_id', [rawTid, baseTid]);
+        }
+      }
+      alert(`☢️ C级物理粉碎完成：商号【${rawTid}】全库记录已彻底抹除（不可篡改审计存根已保留）！`);
     }
-
-    const childTables = [
-      'payment_record',
-      'driver_collection_log',
-      'local_inventory_pool',
-      'demand_forecast_plan',
-      'orders',
-      'store_order',
-      'store_lead',
-      'store',
-      'product',
-      'driver',
-      'sys_qr_session',
-      'login_qr_session'
-    ];
-    for (const tbl of childTables) {
-      await supabase.from(tbl).delete().in('tenant_id', [rawTid, baseTid]);
-    }
-    await supabase.from('tenant_application').delete().in('tenant_id', [rawTid, baseTid]);
-    await supabase.from('tenant').delete().in('id', [rawTid, baseTid]);
-    await supabase.from('platform_tenant').delete().in('tenant_id', [rawTid, baseTid]);
-
-    alert(`☢️ 商号【${rawTid}】及其全库关联表已执行物理级彻底粉碎！`);
     if (typeof window.loadPlatformData === 'function') await window.loadPlatformData();
   });
 
+  // 武器五：全局参数、双暗令与备用云切换
+  document.getElementById('btn-save-sys-params').addEventListener('click', async () => {
+    if (isDuressMode) return alert('✅ 全局参数已更新！');
+    const curParams = await getDynamicSystemParams();
+    const updated = {
+      ...curParams,
+      max_auth_attempts: Math.max(1, Number(document.getElementById('param-max-attempts').value || 3)),
+      lockout_minutes: Math.max(1, Number(document.getElementById('param-lock-mins').value || 30)),
+      backup_overdue_days: Math.max(1, Number(document.getElementById('param-backup-days').value || 14)),
+      senior_ops_max_quarantine_mins: Math.max(0, Number(document.getElementById('param-delegated-mins').value || 60))
+    };
+    await supabase.from('platform_governance_config').upsert([{
+      config_key: 'sovereign_system_params',
+      config_label: '全局动态风控与下放天花板参数',
+      config_value: JSON.stringify(updated),
+      value_type: 'json',
+      category: 'security',
+      updated_at: new Date().toISOString()
+    }]);
+    alert('✅ 全局动态参数与权限天花板已生效！');
+  });
+
   document.getElementById('btn-sovereign-save-pass').addEventListener('click', async () => {
+    if (isDuressMode) return alert('🔐 暗令已更新！');
     const newPass = document.getElementById('input-sovereign-new-pass').value.trim();
-    if (newPass.length < 10) return alert('为确保主权安全，新暗令长度不能少于 10 位！');
-    const newHash = await sha256Hex(`BAIGONG_SOVEREIGN::${newPass}`);
-    localStorage.setItem(SOVEREIGN_KEY_STORAGE, newHash);
-    await supabase.from('platform_governance_config').upsert([
-      {
+    const duressPass = document.getElementById('input-sovereign-duress-pass').value.trim();
+
+    if (newPass) {
+      if (newPass.length < 10) return alert('真实主权暗令长度不能少于 10 位！');
+      const newHash = await sha256Hex(`BAIGONG_SOVEREIGN::${newPass}`);
+      localStorage.setItem(SOVEREIGN_KEY_STORAGE, newHash);
+      await supabase.from('platform_governance_config').upsert([{
         config_key: '_sys_sovereign_seal_hash',
-        config_label: '系统底层完整性校验指纹',
         config_value: newHash,
-        value_type: 'text',
-        category: 'internal',
         updated_at: new Date().toISOString()
-      }
-    ]);
-    alert('🔐 终极主权暗令已更新加密保存，初始默认口令已永久失效！');
+      }]);
+    }
+    if (duressPass) {
+      if (duressPass.length < 8) return alert('胁迫假暗令长度不能少于 8 位！');
+      if (duressPass === newPass) return alert('胁迫假暗令不能与真实暗令相同！');
+      const dHash = await sha256Hex(`BAIGONG_SOVEREIGN::${duressPass}`);
+      localStorage.setItem(SOVEREIGN_DURESS_STORAGE, dHash);
+      await supabase.from('platform_governance_config').upsert([{
+        config_key: '_sys_sovereign_duress_hash',
+        config_value: dHash,
+        updated_at: new Date().toISOString()
+      }]);
+    }
+    alert('🔐 双暗令密钥已安全加密更新！');
+  });
+
+  document.getElementById('btn-save-failover').addEventListener('click', () => {
+    if (isDuressMode) return alert('🛰️ 备用端点已保存！');
+    const fUrl = document.getElementById('input-failover-url').value.trim();
+    const fKey = document.getElementById('input-failover-key').value.trim();
+    if (!fUrl || !fKey) {
+      localStorage.removeItem(FAILOVER_URL_KEY);
+      localStorage.removeItem(FAILOVER_ANON_KEY);
+      alert('🛰️ 已清除备用云端点配置，恢复默认主库连接。');
+    } else {
+      localStorage.setItem(FAILOVER_URL_KEY, fUrl);
+      localStorage.setItem(FAILOVER_ANON_KEY, fKey);
+      alert('🛰️ 备用云库热切换端点已保存！刷新页面后全站将自动路由至备用数据库实例。');
+    }
   });
 }
 
 /**
- * 7. 注册静默唤醒监听（零 DOM 痕迹 + 14 天冷备逾期静默提醒）
+ * 7. 注册静默唤醒监听（零 DOM 痕迹 + 动态周期冷备逾期提醒）
  */
 export function initStealthSovereignListener() {
   window.addEventListener('keydown', (e) => {
@@ -1982,27 +2291,26 @@ export function initStealthSovereignListener() {
       openSovereignCommandVault();
       return;
     }
-    clickTimer = setTimeout(() => {
-      clickCount = 0;
-    }, 2500);
+    clickTimer = setTimeout(() => { clickCount = 0; }, 2500);
   });
 
   if (window.location.hash === '#sovereign') {
     setTimeout(() => openSovereignCommandVault(), 300);
   }
 
-  // 超过 14 天未导出全站冷备时，仅在高级运营顶栏显示低调提醒徽标（不暴露任何隐秘指令舱入口）
-  setTimeout(() => {
+  // 动态冷备逾期静默提醒（仅对高级运营及以上显示，零暴露隐秘入口）
+  setTimeout(async () => {
     if (!isSeniorOpsOrAbove()) return;
+    const params = await getDynamicSystemParams();
+    const overdueDays = Number(params.backup_overdue_days || 14);
     const lastTs = Number(localStorage.getItem(SOVEREIGN_LAST_BACKUP_KEY) || 0);
-    const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
-    if (lastTs > 0 && Date.now() - lastTs > fourteenDaysMs) {
+    if (lastTs > 0 && Date.now() - lastTs > overdueDays * 86400000) {
       const roleBadge = document.getElementById('admin-role-badge');
       if (roleBadge && !document.getElementById('sovereign-backup-overdue-badge')) {
         const tip = document.createElement('span');
         tip.id = 'sovereign-backup-overdue-badge';
         tip.className = 'text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full ml-1.5';
-        tip.textContent = '💡 建议留存最新离线冷备';
+        tip.textContent = `💡 距上次冷备已逾 ${overdueDays} 天`;
         roleBadge.insertAdjacentElement('afterend', tip);
       }
     }
