@@ -1,12 +1,100 @@
 import { HQService } from '../../services/hqService.js';
 import { hqState, DEFAULT_GLOBAL_POLICY } from './hqState.js';
 
+export const NINE_2FA_ITEMS = [
+  {
+    key: 'twoFaCashOn',
+    domId: 'gp-2fa-cash-on',
+    layer: 'L1 · 资金与价盘安全',
+    code: '2FA-01',
+    title: '大额财务销账 / 坏账冲抵',
+    desc: '财务点清回款销账或核准定损冲减欠款超过阈值时触发动态口令',
+    scope: 'hq.html 账房结算'
+  },
+  {
+    key: 'twoFaPriceOn',
+    domId: 'gp-2fa-price-on',
+    layer: 'L1 · 资金与价盘安全',
+    code: '2FA-02',
+    title: '大幅下调平准基准价',
+    desc: '下调批发或网上基准价幅度超过安全百分比时触发防误调/防恶意砸价核验',
+    scope: 'hq.html ➔ index.html / mall.html'
+  },
+  {
+    key: 'twoFaCreditOn',
+    domId: 'gp-2fa-credit-on',
+    layer: 'L1 · 资金与价盘安全',
+    code: '2FA-03',
+    title: '超授信额度特批放行',
+    desc: '合作门店赊账超出分级授信上限仍需特批发货时强制大当家核身',
+    scope: 'index.html ➔ hq.html / driver.html'
+  },
+  {
+    key: 'twoFaLimitOn',
+    domId: 'gp-2fa-limit-on',
+    layer: 'L1 · 资金与价盘安全',
+    code: '2FA-04',
+    title: '调高合作门店信用额度',
+    desc: '上调单家合作门店赊账信用天花板时触发双因素授权',
+    scope: 'hq.html ➔ index.html'
+  },
+  {
+    key: 'twoFaStockAuditOn',
+    domId: 'gp-2fa-stock-audit-on',
+    layer: 'L2 · 货品与资产边界',
+    code: '2FA-05',
+    title: '库存盘亏核销 / 强行平仓',
+    desc: '仓储盘点出现库存报损核销或强制修正账面库存时触发核验',
+    scope: 'hq.html 仓储台账'
+  },
+  {
+    key: 'twoFaDeleteOn',
+    domId: 'gp-2fa-delete-on',
+    layer: 'L2 · 货品与资产边界',
+    code: '2FA-06',
+    title: '删除在供货品 / 清理档案',
+    desc: '永久下架删除商品或清理往来档案时防止误删或恶意清空',
+    scope: 'hq.html ➔ 全端货架'
+  },
+  {
+    key: 'twoFaPolicyOn',
+    domId: 'gp-2fa-policy-on',
+    layer: 'L3 · 规则与数据主权',
+    code: '2FA-07',
+    title: '改写全局经营策略与风控规则',
+    desc: '修改分级折扣、多载具押金、返利比例及本页 9 项风控开关时触发核验',
+    scope: '全端全局策略生效'
+  },
+  {
+    key: 'twoFaExportOn',
+    domId: 'gp-2fa-export-on',
+    layer: 'L3 · 规则与数据主权',
+    code: '2FA-08',
+    title: '导出全量核心账本与分润表',
+    desc: '批量导出客户档案、价格体系及返利核算 CSV 时防数据批量外泄',
+    scope: 'hq.html 数据主权保护'
+  },
+  {
+    key: 'twoFaEmergencyBrakeOn',
+    domId: 'gp-2fa-emergency-brake-on',
+    layer: 'L4 · 全局应急熔断',
+    code: '2FA-09',
+    title: '🚨 紧急止损拉闸（全盘熔断锁单）',
+    desc: '遭遇异常刷单、行情剧烈波动或突发事故时，一键熔断全网新单入口（拉闸与合闸均需 2FA）',
+    scope: '立即锁定 index.html 与 mall.html 下单'
+  }
+];
+
 export function renderActivePolicyBadgesBar() {
   const bar = document.getElementById('active-policy-badges-bar');
   if (!bar) return;
 
   const gp = hqState.globalPolicy;
   const chips = [];
+
+  if (gp.emergencyBrakeActive) {
+    chips.push('<span class="bg-rose-600 text-white border border-rose-300 px-2.5 py-0.5 rounded-full font-bold animate-pulse">🚨 紧急止损已拉闸（全网新单熔断中）</span>');
+  }
   if (gp.storeTierEnabled !== false) {
     chips.push('<span class="bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 px-2 py-0.5 rounded-full">🟢 门店分级折扣生效中</span>');
   }
@@ -26,6 +114,9 @@ export function renderActivePolicyBadgesBar() {
     chips.push('<span class="bg-rose-500/25 text-rose-200 border border-rose-400/30 px-2 py-0.5 rounded-full">🔥 促销活动进行中</span>');
   }
 
+  const enabled2faCount = NINE_2FA_ITEMS.filter((item) => gp[item.key] !== false && (item.key !== 'twoFaStockAuditOn' && item.key !== 'twoFaPolicyOn' && item.key !== 'twoFaExportOn' ? true : !!gp[item.key])).length;
+  chips.push(`<span class="bg-indigo-500/25 text-indigo-200 border border-indigo-400/30 px-2 py-0.5 rounded-full font-mono">🛡️ 2FA防线 ${enabled2faCount}/9 已布防</span>`);
+
   bar.innerHTML =
     chips.length > 0
       ? chips.join('')
@@ -33,10 +124,19 @@ export function renderActivePolicyBadgesBar() {
 }
 
 export function syncSeasonalPauseBannerUI() {
-  const sp = hqState.globalPolicy.seasonalPause;
+  const gp = hqState.globalPolicy;
+  const sp = gp.seasonalPause;
   const banner = document.getElementById('hq-seasonal-pause-banner');
   const textEl = document.getElementById('hq-seasonal-pause-text');
   if (!banner || !textEl) return;
+
+  if (gp.emergencyBrakeActive) {
+    banner.classList.remove('hidden');
+    banner.className = 'bg-rose-950 text-white border-2 border-rose-500 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-lg';
+    textEl.innerHTML = `🚨 <b>【紧急止损拉闸已生效】</b>：${gp.emergencyBrakeReason || '全盘行情/风控紧急熔断中'}（已锁定 index.html 门店端与 mall.html 天街新单提交，旧单交割与对账照常运行）`;
+    return;
+  }
+
   if (sp && sp.isPaused) {
     banner.classList.remove('hidden');
     textEl.innerText = `🍵 当前处于【暂歇接单】状态：${sp.reason || '农忙/盘点中'}${sp.resumeDate ? `（预计 ${sp.resumeDate} 恢复接单）` : ''}`;
@@ -66,10 +166,14 @@ export function loadGlobalPolicyFromTenant(tenant) {
   const cloudPolicy = tenant?.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
   const gp = {
     ...JSON.parse(JSON.stringify(DEFAULT_GLOBAL_POLICY)),
+    twoFaEmergencyBrakeOn: true,
+    emergencyBrakeActive: false,
+    emergencyBrakeReason: '',
     ...savedLocal,
     ...cloudPolicy
   };
 
+  if (gp.twoFaEmergencyBrakeOn === undefined) gp.twoFaEmergencyBrakeOn = true;
   if (!gp.tier1Name || gp.tier1Name === '平准供货底价') gp.tier1Name = '批发平准基准价';
   if (!gp.tier2Name || gp.tier2Name === '集采惠价') gp.tier2Name = '网上平准零售基准价';
   if (!Array.isArray(gp.storeTiers) || gp.storeTiers.length === 0) gp.storeTiers = JSON.parse(JSON.stringify(DEFAULT_GLOBAL_POLICY.storeTiers));
@@ -132,7 +236,199 @@ function renderCustomPresetsBar() {
   bar.innerHTML = builtInHtml + customHtml;
 }
 
+/**
+ * 增强策略中心弹窗的分层结构：
+ * 1. 修正 Tab 标题为「④ 价盘与9项2FA风控」并展示分层生效作用域图谱
+ * 2. 在风控面板顶部注入「🚨 紧急止损拉闸（全盘熔断控制台）」与完整的 9 项 2FA 校验清单
+ */
+function enhancePolicyModalHierarchy() {
+  const riskTabBtn = document.getElementById('gp-tab-risk');
+  if (riskTabBtn) {
+    riskTabBtn.innerText = '④ 价盘与9项2FA风控';
+  }
+
+  const tabMetaMap = {
+    tiers: {
+      layer: '第一层 · 基础建档与授信层',
+      scope: '实时作用于 index.html（门店算价/授信/免批退货）与 driver.html（送货单打印扩展档案）'
+    },
+    promo: {
+      layer: '第二层 · 丰歉平准与阶梯价层',
+      scope: '实时作用于 index.html / mall.html（阶梯折算与限购）及 hq.html（绩效返利核算）'
+    },
+    carriers: {
+      layer: '第三层 · 循环载具资产层',
+      scope: '实时作用于 driver.html（随车回收按押金抵扣货款）与 index.html（门店载具结存）'
+    },
+    risk: {
+      layer: '第四层 · 价盘基准与 9 项 2FA 高危风控层（含紧急止损拉闸）',
+      scope: '全端硬拦截生效（hq.html 调度台 / index.html 门店端 / driver.html 掌中宝）'
+    },
+    slip: {
+      layer: '第五层 · 凭单落款与印章审计层',
+      scope: '实时印制于 driver.html 蓝牙交割小票与 index.html 电子对账单'
+    }
+  };
+
+  Object.entries(tabMetaMap).forEach(([tabKey, info]) => {
+    const pane = document.getElementById(`gp-pane-${tabKey}`);
+    if (!pane || pane.querySelector('.gp-layer-banner')) return;
+    const banner = document.createElement('div');
+    banner.className = 'gp-layer-banner mb-3 bg-stone-900 text-white px-3.5 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-[11px]';
+    banner.innerHTML = `
+      <span class="font-bold text-amber-300">🧭 ${info.layer}</span>
+      <span class="text-stone-300 font-mono text-[10px]">生效边界：${info.scope}</span>
+    `;
+    pane.insertAdjacentElement('afterbegin', banner);
+  });
+
+  const riskPane = document.getElementById('gp-pane-risk');
+  if (!riskPane) return;
+
+  const gp = hqState.globalPolicy;
+  const isBraked = !!gp.emergencyBrakeActive;
+
+  let brakeBox = document.getElementById('gp-emergency-brake-card');
+  if (!brakeBox) {
+    brakeBox = document.createElement('div');
+    brakeBox.id = 'gp-emergency-brake-card';
+    const layerBanner = riskPane.querySelector('.gp-layer-banner');
+    if (layerBanner) {
+      layerBanner.insertAdjacentElement('afterend', brakeBox);
+    } else {
+      riskPane.insertAdjacentElement('afterbegin', brakeBox);
+    }
+  }
+
+  brakeBox.className = `mb-3 p-3.5 rounded-2xl border-2 ${
+    isBraked ? 'bg-rose-950 text-white border-rose-500 shadow-lg' : 'bg-rose-50/90 text-rose-950 border-rose-300'
+  } space-y-2.5 text-xs`;
+
+  brakeBox.innerHTML = `
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <div class="font-bold text-sm flex items-center gap-1.5">
+          <span>🚨 第 9 项 2FA 核心防线：紧急止损拉闸（全盘熔断锁单）</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full font-mono ${
+            isBraked ? 'bg-rose-500 text-white' : 'bg-emerald-700 text-white'
+          }">${isBraked ? '已拉闸熔断中' : '当前正常营业'}</span>
+        </div>
+        <p class="text-[11px] opacity-85 mt-0.5">
+          遭遇行情剧烈波动、异常恶意刷单或紧急盘点时，可立即拉闸锁死 <b>index.html</b> 与 <b>mall.html</b> 新单入口（旧单交割与对账不受影响）。
+        </p>
+      </div>
+      <button type="button" onclick="window.toggleEmergencyStopBrake()" class="${
+        isBraked
+          ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950'
+          : 'bg-rose-600 hover:bg-rose-700 text-white'
+      } font-bold px-4 py-2 rounded-xl text-xs shadow active:scale-95 transition shrink-0">
+        ${isBraked ? '🟢 2FA 核身合闸恢复接单' : '🚨 立即 2FA 紧急止损拉闸'}
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t ${isBraked ? 'border-rose-800' : 'border-rose-200'}">
+      <label class="flex items-center gap-2 cursor-pointer font-bold">
+        <input type="checkbox" id="gp-2fa-emergency-brake-on" ${gp.twoFaEmergencyBrakeOn !== false ? 'checked' : ''} class="w-4 h-4 rounded text-rose-600">
+        <span>拉闸 / 合闸操作强制启用 2FA 动态口令核验</span>
+      </label>
+      <input type="text" id="gp-emergency-brake-reason" value="${gp.emergencyBrakeReason || ''}" placeholder="拉闸公示说明（如：行情波动调价中，暂缓接新单）" class="w-full ${
+        isBraked ? 'bg-rose-900 border-rose-700 text-white placeholder-rose-300' : 'bg-white border-rose-200 text-stone-800'
+      } border rounded-xl px-2.5 py-1 text-[11px] outline-none">
+    </div>
+  `;
+
+  // 注入 9 项 2FA 清晰分层对照总览表（方便大当家一眼核对全部 9 项防线状态）
+  let matrixBox = document.getElementById('gp-nine-2fa-matrix-summary');
+  if (!matrixBox) {
+    matrixBox = document.createElement('div');
+    matrixBox.id = 'gp-nine-2fa-matrix-summary';
+    matrixBox.className = 'mt-3 bg-indigo-50/60 border border-indigo-200 p-3 rounded-2xl space-y-2 text-[11px]';
+    riskPane.appendChild(matrixBox);
+  }
+
+  matrixBox.innerHTML = `
+    <div class="flex items-center justify-between border-b border-indigo-200/70 pb-1.5">
+      <b class="text-indigo-950">🛡️ 商号 9 项 2FA 双因素高危风控防线总览（保存即全端生效）</b>
+      <span class="text-[10px] font-mono text-indigo-700">L1资金价盘 · L2货权资产 · L3数据规则 · L4应急熔断</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-1.5">
+      ${NINE_2FA_ITEMS.map((item) => {
+        const isChecked =
+          item.key === 'twoFaStockAuditOn' || item.key === 'twoFaPolicyOn' || item.key === 'twoFaExportOn'
+            ? !!gp[item.key]
+            : gp[item.key] !== false;
+        return `
+          <div class="bg-white border ${isChecked ? 'border-emerald-300' : 'border-stone-200'} p-2 rounded-xl flex flex-col justify-between gap-1">
+            <div class="flex items-center justify-between">
+              <span class="font-mono text-[10px] font-bold text-indigo-800">${item.code} · ${item.layer.split('·')[0].trim()}</span>
+              <span class="text-[10px] font-bold ${isChecked ? 'text-emerald-700' : 'text-stone-400'}">${isChecked ? '● 2FA已布防' : '○ 未开启'}</span>
+            </div>
+            <b class="text-stone-900 text-[11px]">${item.title}</b>
+            <span class="text-[10px] text-stone-500 font-mono">作用端：${item.scope}</span>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
 export function initPolicyBindings(callbacks) {
+  /**
+   * 第 9 项 2FA：紧急止损拉闸 / 合闸恢复（真实写入云端 custom_settings 并触发全端拦截）
+   */
+  window.toggleEmergencyStopBrake = async function () {
+    const nextState = !hqState.globalPolicy.emergencyBrakeActive;
+    const reasonInput = document.getElementById('gp-emergency-brake-reason')?.value.trim();
+    const reason =
+      reasonInput ||
+      (nextState
+        ? prompt('请输入【紧急止损拉闸】原因（将实时公示给合作门店与天街买家）：', '行情波动平准调价中，紧急暂停新单接入') || '紧急止损熔断中'
+        : '');
+
+    if (nextState && !reason) return;
+
+    const executeBrakeToggle = async () => {
+      hqState.globalPolicy.emergencyBrakeActive = nextState;
+      hqState.globalPolicy.emergencyBrakeReason = nextState ? reason : '';
+      const brakeCheck = document.getElementById('gp-2fa-emergency-brake-on');
+      if (brakeCheck) hqState.globalPolicy.twoFaEmergencyBrakeOn = brakeCheck.checked;
+
+      localStorage.setItem('hq_global_policy_' + hqState.currentAgent, JSON.stringify(hqState.globalPolicy));
+      try {
+        await HQService.updateTenantWithVerify(hqState.currentAgent, { custom_settings: hqState.globalPolicy });
+        if (hqState.currentTenantData) hqState.currentTenantData.custom_settings = hqState.globalPolicy;
+      } catch (err) {
+        console.warn('云端同步拉闸状态提示:', err.message);
+      }
+
+      renderActivePolicyBadgesBar();
+      syncSeasonalPauseBannerUI();
+      enhancePolicyModalHierarchy();
+      callbacks?.onPolicyUpdated?.();
+
+      alert(
+        nextState
+          ? `🚨 【紧急止损拉闸已生效】！\n原因：${reason}\n\n已立即熔断 index.html（合作门店端）与 mall.html（百工天街）的新订单提交入口，旧单交割与对账仍可正常进行。`
+          : '🟢 【紧急止损已合闸解除】！全网门店订货与天街专柜已恢复正常接单。'
+      );
+    };
+
+    const need2fa =
+      document.getElementById('gp-2fa-emergency-brake-on')?.checked ??
+      hqState.globalPolicy.twoFaEmergencyBrakeOn !== false;
+
+    if (need2fa && typeof window.trigger2FAAction === 'function') {
+      window.trigger2FAAction(
+        nextState
+          ? '🚨 执行【第9项2FA · 紧急止损拉闸】将立即锁定全网新单入口，请输入手机验证器 6 位动态码授权：'
+          : '🟢 解除【紧急止损拉闸】恢复全网接单，请输入手机验证器 6 位动态码授权：',
+        executeBrakeToggle
+      );
+    } else {
+      await executeBrakeToggle();
+    }
+  };
+
   window.openSeasonalPauseModal = function () {
     const sp = hqState.globalPolicy.seasonalPause || { isPaused: false, reason: '产区农忙采收集中加工中', resumeDate: '' };
     document.getElementById('sp-is-paused').checked = !!sp.isPaused;
@@ -369,6 +665,7 @@ export function initPolicyBindings(callbacks) {
     document.getElementById('gp-slip-footer-note').value = gp.slipFooterNote || '';
     document.getElementById('gp-slip-stamp-text').value = gp.slipStampText || '调度专用章';
 
+    enhancePolicyModalHierarchy();
     window.switchPolicyTab(defaultTab);
     window.openModal('modal-global-policy');
   };
@@ -414,6 +711,9 @@ export function initPolicyBindings(callbacks) {
         twoFaStockAuditOn: false,
         twoFaPolicyOn: false,
         twoFaExportOn: false,
+        twoFaEmergencyBrakeOn: true,
+        emergencyBrakeActive: false,
+        emergencyBrakeReason: '',
         defaultMinStock: 15,
         expiryWarnDays: 7,
         allowStoreReturn: true,
@@ -460,6 +760,9 @@ export function initPolicyBindings(callbacks) {
         twoFaStockAuditOn: true,
         twoFaPolicyOn: true,
         twoFaExportOn: false,
+        twoFaEmergencyBrakeOn: true,
+        emergencyBrakeActive: false,
+        emergencyBrakeReason: '',
         defaultMinStock: 30,
         expiryWarnDays: 45,
         allowStoreReturn: true,
@@ -500,6 +803,9 @@ export function initPolicyBindings(callbacks) {
         twoFaStockAuditOn: false,
         twoFaPolicyOn: false,
         twoFaExportOn: false,
+        twoFaEmergencyBrakeOn: true,
+        emergencyBrakeActive: false,
+        emergencyBrakeReason: '',
         defaultMinStock: 20,
         expiryWarnDays: 0,
         allowStoreReturn: true,
@@ -545,6 +851,9 @@ export function initPolicyBindings(callbacks) {
         twoFaStockAuditOn: false,
         twoFaPolicyOn: false,
         twoFaExportOn: false,
+        twoFaEmergencyBrakeOn: true,
+        emergencyBrakeActive: false,
+        emergencyBrakeReason: '',
         defaultMinStock: 50,
         expiryWarnDays: 15,
         allowStoreReturn: false,
@@ -613,6 +922,9 @@ export function initPolicyBindings(callbacks) {
         if (name) carriers.push({ name, deposit: parseFloat(row.querySelector('.gp-c-deposit')?.value) || 15 });
       });
 
+      const brakeCheckEl = document.getElementById('gp-2fa-emergency-brake-on');
+      const brakeReasonEl = document.getElementById('gp-emergency-brake-reason');
+
       const nextPolicy = {
         ...hqState.globalPolicy,
         storeTierEnabled: document.getElementById('gp-store-tier-enabled').checked,
@@ -640,6 +952,8 @@ export function initPolicyBindings(callbacks) {
         twoFaStockAuditOn: document.getElementById('gp-2fa-stock-audit-on').checked,
         twoFaPolicyOn: document.getElementById('gp-2fa-policy-on').checked,
         twoFaExportOn: document.getElementById('gp-2fa-export-on').checked,
+        twoFaEmergencyBrakeOn: brakeCheckEl ? brakeCheckEl.checked : hqState.globalPolicy.twoFaEmergencyBrakeOn !== false,
+        emergencyBrakeReason: brakeReasonEl ? brakeReasonEl.value.trim() : hqState.globalPolicy.emergencyBrakeReason || '',
         tier1Name: document.getElementById('gp-tier1-name').value.trim() || '批发平准基准价',
         tier2Name: document.getElementById('gp-tier2-name').value.trim() || '网上平准零售基准价',
         defaultMinStock: parseInt(document.getElementById('gp-default-min-stock').value) || 10,
@@ -662,12 +976,12 @@ export function initPolicyBindings(callbacks) {
 
       loadGlobalPolicyFromTenant(hqState.currentTenantData);
       callbacks?.onPolicyUpdated?.();
-      alert('🎉 商号全局经营策略已保存并同步全端生效！');
+      alert('🎉 商号全局经营策略（含 9 项 2FA 风控与紧急拉闸配置）已保存并同步全端生效！');
       window.closeModal('modal-global-policy');
     };
 
     if (hqState.globalPolicy.twoFaPolicyOn) {
-      window.trigger2FAAction('修改全局价格、返利与风控策略，请输入手机验证器 6 位动态口令授权：', execSave);
+      window.trigger2FAAction('修改全局价格、返利与 9 项风控策略，请输入手机验证器 6 位动态口令授权：', execSave);
     } else {
       await execSave();
     }
