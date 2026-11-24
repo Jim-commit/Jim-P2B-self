@@ -57,7 +57,7 @@
     <div id="hq-membership-grace-banner" class="hidden"></div>
     
     <!-- 顶栏：主体招牌置顶 + 账目归己 + 经营诊断助手 -->
-    <header class="bg-gradient-to-r from-[#1b4332] via-[#1f4d3a] to-[#143628] text-white p-4 sm:p-5 rounded-3xl shadow-lg space-y-3 border border-emerald-700/40">
+    <header id="hq-main-header" class="bg-gradient-to-r from-[#1b4332] via-[#1f4d3a] to-[#143628] text-white p-4 sm:p-5 rounded-3xl shadow-lg space-y-3 border border-emerald-700/40">
       
       <div class="flex flex-wrap justify-between items-start sm:items-center gap-3">
         <div class="space-y-1">
@@ -83,29 +83,33 @@
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2 shrink-0">
-          <button type="button" onclick="window.openHqGovernanceModal('membership')" class="owner-only-guard bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/40 transition active:scale-95 flex items-center gap-1" title="自主选档续约、申请宽待延期、查看合规申诉与物物/劳务置换">
-            <span>🎖️</span> 会员契约 / 申诉 / 置换
-          </button>
-          <button type="button" id="btn-seasonal-pause" onclick="window.openSeasonalPauseModal()" class="owner-only-guard bg-white/10 hover:bg-white/20 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/30 transition active:scale-95 flex items-center gap-1">
-            <span>🍵</span> 农忙暂歇设置
-          </button>
-          <button type="button" onclick="window.exportFullTenantBackup()" class="owner-only-guard bg-white/10 hover:bg-white/20 text-emerald-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/30 transition active:scale-95 flex items-center gap-1" title="一键打包下载本店全套货品、门店与单据账本备份">
-            <span>💾</span> 备份自家账本
-          </button>
-          <button type="button" onclick="window.openContextualHelpModal()" class="bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/40 transition active:scale-95 flex items-center gap-1" title="智能诊断当前工作台待办与操作指引">
-            <span>💡</span> 经营诊断
-          </button>
-          <button onclick="window.openNotificationDrawer()" class="relative bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/40 transition active:scale-95 flex items-center gap-1">
-            <span>📬</span> 待办提醒
-            <span id="hq-notif-badge" class="hidden bg-rose-600 text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full">0</span>
-          </button>
-          <button onclick="window.loadHQData()" class="bg-white/95 hover:bg-white text-emerald-950 text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-xs transition active:scale-95">
-            ↻ 刷新
-          </button>
-          <button onclick="window.logoutHQ()" class="bg-rose-950/70 hover:bg-rose-800 text-rose-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-rose-700/50 transition active:scale-95">
-            退出
-          </button>
+        <div id="hq-header-top-actions" class="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full lg:w-auto">
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" onclick="window.openHqGovernanceModal('membership')" class="owner-only-guard bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/40 transition active:scale-95 flex items-center gap-1" title="自主选档续约、申请宽待延期、查看合规申诉与物物/劳务置换">
+              <span>🎖️</span> 会员契约 / 申诉 / 置换
+            </button>
+            <button type="button" id="btn-seasonal-pause" onclick="window.openSeasonalPauseModal()" class="owner-only-guard bg-white/10 hover:bg-white/20 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/30 transition active:scale-95 flex items-center gap-1">
+              <span>⏸️</span> 盘点 / 休市暂歇
+            </button>
+            <button type="button" onclick="window.exportFullTenantBackup()" class="owner-only-guard bg-white/10 hover:bg-white/20 text-emerald-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/30 transition active:scale-95 flex items-center gap-1" title="一键打包下载本店全套货品、门店与单据账本备份">
+              <span>💾</span> 备份自家账本
+            </button>
+            <button type="button" onclick="window.openContextualHelpModal()" class="bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/40 transition active:scale-95 flex items-center gap-1" title="智能诊断当前工作台待办与操作指引">
+              <span>💡</span> 经营诊断
+            </button>
+          </div>
+          <div class="flex items-center gap-2 ml-auto sm:ml-2">
+            <button onclick="window.openNotificationDrawer()" class="relative bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/40 transition active:scale-95 flex items-center gap-1">
+              <span>📬</span> 待办提醒
+              <span id="hq-notif-badge" class="hidden bg-rose-600 text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full">0</span>
+            </button>
+            <button onclick="window.loadHQData()" class="bg-white/95 hover:bg-white text-emerald-950 text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-xs transition active:scale-95">
+              ↻ 刷新
+            </button>
+            <button onclick="window.logoutHQ()" class="bg-rose-950/70 hover:bg-rose-800 text-rose-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-rose-700/50 transition active:scale-95">
+              退出
+            </button>
+          </div>
         </div>
       </div>
 
@@ -121,8 +125,8 @@
       <!-- 第三层：高频业务工具 vs 安全维护按钮分区 -->
       <div class="flex flex-wrap justify-between items-center gap-2 pt-0.5">
         <div class="flex flex-wrap items-center gap-2">
-          <button onclick="window.openPlanAggregateModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-amber-200 text-xs px-3.5 py-1.5 rounded-xl font-bold border border-amber-400/40 active:scale-95 transition flex items-center gap-1">
-            <span>🌾</span> 采收排产总单
+          <button id="btn-top-plan-agg" onclick="window.openPlanAggregateModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-amber-200 text-xs px-3.5 py-1.5 rounded-xl font-bold border border-amber-400/40 active:scale-95 transition flex items-center gap-1">
+            <span>📋</span> 用度备货总单
           </button>
           <button id="btn-top-statement" onclick="window.openStoreStatementModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-100 text-xs px-3.5 py-1.5 rounded-xl font-bold border border-emerald-400/40 active:scale-95 transition flex items-center gap-1">
             <span>🧾</span> 门店账期对账
@@ -131,7 +135,7 @@
             <span>📲</span> 合作名片码
           </button>
           <button id="btn-top-counter" onclick="window.openCounterProfileModal()" class="bg-[#143628]/80 hover:bg-[#0e271d] text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/30 active:scale-95 transition flex items-center gap-1">
-            <span>🎥</span> 产区实拍与外链
+            <span>🏢</span> 企业实拍与外链
           </button>
           <button id="btn-webhook-status" onclick="window.openWebhookModal()" class="bg-[#143628]/80 hover:bg-[#0e271d] text-emerald-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-500/30 active:scale-95 transition flex items-center gap-1">
             <span>🔔</span> 报单群通知
@@ -162,8 +166,8 @@
     <!-- 农忙/盘点暂歇接单状态提示条 -->
     <div id="hq-seasonal-pause-banner" class="hidden bg-amber-100 border border-amber-400 text-amber-950 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs">
       <div class="flex items-center gap-2">
-        <span class="text-base">🍵</span>
-        <span id="hq-seasonal-pause-text">当前已开启【农忙/盘点暂歇接单】告示，合作门店与天街端已同步展示。</span>
+        <span class="text-base">⏸️</span>
+        <span id="hq-seasonal-pause-text">当前已开启【盘点/休市暂歇接单】告示，合作门店与天街端已同步展示。</span>
       </div>
       <button type="button" onclick="window.openSeasonalPauseModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold px-3 py-1 rounded-xl text-[11px]">
         恢复正常接单 / 修改告示
@@ -184,15 +188,15 @@
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div onclick="window.openGlobalPolicyModal('tiers')" class="cursor-pointer bg-stone-50 hover:bg-emerald-50/70 border border-stone-200 p-3 rounded-2xl transition">
           <b class="text-emerald-950 block">第一步：定好自家的经营规矩</b>
-          <span class="text-[11px] text-stone-500 mt-0.5 block">设置合作门店分级折扣、丰收助农特惠、网上阶梯价与风控 ➔</span>
+          <span class="text-[11px] text-stone-500 mt-0.5 block">设置合作门店分级折扣、阶段平准特惠、网上阶梯价与风控 ➔</span>
         </div>
         <div onclick="window.switchTab('products'); window.openAddProductModal();" class="cursor-pointer bg-stone-50 hover:bg-emerald-50/70 border border-stone-200 p-3 rounded-2xl transition">
           <b class="text-emerald-950 block">第二步：上架现货好货</b>
           <span class="text-[11px] text-stone-500 mt-0.5 block">支持仓管先录实物暂存草稿 ➔ 掌柜定好价格并合规上架 ➔</span>
         </div>
         <div onclick="window.openPromoQrModal()" class="cursor-pointer bg-stone-50 hover:bg-emerald-50/70 border border-stone-200 p-3 rounded-2xl transition">
-          <b class="text-emerald-950 block">第三步：发名片码拉合作店</b>
-          <span class="text-[11px] text-stone-500 mt-0.5 block">生成专属二维码发给周边小店和食堂，扫码就能建立供货关系 ➔</span>
+          <b class="text-emerald-950 block">第三步：发名片码拉合作客户</b>
+          <span class="text-[11px] text-stone-500 mt-0.5 block">生成专属二维码发给周边门店和集采单位，扫码就能建立供货关系 ➔</span>
         </div>
       </div>
     </div>
@@ -436,8 +440,8 @@
             <p class="text-[11px] text-stone-400">支持门店受单配发、主动铺底、产销对冲与余缺互调顺路捎带</p>
           </div>
           <div class="flex flex-wrap gap-1.5">
-            <button onclick="window.openPlanAggregateModal()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 flex items-center gap-1">
-              <span>🌾</span> 采收排产汇总单
+            <button id="btn-settle-plan-agg" onclick="window.openPlanAggregateModal()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 flex items-center gap-1">
+              <span>📋</span> 用度备货汇总单
             </button>
             <button onclick="window.exportOrdersToCSV()" class="price-col-guard bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 flex items-center gap-1">
               <span>📥</span> 导出往来对账单 (CSV)
@@ -634,7 +638,7 @@
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
-          <h3 class="font-bold text-sm text-stone-900">🍵 农忙采收 / 盘点暂歇接单设置</h3>
+          <h3 class="font-bold text-sm text-stone-900">⏸️ 盘点 / 休市暂歇接单设置</h3>
           <p class="text-[10px] text-stone-400">开启后合作门店订货台与天街专柜将同步亮出暖心告示，避免误下单</p>
         </div>
         <button onclick="window.closeModal('modal-seasonal-pause')" class="text-stone-400 text-lg">✕</button>
@@ -646,7 +650,7 @@
         </label>
         <div>
           <label class="block text-stone-600 font-bold mb-1">暂歇事由说明：</label>
-          <input type="text" id="sp-reason" placeholder="如：产区秋收采摘集中加工中 / 仓库年度盘点" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+          <input type="text" id="sp-reason" placeholder="如：仓库年度盘点清仓 / 产区集中加工整理" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
         </div>
         <div>
           <label class="block text-stone-600 font-bold mb-1">预计恢复接单日期：</label>
@@ -776,9 +780,9 @@
 
       <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 bg-stone-100 p-1 rounded-2xl font-bold text-center text-[11px]">
         <button type="button" onclick="window.switchPolicyTab('tiers')" id="gp-tab-tiers" class="py-2 rounded-xl bg-[#1b4332] text-white transition">① 门店分级与档案</button>
-        <button type="button" onclick="window.switchPolicyTab('promo')" id="gp-tab-promo" class="py-2 rounded-xl text-stone-600 transition">② 丰歉平准与阶梯价</button>
+        <button type="button" onclick="window.switchPolicyTab('promo')" id="gp-tab-promo" class="py-2 rounded-xl text-stone-600 transition">② 阶段调剂与阶梯价</button>
         <button type="button" onclick="window.switchPolicyTab('carriers')" id="gp-tab-carriers" class="py-2 rounded-xl text-stone-600 transition">③ 多载具与押金</button>
-        <button type="button" onclick="window.switchPolicyTab('risk')" id="gp-tab-risk" class="py-2 rounded-xl text-stone-600 transition">④ 价盘与8项2FA风控</button>
+        <button type="button" onclick="window.switchPolicyTab('risk')" id="gp-tab-risk" class="py-2 rounded-xl text-stone-600 transition">④ 价盘与9项2FA风控</button>
         <button type="button" onclick="window.switchPolicyTab('slip')" id="gp-tab-slip" class="py-2 rounded-xl text-stone-600 transition">⑤ 凭单落款与印章</button>
       </div>
 
@@ -829,8 +833,8 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <label class="flex items-center justify-between bg-white p-2.5 rounded-xl border border-amber-200 cursor-pointer">
               <div>
-                <b class="text-emerald-950 block">🌾 丰产助农/助工平准特惠</b>
-                <span class="text-[10px] text-stone-500">启用后在专柜亮出“丰收平准定向认领”标识</span>
+                <b class="text-emerald-950 block" id="gp-aid-title-lbl">📦 阶段平准集采认领特惠</b>
+                <span class="text-[10px] text-stone-500">启用后在专柜亮出“平准定向认领”标识</span>
               </div>
               <input type="checkbox" id="gp-harvest-aid-on" class="w-4 h-4 rounded text-emerald-800">
             </label>
@@ -1049,23 +1053,23 @@
     </div>
   </div>
 
-  <!-- 产区水土档案与外部平台外链矩阵弹窗 -->
+  <!-- 产区/企业水土档案与外部平台外链矩阵弹窗 -->
   <div id="modal-counter-profile" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
-          <h3 class="font-bold text-sm text-stone-900">🎥 产区水土档案与外部平台外链矩阵</h3>
+          <h3 id="counter-modal-title" class="font-bold text-sm text-stone-900">🏢 企业/产区档案与外部平台外链矩阵</h3>
           <p class="text-[10px] text-stone-400">自动同步展示于百工天街「数字专柜」与合作名片页</p>
         </div>
         <button onclick="window.closeModal('modal-counter-profile')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="space-y-2.5">
         <div>
-          <label class="block text-stone-700 font-bold mb-1">合作社水土禀赋 / 工坊匠心工艺简介：</label>
-          <textarea id="counter-origin-desc-input" rows="3" placeholder="如：村社合作社自有生态种植基地500亩，顺应节气采收，支持合作门店自提..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none focus:border-emerald-700"></textarea>
+          <label class="block text-stone-700 font-bold mb-1">商号实力 / 产区禀赋 / 匠心工艺简介：</label>
+          <textarea id="counter-origin-desc-input" rows="3" placeholder="如：源头直供仓储中心，自有标准仓库与配送车队，支持合作客户批量集采与周期对账..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none focus:border-emerald-700"></textarea>
         </div>
         <div>
-          <label class="block text-stone-700 font-bold mb-1">田间/车间实拍视频链接 (视频号/抖音/快手)：</label>
+          <label class="block text-stone-700 font-bold mb-1">仓库/车间/田间实拍视频链接 (视频号/抖音/快手)：</label>
           <input type="url" id="counter-media-url-input" placeholder="https://..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 font-mono text-xs outline-none">
         </div>
         <div>
@@ -1075,11 +1079,11 @@
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-stone-700 font-bold mb-1">微信公众号名称/链接：</label>
-            <input type="text" id="counter-wechat-oa-input" placeholder="如：伏牛山生态合作社" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+            <input type="text" id="counter-wechat-oa-input" placeholder="如：乐购供应链服务中心" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
           </div>
           <div>
             <label class="block text-stone-700 font-bold mb-1">专属客服微信号：</label>
-            <input type="text" id="counter-service-wx-input" placeholder="如：funiushan888" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 font-mono text-xs outline-none">
+            <input type="text" id="counter-service-wx-input" placeholder="如：legou_service88" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 font-mono text-xs outline-none">
           </div>
         </div>
       </div>
@@ -1186,7 +1190,7 @@
         </div>
         <div>
           <label id="stock-ops-source-label" class="block text-stone-600 font-bold mb-1">来源产区 / 去向单位 *：</label>
-          <input type="text" id="stock-ops-source" placeholder="例：伏牛山种植合作社一组 / 加工车间一班" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none">
+          <input type="text" id="stock-ops-source" placeholder="例：源头供应基地一组 / 加工车间一班" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none">
         </div>
         <div>
           <label class="block text-stone-600 font-bold mb-1">操作经手人：</label>
@@ -1194,7 +1198,7 @@
         </div>
         <div>
           <label class="block text-stone-600 font-bold mb-1">事由与批次备注：</label>
-          <input type="text" id="stock-ops-remark" placeholder="例：202611批次田间采收/工坊完工入库" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none">
+          <input type="text" id="stock-ops-remark" placeholder="例：202611批次到货验收入库" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none">
         </div>
       </div>
       <button onclick="window.submitStockOperation()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow active:scale-95 transition">
@@ -1368,7 +1372,7 @@
         </div>
         <div>
           <label class="block text-stone-600 font-bold mb-1">专案约定备忘：</label>
-          <input type="text" id="policy-custom-terms" placeholder="如：秋收后统对 / 农特产代销货款冲抵" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+          <input type="text" id="policy-custom-terms" placeholder="如：季度末统对 / 代销货款冲抵" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
         </div>
       </div>
       <div class="flex gap-2 pt-2 border-t border-stone-100">
@@ -1428,7 +1432,7 @@
         </div>
         <div>
           <label class="font-bold text-stone-700 text-[11px] block mb-1">自由细分类</label>
-          <input type="text" id="prod-cat-tertiary" placeholder="如：农机耕作 / 压榨油" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 outline-none font-medium text-xs">
+          <input type="text" id="prod-cat-tertiary" placeholder="如：五金配件 / 压榨油" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-1.5 outline-none font-medium text-xs">
         </div>
       </div>
 
@@ -1462,7 +1466,7 @@
           <span class="text-amber-900 font-bold">行业快捷模板:</span>
           <button type="button" onclick="window.applyIndustryAttrTemplate('food')" class="px-2 py-0.5 bg-white hover:bg-amber-100 border border-amber-300 rounded-lg text-amber-950 font-bold transition">粮油/食品</button>
           <button type="button" onclick="window.applyIndustryAttrTemplate('hardware')" class="px-2 py-0.5 bg-white hover:bg-amber-100 border border-amber-300 rounded-lg text-amber-950 font-bold transition">五金/建材</button>
-          <button type="button" onclick="window.applyIndustryAttrTemplate('service')" class="px-2 py-0.5 bg-white hover:bg-amber-100 border border-amber-300 rounded-lg text-amber-950 font-bold transition">维修/农机服务</button>
+          <button type="button" onclick="window.applyIndustryAttrTemplate('service')" class="px-2 py-0.5 bg-white hover:bg-amber-100 border border-amber-300 rounded-lg text-amber-950 font-bold transition">维修/技术服务</button>
           <button type="button" onclick="window.applyIndustryAttrTemplate('agri')" class="px-2 py-0.5 bg-white hover:bg-amber-100 border border-amber-300 rounded-lg text-amber-950 font-bold transition">农资/化工</button>
         </div>
         <div id="custom-attrs-container" class="space-y-1.5"></div>
@@ -1509,7 +1513,7 @@
         </div>
         <div>
           <label class="block text-[11px] text-stone-600 mb-1">产地 / 服务范围：</label>
-          <input type="text" id="prod-origin-place" placeholder="源头合作社/工坊原产" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2 py-1.5 text-xs outline-none">
+          <input type="text" id="prod-origin-place" placeholder="源头仓库/工坊直供" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2 py-1.5 text-xs outline-none">
         </div>
       </div>
 
@@ -1571,7 +1575,7 @@
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
           <h3 class="font-bold text-sm text-stone-900">📥 批量导入货品 (Excel / CSV)</h3>
-          <p class="text-[10px] text-stone-400">适合合作社与工坊一次性批量上架几十款现货</p>
+          <p class="text-[10px] text-stone-400">适合合作社、工坊与商行一次性批量上架几十款现货</p>
         </div>
         <button onclick="window.closeModal('modal-bulk-import')" class="text-stone-400 text-lg">✕</button>
       </div>
@@ -1699,7 +1703,7 @@
             <select id="stmt-pay-method" class="w-full bg-white border border-emerald-300 rounded-xl px-2 py-1.5 font-bold outline-none">
               <option value="银行公户/微信转账">🏦 银行公户 / 微信转账</option>
               <option value="财务现收现钞">💵 财务现收现钞</option>
-              <option value="农特产代销产销对冲">🌾 农特产代销 / 产销对冲</option>
+              <option value="代销货物/产销对冲">🔄 代销货物 / 产销对冲</option>
               <option value="进货阶梯返利冲抵">🎁 进货阶梯返利冲抵</option>
             </select>
           </div>
@@ -1715,27 +1719,27 @@
     </div>
   </div>
 
-  <!-- 源头采收 / 工坊排产汇总单弹窗 -->
+  <!-- 源头采收 / 工坊排产 / 用度备货汇总单弹窗 -->
   <div id="modal-plan-aggregate" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
         <div>
-          <h3 class="font-bold text-sm text-stone-900">🌾 源头采收 / 工坊排产汇总单</h3>
-          <p class="text-[10px] text-stone-400">自动聚合各合作门店提报的真实用度计划总量，看着订单安排生产</p>
+          <h3 id="plan-agg-modal-title" class="font-bold text-sm text-stone-900">📋 真实用度备货 / 排产汇总单</h3>
+          <p class="text-[10px] text-stone-400">自动聚合各合作客户提报的真实用度计划总量，按需备货排产</p>
         </div>
         <button onclick="window.closeModal('modal-plan-aggregate')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div class="bg-emerald-50/80 p-3 rounded-2xl border border-emerald-200 flex justify-between items-center">
         <div>
-          <b class="text-emerald-950 block" id="plan-agg-tenant-name">产销排产汇总单</b>
+          <b class="text-emerald-950 block" id="plan-agg-tenant-name">用度备货汇总单</b>
           <span class="text-[10px] text-emerald-800 font-mono" id="plan-agg-summary-meta">--</span>
         </div>
         <span class="bg-[#1b4332] text-amber-300 px-2.5 py-1 rounded-xl font-mono font-bold" id="plan-agg-count">0 份计划</span>
       </div>
       <div id="plan-agg-items-container" class="divide-y divide-stone-100 border border-stone-200 rounded-2xl px-3 py-1 bg-white max-h-72 overflow-y-auto no-scrollbar"></div>
       <div class="flex gap-2 pt-2 border-t border-stone-100">
-        <button onclick="window.copyPlanAggregateText()" class="flex-1 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold py-2.5 rounded-xl shadow transition">📋 复制总单发产区/工坊群</button>
-        <button onclick="window.exportPlanAggregateCSV()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">📥 导出排产表 (CSV)</button>
+        <button onclick="window.copyPlanAggregateText()" class="flex-1 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold py-2.5 rounded-xl shadow transition">📋 复制总单发仓储/产线群</button>
+        <button onclick="window.exportPlanAggregateCSV()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2.5 rounded-xl shadow transition">📥 导出备货排产表 (CSV)</button>
       </div>
     </div>
   </div>
@@ -1870,7 +1874,7 @@
 
       <form id="pane-login-pwd" onsubmit="window.verifyHQAuthPwd(event)" class="space-y-3 text-xs">
         <div>
-          <label class="block text-stone-600 font-medium mb-1">商号代号 (如 HZ- / GC- / GR- 开头) *：</label>
+          <label class="block text-stone-600 font-medium mb-1">商号代号 (如 HZ- / GC- / GR- / SH_ 开头) *：</label>
           <input type="text" id="hq-login-tenant" required placeholder="输入专属商号代号" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-mono uppercase font-bold text-stone-900 focus:border-emerald-700">
         </div>
         <div>
@@ -2063,7 +2067,7 @@
     initHqGovernanceExtensionBindings();
     await initHQController();
     await loadAndRenderHqGovernanceExtension();
-    initWechatBrowserGuide({ appName: '百工源头合作社工作台' });
+    initWechatBrowserGuide({ appName: '百工源头直供调度台' });
   </script>
 </body>
 </html>
