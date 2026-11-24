@@ -474,6 +474,14 @@ export function initCartSlipBindings(callbacks) {
     const returnTotal = returnItems.reduce((a, b) => a + b.price * b.qty, 0);
     const netTotal = Math.max(0, orderTotal - returnTotal);
 
+    // 动作级精准熔断检查：合作门店端下单 (store_write) + 大额限流保护
+    if (
+      window.checkBusinessCircuit &&
+      !(await window.checkBusinessCircuit('store_write', storeState.currentAgent, { amount: netTotal }))
+    ) {
+      return;
+    }
+
     const btn = document.getElementById('btn-slip-confirm');
     if (btn) {
       btn.disabled = true;
@@ -567,6 +575,11 @@ export function initCartSlipBindings(callbacks) {
   };
 
   window.verifyMallPickupPin = async function (orderId, orderNoSeed) {
+    // 动作级精准熔断检查：门店核销自提 (store_write)
+    if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('store_write', storeState.currentAgent))) {
+      return;
+    }
+
     const expectedPin = computePickupPin({ id: orderId, order_no: orderNoSeed });
     const inputPin = prompt('请输入街坊出示的 4 位数字提货核销码：');
     if (inputPin === null) return;
