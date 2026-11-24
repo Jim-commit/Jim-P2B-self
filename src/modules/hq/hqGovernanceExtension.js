@@ -384,8 +384,15 @@ export function initHqGovernanceExtensionBindings() {
     await window.loadHQData();
   };
 
-  // 选定会员档位交割续约（通过独立结算适配层路由：线下转账凭证或未来国内备案收银台）
+  // 选定会员档位交割续约（接入 membership_pay 精准熔断检查 + 大额阈值护盘）
   window.submitMembershipRenewal = async function (planCode, planName, feeAmount) {
+    if (
+      window.checkBusinessCircuit &&
+      !(await window.checkBusinessCircuit('membership_pay', hqState.currentAgent, { amount: feeAmount }))
+    ) {
+      return;
+    }
+
     const methods = await SettlementAdapter.getAvailableSettlementMethods();
     const hasOnlineGateway = methods.some((m) => m.code === 'external_cn_gateway');
 
@@ -441,8 +448,12 @@ export function initHqGovernanceExtensionBindings() {
     await loadAndRenderHqGovernanceExtension();
   };
 
-  // 登记一笔百工以物换物 / 劳务工时置换契约
+  // 登记一笔百工以物换物 / 劳务工时置换契约（接入 hq_write 调度台写入熔断检查）
   window.submitHqBarterContract = async function () {
+    if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('hq_write', hqState.currentAgent))) {
+      return;
+    }
+
     const partnerName = document.getElementById('barter-partner-input')?.value.trim();
     const myOffer = document.getElementById('barter-my-offer')?.value.trim();
     const partnerOffer = document.getElementById('barter-partner-offer')?.value.trim();
