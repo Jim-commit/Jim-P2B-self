@@ -54,16 +54,22 @@ export async function loadAndRenderHqGovernanceExtension() {
   renderHqGovernanceModalContent();
 }
 
-// 1.5 渲染大当家专属「本店紧急自救拉闸」安全控件（仅 owner 主账号可见，与平台主权隔离）
+// 1.5 渲染大当家专属「本店紧急自救拉闸」安全控件（无缝内嵌至深绿顶栏顶部，与平台主权隔离）
 function renderTenantSelfCircuitWidget() {
-  const bannerHost = document.getElementById('hq-membership-grace-banner');
-  if (!bannerHost || !bannerHost.parentElement) return;
+  const innerSlot = document.getElementById('hq-header-circuit-slot');
+  const fallbackHost = document.getElementById('hq-membership-grace-banner');
+  const mountTarget = innerSlot || fallbackHost;
+  if (!mountTarget) return;
 
   let selfBox = document.getElementById('hq-tenant-self-circuit-box');
   if (!selfBox) {
     selfBox = document.createElement('div');
     selfBox.id = 'hq-tenant-self-circuit-box';
-    bannerHost.insertAdjacentElement('afterend', selfBox);
+    if (innerSlot) {
+      innerSlot.appendChild(selfBox);
+    } else {
+      fallbackHost.insertAdjacentElement('afterend', selfBox);
+    }
   }
 
   if (hqState.currentRoleCode !== 'owner') {
@@ -83,27 +89,25 @@ function renderTenantSelfCircuitWidget() {
       .map((k) => TENANT_SELF_SCOPES.find((x) => x.key === k)?.label || k)
       .join('、');
 
-    selfBox.className = 'mt-2 bg-rose-950 text-amber-100 border border-rose-500 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-xs';
+    selfBox.className = 'mb-2.5 bg-rose-950/95 text-amber-100 border border-rose-500 px-3.5 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-sm';
     selfBox.innerHTML = `
-      <div class="space-y-0.5">
-        <div class="font-bold text-amber-300 flex items-center gap-1.5">
-          <span>🚨 本店紧急自救保护闸门已拉下</span>
-          <span class="text-[10px] font-mono text-rose-200">${expStr}</span>
-        </div>
-        <div class="text-[11px] text-rose-100">已冻结通道：<b>${labels}</b></div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="font-bold text-amber-300">🚨 本店紧急自救保护闸门已拉下</span>
+        <span class="text-[10px] font-mono text-rose-200">${expStr}</span>
+        <span class="text-[11px] text-rose-100">已冻结：<b>${labels}</b></span>
       </div>
-      <button type="button" onclick="window.releaseTenantSelfCircuit()" class="bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold px-3.5 py-1.5 rounded-xl text-[11px] shadow">
+      <button type="button" onclick="window.releaseTenantSelfCircuit()" class="bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold px-3 py-1 rounded-xl text-[11px] shadow">
         🔓 核验解除本店自救锁
       </button>
     `;
   } else {
-    selfBox.className = 'mt-2 bg-stone-100/90 border border-stone-200 px-3 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs';
+    selfBox.className = 'mb-2.5 pb-2 border-b border-emerald-700/50 flex flex-wrap items-center justify-between gap-2 text-[11px] text-emerald-100/85';
     selfBox.innerHTML = `
-      <div class="flex items-center gap-2 text-stone-700">
+      <div class="flex items-center gap-1.5">
         <span>🛡️</span>
-        <span><b>商号独立风控闸门：</b>盘点清仓、农忙休整或发现账号异常时，大当家可一键拉闸冻结本店指定业务通道。</span>
+        <span><b>商号独立风控闸门：</b>盘点清仓、休市整顿或发现账号异常时，大当家可一键拉闸冻结本店指定业务通道。</span>
       </div>
-      <button type="button" onclick="window.openTenantSelfCircuitModal()" class="bg-stone-900 hover:bg-stone-800 text-amber-300 font-bold px-3 py-1 rounded-xl text-[11px]">
+      <button type="button" onclick="window.openTenantSelfCircuitModal()" class="bg-rose-950/90 hover:bg-rose-700 text-rose-100 border border-rose-500/60 font-bold px-2.5 py-1 rounded-xl text-[11px] transition active:scale-95">
         🚨 本店紧急止损拉闸
       </button>
     `;
@@ -129,6 +133,7 @@ function renderMembershipGraceBanner() {
   const openCasesCount = cachedTenantCases.filter((c) => c.status === 'pending_appeal').length;
 
   if (openCasesCount > 0) {
+    host.classList.remove('hidden');
     host.className =
       'bg-amber-50 border border-amber-400 text-amber-950 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs';
     host.innerHTML = `
@@ -144,6 +149,7 @@ function renderMembershipGraceBanner() {
   }
 
   if (status === 'trial' || status === 'grace' || status === 'restricted' || (daysLeft !== null && daysLeft <= 7)) {
+    host.classList.remove('hidden');
     const dayTip =
       daysLeft === null
         ? ''
@@ -184,7 +190,7 @@ function renderHqGovernanceModalContent() {
     planBox.innerHTML = `
       <div class="bg-stone-50 border border-stone-200 p-3 rounded-2xl space-y-2">
         <div class="flex justify-between items-center">
-          <b class="text-stone-900">🍃 若农忙或暂未回款，可申请温情宽待延期</b>
+          <b class="text-stone-900">🍃 若业务繁忙或暂未回款，可申请温情宽待延期</b>
           <span class="text-[10px] text-stone-500 font-mono">单次宽待 ${graceDays} 天 · 最多 ${maxGraceTimes} 次</span>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -308,7 +314,7 @@ function renderHqGovernanceModalContent() {
   }
 }
 
-// 4. 供发布商品时调用的 AI 四道铁面预检（优先读取数据库动态合规规则库，零写死）
+// 4. 供发布商品时调用的 AI 四道铁面预检
 export async function runHqProductPreAudit({ productTitle, productDesc, price, videoUrl = '' }) {
   const findings = [];
   let caseType = 'promo_audit';
@@ -402,7 +408,6 @@ export async function runHqProductPreAudit({ productTitle, productDesc, price, v
 }
 
 export function initHqGovernanceExtensionBindings() {
-  // 大当家独立自救熔断配置弹窗
   window.openTenantSelfCircuitModal = function () {
     if (hqState.currentRoleCode !== 'owner') {
       return alert('仅大当家主账号有权限启动或解除本店独立安全熔断！');
