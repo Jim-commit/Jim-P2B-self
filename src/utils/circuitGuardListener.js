@@ -18,11 +18,59 @@ function detectCurrentPageName() {
   return file.toLowerCase();
 }
 
+function syncTenantSessionContext() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const urlTid = params.get('t') || params.get('tenant_id');
+    if (urlTid) {
+      localStorage.setItem('baigong_current_tenant_id', urlTid);
+      sessionStorage.setItem('hq_tenant_id', urlTid);
+      sessionStorage.setItem('store_tenant_id', urlTid);
+      sessionStorage.setItem('driver_tenant_id', urlTid);
+    }
+
+    // 兼容读取各端已有会话缓存
+    const activeAgent = localStorage.getItem('active_agent');
+    if (activeAgent) {
+      sessionStorage.setItem('store_tenant_id', activeAgent);
+    }
+
+    const palmSessRaw = localStorage.getItem('baigong_palm_session_v1');
+    if (palmSessRaw) {
+      const palmSess = JSON.parse(palmSessRaw);
+      if (palmSess?.tenantId) {
+        sessionStorage.setItem('driver_tenant_id', palmSess.tenantId);
+      }
+    }
+
+    const hqSessRaw = sessionStorage.getItem('hq_session') || localStorage.getItem('hq_session');
+    if (hqSessRaw) {
+      const hqSess = JSON.parse(hqSessRaw);
+      if (hqSess?.tenantId || hqSess?.agent) {
+        sessionStorage.setItem('hq_tenant_id', hqSess.tenantId || hqSess.agent);
+      }
+    }
+  } catch (e) {}
+}
+
 function detectCurrentTenantId() {
+  syncTenantSessionContext();
+  const page = detectCurrentPageName();
   const params = new URLSearchParams(window.location.search);
+  const urlTid = params.get('t') || params.get('tenant_id');
+  if (urlTid) return urlTid;
+
+  if (page === 'hq.html') {
+    return sessionStorage.getItem('hq_tenant_id') || localStorage.getItem('baigong_current_tenant_id') || null;
+  }
+  if (page === 'store.html') {
+    return sessionStorage.getItem('store_tenant_id') || localStorage.getItem('active_agent') || null;
+  }
+  if (page === 'driver.html') {
+    return sessionStorage.getItem('driver_tenant_id') || localStorage.getItem('baigong_palm_last_tid') || null;
+  }
+
   return (
-    params.get('t') ||
-    params.get('tenant_id') ||
     sessionStorage.getItem('hq_tenant_id') ||
     sessionStorage.getItem('store_tenant_id') ||
     sessionStorage.getItem('driver_tenant_id') ||
