@@ -420,6 +420,11 @@ export function initPoolPlanBindings() {
     e.preventDefault();
     if (!storeState.currentStore) return alert('当前供货方尚未绑定有效门店档案，无法发起同城余货调剂！');
 
+    // 动作级精准熔断检查：同城余缺互调池流转 (pool_exchange)
+    if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('pool_exchange', storeState.currentAgent))) {
+      return;
+    }
+
     const prodIdVal = document.getElementById('pool-prod-select')?.value;
     const prodName = document.getElementById('pool-prod-name').value.trim();
     const spec = document.getElementById('pool-prod-spec').value.trim() || '整装';
@@ -464,6 +469,15 @@ export function initPoolPlanBindings() {
     if (!item || item.status !== 'open') return alert('该笔余货已被其他同行认领或撤回！');
 
     const totalVal = (parseFloat(item.transfer_price || 0) * parseInt(item.qty || 1)).toFixed(2);
+
+    // 动作级精准熔断检查：同城余缺互调认领成单 (pool_exchange) + 大额限流
+    if (
+      window.checkBusinessCircuit &&
+      !(await window.checkBusinessCircuit('pool_exchange', storeState.currentAgent, { amount: parseFloat(totalVal) }))
+    ) {
+      return;
+    }
+
     if (
       !confirm(
         `确认认领同城余货调剂？\n\n` +
@@ -593,6 +607,11 @@ export function initPoolPlanBindings() {
   window.submitDemandPlan = async function (e) {
     e.preventDefault();
     if (!storeState.currentStore) return alert('当前供货方尚未绑定有效门店档案，无法提报真实用度计划！');
+
+    // 动作级精准熔断检查：门店提报计划单 (store_write)
+    if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('store_write', storeState.currentAgent))) {
+      return;
+    }
 
     const planCycle = document.getElementById('plan-cycle-select')?.value || '未来3日用度';
     const expectedDate = document.getElementById('plan-expected-date')?.value;
