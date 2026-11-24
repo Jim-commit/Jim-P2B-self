@@ -143,12 +143,13 @@ export function evaluateTenantRiskRadar({ stores = [], products = [], orders = [
     }
   });
 
-  // 3. 供应链临期滞销风险雷达
+  // 3. 供应链临期滞销风险雷达（同时兼容 custom_specs.expiry_date 与顶层 expiry_date）
   const now = Date.now();
   const warnMs = cfg.expiryWarnDays * sensFactor * 24 * 3600 * 1000;
   products.forEach((p) => {
-    if (p.status !== 'active' || parseInt(p.stock || 0, 10) <= 0 || !p.expiry_date) return;
-    const expTs = new Date(`${p.expiry_date}T23:59:59`).getTime();
+    const expStr = p.custom_specs?.expiry_date || p.expiry_date;
+    if (p.status !== 'active' || parseInt(p.stock || 0, 10) <= 0 || !expStr) return;
+    const expTs = new Date(`${expStr}T23:59:59`).getTime();
     const diffMs = expTs - now;
     const expKey = `expiry_risk_${p.id}`;
 
@@ -161,7 +162,7 @@ export function evaluateTenantRiskRadar({ stores = [], products = [], orders = [
         level: score >= 80 ? 'high' : 'medium',
         score,
         title: `【${p.name}】${daysLeft <= 0 ? '已到保质期' : `仅剩 ${daysLeft} 天到期`}（余 ${p.stock} ${p.measure_unit || '件'}）`,
-        reason: `保质期截止 ${p.expiry_date}，已进入本商号设定的 ${cfg.expiryWarnDays} 天临期预警窗口。`,
+        reason: `保质期截止 ${expStr}，已进入本商号设定的 ${cfg.expiryWarnDays} 天临期预警窗口。`,
         suggestion: '建议立即调低天街拼单零售价加快周转，或推送给高销量合作门店消化。',
         actionType: 'ack_only',
         targetId: p.id
