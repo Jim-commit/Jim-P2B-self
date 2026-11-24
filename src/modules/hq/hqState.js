@@ -1,3 +1,8 @@
+import {
+  checkStaffCapability,
+  getStaffPriceVisibility
+} from '../../services/modularAuthService.js';
+
 export const DEFAULT_GLOBAL_POLICY = {
   storeTierEnabled: true,
   storeTiers: [
@@ -58,6 +63,7 @@ export const hqState = {
   currentRoleCode: sessionStorage.getItem('hq_sub_role_' + initAgent) || 'owner',
   currentAccountCode: sessionStorage.getItem('hq_sub_account_' + initAgent) || '',
   currentOperatorName: sessionStorage.getItem('hq_sub_name_' + initAgent) || '大当家主账号',
+  currentSubUserRecord: null,
   globalPolicy: JSON.parse(JSON.stringify(DEFAULT_GLOBAL_POLICY)),
   carrierLabel: '周转筐',
   currentStoreForVis: null,
@@ -113,11 +119,62 @@ export function isBrickMortarAllowed(p) {
   return ['实体店', '实体与电商双轨'].includes(p.sales_channel_type) || !p.sales_channel_type;
 }
 
+/**
+ * 三级价格视野判定：'L0' (完全盲价) | 'L1' (仅见基准价) | 'L2' (全量账目视野)
+ */
+export function getCurrentPriceVisibility() {
+  const matched =
+    hqState.currentSubUserRecord ||
+    (hqState.allSubUsers || []).find((u) => u.account_name === hqState.currentAccountCode);
+  return getStaffPriceVisibility({
+    currentRoleCode: hqState.currentRoleCode,
+    currentSubUserRecord: matched
+  });
+}
+
+/**
+ * L0 完全盲价判定（兼容旧函数名，支持动态视野配置覆盖默认角色）
+ */
 export function isWarehouseBlindPrice() {
-  return hqState.currentRoleCode === 'warehouse' || hqState.currentRoleCode === 'producer';
+  return getCurrentPriceVisibility() === 'L0';
+}
+
+/**
+ * 是否允许查看门店累计在账欠款、授信额度与返利核算（仅 L2 全量账目视野可见）
+ */
+export function canViewReceivablesAndProfits() {
+  return getCurrentPriceVisibility() === 'L2';
+}
+
+/**
+ * 原子能力检查（例如 hasCapability('finance_settle') / hasCapability('stock_in')）
+ */
+export function hasCapability(capKey) {
+  const matched =
+    hqState.currentSubUserRecord ||
+    (hqState.allSubUsers || []).find((u) => u.account_name === hqState.currentAccountCode);
+  return checkStaffCapability(
+    {
+      currentRoleCode: hqState.currentRoleCode,
+      currentSubUserRecord: matched
+    },
+    capKey
+  );
 }
 
 export function isAuditorReadOnly() {
+  if (hqState.currentRoleCode === 'owner') return false;
+  const matched =
+    hqState.currentSubUserRecord ||
+    (hqState.allSubUsers || []).find((u) => u.account_name === hqState.currentAccountCode);
+  if (Array.isArray(matched?.capabilities)) {
+    const writeCaps = [
+      'stock_in', 'stock_out', 'driver_deliver', 'driver_collect',
+      'qc_inspect', 'store_prospect', 'c2b_quote', 'order_confirm',
+      'product_pricing', 'store_manage', 'finance_settle'
+    ];
+    return !writeCaps.some((k) => hasCapability(k));
+  }
   return hqState.currentRoleCode === 'auditor';
 }
 
