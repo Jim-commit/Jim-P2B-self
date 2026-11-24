@@ -80,7 +80,8 @@ window.switchEntityType = function (type) {
     service: '工料配套 · 专业服务与仓储对账台',
     dealer: '区域平准仓 · 集散调度与供需平衡台'
   };
-  document.getElementById('hq-title').innerText = titles[type] || titles.dealer;
+  const titleEl = document.getElementById('hq-title');
+  if (titleEl) titleEl.innerText = titles[type] || titles.dealer;
 };
 
 window.switchTab = function (tabName) {
@@ -186,21 +187,26 @@ function renderPerformanceAndCommissions() {
 }
 
 function renderThreeFlowsAndAIAdvisor() {
+  const safeText = (id, txt) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = txt;
+  };
+
   const rules = getNormalizedTenantRules(hqState.currentTenantData?.custom_settings || {});
   const defaultMin = parseInt(hqState.globalPolicy.defaultMinStock ?? 10);
   const goodsValue = hqState.allProducts.reduce((sum, p) => sum + parseFloat(p.tier_1_price || 0) * parseInt(p.stock ?? 0), 0);
   const toShipOrders = hqState.allOrders.filter((o) => (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') && o.delivery_status !== 'delivered' && !isDirectoryLead(o));
   const lowStockProds = hqState.allProducts.filter((p) => parseInt(p.stock ?? 0) <= parseInt(p.custom_specs?.min_stock ?? defaultMin));
 
-  document.getElementById('flow-goods-value').innerText = isWarehouseBlindPrice() ? '***' : `¥${goodsValue.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}`;
-  document.getElementById('flow-goods-toship').innerText = `${toShipOrders.length} 单`;
-  document.getElementById('flow-goods-lowstock').innerText = `${lowStockProds.length} 款`;
+  safeText('flow-goods-value', isWarehouseBlindPrice() ? '***' : `¥${goodsValue.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}`);
+  safeText('flow-goods-toship', `${toShipOrders.length} 单`);
+  safeText('flow-goods-lowstock', `${lowStockProds.length} 款`);
 
   const visibleStores = getVisibleStoresForCurrentRole();
   const receivable = visibleStores.reduce((sum, s) => sum + parseFloat(s.current_debt || 0), 0);
   const settledTotal = hqState.allOrders.filter((o) => o.delivery_status === 'delivered' && !isDirectoryLead(o)).reduce((sum, o) => sum + parseFloat(o.net_settle_amount || o.total_amount || 0), 0);
-  document.getElementById('flow-money-receivable').innerText = isWarehouseBlindPrice() ? '***' : `¥${receivable.toFixed(2)}`;
-  document.getElementById('flow-money-settled').innerText = isWarehouseBlindPrice() ? '***' : `¥${settledTotal.toFixed(2)}`;
+  safeText('flow-money-receivable', isWarehouseBlindPrice() ? '***' : `¥${receivable.toFixed(2)}`);
+  safeText('flow-money-settled', isWarehouseBlindPrice() ? '***' : `¥${settledTotal.toFixed(2)}`);
 
   const pendingOrders = hqState.allOrders.filter((o) => o.order_status === 'pending_confirm' && !isDirectoryLead(o));
   const leadsList = hqState.allOrders.filter((o) => isDirectoryLead(o) && o.order_status === 'pending_confirm');
@@ -210,8 +216,8 @@ function renderThreeFlowsAndAIAdvisor() {
   const draftProds = hqState.allProducts.filter((p) => p.status === 'draft');
   const pendingClaims = hqState.allInventoryLogs.filter((l) => l.action_type === 'qc_damage_claim' && !String(l.remark || '').includes('[已核准冲账]'));
 
-  document.getElementById('flow-info-orders').innerText = `${pendingOrders.length + openDemands.length + pendingPlans.length} 笔`;
-  document.getElementById('flow-info-leads').innerText = `${leadsList.length} 条`;
+  safeText('flow-info-orders', `${pendingOrders.length + openDemands.length + pendingPlans.length} 笔`);
+  safeText('flow-info-leads', `${leadsList.length} 条`);
 
   const aiTips = [];
   if (!isWarehouseBlindPrice() && pendingClaims.length > 0) {
@@ -321,132 +327,154 @@ function renderThreeFlowsAndAIAdvisor() {
     </div>
   `;
 
-  document.getElementById('flow-info-ai').innerText = `${aiTips.length} 条`;
-  document.getElementById('ai-advisor-cards').innerHTML =
-    rulesBarHtml +
-    aiRadarHtml +
-    aiTips
-      .map((t) => {
-        const colorCls = t.level === 'rose' ? 'bg-rose-50/70 border-rose-200 text-rose-950' : t.level === 'amber' ? 'bg-amber-50/70 border-amber-200 text-amber-950' : 'bg-emerald-50/70 border-emerald-200 text-emerald-950';
-        return `<div class="p-3.5 rounded-2xl border ${colorCls} flex flex-col justify-between gap-2.5"><div><div class="font-bold text-xs flex items-center gap-1.5"><span>${t.icon}</span><span>${t.title}</span></div><p class="text-[11px] opacity-85 mt-1 leading-relaxed">${t.desc}</p></div><div class="text-right"><button onclick="${t.action}" class="bg-white hover:bg-stone-50 text-stone-900 border border-stone-200 px-3 py-1 rounded-xl font-bold text-[11px] shadow-xs active:scale-95 transition">${t.btnText}</button></div></div>`;
-      })
-      .join('');
+  safeText('flow-info-ai', `${aiTips.length} 条`);
+  const advisorHost = document.getElementById('ai-advisor-cards');
+  if (advisorHost) {
+    advisorHost.innerHTML =
+      rulesBarHtml +
+      aiRadarHtml +
+      aiTips
+        .map((t) => {
+          const colorCls = t.level === 'rose' ? 'bg-rose-50/70 border-rose-200 text-rose-950' : t.level === 'amber' ? 'bg-amber-50/70 border-amber-200 text-amber-950' : 'bg-emerald-50/70 border-emerald-200 text-emerald-950';
+          return `<div class="p-3.5 rounded-2xl border ${colorCls} flex flex-col justify-between gap-2.5"><div><div class="font-bold text-xs flex items-center gap-1.5"><span>${t.icon}</span><span>${t.title}</span></div><p class="text-[11px] opacity-85 mt-1 leading-relaxed">${t.desc}</p></div><div class="text-right"><button onclick="${t.action}" class="bg-white hover:bg-stone-50 text-stone-900 border border-stone-200 px-3 py-1 rounded-xl font-bold text-[11px] shadow-xs active:scale-95 transition">${t.btnText}</button></div></div>`;
+        })
+        .join('');
+  }
 }
 
 window.loadHQData = async function () {
-  const { data: curTenant, error: tErr } = await HQService.fetchTenant(hqState.currentAgent);
-  if (tErr || !curTenant || !curTenant.is_active) {
-    window.logoutHQ();
-    return;
-  }
+  const safeText = (id, txt) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = txt;
+  };
 
-  hqState.currentTenantData = curTenant;
-  document.getElementById('hq-company-badge').innerText = curTenant.company_name || curTenant.tenant_id;
-  document.getElementById('hq-tenant-id').innerText = curTenant.tenant_id;
-  loadGlobalPolicyFromTenant(curTenant);
-  updateWebhookStatusBadge(curTenant.webhook_url || '');
-  updateTotpStatusBadge(!!(curTenant.totp_enabled && curTenant.totp_secret));
-  renderHQSecurityBanner(curTenant);
-
-  supabase.rpc('rpc_sync_tenant_vault', {
-    p_tenant_id: curTenant.tenant_id,
-    p_access_key: curTenant.access_key || '',
-    p_backup_phone: curTenant.backup_phone || null
-  }).catch(() => {});
-
-  const guideEl = document.getElementById('hq-onboarding-guide');
-  if (guideEl) guideEl.classList.toggle('hidden', localStorage.getItem('hq_onboarding_dismissed_' + hqState.currentAgent) === '1');
-
-  const defaultBanner = document.getElementById('hq-default-pwd-banner');
-  if (hqState.currentRoleCode === 'owner' && curTenant.credit_code && curTenant.credit_code.length >= 6) {
-    const last6 = curTenant.credit_code.slice(-6).toUpperCase();
-    if ((curTenant.access_key || '').toUpperCase() === last6) defaultBanner?.classList.remove('hidden');
-    else defaultBanner?.classList.add('hidden');
-  }
-
-  const [dashData, plansRes, poolRes] = await Promise.all([
-    HQService.fetchFullDashboardData(hqState.currentAgent),
-    supabase.from('demand_forecast_plan').select('*').eq('tenant_id', hqState.currentAgent).order('id', { ascending: false }).limit(40),
-    supabase.from('local_inventory_pool').select('*').eq('tenant_id', hqState.currentAgent).order('id', { ascending: false }).limit(40)
-  ]);
-
-  hqState.allPlatformCats = dashData.categories;
-  hqState.allProducts = dashData.products;
-  hqState.allStores = dashData.stores;
-  hqState.allOrders = dashData.orders;
-  hqState.allC2BDemands = dashData.c2bDemands || [];
-  hqState.allDemandPlans = plansRes.data || [];
-  hqState.allLocalPoolItems = poolRes.data || [];
-  hqState.allInventoryLogs = dashData.inventoryLogs;
-  hqState.allSubUsers = dashData.subUsers;
-  hqState.pendingCashLogsCache = dashData.pendingCashLogs || [];
-
-  populateCategoryDropdowns();
-  renderProductFilterBar();
-  renderProductTable();
-
-  const draftCount = hqState.allProducts.filter((p) => p.status === 'draft').length;
-  const draftBadge = document.getElementById('draft-prod-badge');
-  if (draftBadge) {
-    if (draftCount > 0 && !isWarehouseBlindPrice()) {
-      draftBadge.classList.remove('hidden');
-      draftBadge.innerText = `${draftCount}待定价`;
-    } else draftBadge.classList.add('hidden');
-  }
-
-  const visibleStores = getVisibleStoresForCurrentRole();
-  document.getElementById('stat-active-stores').innerText = `${visibleStores.length} 家`;
-  document.getElementById('stat-baskets').innerText = `${visibleStores.reduce((sum, s) => sum + parseInt(s.carrier_hold_count || s.basket_count || 0), 0)} 件`;
-  renderStoreFilterBar();
-  renderStoreTable();
-
-  const logs = hqState.pendingCashLogsCache;
-  const totalPendingCash = logs.reduce((sum, l) => sum + parseFloat(l.amount || 0), 0);
-  document.getElementById('flow-money-pending').innerText = isWarehouseBlindPrice() ? '***' : `¥${totalPendingCash.toFixed(2)}`;
-  renderDriverSettleList(logs);
-
-  const leadsList = hqState.allOrders.filter((o) => isDirectoryLead(o) && o.order_status === 'pending_confirm');
-  const normalPendingList = hqState.allOrders.filter((o) => o.order_status === 'pending_confirm' && !isDirectoryLead(o));
-  const overCreditList = hqState.allOrders.filter((o) => o.order_status === 'over_credit_pending');
-  const openDemandsList = hqState.allC2BDemands.filter((d) => !d.official_reply);
-  const submittedPlansList = hqState.allDemandPlans.filter((p) => p.status === 'submitted');
-  const activePoolList = hqState.allLocalPoolItems.filter((i) => i.status === 'open' || i.status === 'claimed');
-  const pendingClaims = hqState.allInventoryLogs.filter((l) => l.action_type === 'qc_damage_claim' && !String(l.remark || '').includes('[已核准冲账]'));
-
-  document.getElementById('count-pending-confirm').innerText = normalPendingList.length;
-  document.getElementById('count-directory-leads').innerText = leadsList.length;
-  document.getElementById('count-c2b-demands').innerText = openDemandsList.length;
-  document.getElementById('stores-tab-lead-count').innerText = leadsList.length;
-  document.getElementById('count-over-credit').innerText = overCreditList.length;
-  const planCountEl = document.getElementById('count-demand-plans');
-  if (planCountEl) planCountEl.innerText = submittedPlansList.length;
-  const poolCountEl = document.getElementById('count-local-pool');
-  if (poolCountEl) poolCountEl.innerText = activePoolList.length;
-
-  const totalTodos = logs.length + normalPendingList.length + leadsList.length + overCreditList.length + openDemandsList.length + submittedPlansList.length + (isWarehouseBlindPrice() ? 0 : draftCount + pendingClaims.length);
-  const badge = document.getElementById('unsettled-badge');
-  const notifBadge = document.getElementById('hq-notif-badge');
-  if (totalTodos > 0) {
-    badge.classList.remove('hidden');
-    badge.innerText = `${totalTodos}待办`;
-    if (notifBadge) {
-      notifBadge.classList.remove('hidden');
-      notifBadge.innerText = totalTodos;
+  try {
+    const { data: curTenant, error: tErr } = await HQService.fetchTenant(hqState.currentAgent);
+    if (tErr || !curTenant || !curTenant.is_active) {
+      window.logoutHQ();
+      return;
     }
-  } else {
-    badge.classList.add('hidden');
-    notifBadge?.classList.add('hidden');
+
+    hqState.currentTenantData = curTenant;
+    safeText('hq-company-badge', curTenant.company_name || curTenant.tenant_id);
+    safeText('hq-tenant-id', curTenant.tenant_id);
+    loadGlobalPolicyFromTenant(curTenant);
+    updateWebhookStatusBadge(curTenant.webhook_url || '');
+    updateTotpStatusBadge(!!(curTenant.totp_enabled && curTenant.totp_secret));
+    renderHQSecurityBanner(curTenant);
+
+    Promise.resolve(
+      supabase.rpc('rpc_sync_tenant_vault', {
+        p_tenant_id: curTenant.tenant_id,
+        p_access_key: curTenant.access_key || '',
+        p_backup_phone: curTenant.backup_phone || null
+      })
+    ).catch(() => {});
+
+    const guideEl = document.getElementById('hq-onboarding-guide');
+    if (guideEl) guideEl.classList.toggle('hidden', localStorage.getItem('hq_onboarding_dismissed_' + hqState.currentAgent) === '1');
+
+    const defaultBanner = document.getElementById('hq-default-pwd-banner');
+    if (hqState.currentRoleCode === 'owner' && curTenant.credit_code && curTenant.credit_code.length >= 6) {
+      const last6 = curTenant.credit_code.slice(-6).toUpperCase();
+      if ((curTenant.access_key || '').toUpperCase() === last6) defaultBanner?.classList.remove('hidden');
+      else defaultBanner?.classList.add('hidden');
+    }
+
+    const [dashData, plansRes, poolRes] = await Promise.all([
+      HQService.fetchFullDashboardData(hqState.currentAgent),
+      supabase.from('demand_forecast_plan').select('*').eq('tenant_id', hqState.currentAgent).order('id', { ascending: false }).limit(40),
+      supabase.from('local_inventory_pool').select('*').eq('tenant_id', hqState.currentAgent).order('id', { ascending: false }).limit(40)
+    ]);
+
+    hqState.allPlatformCats = dashData?.categories || [];
+    hqState.allProducts = dashData?.products || [];
+    hqState.allStores = dashData?.stores || [];
+    hqState.allOrders = dashData?.orders || [];
+    hqState.allC2BDemands = dashData?.c2bDemands || [];
+    hqState.allDemandPlans = plansRes?.data || [];
+    hqState.allLocalPoolItems = poolRes?.data || [];
+    hqState.allInventoryLogs = dashData?.inventoryLogs || [];
+    hqState.allSubUsers = dashData?.subUsers || [];
+    hqState.pendingCashLogsCache = dashData?.pendingCashLogs || [];
+
+    try {
+      populateCategoryDropdowns();
+      renderProductFilterBar();
+      renderProductTable();
+    } catch (e) { console.warn('商品列表渲染跳过:', e); }
+
+    const draftCount = hqState.allProducts.filter((p) => p.status === 'draft').length;
+    const draftBadge = document.getElementById('draft-prod-badge');
+    if (draftBadge) {
+      if (draftCount > 0 && !isWarehouseBlindPrice()) {
+        draftBadge.classList.remove('hidden');
+        draftBadge.innerText = `${draftCount}待定价`;
+      } else draftBadge.classList.add('hidden');
+    }
+
+    const visibleStores = getVisibleStoresForCurrentRole();
+    safeText('stat-active-stores', `${visibleStores.length} 家`);
+    safeText('stat-baskets', `${visibleStores.reduce((sum, s) => sum + parseInt(s.carrier_hold_count || s.basket_count || 0), 0)} 件`);
+
+    try {
+      renderStoreFilterBar();
+      renderStoreTable();
+    } catch (e) { console.warn('门店列表渲染跳过:', e); }
+
+    const logs = hqState.pendingCashLogsCache;
+    const totalPendingCash = logs.reduce((sum, l) => sum + parseFloat(l.amount || 0), 0);
+    safeText('flow-money-pending', isWarehouseBlindPrice() ? '***' : `¥${totalPendingCash.toFixed(2)}`);
+
+    try { renderDriverSettleList(logs); } catch (e) {}
+
+    const leadsList = hqState.allOrders.filter((o) => isDirectoryLead(o) && o.order_status === 'pending_confirm');
+    const normalPendingList = hqState.allOrders.filter((o) => o.order_status === 'pending_confirm' && !isDirectoryLead(o));
+    const overCreditList = hqState.allOrders.filter((o) => o.order_status === 'over_credit_pending');
+    const openDemandsList = hqState.allC2BDemands.filter((d) => !d.official_reply);
+    const submittedPlansList = hqState.allDemandPlans.filter((p) => p.status === 'submitted');
+    const activePoolList = hqState.allLocalPoolItems.filter((i) => i.status === 'open' || i.status === 'claimed');
+    const pendingClaims = hqState.allInventoryLogs.filter((l) => l.action_type === 'qc_damage_claim' && !String(l.remark || '').includes('[已核准冲账]'));
+
+    safeText('count-pending-confirm', normalPendingList.length);
+    safeText('count-directory-leads', leadsList.length);
+    safeText('count-c2b-demands', openDemandsList.length);
+    safeText('stores-tab-lead-count', leadsList.length);
+    safeText('count-over-credit', overCreditList.length);
+    safeText('count-demand-plans', submittedPlansList.length);
+    safeText('count-local-pool', activePoolList.length);
+
+    const totalTodos = logs.length + normalPendingList.length + leadsList.length + overCreditList.length + openDemandsList.length + submittedPlansList.length + (isWarehouseBlindPrice() ? 0 : draftCount + pendingClaims.length);
+    const badge = document.getElementById('unsettled-badge');
+    const notifBadge = document.getElementById('hq-notif-badge');
+    if (badge) {
+      if (totalTodos > 0) {
+        badge.classList.remove('hidden');
+        badge.innerText = `${totalTodos}待办`;
+      } else badge.classList.add('hidden');
+    }
+    if (notifBadge) {
+      if (totalTodos > 0) {
+        notifBadge.classList.remove('hidden');
+        notifBadge.innerText = totalTodos;
+      } else notifBadge.classList.add('hidden');
+    }
+
+    try { renderOrderFulfillmentList(); } catch (e) {}
+    try { renderInventoryLogs(); } catch (e) {}
+    try { renderSubUsersTable(); } catch (e) {}
+    try { renderThreeFlowsAndAIAdvisor(); } catch (e) { console.error('参谋渲染异常:', e); }
+    try { renderPerformanceAndCommissions(); } catch (e) {}
+    try { await renderHqDailyReconcileAndDualQueue(); } catch (e) { console.warn('日结快照栏跳过:', e); }
+    try { mountHqUltimateToolsButton(); } catch (e) {}
+    try { await loadAndRenderHqGovernanceExtension(); } catch (e) { console.warn('治理扩展跳过:', e); }
+  } catch (err) {
+    console.error('loadHQData 顶层异常:', err);
+    const host = document.getElementById('ai-advisor-cards');
+    if (host) {
+      host.innerHTML = `<div class="col-span-full p-4 bg-rose-50 border border-rose-300 rounded-2xl text-xs text-rose-900">⚠️ 数据加载中断：${err.message || err}</div>`;
+    }
   }
-
-  renderOrderFulfillmentList();
-  renderInventoryLogs();
-  renderSubUsersTable();
-  renderThreeFlowsAndAIAdvisor();
-  renderPerformanceAndCommissions();
-
-  await renderHqDailyReconcileAndDualQueue();
-  mountHqUltimateToolsButton();
-  await loadAndRenderHqGovernanceExtension();
 };
 
 export async function initHQController() {
@@ -639,13 +667,15 @@ export async function initHQController() {
 
     const execExport = () => {
       const fp = AuthSecurity.getDeviceFingerprint();
-      supabase.from('audit_immutable_log').insert([{
-        tenant_id: hqState.currentAgent,
-        operator_name: `${hqState.currentOperatorName} (${fp.summary})`,
-        action_level: 'INFO',
-        action_title: '导出绩效与分润核算表 (CSV)',
-        action_details: { device_id: fp.deviceId }
-      }]).catch(() => {});
+      Promise.resolve(
+        supabase.from('audit_immutable_log').insert([{
+          tenant_id: hqState.currentAgent,
+          operator_name: `${hqState.currentOperatorName} (${fp.summary})`,
+          action_level: 'INFO',
+          action_title: '导出绩效与分润核算表 (CSV)',
+          action_details: { device_id: fp.deviceId }
+        }])
+      ).catch(() => {});
 
       const promoterRate = parseFloat(hqState.globalPolicy.promoterRate ?? 8.0);
       const headers = ['合作门店', '累计批发进货额(元)', '阶梯进货返利(元)', '天街带货额(元)', '推客服务润利(元)', '合计应结奖励(元)'];
