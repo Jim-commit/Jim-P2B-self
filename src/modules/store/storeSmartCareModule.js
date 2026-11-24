@@ -2,12 +2,16 @@ import { parseWechatOrderText, speakChineseNotice } from '../../services/smartFi
 import { storeState } from './storeState.js';
 
 function findTopAnchorElement() {
-  return (
+  const catChip = document.querySelector('.tag-filter-chip')?.parentElement;
+  if (catChip) return { el: catChip, pos: 'beforebegin' };
+
+  const headerOrNav =
     document.querySelector('header') ||
     document.querySelector('nav') ||
-    document.getElementById('store-title')?.closest('div.sticky, div.fixed, div.bg-emerald-950, div[class*="bg-[#1b4332]"], div') ||
-    null
-  );
+    document.getElementById('store-title')?.closest('div.sticky, div.fixed, div.bg-emerald-950, div[class*="bg-[#1b4332]"], div');
+
+  if (headerOrNav) return { el: headerOrNav, pos: 'afterend' };
+  return null;
 }
 
 export function mountStoreSmartCareToolbar() {
@@ -15,9 +19,9 @@ export function mountStoreSmartCareToolbar() {
 
   const bar = document.createElement('div');
   bar.id = 'store-smart-care-bar';
-  bar.className = 'mx-3 mt-2 mb-1 bg-stone-100 border border-stone-200 px-3 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-2xs';
+  bar.className = 'mx-3 mt-2 mb-1 bg-emerald-50/90 border border-emerald-200 px-3 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-2xs';
   bar.innerHTML = `
-    <div class="flex items-center gap-1.5 text-stone-700 font-bold">
+    <div class="flex items-center gap-1.5 text-emerald-950 font-bold">
       <span>⚡ 快捷助手：</span>
       <button type="button" onclick="window.openWechatTextSplitModal()" class="bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold px-3 py-1 rounded-xl text-[11px] shadow-2xs active:scale-95 transition">
         📋 微信文本清单智能拆单
@@ -29,8 +33,8 @@ export function mountStoreSmartCareToolbar() {
   `;
 
   const anchor = findTopAnchorElement();
-  if (anchor && anchor.parentNode) {
-    anchor.insertAdjacentElement('afterend', bar);
+  if (anchor && anchor.el && anchor.el.parentNode) {
+    anchor.el.insertAdjacentElement(anchor.pos, bar);
   } else {
     document.body.insertAdjacentElement('afterbegin', bar);
   }
