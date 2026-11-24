@@ -66,7 +66,7 @@
       <span class="text-[10px] text-stone-400 font-mono">辅佐人断 · 宽猛相济</span>
     </div>
 
-    <!-- 导航切换标签（完整保留原有 11 项 + 高级运营管理专属「归档回收站与团队权限」） -->
+    <!-- 导航切换标签 -->
     <nav class="flex flex-wrap bg-white rounded-2xl shadow-sm border border-stone-200 p-1.5 gap-1.5 text-xs font-bold">
       <button id="p-tab-btn-apps" onclick="window.switchTab('apps')" class="flex-1 py-2 px-2 text-center rounded-xl bg-stone-900 text-white transition flex items-center justify-center gap-1.5 whitespace-nowrap">
         📝 入驻资质查验
@@ -162,7 +162,6 @@
 
     <!-- 板块 2.1：高级运营管理专属 · 商号归档回收站与运营团队权限分配 -->
     <section id="p-tab-seniorops" class="hidden senior-ops-only space-y-4">
-      <!-- 商号归档回收站 -->
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-2.5">
           <div>
@@ -188,7 +187,6 @@
         </div>
       </div>
 
-      <!-- 运营团队权限分配台 -->
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 space-y-3 text-xs">
         <div class="border-b border-stone-100 pb-2.5">
           <h2 class="text-sm font-bold text-stone-900">👥 平台运营团队角色与权限分配</h2>
@@ -638,6 +636,11 @@
           依礼颁布生效
         </button>
         <button type="button"
+          onclick="window.openAdminDynamicScopeModal(document.getElementById('adjust-tenant-id').value)"
+          class="bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 font-bold px-2.5 py-2.5 rounded-xl active:scale-95 transition">
+          ⚖️ 合规边界
+        </button>
+        <button type="button"
           onclick="window.exportTenantBackupAction(document.getElementById('adjust-tenant-id').value, document.getElementById('adjust-tenant-title').innerText.split('(')[0].trim())"
           class="senior-ops-only bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2.5 py-2.5 rounded-xl active:scale-95 transition">
           📥 导出快照
@@ -716,7 +719,7 @@
     </div>
   </div>
 
-  <!-- 新增标准品类弹窗（已移除“适用经营模式”三选一，全网一盘货通用） -->
+  <!-- 新增标准品类弹窗 -->
   <div id="add-category-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
@@ -739,7 +742,6 @@
           <label class="block text-stone-600 mb-1">品类规范名称 *：</label>
           <input type="text" id="cat-name-input" placeholder="输入规范名称" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
         </div>
-        <!-- 隐藏字段保持后端表兼容，默认全网一盘货双轨通用 -->
         <input type="hidden" id="cat-mode-select" value="实体与电商双轨">
         <p class="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl leading-relaxed">
           ✅ <b>渠道归一原则：</b>不再区分实体渠道与电子商务，全平台一盘货通用；自提、送货或远途寄递由发布好物时按需勾选。
@@ -814,10 +816,34 @@
     import { initPlatformController } from './src/modules/platformController.js';
     import { mountPlatformEvolutionWidget } from './src/modules/platformEvolutionWidget.js';
     import { mountPlatformSelfCheckEnhancer } from './src/modules/platformSelfCheckEnhancer.js';
+    import { initAdminScopeRulesBindings } from './src/modules/admin/adminScopeRulesModule.js';
 
     mountPlatformEvolutionWidget();
     mountPlatformSelfCheckEnhancer();
+    initAdminScopeRulesBindings();
     initPlatformController();
+
+    // 在册主体名册表格自动挂载「⚖️ 合规边界」快捷入口
+    const tenantsTbody = document.getElementById('tenants-table-body');
+    if (tenantsTbody) {
+      const injectScopeBtn = () => {
+        tenantsTbody.querySelectorAll('tr').forEach((tr) => {
+          if (tr.querySelector('.btn-scope-rule-hook')) return;
+          const firstCell = tr.querySelector('td');
+          const lastCell = tr.querySelector('td:last-child');
+          const tid = (firstCell?.innerText || '').trim().split(/\s+/)[0];
+          if (tid && lastCell) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-scope-rule-hook ml-1.5 px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-bold text-[10px]';
+            btn.innerText = '⚖️ 合规边界';
+            btn.onclick = () => window.openAdminDynamicScopeModal(tid);
+            lastCell.appendChild(btn);
+          }
+        });
+      };
+      new MutationObserver(injectScopeBtn).observe(tenantsTbody, { childList: true });
+    }
 
     window.runInteractiveSelfCheck = async function () {
       const btn = document.getElementById('btn-run-selfcheck');
