@@ -49,6 +49,10 @@ import {
   renderHqDailyReconcileAndDualQueue,
   initHqDailyReconcileBindings
 } from './hq/hqDailyReconcileModule.js';
+import {
+  mountHqUltimateToolsButton,
+  initHqUltimateToolsBindings
+} from './hq/hqUltimateToolsModule.js';
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
@@ -441,6 +445,7 @@ window.loadHQData = async function () {
   renderPerformanceAndCommissions();
 
   await renderHqDailyReconcileAndDualQueue();
+  mountHqUltimateToolsButton();
   await loadAndRenderHqGovernanceExtension();
 };
 
@@ -458,6 +463,7 @@ export async function initHQController() {
   initHqGovernanceExtensionBindings();
   initHqBusinessRulesBindings();
   initHqDailyReconcileBindings();
+  initHqUltimateToolsBindings();
 
   window.openContextualHelpModal = function () {
     const roleNames = {
