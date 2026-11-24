@@ -2,28 +2,57 @@ import { printReceiptViaWebBluetooth } from '../../services/ultimateEcosystemSer
 import { getNormalizedTenantRules } from '../../services/tenantRulesService.js';
 
 export function mountDriverFieldToolsBar(context = {}) {
-  const host = document.querySelector('header') || document.querySelector('nav');
-  if (!host || document.getElementById('driver-field-tools-bar')) return;
+  if (document.getElementById('driver-field-tools-bar')) return;
+  const host =
+    document.querySelector('header') ||
+    document.getElementById('palm-role-nav') ||
+    document.querySelector('main');
 
   const rules = getNormalizedTenantRules(context.tenantSettings || {});
   const warnLimit = rules.carrierWarnThreshold || 12;
 
   const bar = document.createElement('div');
   bar.id = 'driver-field-tools-bar';
-  bar.className = 'mx-3 mt-2 bg-amber-50 border border-amber-300 px-3 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs';
+  bar.className = 'mx-3 mt-2 bg-amber-50 border border-amber-300 px-3 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-2xs';
   bar.innerHTML = `
     <div class="flex items-center gap-1.5 text-amber-950 font-bold">
       <span>🚚 外勤助手：</span>
-      <span class="text-[11px] font-normal">载具重点回收线 ≥ <b>${warnLimit}</b> 件</span>
+      <span class="text-[11px] font-normal">载具回收线 ≥ <b>${warnLimit}</b> 件</span>
     </div>
-    <button type="button" onclick="window.printLastDriverSlipBluetooth()" class="bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold px-3 py-1 rounded-xl text-[11px] shadow-2xs active:scale-95 transition">
-      🖨️ 蓝牙打印交割凭单
-    </button>
+    <div class="flex items-center gap-1.5">
+      <button type="button" onclick="window.openDriverCarpoolSafe()" class="bg-cyan-700 hover:bg-cyan-800 text-white font-bold px-2.5 py-1 rounded-xl text-[11px] shadow-2xs active:scale-95 transition">
+        🚚 顺路捎带接力
+      </button>
+      <button type="button" onclick="window.printLastDriverSlipBluetooth()" class="bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold px-2.5 py-1 rounded-xl text-[11px] shadow-2xs active:scale-95 transition">
+        🖨️ 蓝牙打印凭单
+      </button>
+    </div>
   `;
-  host.insertAdjacentElement('afterend', bar);
+
+  if (host && host.parentNode) {
+    host.insertAdjacentElement(host.id === 'palm-role-nav' ? 'beforebegin' : 'afterend', bar);
+  } else {
+    document.body.insertAdjacentElement('afterbegin', bar);
+  }
 }
 
 export function initDriverFieldToolsBindings(getLastSlipFn) {
+  window.openDriverCarpoolSafe = async function () {
+    if (typeof window.loadAndRenderCarpoolRelays === 'function') {
+      await window.loadAndRenderCarpoolRelays();
+    }
+    if (typeof window.openCarpoolRelayModal === 'function') {
+      window.openCarpoolRelayModal();
+      return;
+    }
+    const modal = document.getElementById('modal-carpool-relay');
+    const list = document.getElementById('carpool-relay-list');
+    if (list && !list.innerHTML.trim()) {
+      list.innerHTML = '<div class="py-6 text-center text-stone-400">当前暂无周边门店待顺路捎带的余缺互调单</div>';
+    }
+    modal?.classList.remove('hidden');
+  };
+
   window.printLastDriverSlipBluetooth = async function () {
     const slip = typeof getLastSlipFn === 'function' ? getLastSlipFn() : window.__lastDriverDeliverySlip;
     const receiptText = slip
