@@ -125,6 +125,40 @@ export function initHqBusinessRulesBindings() {
     }
   };
 
+  window.simulateAiRiskRadarCard = function () {
+    document.getElementById('modal-hq-business-rules')?.remove();
+    const host = document.getElementById('ai-advisor-cards');
+    if (!host) return;
+    document.getElementById('ai-radar-demo-card')?.remove();
+
+    const sampleStore = (hqState.allStores || [])[0];
+    const storeName = sampleStore?.name || '示例合作门店（王掌柜百货）';
+    const demoHtml = `
+      <div id="ai-radar-demo-card" class="p-3.5 rounded-2xl border bg-rose-50/90 border-rose-300 text-rose-950 flex flex-col justify-between gap-2 shadow-xs">
+        <div>
+          <div class="flex items-center justify-between gap-1.5">
+            <span class="font-bold text-xs">🛡️ 【演练示例】${storeName} 在账欠款逼近授信红线</span>
+            <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-600 text-white">财务坏账预警 · 88分</span>
+          </div>
+          <p class="text-[11px] opacity-90 mt-1 leading-relaxed">当前演练模拟欠款占授信上限 92%（已超警戒线）。建议下笔订单切换为「随车现结」或安排上门核对回款。</p>
+        </div>
+        <div class="flex justify-end flex-wrap gap-1.5">
+          ${
+            sampleStore
+              ? `<button type="button" onclick="window.applyAiSwitchStoreCash(${sampleStore.id}, 'demo_key')" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 rounded-xl font-bold text-[10px]">
+                   ✅ 采纳：切为随车现结
+                 </button>`
+              : ''
+          }
+          <button type="button" onclick="document.getElementById('ai-radar-demo-card')?.remove(); alert('🛡️ 已将演练条目加入白名单免打扰！');" class="bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 px-2.5 py-1 rounded-xl font-bold text-[10px]">
+            误报放行（加白名单）
+          </button>
+        </div>
+      </div>
+    `;
+    host.insertAdjacentHTML('afterbegin', demoHtml);
+  };
+
   window.openHqBusinessRulesModal = function () {
     if (hqState.currentRoleCode !== 'owner') {
       return alert('仅大当家主账号可修改本店经营行规与风控参数！');
@@ -132,7 +166,6 @@ export function initHqBusinessRulesBindings() {
     document.getElementById('modal-hq-business-rules')?.remove();
 
     const cfg = getNormalizedTenantRules(hqState.currentTenantData?.custom_settings || {});
-    // 直接展示纯中文结算方式名称，无需展示英文前缀
     const methodsText = cfg.settlementMethods.map((m) => m.label).join('\n');
     const reasonsText = cfg.returnReasons.join('\n');
 
@@ -150,7 +183,12 @@ export function initHqBusinessRulesBindings() {
         </div>
 
         <div class="bg-emerald-50/70 border border-emerald-200 p-3 rounded-2xl space-y-1.5">
-          <b class="text-emerald-950 block">⚡ 一键套用行业常用行规模板：</b>
+          <div class="flex items-center justify-between gap-2">
+            <b class="text-emerald-950">⚡ 一键套用行业常用行规模板：</b>
+            <button type="button" onclick="window.simulateAiRiskRadarCard()" class="bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold px-2.5 py-0.5 rounded-xl text-[10px]">
+              🧪 模拟触发风险雷达卡
+            </button>
+          </div>
           <div class="flex flex-wrap gap-1.5">
             ${Object.entries(INDUSTRY_RULE_PRESETS)
               .map(
@@ -249,7 +287,6 @@ export function initHqBusinessRulesBindings() {
       .filter(Boolean);
 
     const settlementMethods = settlementLines.map((line, idx) => {
-      // 兼容旧格式 "code:名称" 以及新的纯中文 "名称"
       if (/^[a-zA-Z0-9_]+[:：]/.test(line)) {
         const [code, ...rest] = line.split(/[:：]/);
         return {
