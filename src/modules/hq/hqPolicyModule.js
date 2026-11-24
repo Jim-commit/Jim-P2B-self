@@ -23,23 +23,28 @@ const PRESET_DISPLAY_NAMES = {
 export function polishHQHeaderVisualBalance() {
   const header = document.getElementById('hq-main-header') || document.querySelector('header');
   const secHost = document.getElementById('hq-security-banner-host');
+  const circuitSlot = document.getElementById('hq-header-circuit-slot');
   if (!header || !secHost) return;
 
   const mergeInnerBanner = () => {
     const firstCard = secHost.firstElementChild;
     if (!firstCard) return;
-    firstCard.className = 'mb-3 pb-2.5 border-b border-emerald-700/50 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-100/90';
+    firstCard.className = 'mb-2.5 pb-2 border-b border-emerald-700/50 flex flex-wrap items-center justify-between gap-2 text-[11px] text-emerald-100/85';
     firstCard.querySelectorAll('span, p, div').forEach((el) => {
       if (el.classList.contains('text-stone-600') || el.classList.contains('text-stone-700')) {
         el.classList.remove('text-stone-600', 'text-stone-700');
-        el.classList.add('text-emerald-100/90');
+        el.classList.add('text-emerald-100/85');
       }
     });
     const brakeBtn = firstCard.querySelector('button');
     if (brakeBtn) {
-      brakeBtn.className = 'bg-rose-950/90 hover:bg-rose-700 text-rose-100 border border-rose-500/70 px-3 py-1 rounded-xl font-bold text-xs shadow-xs active:scale-95 transition flex items-center gap-1';
+      brakeBtn.className = 'bg-rose-950/90 hover:bg-rose-700 text-rose-100 border border-rose-500/60 px-2.5 py-1 rounded-xl font-bold text-[11px] active:scale-95 transition flex items-center gap-1';
     }
-    header.insertAdjacentElement('afterbegin', firstCard);
+    if (circuitSlot) {
+      circuitSlot.appendChild(firstCard);
+    } else {
+      header.insertAdjacentElement('afterbegin', firstCard);
+    }
   };
 
   mergeInnerBanner();
@@ -47,6 +52,14 @@ export function polishHQHeaderVisualBalance() {
     new MutationObserver(() => mergeInnerBanner()).observe(secHost, { childList: true });
     secHost.dataset.observed = '1';
   }
+}
+
+export function syncOnboardingButtonState() {
+  const guide = document.getElementById('hq-onboarding-guide');
+  const btn = document.getElementById('btn-toggle-onboarding-guide');
+  if (!guide || !btn) return;
+  const isHidden = guide.classList.contains('hidden');
+  btn.innerHTML = isHidden ? '<span>📖</span> 新手导引' : '<span>📖</span> 隐去导引';
 }
 
 export function applyIndustryTerminology(tenant) {
@@ -274,6 +287,7 @@ export function loadGlobalPolicyFromTenant(tenant) {
   applyIndustryTerminology(tenant);
   renderActivePolicyBadgesBar();
   syncSeasonalPauseBannerUI();
+  syncOnboardingButtonState();
 
   const th1 = document.getElementById('th-tier1-label');
   const th2 = document.getElementById('th-tier2-label');
@@ -521,6 +535,33 @@ export function initPolicyBindings(callbacks) {
       await HQService.updateTenantWithVerify(hqState.currentAgent, { custom_settings: hqState.globalPolicy });
     } catch (e) {}
   });
+
+  // 顶栏「📖 新手导引」随时可显可隐切换
+  window.toggleOnboardingGuideQuick = function () {
+    const guide = document.getElementById('hq-onboarding-guide');
+    if (!guide) return;
+    const isHidden = guide.classList.contains('hidden');
+    if (isHidden) {
+      guide.classList.remove('hidden');
+      localStorage.removeItem('hq_hide_onboarding_' + hqState.currentAgent);
+    } else {
+      guide.classList.add('hidden');
+      localStorage.setItem('hq_hide_onboarding_' + hqState.currentAgent, '1');
+    }
+    syncOnboardingButtonState();
+  };
+
+  // 全局扫描经营参谋区域，自动将非涉农商号的「食堂阳光集采包」替换为普适政企集采包
+  const syncUniversalWording = () => {
+    const terms = window.__hqIndustryTerms;
+    if (!terms) return;
+    document.querySelectorAll('#ai-advisor-cards b, #ai-advisor-cards p, #ai-advisor-cards span, #ai-advisor-cards div').forEach((el) => {
+      if (el.children.length > 0) return;
+      if (el.innerText.includes('食堂阳光集采包')) el.innerText = terms.groupPackTitle;
+      if (el.innerText.includes('全品阳光工价报价单')) el.innerText = terms.groupPackDesc;
+    });
+  };
+  setInterval(syncUniversalWording, 1200);
 
   window.togglePresetDrawer = function () {
     const drawer = document.getElementById('gp-preset-drawer');
