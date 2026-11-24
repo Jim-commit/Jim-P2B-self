@@ -1,6 +1,32 @@
 import { printReceiptViaWebBluetooth } from '../../services/ultimateEcosystemService.js';
 import { getNormalizedTenantRules } from '../../services/tenantRulesService.js';
 
+const FIELD_VISIBLE_ROLES = new Set(['driver', 'sales']);
+
+function getCurrentActivePalmRole() {
+  const ownerSelect = document.getElementById('owner-role-preview-select');
+  const switcher = document.getElementById('owner-view-switcher');
+  if (ownerSelect && switcher && !switcher.classList.contains('hidden')) {
+    return ownerSelect.value || 'owner_cockpit';
+  }
+  const deliverPane = document.getElementById('pane-deliver');
+  const salesPane = document.getElementById('pane-sales-stores');
+  if (deliverPane && !deliverPane.classList.contains('hidden')) return 'driver';
+  if (salesPane && !salesPane.classList.contains('hidden')) return 'sales';
+  return 'other';
+}
+
+export function syncDriverFieldToolsVisibility() {
+  const bar = document.getElementById('driver-field-tools-bar');
+  if (!bar) return;
+  const role = getCurrentActivePalmRole();
+  if (FIELD_VISIBLE_ROLES.has(role)) {
+    bar.classList.remove('hidden');
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
 export function mountDriverFieldToolsBar(context = {}) {
   if (document.getElementById('driver-field-tools-bar')) return;
   const host =
@@ -13,7 +39,7 @@ export function mountDriverFieldToolsBar(context = {}) {
 
   const bar = document.createElement('div');
   bar.id = 'driver-field-tools-bar';
-  bar.className = 'mx-3 mt-2 bg-amber-50 border border-amber-300 px-3 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-2xs';
+  bar.className = 'hidden mx-3 mt-2 bg-amber-50 border border-amber-300 px-3 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-2xs';
   bar.innerHTML = `
     <div class="flex items-center gap-1.5 text-amber-950 font-bold">
       <span>🚚 外勤助手：</span>
@@ -34,6 +60,23 @@ export function mountDriverFieldToolsBar(context = {}) {
   } else {
     document.body.insertAdjacentElement('afterbegin', bar);
   }
+
+  // 监听岗位切换与面板显隐变化，自动控制工具条出现或隐藏
+  const ownerSelect = document.getElementById('owner-role-preview-select');
+  ownerSelect?.addEventListener('change', () => setTimeout(syncDriverFieldToolsVisibility, 50));
+
+  ['pane-deliver', 'pane-sales-stores', 'pane-warehouse', 'pane-qc-service', 'pane-owner-cockpit'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      new MutationObserver(syncDriverFieldToolsVisibility).observe(el, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+    }
+  });
+
+  syncDriverFieldToolsVisibility();
+  setTimeout(syncDriverFieldToolsVisibility, 500);
 }
 
 export function initDriverFieldToolsBindings(getLastSlipFn) {
