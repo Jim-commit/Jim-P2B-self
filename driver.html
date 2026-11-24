@@ -623,7 +623,7 @@
         <button onclick="window.closeModal('palm-picklist-modal')" class="text-stone-400 text-lg">✕</button>
       </div>
       <div id="palm-picklist-body" class="divide-y divide-stone-100 border border-stone-200 rounded-2xl px-3 py-1 bg-stone-50/50 max-h-80 overflow-y-auto no-scrollbar"></div>
-      <button onclick="window.closeModal('palm-picklist-modal')" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-2xl">关闭总单</button>
+      <button type="button" onclick="window.closeModal('palm-picklist-modal')" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-2xl">关闭总单</button>
     </div>
   </div>
 
@@ -804,17 +804,38 @@
       <button onclick="window.closeModal('modal-palm-help')" class="w-full bg-stone-100 font-bold py-2.5 rounded-xl">关闭指引</button>
     </div>
   </div>
+
   <script type="module" src="./src/utils/circuitGuardListener.js"></script>
   <script type="module">
     import { initDriverController } from './src/modules/driverController.js';
     import { initDriverCarpoolBindings } from './src/modules/driver/driverCarpoolExtension.js';
+    import { mountDriverFieldToolsBar, initDriverFieldToolsBindings } from './src/modules/driver/driverFieldToolsModule.js';
     import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
     import { initWechatBrowserGuide } from './src/lib/wechatBrowserGuard.js';
 
     enforceGlobalGovernance();
     initDriverController();
     initDriverCarpoolBindings();
+    initDriverFieldToolsBindings();
+    mountDriverFieldToolsBar();
     initWechatBrowserGuide({ appName: '百工掌中宝' });
+
+    // 自动捕获每次现场签收交割摘要，供蓝牙小票机一键打印三联凭单
+    const origSubmitCollection = window.submitCollection;
+    if (typeof origSubmitCollection === 'function') {
+      window.submitCollection = async function (...args) {
+        window.__lastDriverDeliverySlip = {
+          storeName: document.getElementById('modal-shop-title')?.innerText || '合作门店',
+          orderNo: document.getElementById('modal-order-id')?.value || '-',
+          collectedAmount: parseFloat(document.getElementById('collect-amount')?.value || '0'),
+          payMethod: document.getElementById('collect-method')?.value || '随车结',
+          carrierReturn: Array.from(document.querySelectorAll('#multi-carrier-rows input[type="number"]')).reduce((s, el) => s + parseInt(el.value || '0', 10), 0),
+          driverName: document.getElementById('driver-name-display')?.innerText || '当值司机'
+        };
+        return origSubmitCollection.apply(this, args);
+      };
+    }
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
