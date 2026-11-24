@@ -266,10 +266,7 @@ function updateStaffFourPowersStatus() {
 }
 
 /**
- * 将原本冗余重复的「6项旧复选框 + 12项小滚动框」重构为清晰的四层递进架构：
- * 1. 数据视野隔离（L0盲价 / L1基准价 / L2全账目）
- * 2. 四权分立内控互斥实时自检条
- * 3. 12 项原子能力积木按「产仓物流 / 拓客跟单 / 定价账房」三组完整展开（无小滚动条）
+ * 将原本冗余重复的「6项旧复选框 + 12项小滚动框」重构为清晰的四层递进架构，并确保插入在底部提交按钮之前
  */
 function renderModularCapMatrixInModal() {
   const modal = document.getElementById('modal-add-subuser');
@@ -278,19 +275,26 @@ function renderModularCapMatrixInModal() {
   // 隐藏原本在弹窗里重复出现的旧 6 项复选框区块（保留 DOM 供兼容同步）
   const legacyCb = modal.querySelector('.sub-perm-cb');
   if (legacyCb) {
-    const legacyWrapper = legacyCb.closest('.bg-stone-50, .border, .space-y-2, .grid')?.parentElement || legacyCb.closest('div')?.parentElement;
+    const legacyWrapper =
+      legacyCb.closest('.bg-stone-50, .border, .space-y-2, .grid')?.parentElement ||
+      legacyCb.closest('div')?.parentElement;
     if (legacyWrapper && legacyWrapper.id !== 'modular-cap-matrix-box') {
       legacyWrapper.classList.add('hidden');
     }
   }
 
+  const submitBtn = modal.querySelector('button[onclick*="saveSubUser"]');
   let container = document.getElementById('modular-cap-matrix-box');
   if (!container) {
     container = document.createElement('div');
     container.id = 'modular-cap-matrix-box';
     container.className = 'space-y-3 pt-2 border-t border-stone-200';
-    const targetParent = legacyCb ? legacyCb.closest('div')?.parentElement?.parentElement || modal.querySelector('form, .space-y-3, .space-y-4') : modal.querySelector('form, .space-y-3, .space-y-4');
-    if (targetParent) targetParent.appendChild(container);
+    if (submitBtn) {
+      submitBtn.insertAdjacentElement('beforebegin', container);
+    } else {
+      const targetParent = modal.querySelector('form, .space-y-3, .space-y-4');
+      targetParent?.appendChild(container);
+    }
   }
 
   const capGroups = [
