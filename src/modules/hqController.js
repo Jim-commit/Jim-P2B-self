@@ -282,7 +282,6 @@ window.loadHQData = async function () {
   updateTotpStatusBadge(!!(curTenant.totp_enabled && curTenant.totp_secret));
   renderHQSecurityBanner(curTenant);
 
-  // 确保当前商号同步纳管至私有安全保险箱（兼容历史老商号与新入驻商号）
   supabase.rpc('rpc_sync_tenant_vault', {
     p_tenant_id: curTenant.tenant_id,
     p_access_key: curTenant.access_key || '',
@@ -379,7 +378,6 @@ window.loadHQData = async function () {
   renderThreeFlowsAndAIAdvisor();
   renderPerformanceAndCommissions();
 
-  // 增量加载体验期动态演进引导、合规申诉通道与百工物物/劳务置换契约
   await loadAndRenderHqGovernanceExtension();
 };
 
@@ -532,6 +530,9 @@ export async function initHQController() {
     window.openModal('modal-hq-suggestion');
   };
   window.submitHqSuggestion = async () => {
+    // 动作级精准熔断检查：公域建言发布 (public_post)
+    if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('public_post', hqState.currentAgent))) return;
+
     const content = document.getElementById('hq-suggestion-text')?.value.trim();
     if (!content) return alert('请写下您的宝贵建议！');
     const { error } = await supabase.from('platform_suggestion_board').insert([{ proposer_type: 'merchant_hq', proposer_name: `${hqState.currentTenantData?.company_name || hqState.currentAgent} · ${hqState.currentOperatorName}`, content, reply_status: 'pending' }]);
@@ -563,7 +564,10 @@ export async function initHQController() {
     const shareText = `【${hqState.currentTenantData?.company_name || hqState.currentAgent}】源头合作社与匠心工坊直供，实名资质已核验，支持预约送货师傅上门送样、先验货后合作！点击预约：${promoUrl}`;
     navigator.clipboard.writeText(shareText).then(() => alert('✅ 专属合作文案与链接已复制！'));
   };
-  window.exportPerformanceCSV = () => {
+  window.exportPerformanceCSV = async () => {
+    // 动作级精准熔断检查：日常报表与数据导出防泄 (data_export)
+    if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('data_export', hqState.currentAgent))) return;
+
     const execExport = () => {
       const fp = AuthSecurity.getDeviceFingerprint();
       supabase.from('audit_immutable_log').insert([{
