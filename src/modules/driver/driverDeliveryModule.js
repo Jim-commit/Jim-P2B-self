@@ -434,6 +434,16 @@ export function initDeliveryBindings() {
       return alert('🤝 立信为本：请请收货掌柜在签字框内手写签字确认！');
     }
 
+    // 动作级精准熔断检查：司机外勤端回单 (driver_write) + 随车收款登记 (driver_collect)
+    if (window.checkBusinessCircuit && navigator.onLine) {
+      const writeAllowed = await window.checkBusinessCircuit('driver_write', driverState.currentAgent);
+      if (!writeAllowed) return;
+      if (payAmt > 0) {
+        const collectAllowed = await window.checkBusinessCircuit('driver_collect', driverState.currentAgent, { amount: payAmt });
+        if (!collectAllowed) return;
+      }
+    }
+
     const newDebt = Math.max(0, oldDebt + netOrderAmt - payAmt - discountAmt - basketDeductAmt);
     const newBaskets = Math.max(0, oldBaskets - basketReturn);
 
@@ -652,6 +662,11 @@ export function initDeliveryBindings() {
   window.openSuggestionModal = () => window.openModal('modal-suggestion');
 
   window.submitDriverSuggestion = async function () {
+    // 动作级精准熔断检查：外勤建言发布 (public_post)
+    if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('public_post', driverState.currentAgent))) {
+      return;
+    }
+
     const content = document.getElementById('driver-suggestion-text').value.trim();
     if (!content) return alert('请写下您的建言内容！');
 
