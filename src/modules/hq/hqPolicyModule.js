@@ -9,7 +9,7 @@ export const NINE_2FA_ITEMS = [
     code: '2FA-01',
     title: '大额财务销账 / 坏账冲抵',
     desc: '财务点清回款销账或核准定损冲减欠款超过阈值时触发动态口令',
-    scope: 'hq.html 账房结算'
+    scope: '总舵账房结算'
   },
   {
     key: 'twoFaPriceOn',
@@ -18,7 +18,7 @@ export const NINE_2FA_ITEMS = [
     code: '2FA-02',
     title: '大幅下调平准基准价',
     desc: '下调批发或网上基准价幅度超过安全百分比时触发防误调/防恶意砸价核验',
-    scope: 'hq.html ➔ index.html / mall.html'
+    scope: '总舵 ➔ 门店订货台 / 天街专柜'
   },
   {
     key: 'twoFaCreditOn',
@@ -27,7 +27,7 @@ export const NINE_2FA_ITEMS = [
     code: '2FA-03',
     title: '超授信额度特批放行',
     desc: '合作门店赊账超出分级授信上限仍需特批发货时强制大当家核身',
-    scope: 'index.html ➔ hq.html / driver.html'
+    scope: '门店订货台 ➔ 总舵 / 掌中宝'
   },
   {
     key: 'twoFaLimitOn',
@@ -36,7 +36,7 @@ export const NINE_2FA_ITEMS = [
     code: '2FA-04',
     title: '调高合作门店信用额度',
     desc: '上调单家合作门店赊账信用天花板时触发双因素授权',
-    scope: 'hq.html ➔ index.html'
+    scope: '总舵 ➔ 门店订货台'
   },
   {
     key: 'twoFaStockAuditOn',
@@ -45,7 +45,7 @@ export const NINE_2FA_ITEMS = [
     code: '2FA-05',
     title: '库存盘亏核销 / 强行平仓',
     desc: '仓储盘点出现库存报损核销或强制修正账面库存时触发核验',
-    scope: 'hq.html 仓储台账'
+    scope: '总舵仓储台账'
   },
   {
     key: 'twoFaDeleteOn',
@@ -54,7 +54,7 @@ export const NINE_2FA_ITEMS = [
     code: '2FA-06',
     title: '删除在供货品 / 清理档案',
     desc: '永久下架删除商品或清理往来档案时防止误删或恶意清空',
-    scope: 'hq.html ➔ 全端货架'
+    scope: '总舵 ➔ 全端货架'
   },
   {
     key: 'twoFaPolicyOn',
@@ -72,7 +72,7 @@ export const NINE_2FA_ITEMS = [
     code: '2FA-08',
     title: '导出全量核心账本与分润表',
     desc: '批量导出客户档案、价格体系及返利核算 CSV 时防数据批量外泄',
-    scope: 'hq.html 数据主权保护'
+    scope: '总舵数据主权保护'
   },
   {
     key: 'twoFaEmergencyBrakeOn',
@@ -81,9 +81,16 @@ export const NINE_2FA_ITEMS = [
     code: '2FA-09',
     title: '🚨 紧急止损拉闸（全盘熔断锁单）',
     desc: '遭遇异常刷单、行情剧烈波动或突发事故时，一键熔断全网新单入口（拉闸与合闸均需 2FA）',
-    scope: '立即锁定 index.html 与 mall.html 下单'
+    scope: '立即锁定门店订货台与天街专柜下单'
   }
 ];
+
+const PRESET_DISPLAY_NAMES = {
+  coop: '村社合作社/生鲜标准策略',
+  factory: '源头工坊/制造直供策略',
+  hardware: '五金建材/汽配集采策略',
+  cylinder: '水桶/气瓶循环押金策略'
+};
 
 export function renderActivePolicyBadgesBar() {
   const bar = document.getElementById('active-policy-badges-bar');
@@ -92,6 +99,9 @@ export function renderActivePolicyBadgesBar() {
   const gp = hqState.globalPolicy;
   const chips = [];
 
+  if (gp.activePolicyName) {
+    chips.push(`<span class="bg-amber-300 text-stone-950 px-2.5 py-0.5 rounded-full font-bold">📌 在用方案：${gp.activePolicyName}</span>`);
+  }
   if (gp.emergencyBrakeActive) {
     chips.push('<span class="bg-rose-600 text-white border border-rose-300 px-2.5 py-0.5 rounded-full font-bold animate-pulse">🚨 紧急止损已拉闸（全网新单熔断中）</span>');
   }
@@ -114,7 +124,11 @@ export function renderActivePolicyBadgesBar() {
     chips.push('<span class="bg-rose-500/25 text-rose-200 border border-rose-400/30 px-2 py-0.5 rounded-full">🔥 促销活动进行中</span>');
   }
 
-  const enabled2faCount = NINE_2FA_ITEMS.filter((item) => gp[item.key] !== false && (item.key !== 'twoFaStockAuditOn' && item.key !== 'twoFaPolicyOn' && item.key !== 'twoFaExportOn' ? true : !!gp[item.key])).length;
+  const enabled2faCount = NINE_2FA_ITEMS.filter((item) =>
+    item.key === 'twoFaStockAuditOn' || item.key === 'twoFaPolicyOn' || item.key === 'twoFaExportOn'
+      ? !!gp[item.key]
+      : gp[item.key] !== false
+  ).length;
   chips.push(`<span class="bg-indigo-500/25 text-indigo-200 border border-indigo-400/30 px-2 py-0.5 rounded-full font-mono">🛡️ 2FA防线 ${enabled2faCount}/9 已布防</span>`);
 
   bar.innerHTML =
@@ -133,7 +147,7 @@ export function syncSeasonalPauseBannerUI() {
   if (gp.emergencyBrakeActive) {
     banner.classList.remove('hidden');
     banner.className = 'bg-rose-950 text-white border-2 border-rose-500 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-lg';
-    textEl.innerHTML = `🚨 <b>【紧急止损拉闸已生效】</b>：${gp.emergencyBrakeReason || '全盘行情/风控紧急熔断中'}（已锁定 index.html 门店端与 mall.html 天街新单提交，旧单交割与对账照常运行）`;
+    textEl.innerHTML = `🚨 <b>【紧急止损拉闸已生效】</b>：${gp.emergencyBrakeReason || '全盘行情/风控紧急熔断中'}（已锁定合作门店订货台与百工天街新单提交，旧单交割与对账照常运行）`;
     return;
   }
 
@@ -166,6 +180,7 @@ export function loadGlobalPolicyFromTenant(tenant) {
   const cloudPolicy = tenant?.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
   const gp = {
     ...JSON.parse(JSON.stringify(DEFAULT_GLOBAL_POLICY)),
+    activePolicyName: '商号自定义现行策略',
     twoFaEmergencyBrakeOn: true,
     emergencyBrakeActive: false,
     emergencyBrakeReason: '',
@@ -173,6 +188,7 @@ export function loadGlobalPolicyFromTenant(tenant) {
     ...cloudPolicy
   };
 
+  if (!gp.activePolicyName) gp.activePolicyName = '商号自定义现行策略';
   if (gp.twoFaEmergencyBrakeOn === undefined) gp.twoFaEmergencyBrakeOn = true;
   if (!gp.tier1Name || gp.tier1Name === '平准供货底价') gp.tier1Name = '批发平准基准价';
   if (!gp.tier2Name || gp.tier2Name === '集采惠价') gp.tier2Name = '网上平准零售基准价';
@@ -209,38 +225,97 @@ export function loadGlobalPolicyFromTenant(tenant) {
   if (opt2) opt2.innerText = gp.tier2Name;
 }
 
-function renderCustomPresetsBar() {
+/**
+ * 顶部策略牌匾与折叠式样板库：
+ * - 默认只醒目展示「🟢 本商号当前在用策略」
+ * - 参考样板与自存方案默认收起，点击「切换/套用其他方案 ▾」时再展开，选定后自动收起
+ */
+function renderCustomPresetsBar(isExpanded = false, pendingPreviewName = '') {
   const bar = document.getElementById('policy-presets-bar');
   if (!bar) return;
+
+  // 隐藏外层原本可能自带的冗余提示文字
+  const parentBox = bar.parentElement;
+  if (parentBox) {
+    Array.from(parentBox.children).forEach((child) => {
+      if (child !== bar) child.classList.add('hidden');
+    });
+  }
+
   let customPresets = [];
   try {
     customPresets = JSON.parse(localStorage.getItem('hq_custom_presets_' + hqState.currentAgent) || '[]');
   } catch (e) {}
 
-  const builtInHtml = `
-    <button type="button" onclick="window.applyGlobalPreset('coop')" class="px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-amber-300 text-stone-800 font-bold transition">🌾 村社合作社/生鲜</button>
-    <button type="button" onclick="window.applyGlobalPreset('factory')" class="px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-amber-300 text-stone-800 font-bold transition">🏭 源头工坊/制造</button>
-    <button type="button" onclick="window.applyGlobalPreset('hardware')" class="px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-amber-300 text-stone-800 font-bold transition">🛠️ 五金建材/汽配</button>
-    <button type="button" onclick="window.applyGlobalPreset('cylinder')" class="px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-amber-300 text-stone-800 font-bold transition">💧 水桶/气瓶循环</button>
-  `;
-  const customHtml = customPresets
-    .map(
-      (cp, idx) => `
-      <button type="button" onclick="window.applySavedCustomPreset(${idx})" class="px-2.5 py-1 rounded-xl bg-emerald-100 hover:bg-emerald-200 border border-emerald-400 text-emerald-950 font-bold transition">
-        ⭐ ${cp.name}
-      </button>
-    `
-    )
-    .join('');
+  const activeName = hqState.globalPolicy.activePolicyName || '商号自定义现行策略';
 
-  bar.innerHTML = builtInHtml + customHtml;
+  bar.className = 'w-full space-y-2 text-xs';
+  bar.innerHTML = `
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="inline-flex items-center gap-1.5 bg-[#1b4332] text-white px-3 py-1.5 rounded-xl font-bold shadow-2xs">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>本商号当前在用策略：</span>
+          <span class="text-amber-300">【${activeName}】</span>
+        </span>
+        ${
+          pendingPreviewName
+            ? `<span class="bg-amber-200 text-amber-950 px-2.5 py-1 rounded-xl font-bold text-[11px]">⚠️ 已载入【${pendingPreviewName}】预览，请点底部「保存」生效</span>`
+            : ''
+        }
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <button type="button" onclick="window.saveCurrentAsCustomPreset()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-950 font-bold transition">
+          💾 存为新方案
+        </button>
+        <button type="button" id="btn-toggle-preset-drawer" onclick="window.togglePresetDrawer()" class="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold transition shadow-2xs">
+          ${isExpanded ? '收起参考样板 ▲' : '📂 切换 / 套用参考策略 ▾'}
+        </button>
+      </div>
+    </div>
+
+    <div id="gp-preset-drawer" class="${isExpanded ? '' : 'hidden'} pt-2.5 mt-1 border-t border-amber-200/80 space-y-2.5">
+      <div class="text-[11px] text-amber-900">
+        💡 点击任一方案可将下方 5 页参数整套替换为该模板，确认无误后点击弹窗最底部<b>「保存全局经营策略」</b>即可全端生效：
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5">
+        <span class="text-[11px] font-bold text-stone-600 mr-1">① 行业参考样板：</span>
+        <button type="button" onclick="window.applyGlobalPreset('coop')" class="px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-amber-300 text-stone-800 font-bold transition">🌾 村社合作社/生鲜</button>
+        <button type="button" onclick="window.applyGlobalPreset('factory')" class="px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-amber-300 text-stone-800 font-bold transition">🏭 源头工坊/制造</button>
+        <button type="button" onclick="window.applyGlobalPreset('hardware')" class="px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-amber-300 text-stone-800 font-bold transition">🛠️ 五金建材/汽配</button>
+        <button type="button" onclick="window.applyGlobalPreset('cylinder')" class="px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-amber-300 text-stone-800 font-bold transition">💧 水桶/气瓶循环</button>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5">
+        <span class="text-[11px] font-bold text-emerald-950 mr-1">② 本店自存方案：</span>
+        ${
+          customPresets.length === 0
+            ? '<span class="text-[11px] text-stone-400">暂无自存方案（点右上角「💾 存为新方案」可保存当前这套参数）</span>'
+            : customPresets
+                .map((cp, idx) => {
+                  const isCurrent = cp.name === activeName;
+                  return `
+                    <span class="inline-flex items-center rounded-xl ${
+                      isCurrent ? 'bg-[#1b4332] text-amber-300 border border-[#1b4332]' : 'bg-emerald-100 text-emerald-950 border border-emerald-400'
+                    } font-bold overflow-hidden">
+                      <button type="button" onclick="window.applySavedCustomPreset(${idx})" class="px-2.5 py-1 hover:opacity-90 transition">
+                        ${isCurrent ? '🟢' : '⭐'} ${cp.name}
+                      </button>
+                      <button type="button" onclick="window.deleteSavedCustomPreset(${idx})" title="删除此方案" class="px-1.5 py-1 hover:bg-rose-600 hover:text-white border-l ${
+                        isCurrent ? 'border-emerald-700 text-emerald-200' : 'border-emerald-300 text-emerald-800'
+                      } transition">✕</button>
+                    </span>
+                  `;
+                })
+                .join('')
+        }
+      </div>
+    </div>
+  `;
 }
 
-/**
- * 增强策略中心弹窗的分层结构：
- * 1. 修正 Tab 标题为「④ 价盘与9项2FA风控」并展示分层生效作用域图谱
- * 2. 在风控面板顶部注入「🚨 紧急止损拉闸（全盘熔断控制台）」与完整的 9 项 2FA 校验清单
- */
 function enhancePolicyModalHierarchy() {
   const riskTabBtn = document.getElementById('gp-tab-risk');
   if (riskTabBtn) {
@@ -249,24 +324,24 @@ function enhancePolicyModalHierarchy() {
 
   const tabMetaMap = {
     tiers: {
-      layer: '第一层 · 基础建档与授信层',
-      scope: '实时作用于 index.html（门店算价/授信/免批退货）与 driver.html（送货单打印扩展档案）'
+      layer: '第一层 · 客户建档与授信层',
+      scope: '保存即同步至【合作门店订货台（自动折算分级价/校验授信）】与【百工掌中宝（交割单打印档案）】'
     },
     promo: {
       layer: '第二层 · 丰歉平准与阶梯价层',
-      scope: '实时作用于 index.html / mall.html（阶梯折算与限购）及 hq.html（绩效返利核算）'
+      scope: '保存即同步至【合作门店订货台 / 百工天街专柜（阶梯折算与限购）】及【本台绩效返利核算】'
     },
     carriers: {
       layer: '第三层 · 循环载具资产层',
-      scope: '实时作用于 driver.html（随车回收按押金抵扣货款）与 index.html（门店载具结存）'
+      scope: '保存即同步至【百工掌中宝（随车回收按押金抵扣货款）】与【合作门店订货台（结存提醒）】'
     },
     risk: {
       layer: '第四层 · 价盘基准与 9 项 2FA 高危风控层（含紧急止损拉闸）',
-      scope: '全端硬拦截生效（hq.html 调度台 / index.html 门店端 / driver.html 掌中宝）'
+      scope: '全端硬拦截生效（总舵调度台 / 合作门店订货台 / 百工天街 / 百工掌中宝）'
     },
     slip: {
       layer: '第五层 · 凭单落款与印章审计层',
-      scope: '实时印制于 driver.html 蓝牙交割小票与 index.html 电子对账单'
+      scope: '保存即印制于【百工掌中宝蓝牙交割小票】与【门店周期电子对账单】'
     }
   };
 
@@ -277,7 +352,7 @@ function enhancePolicyModalHierarchy() {
     banner.className = 'gp-layer-banner mb-3 bg-stone-900 text-white px-3.5 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-[11px]';
     banner.innerHTML = `
       <span class="font-bold text-amber-300">🧭 ${info.layer}</span>
-      <span class="text-stone-300 font-mono text-[10px]">生效边界：${info.scope}</span>
+      <span class="text-stone-300 text-[10px]">生效边界：${info.scope}</span>
     `;
     pane.insertAdjacentElement('afterbegin', banner);
   });
@@ -314,7 +389,7 @@ function enhancePolicyModalHierarchy() {
           }">${isBraked ? '已拉闸熔断中' : '当前正常营业'}</span>
         </div>
         <p class="text-[11px] opacity-85 mt-0.5">
-          遭遇行情剧烈波动、异常恶意刷单或紧急盘点时，可立即拉闸锁死 <b>index.html</b> 与 <b>mall.html</b> 新单入口（旧单交割与对账不受影响）。
+          遭遇行情剧烈波动、异常恶意刷单或紧急盘点时，可立即拉闸锁死 <b>合作门店订货台</b> 与 <b>百工天街专柜</b> 新单入口（旧单交割与对账不受影响）。
         </p>
       </div>
       <button type="button" onclick="window.toggleEmergencyStopBrake()" class="${
@@ -337,7 +412,6 @@ function enhancePolicyModalHierarchy() {
     </div>
   `;
 
-  // 注入 9 项 2FA 清晰分层对照总览表（方便大当家一眼核对全部 9 项防线状态）
   let matrixBox = document.getElementById('gp-nine-2fa-matrix-summary');
   if (!matrixBox) {
     matrixBox = document.createElement('div');
@@ -364,7 +438,7 @@ function enhancePolicyModalHierarchy() {
               <span class="text-[10px] font-bold ${isChecked ? 'text-emerald-700' : 'text-stone-400'}">${isChecked ? '● 2FA已布防' : '○ 未开启'}</span>
             </div>
             <b class="text-stone-900 text-[11px]">${item.title}</b>
-            <span class="text-[10px] text-stone-500 font-mono">作用端：${item.scope}</span>
+            <span class="text-[10px] text-stone-500">作用端：${item.scope}</span>
           </div>
         `;
       }).join('')}
@@ -373,9 +447,12 @@ function enhancePolicyModalHierarchy() {
 }
 
 export function initPolicyBindings(callbacks) {
-  /**
-   * 第 9 项 2FA：紧急止损拉闸 / 合闸恢复（真实写入云端 custom_settings 并触发全端拦截）
-   */
+  window.togglePresetDrawer = function () {
+    const drawer = document.getElementById('gp-preset-drawer');
+    const isCurrentlyHidden = drawer ? drawer.classList.contains('hidden') : true;
+    renderCustomPresetsBar(isCurrentlyHidden);
+  };
+
   window.toggleEmergencyStopBrake = async function () {
     const nextState = !hqState.globalPolicy.emergencyBrakeActive;
     const reasonInput = document.getElementById('gp-emergency-brake-reason')?.value.trim();
@@ -408,8 +485,8 @@ export function initPolicyBindings(callbacks) {
 
       alert(
         nextState
-          ? `🚨 【紧急止损拉闸已生效】！\n原因：${reason}\n\n已立即熔断 index.html（合作门店端）与 mall.html（百工天街）的新订单提交入口，旧单交割与对账仍可正常进行。`
-          : '🟢 【紧急止损已合闸解除】！全网门店订货与天街专柜已恢复正常接单。'
+          ? `🚨 【紧急止损拉闸已生效】！\n原因：${reason}\n\n已立即熔断合作门店订货台与百工天街的新订单提交入口，旧单交割与对账仍可正常进行。`
+          : '🟢 【紧急止损已合闸解除】！全网门店订货台与百工天街专柜已恢复正常接单。'
       );
     };
 
@@ -482,16 +559,42 @@ export function initPolicyBindings(callbacks) {
   };
 
   window.saveCurrentAsCustomPreset = function () {
-    const name = prompt('为当前这套策略组合起个模板名称（如：日常平销策略 / 秋收助农模式）：');
+    const defaultSuggest = hqState.globalPolicy.activePolicyName || '';
+    const name = prompt('为当前这套策略组合起个方案名称（如：日常平销策略 / 秋收助农模式）：', defaultSuggest);
     if (!name || !name.trim()) return;
+    const cleanName = name.trim();
+
     let customPresets = [];
     try {
       customPresets = JSON.parse(localStorage.getItem('hq_custom_presets_' + hqState.currentAgent) || '[]');
     } catch (e) {}
-    customPresets.push({ name: name.trim(), policy: JSON.parse(JSON.stringify(hqState.globalPolicy)) });
+
+    const snapshot = JSON.parse(JSON.stringify(hqState.globalPolicy));
+    snapshot.activePolicyName = cleanName;
+
+    const existIdx = customPresets.findIndex((x) => x.name === cleanName);
+    if (existIdx >= 0) {
+      customPresets[existIdx] = { name: cleanName, policy: snapshot };
+    } else {
+      customPresets.push({ name: cleanName, policy: snapshot });
+    }
     localStorage.setItem('hq_custom_presets_' + hqState.currentAgent, JSON.stringify(customPresets));
-    renderCustomPresetsBar();
-    alert(`✅ 已将当前策略存为专属模板【${name.trim()}】，以后可随时一键切换！`);
+
+    hqState.globalPolicy.activePolicyName = cleanName;
+    renderCustomPresetsBar(false);
+    alert(`✅ 已将当前策略存为本店方案【${cleanName}】！点击弹窗底部「保存全局经营策略」即可全端生效。`);
+  };
+
+  window.deleteSavedCustomPreset = function (idx) {
+    let customPresets = [];
+    try {
+      customPresets = JSON.parse(localStorage.getItem('hq_custom_presets_' + hqState.currentAgent) || '[]');
+    } catch (e) {}
+    const target = customPresets[idx];
+    if (!target || !confirm(`确定删除本店自存方案【${target.name}】吗？`)) return;
+    customPresets.splice(idx, 1);
+    localStorage.setItem('hq_custom_presets_' + hqState.currentAgent, JSON.stringify(customPresets));
+    renderCustomPresetsBar(true);
   };
 
   window.applySavedCustomPreset = function (idx) {
@@ -502,8 +605,8 @@ export function initPolicyBindings(callbacks) {
     const target = customPresets[idx];
     if (!target) return;
     hqState.globalPolicy = JSON.parse(JSON.stringify(target.policy));
-    window.openGlobalPolicyModal('tiers');
-    alert(`✅ 已载入您的专属模板【${target.name}】，点击底部「保存全局经营策略」即可全端生效。`);
+    hqState.globalPolicy.activePolicyName = target.name;
+    window.openGlobalPolicyModal('tiers', false, target.name);
   };
 
   window.addPolicyTierRow = function (name = '', credit = 2000, rate = 1.0, retQuota = 500) {
@@ -599,9 +702,9 @@ export function initPolicyBindings(callbacks) {
     });
   };
 
-  window.openGlobalPolicyModal = function (defaultTab = 'tiers') {
+  window.openGlobalPolicyModal = function (defaultTab = 'tiers', expandPresets = false, pendingPreviewName = '') {
     const gp = hqState.globalPolicy;
-    renderCustomPresetsBar();
+    renderCustomPresetsBar(expandPresets, pendingPreviewName);
     document.getElementById('gp-store-tier-enabled').checked = gp.storeTierEnabled !== false;
 
     const tBox = document.getElementById('gp-tiers-container');
@@ -673,6 +776,7 @@ export function initPolicyBindings(callbacks) {
   window.applyGlobalPreset = function (presetKey) {
     const presets = {
       coop: {
+        activePolicyName: PRESET_DISPLAY_NAMES.coop,
         storeTierEnabled: true,
         storeTiers: [
           { name: 'LV1 核心连锁生鲜店', creditLimit: 5000, discountRate: 0.95, returnQuota: 1000 },
@@ -723,6 +827,7 @@ export function initPolicyBindings(callbacks) {
         seasonalPause: hqState.globalPolicy.seasonalPause || { isPaused: false, reason: '', resumeDate: '' }
       },
       factory: {
+        activePolicyName: PRESET_DISPLAY_NAMES.factory,
         storeTierEnabled: true,
         storeTiers: [
           { name: '一级区域总代', creditLimit: 20000, discountRate: 0.9, returnQuota: 2000 },
@@ -772,6 +877,7 @@ export function initPolicyBindings(callbacks) {
         seasonalPause: hqState.globalPolicy.seasonalPause || { isPaused: false, reason: '', resumeDate: '' }
       },
       hardware: {
+        activePolicyName: PRESET_DISPLAY_NAMES.hardware,
         storeTierEnabled: true,
         storeTiers: [
           { name: '工程项目战略户', creditLimit: 30000, discountRate: 0.92, returnQuota: 3000 },
@@ -815,6 +921,7 @@ export function initPolicyBindings(callbacks) {
         seasonalPause: hqState.globalPolicy.seasonalPause || { isPaused: false, reason: '', resumeDate: '' }
       },
       cylinder: {
+        activePolicyName: PRESET_DISPLAY_NAMES.cylinder,
         storeTierEnabled: true,
         storeTiers: [
           { name: '大型餐饮食堂户', creditLimit: 5000, discountRate: 0.94, returnQuota: 500 },
@@ -867,8 +974,7 @@ export function initPolicyBindings(callbacks) {
     const chosen = presets[presetKey];
     if (!chosen) return;
     hqState.globalPolicy = JSON.parse(JSON.stringify(chosen));
-    window.openGlobalPolicyModal('tiers');
-    alert('✅ 已套用行业预设模板！您可继续微调各项开关与数字后点击底部「保存全局经营策略」。');
+    window.openGlobalPolicyModal('tiers', false, chosen.activePolicyName);
   };
 
   window.saveGlobalPolicySettings = async function () {
@@ -927,6 +1033,7 @@ export function initPolicyBindings(callbacks) {
 
       const nextPolicy = {
         ...hqState.globalPolicy,
+        activePolicyName: hqState.globalPolicy.activePolicyName || '商号自定义现行策略',
         storeTierEnabled: document.getElementById('gp-store-tier-enabled').checked,
         storeTiers: tiers.length > 0 ? tiers : DEFAULT_GLOBAL_POLICY.storeTiers,
         storeCustomFields,
@@ -976,7 +1083,7 @@ export function initPolicyBindings(callbacks) {
 
       loadGlobalPolicyFromTenant(hqState.currentTenantData);
       callbacks?.onPolicyUpdated?.();
-      alert('🎉 商号全局经营策略（含 9 项 2FA 风控与紧急拉闸配置）已保存并同步全端生效！');
+      alert(`🎉 商号全局经营策略【${nextPolicy.activePolicyName}】已保存并同步全端生效！`);
       window.closeModal('modal-global-policy');
     };
 
