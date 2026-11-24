@@ -5,14 +5,23 @@ import { SettlementAdapter } from '../../services/settlementAdapter.js';
 let cachedGovConfigs = [];
 let cachedMemPlans = [];
 let cachedTenantCases = [];
-let cachedBarterContracts = [];
+let cachedTenantSelfCircuit = null;
+
+const TENANT_SELF_SCOPES = [
+  { key: 'finance_settle', label: '💰 财务核销与冲账' },
+  { key: 'inventory_move', label: '📦 仓库出入库与盘点' },
+  { key: 'store_write', label: '🏪 下游门店补货下单' },
+  { key: 'mall_write', label: '🏛️ 天街专柜线上接单' },
+  { key: 'driver_collect', label: '🚚 外勤随车收款登记' },
+  { key: 'data_export', label: '📤 报表与客户资料导出' }
+];
 
 function getCfgVal(key, fallback = '') {
   const row = cachedGovConfigs.find((c) => c.config_key === key);
   return row && row.config_value !== undefined && row.config_value !== '' ? row.config_value : fallback;
 }
 
-// 1. 拉取全局动态参数、会员档位、本店申诉单与物物置换契约
+// 1. 拉取全局动态参数、会员档位、本店申诉单及本商号独立自救熔断配置
 export async function loadAndRenderHqGovernanceExtension() {
   const tenantId = hqState.currentAgent;
   if (!tenantId) return;
@@ -27,11 +36,81 @@ export async function loadAndRenderHqGovernanceExtension() {
   cachedMemPlans = planRes.data || [];
   cachedTenantCases = caseRes.data || [];
 
+  const selfRow = cachedGovConfigs.find((c) => c.config_key === `tenant_self_circuit_${tenantId}`);
+  cachedTenantSelfCircuit = null;
+  if (selfRow?.config_value) {
+    try {
+      const parsed = JSON.parse(selfRow.config_value);
+      if (!parsed.expires_at || Date.now() < new Date(parsed.expires_at).getTime()) {
+        if (Array.isArray(parsed.scopes) && parsed.scopes.length > 0) {
+          cachedTenantSelfCircuit = parsed;
+        }
+      }
+    } catch (e) {}
+  }
+
   renderMembershipGraceBanner();
+  renderTenantSelfCircuitWidget();
   renderHqGovernanceModalContent();
 }
 
-// 2. 顶部温婉体验期 / 宽待期演进引导横幅（零写死天数，全读后台参数）
+// 1.5 渲染大当家专属「本店紧急自救拉闸」安全控件（仅 owner 主账号可见，与平台主权隔离）
+function renderTenantSelfCircuitWidget() {
+  const bannerHost = document.getElementById('hq-membership-grace-banner');
+  if (!bannerHost || !bannerHost.parentElement) return;
+
+  let selfBox = document.getElementById('hq-tenant-self-circuit-box');
+  if (!selfBox) {
+    selfBox = document.createElement('div');
+    selfBox.id = 'hq-tenant-self-circuit-box';
+    bannerHost.insertAdjacentElement('afterend', selfBox);
+  }
+
+  if (hqState.currentRoleCode !== 'owner') {
+    selfBox.classList.add('hidden');
+    return;
+  }
+
+  selfBox.classList.remove('hidden');
+  const activeScopes = cachedTenantSelfCircuit?.scopes || [];
+  const isLocked = activeScopes.length > 0;
+
+  if (isLocked) {
+    const expStr = cachedTenantSelfCircuit.expires_at
+      ? `（自动解除：${new Date(cachedTenantSelfCircuit.expires_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}）`
+      : '（手动持续保护中）';
+    const labels = activeScopes
+      .map((k) => TENANT_SELF_SCOPES.find((x) => x.key === k)?.label || k)
+      .join('、');
+
+    selfBox.className = 'mt-2 bg-rose-950 text-amber-100 border border-rose-500 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-xs';
+    selfBox.innerHTML = `
+      <div class="space-y-0.5">
+        <div class="font-bold text-amber-300 flex items-center gap-1.5">
+          <span>🚨 本店紧急自救保护闸门已拉下</span>
+          <span class="text-[10px] font-mono text-rose-200">${expStr}</span>
+        </div>
+        <div class="text-[11px] text-rose-100">已冻结通道：<b>${labels}</b></div>
+      </div>
+      <button type="button" onclick="window.releaseTenantSelfCircuit()" class="bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold px-3.5 py-1.5 rounded-xl text-[11px] shadow">
+        🔓 核验解除本店自救锁
+      </button>
+    `;
+  } else {
+    selfBox.className = 'mt-2 bg-stone-100/90 border border-stone-200 px-3 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs';
+    selfBox.innerHTML = `
+      <div class="flex items-center gap-2 text-stone-700">
+        <span>🛡️</span>
+        <span><b>商号独立风控闸门：</b>盘点清仓、农忙休整或发现账号异常时，大当家可一键拉闸冻结本店指定业务通道。</span>
+      </div>
+      <button type="button" onclick="window.openTenantSelfCircuitModal()" class="bg-stone-900 hover:bg-stone-800 text-amber-300 font-bold px-3 py-1 rounded-xl text-[11px]">
+        🚨 本店紧急止损拉闸
+      </button>
+    `;
+  }
+}
+
+// 2. 顶部温婉体验期 / 宽待期演进引导横幅
 function renderMembershipGraceBanner() {
   const host = document.getElementById('hq-membership-grace-banner');
   if (!host) return;
@@ -49,7 +128,6 @@ function renderMembershipGraceBanner() {
 
   const openCasesCount = cachedTenantCases.filter((c) => c.status === 'pending_appeal').length;
 
-  // 若有被 AI 暂缓展示的商品待说明申诉，优先温婉提醒
   if (openCasesCount > 0) {
     host.className =
       'bg-amber-50 border border-amber-400 text-amber-950 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs';
@@ -94,9 +172,8 @@ function renderMembershipGraceBanner() {
   }
 }
 
-// 3. 渲染百宝箱弹窗内容（① 会员选档与延期 ② 合规申诉 ③ 百工物物/劳务置换账本）
+// 3. 渲染百宝箱弹窗内容
 function renderHqGovernanceModalContent() {
-  // ① 会员等级与续约/宽待延期
   const planBox = document.getElementById('hq-gov-plans-list');
   if (planBox) {
     const graceDays = parseInt(getCfgVal('grace_extension_days', '7'));
@@ -149,7 +226,6 @@ function renderHqGovernanceModalContent() {
     `;
   }
 
-  // ② 合规巡检与掌柜凭证申诉通道
   const appealsBox = document.getElementById('hq-gov-appeals-list');
   if (appealsBox) {
     appealsBox.innerHTML =
@@ -202,7 +278,6 @@ function renderHqGovernanceModalContent() {
             .join('');
   }
 
-  // ③ 百工物物 / 劳务工时置换契约账本
   const barterBox = document.getElementById('hq-gov-barter-list');
   if (barterBox) {
     const barterOrders = (hqState.allOrders || []).filter(
@@ -233,14 +308,13 @@ function renderHqGovernanceModalContent() {
   }
 }
 
-// 4. 供发布商品时调用的 AI 四道铁面预检（零硬编码词库，读取后台自定义配置）
+// 4. 供发布商品时调用的 AI 四道铁面预检
 export async function runHqProductPreAudit({ productTitle, productDesc, price, videoUrl = '' }) {
   const findings = [];
   let caseType = 'promo_audit';
   const combinedText = `${productTitle || ''} ${productDesc || ''}`;
   const businessScope = hqState.currentTenantData?.business_scope || '';
 
-  // ① 经营范围防越界
   const scopeRules = [
     { prodKw: ['白酒', '散装酒', '米酒', '药酒', '果酒'], scopeKw: ['酒'], msg: '商品涉及酒类，但登记经营范围暂未包含酒类经营资质' },
     { prodKw: ['农药', '化肥', '兽药', '种子'], scopeKw: ['农资', '种子', '化肥', '农药'], msg: '商品涉及农资种子，需补充农资经营许可凭证' },
@@ -255,7 +329,6 @@ export async function runHqProductPreAudit({ productTitle, productDesc, price, v
     }
   }
 
-  // ② 宣传夸大与违禁词库（读取后台自定义配置）
   const rawBlocked = getCfgVal('blocked_promo_keywords', '国家级,根治,包治百病,特效药,第一品牌,稳赚不赔,刷单,兼职返现');
   const blockedList = rawBlocked
     .split(/[,，]/)
@@ -266,7 +339,6 @@ export async function runHqProductPreAudit({ productTitle, productDesc, price, v
     findings.push(`描述中包含夸大或违规词汇：【${hitWords.join('、')}】，建议改为平实客观的产地工艺介绍`);
   }
 
-  // ③ 外链音视频白名单校验
   if (videoUrl && videoUrl.trim()) {
     const rawDomains = getCfgVal(
       'allowed_video_domains',
@@ -287,7 +359,6 @@ export async function runHqProductPreAudit({ productTitle, productDesc, price, v
     }
   }
 
-  // ④ 极端异常标价护盘（不干预正常议价，只防 1 分钱刷单引流）
   const numPrice = Number(price);
   if (!isNaN(numPrice) && numPrice > 0 && numPrice <= 0.05) {
     findings.push(`标价（¥${numPrice}）过低，疑似引流刷单标价，请按实际公允价值填写`);
@@ -296,7 +367,6 @@ export async function runHqProductPreAudit({ productTitle, productDesc, price, v
 
   if (findings.length > 0) {
     const summary = findings.join('；');
-    // 自动写入平台巡检申诉表，方便掌柜一键补充凭证申诉
     await supabase
       .from('platform_compliance_case')
       .insert([
@@ -317,6 +387,140 @@ export async function runHqProductPreAudit({ productTitle, productDesc, price, v
 }
 
 export function initHqGovernanceExtensionBindings() {
+  // 大当家独立自救熔断配置弹窗
+  window.openTenantSelfCircuitModal = function () {
+    if (hqState.currentRoleCode !== 'owner') {
+      return alert('仅大当家主账号有权限启动或解除本店独立安全熔断！');
+    }
+    document.getElementById('modal-tenant-self-circuit')?.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'modal-tenant-self-circuit';
+    modal.className = 'fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-4';
+    modal.innerHTML = `
+      <div class="bg-white border border-stone-200 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-xs">
+        <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
+          <div>
+            <b class="text-sm text-rose-900">🚨 本店独立紧急止损拉闸</b>
+            <p class="text-[11px] text-stone-500 mt-0.5">仅对本商号（${hqState.currentAgent}）生效，不影响其他商号</p>
+          </div>
+          <button type="button" onclick="document.getElementById('modal-tenant-self-circuit')?.remove()" class="text-stone-400 hover:text-stone-800 text-base font-bold">✕</button>
+        </div>
+
+        <div class="space-y-1.5">
+          <b class="text-stone-800 block">1. 勾选需要临时冻结的本店业务通道：</b>
+          <div class="grid grid-cols-2 gap-1.5">
+            ${TENANT_SELF_SCOPES.map(
+              (s) => `
+              <label class="flex items-center gap-1.5 p-2 rounded-xl border border-stone-200 bg-stone-50 cursor-pointer hover:border-rose-400">
+                <input type="checkbox" class="tenant-self-scope-cb accent-rose-600" value="${s.key}" checked>
+                <span class="font-bold text-stone-800">${s.label}</span>
+              </label>
+            `
+            ).join('')}
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <b class="text-stone-800 block">2. 自动恢复时限（防遗忘）：</b>
+          <select id="tenant-self-circuit-mins" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold text-stone-800 outline-none">
+            <option value="30">30 分钟后自动恢复</option>
+            <option value="120" selected>2 小时后自动恢复</option>
+            <option value="480">8 小时后自动恢复</option>
+            <option value="0">持续锁定，直到大当家手动核验解除</option>
+          </select>
+        </div>
+
+        <div class="space-y-1">
+          <b class="text-stone-800 block">3. 给下游合作门店与买家的安抚提示语：</b>
+          <input type="text" id="tenant-self-circuit-notice" value="本店正在进行集中盘点与账目核对，期间暂停新单提交，预计稍后恢复！" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-800 outline-none">
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="document.getElementById('modal-tenant-self-circuit')?.remove()" class="flex-1 py-2.5 rounded-xl bg-stone-100 text-stone-700 font-bold">取消</button>
+          <button type="button" onclick="window.confirmTenantSelfCircuit()" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow">🚨 立即拉闸冻结</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  };
+
+  window.confirmTenantSelfCircuit = async function () {
+    if (hqState.currentRoleCode !== 'owner') return;
+    const scopes = Array.from(document.querySelectorAll('.tenant-self-scope-cb:checked')).map((el) => el.value);
+    if (scopes.length === 0) return alert('请至少勾选一项需要冻结的通道！');
+
+    const mins = parseInt(document.getElementById('tenant-self-circuit-mins')?.value || '120', 10);
+    const notice = document.getElementById('tenant-self-circuit-notice')?.value.trim() || '本店正在进行安全盘点护盘，请稍后再试。';
+    const expiresAt = mins > 0 ? new Date(Date.now() + mins * 60000).toISOString() : null;
+
+    const payload = {
+      scopes,
+      expires_at: expiresAt,
+      public_notice: notice,
+      updated_by: hqState.currentOperatorName,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase.from('platform_governance_config').upsert(
+      [
+        {
+          config_key: `tenant_self_circuit_${hqState.currentAgent}`,
+          config_value: JSON.stringify(payload),
+          description: `商号独立自救熔断(${hqState.currentAgent})`
+        }
+      ],
+      { onConflict: 'config_key' }
+    );
+
+    if (error) return alert('启动自救熔断失败：' + error.message);
+
+    await supabase.from('audit_immutable_log').insert([
+      {
+        tenant_id: hqState.currentAgent,
+        operator_name: hqState.currentOperatorName,
+        action_level: 'WARN',
+        action_title: '大当家启动本店独立安全熔断',
+        action_details: payload
+      }
+    ]).catch(() => {});
+
+    document.getElementById('modal-tenant-self-circuit')?.remove();
+    alert('🚨 本店紧急自救保护闸门已生效！所选通道已即时锁定，其余商号不受影响。');
+    await loadAndRenderHqGovernanceExtension();
+  };
+
+  window.releaseTenantSelfCircuit = function () {
+    if (hqState.currentRoleCode !== 'owner') return;
+    const execRelease = async () => {
+      const { error } = await supabase
+        .from('platform_governance_config')
+        .delete()
+        .eq('config_key', `tenant_self_circuit_${hqState.currentAgent}`);
+
+      if (error) return alert('解除失败：' + error.message);
+
+      await supabase.from('audit_immutable_log').insert([
+        {
+          tenant_id: hqState.currentAgent,
+          operator_name: hqState.currentOperatorName,
+          action_level: 'INFO',
+          action_title: '大当家解除本店独立安全熔断',
+          action_details: { tenant_id: hqState.currentAgent }
+        }
+      ]).catch(() => {});
+
+      alert('🔓 本店独立安全保护已解除，所有业务通道恢复畅通！');
+      await loadAndRenderHqGovernanceExtension();
+    };
+
+    if (hqState.currentTenantData?.totp_enabled && typeof window.trigger2FAAction === 'function') {
+      window.trigger2FAAction('解除本店独立安全熔断，请输入验证器 6 位动态码或应急恢复码授权：', execRelease);
+    } else if (confirm('确认解除本店独立安全保护并恢复所有业务通道？')) {
+      execRelease();
+    }
+  };
+
   window.openHqGovernanceModal = function (tab = 'membership') {
     window.switchHqGovTab(tab);
     window.openModal('modal-hq-governance-hub');
@@ -335,7 +539,6 @@ export function initHqGovernanceExtensionBindings() {
     });
   };
 
-  // 一键申请宽待延期（读取后台配置的宽待天数与最多次数）
   window.applyHqGraceExtension = async function () {
     const t = hqState.currentTenantData;
     if (!t) return;
@@ -367,7 +570,6 @@ export function initHqGovernanceExtensionBindings() {
     await window.loadHQData();
   };
 
-  // 转为免费基础展销席（老订单照常履约平账，绝不强制）
   window.switchToBasicPublicCare = async function () {
     const t = hqState.currentTenantData;
     if (!t) return;
@@ -384,7 +586,6 @@ export function initHqGovernanceExtensionBindings() {
     await window.loadHQData();
   };
 
-  // 选定会员档位交割续约（接入 membership_pay 精准熔断检查 + 大额阈值护盘）
   window.submitMembershipRenewal = async function (planCode, planName, feeAmount) {
     if (
       window.checkBusinessCircuit &&
@@ -428,7 +629,6 @@ export function initHqGovernanceExtensionBindings() {
     window.closeModal('modal-hq-governance-hub');
   };
 
-  // 掌柜提交合规凭证申诉
   window.submitHqCaseAppeal = async function (caseId) {
     const note = prompt('请填写说明陈述（如：本店已取得对应资质或已修改客观描述）：');
     if (!note || !note.trim()) return;
@@ -448,7 +648,6 @@ export function initHqGovernanceExtensionBindings() {
     await loadAndRenderHqGovernanceExtension();
   };
 
-  // 登记一笔百工以物换物 / 劳务工时置换契约（接入 hq_write 调度台写入熔断检查）
   window.submitHqBarterContract = async function () {
     if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('hq_write', hqState.currentAgent))) {
       return;
