@@ -857,6 +857,39 @@
     initMallController();
   </script>
   <script type="module" src="./src/utils/circuitGuardListener.js"></script>
+  <script type="module">
+    import { supabase } from './src/lib/supabase.js';
+
+    (async function checkMallTenantBrake() {
+      const tenantId = new URLSearchParams(window.location.search).get('t')?.trim().toUpperCase();
+      if (!tenantId) return;
+      const { data } = await supabase
+        .from('platform_tenant')
+        .select('company_name, custom_settings')
+        .eq('tenant_id', tenantId)
+        .single();
+
+      const policy = data?.custom_settings && typeof data.custom_settings === 'object' ? data.custom_settings : {};
+      if (policy.emergencyBrakeActive || policy.seasonalPause?.isPaused) {
+        const msg = policy.emergencyBrakeActive
+          ? `🚨 【${data?.company_name || tenantId}】已启动紧急止损拉闸：${policy.emergencyBrakeReason || '当前暂缓接新单'}`
+          : `🍵 【${data?.company_name || tenantId}】暂歇接单中：${policy.seasonalPause.reason || '产区农忙/盘点中'}`;
+
+        const bar = document.createElement('div');
+        bar.className = 'bg-rose-950 text-white text-xs font-bold text-center py-2.5 px-3 sticky top-0 z-50 border-b border-rose-500';
+        bar.innerText = msg;
+        document.body.insertAdjacentElement('afterbegin', bar);
+
+        document.addEventListener('click', (e) => {
+          if (e.target.closest('button[type="submit"], #btn-mall-checkout, #btn-submit-mall-order')) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            alert(msg);
+          }
+        }, true);
+      }
+    })();
+  </script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
