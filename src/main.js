@@ -277,7 +277,11 @@ window.filterBySpecialTag = function (tag) {
 };
 
 function renderProducts() {
-  const container = document.getElementById('product-container') || document.getElementById('product-list');
+  const container =
+    document.getElementById('product-container') ||
+    document.getElementById('product-list') ||
+    document.getElementById('goods-list') ||
+    document.getElementById('items-container');
   if (!container) return;
 
   let filtered = storeState.allProducts;
@@ -411,7 +415,6 @@ function renderSettlementSelector() {
       ? storeState.currentStore.allowed_settlements
       : ['cash', 'credit'];
 
-  // 优先读取供货方商号自定行规里的结算方式字典（零写死），平滑回退至 SETTLEMENT_CONFIG
   const customMethods = storeState.currentTenantSettings?.settlementMethods;
   const methodEntries =
     Array.isArray(customMethods) && customMethods.length > 0
@@ -1095,7 +1098,7 @@ window.copyFlyerText = function () {
 };
 
 // ==========================================
-// 8. 启动初始化（优先绑定事件，再异步拉取云端数据）
+// 8. 启动初始化（优先挂载工具栏与事件，再异步拉取云端数据）
 // ==========================================
 async function initTerminal() {
   document.addEventListener('click', window.closeAllMenus);
@@ -1107,8 +1110,15 @@ async function initTerminal() {
   initPoolPlanBindings();
   initStoreSmartCareBindings();
 
-  await syncAgentsFromCloud();
-  await loadTerminalData();
+  // 启动瞬间立即挂载「📋 微信文本清单智能拆单」快捷条
+  mountStoreSmartCareToolbar();
+
+  try {
+    await syncAgentsFromCloud();
+    await loadTerminalData();
+  } catch (err) {
+    console.error('门店端数据加载异常:', err);
+  }
 }
 
 initTerminal();
