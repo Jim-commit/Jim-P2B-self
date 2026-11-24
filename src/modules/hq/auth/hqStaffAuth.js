@@ -127,7 +127,6 @@ export async function checkHQAuthStatus() {
     hqState.currentAccountCode = sessionStorage.getItem('hq_sub_account_' + authedTenant) || '';
     hqState.currentOperatorName = sessionStorage.getItem('hq_sub_name_' + authedTenant) || '大当家主账号';
 
-    // 若为子账号登录，实时同步其最新原子权限与临时代班状态
     if (hqState.currentRoleCode !== 'owner' && hqState.currentAccountCode) {
       const { data: subRows } = await supabase
         .from('tenant_sub_user')
@@ -221,45 +220,147 @@ export function renderSubUsersTable() {
     .join('');
 }
 
+/**
+ * 实时计算四权分立（管物/管账/定价/稽核）互斥状态与能力统计，并同步隐藏的旧兼容复选框
+ */
+function updateStaffFourPowersStatus() {
+  const checkedCaps = Array.from(document.querySelectorAll('.sub-atomic-cap-cb:checked')).map((el) => el.value);
+  const roleCode = document.getElementById('sub-role-select')?.value || '';
+
+  const hasGoods = checkedCaps.some((k) => ['stock_in', 'stock_out'].includes(k));
+  const hasMoney = checkedCaps.some((k) => ['finance_settle'].includes(k));
+  const hasPrice = checkedCaps.some((k) => ['product_pricing', 'store_credit'].includes(k));
+  const hasAudit = roleCode === 'auditor' || checkedCaps.includes('audit_readonly');
+
+  // 同步底层旧 .sub-perm-cb 兼容状态
+  document.querySelectorAll('.sub-perm-cb').forEach((cb) => {
+    if (cb.value === 'perm_stock') cb.checked = hasGoods;
+    else if (cb.value === 'perm_finance_settle') cb.checked = hasMoney;
+    else if (cb.value === 'perm_deliver') cb.checked = checkedCaps.includes('driver_deliver') || checkedCaps.includes('qc_damage');
+    else if (cb.value === 'perm_sales_visit') cb.checked = checkedCaps.includes('sales_collect') || checkedCaps.includes('lead_onboard');
+    else if (cb.value === 'perm_audit_readonly') cb.checked = hasAudit;
+  });
+
+  const badgeEl = document.getElementById('four-powers-live-status');
+  if (!badgeEl) return;
+
+  if (hasGoods && hasMoney) {
+    badgeEl.className = 'p-2 rounded-xl bg-rose-100 border border-rose-300 text-rose-900 text-[11px] font-bold';
+    badgeEl.innerText = '🚨 四权分立红线冲突：「管物（出入库制单）」与「管账（财务销账）」严禁同一人兼任！';
+  } else if (hasAudit && checkedCaps.filter((k) => k !== 'audit_readonly').length > 0) {
+    badgeEl.className = 'p-2 rounded-xl bg-rose-100 border border-rose-300 text-rose-900 text-[11px] font-bold';
+    badgeEl.innerText = '🚨 四权分立红线冲突：「独立稽核」属于第三方只读监督岗，不可兼任业务操作！';
+  } else {
+    const activePowers = [
+      hasGoods ? '📦 管物权' : '',
+      hasMoney ? '💰 管账权' : '',
+      hasPrice ? '🏷️ 定价/授信权' : '',
+      hasAudit ? '🔍 独立稽核权' : ''
+    ].filter(Boolean);
+    badgeEl.className = 'p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] flex justify-between items-center';
+    badgeEl.innerHTML = `
+      <span>✅ 四权内控合规：<b>${activePowers.length > 0 ? activePowers.join(' · ') : '纯一线执行岗（无高危敏感权）'}</b></span>
+      <span class="font-mono font-bold text-emerald-800">已选 ${checkedCaps.length} 项能力</span>
+    `;
+  }
+}
+
+/**
+ * 将原本冗余重复的「6项旧复选框 + 12项小滚动框」重构为清晰的四层递进架构：
+ * 1. 数据视野隔离（L0盲价 / L1基准价 / L2全账目）
+ * 2. 四权分立内控互斥实时自检条
+ * 3. 12 项原子能力积木按「产仓物流 / 拓客跟单 / 定价账房」三组完整展开（无小滚动条）
+ */
 function renderModularCapMatrixInModal() {
   const modal = document.getElementById('modal-add-subuser');
   if (!modal) return;
+
+  // 隐藏原本在弹窗里重复出现的旧 6 项复选框区块（保留 DOM 供兼容同步）
+  const legacyCb = modal.querySelector('.sub-perm-cb');
+  if (legacyCb) {
+    const legacyWrapper = legacyCb.closest('.bg-stone-50, .border, .space-y-2, .grid')?.parentElement || legacyCb.closest('div')?.parentElement;
+    if (legacyWrapper && legacyWrapper.id !== 'modular-cap-matrix-box') {
+      legacyWrapper.classList.add('hidden');
+    }
+  }
+
   let container = document.getElementById('modular-cap-matrix-box');
   if (!container) {
     container = document.createElement('div');
     container.id = 'modular-cap-matrix-box';
-    container.className = 'space-y-2.5 pt-2 border-t border-stone-100';
-    const existingCb = modal.querySelector('.sub-perm-cb');
-    const targetParent = existingCb ? existingCb.closest('div')?.parentElement : modal.querySelector('form, .space-y-3, .space-y-4');
+    container.className = 'space-y-3 pt-2 border-t border-stone-200';
+    const targetParent = legacyCb ? legacyCb.closest('div')?.parentElement?.parentElement || modal.querySelector('form, .space-y-3, .space-y-4') : modal.querySelector('form, .space-y-3, .space-y-4');
     if (targetParent) targetParent.appendChild(container);
   }
 
+  const capGroups = [
+    {
+      title: '① 产仓与物流执行（管物 / 配送 / 定损）',
+      keys: ['stock_in', 'stock_out', 'driver_deliver', 'qc_damage']
+    },
+    {
+      title: '② 门店跟单与外勤拓客（跟单 / 催收 / 接单）',
+      keys: ['sales_collect', 'lead_onboard', 'order_confirm', 'c2b_quote']
+    },
+    {
+      title: '③ 定价、授信与账房稽核（管价 / 管账 / 审计）',
+      keys: ['product_pricing', 'store_credit', 'finance_settle', 'audit_readonly']
+    }
+  ];
+
+  const renderCapChip = (key) => {
+    const cap = ATOMIC_CAPABILITIES.find((c) => c.key === key);
+    if (!cap) return '';
+    return `
+      <label class="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-xl border border-stone-200 cursor-pointer hover:border-emerald-600 transition text-[11px]">
+        <input type="checkbox" class="sub-atomic-cap-cb accent-emerald-700 w-3.5 h-3.5" value="${cap.key}" onchange="window.onAtomicCapToggle()">
+        <span class="truncate font-medium text-stone-800">${cap.label}</span>
+      </label>
+    `;
+  };
+
   container.innerHTML = `
-    <div>
-      <label class="text-[11px] font-bold text-stone-700 block mb-1">👁️ 价格与账目数据视野等级：</label>
-      <select id="sub-price-visibility" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-stone-800">
+    <div class="bg-sky-50/70 border border-sky-200 p-2.5 rounded-2xl space-y-1">
+      <label class="text-[11px] font-bold text-sky-950 block">👁️ 第二步：价格与账目数据视野隔离等级</label>
+      <select id="sub-price-visibility" class="w-full bg-white border border-sky-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-stone-800 outline-none">
         ${Object.values(PRICE_VISIBILITY_LEVELS)
           .map((v) => `<option value="${v.code}">${v.label}</option>`)
           .join('')}
       </select>
     </div>
-    <div>
-      <label class="text-[11px] font-bold text-stone-700 block mb-1">🧩 12 项原子能力积木（支持一人多岗自由勾选）：</label>
-      <div class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto p-1 bg-stone-50/70 rounded-xl border border-stone-200">
-        ${ATOMIC_CAPABILITIES.map(
-          (c) => `
-          <label class="flex items-center gap-1.5 px-2 py-1.5 bg-white rounded-lg border border-stone-200 cursor-pointer hover:border-emerald-500 text-[11px]">
-            <input type="checkbox" class="sub-atomic-cap-cb accent-emerald-700" value="${c.key}">
-            <span class="truncate font-medium text-stone-800">${c.label}</span>
-          </label>
-        `
-        ).join('')}
+
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
+        <label class="text-[11px] font-bold text-stone-800">🧩 第三步：按业务流勾选原子能力积木（支持一人多岗）</label>
+      </div>
+
+      <div id="four-powers-live-status" class="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px]">
+        ✅ 四权内控合规
+      </div>
+
+      <div class="space-y-2 bg-stone-50 p-2.5 rounded-2xl border border-stone-200">
+        ${capGroups
+          .map(
+            (g) => `
+            <div class="space-y-1">
+              <div class="text-[10px] font-bold text-stone-500">${g.title}</div>
+              <div class="grid grid-cols-2 gap-1.5">
+                ${g.keys.map((k) => renderCapChip(k)).join('')}
+              </div>
+            </div>
+          `
+          )
+          .join('')}
       </div>
     </div>
   `;
 }
 
 export function bindLoginAndStaffActions() {
+  window.onAtomicCapToggle = function () {
+    updateStaffFourPowersStatus();
+  };
+
   window.switchHQLoginMode = function (mode) {
     const pwdForm = document.getElementById('pane-login-pwd');
     const qrPane = document.getElementById('pane-login-qr');
@@ -485,21 +586,8 @@ export function bindLoginAndStaffActions() {
       qc_service: '售后定损 / 质检员',
       auditor: '独立稽核员'
     };
-    const presetPerms = {
-      sales: ['perm_sales_visit'],
-      warehouse: ['perm_stock'],
-      finance: ['perm_finance_settle'],
-      driver: ['perm_deliver'],
-      producer: ['perm_stock'],
-      qc_service: ['perm_deliver'],
-      auditor: ['perm_audit_readonly']
-    };
     const titleEl = document.getElementById('sub-custom-title-input');
     if (titleEl) titleEl.value = presetTitles[roleCode] || roleCode;
-    const perms = presetPerms[roleCode] || [];
-    document.querySelectorAll('.sub-perm-cb').forEach((cb) => {
-      cb.checked = perms.includes(cb.value);
-    });
 
     const tpl = ROLE_PRESET_TEMPLATES[roleCode] || { priceVisibility: 'L0', capabilities: [] };
     const visSel = document.getElementById('sub-price-visibility');
@@ -507,6 +595,7 @@ export function bindLoginAndStaffActions() {
     document.querySelectorAll('.sub-atomic-cap-cb').forEach((cb) => {
       cb.checked = tpl.capabilities.includes(cb.value);
     });
+    updateStaffFourPowersStatus();
   };
 
   window.openAddSubUserModal = () => {
@@ -537,18 +626,16 @@ export function bindLoginAndStaffActions() {
     }
 
     const atomicCaps = Array.from(document.querySelectorAll('.sub-atomic-cap-cb:checked')).map((el) => el.value);
-    const legacyPerms = Array.from(document.querySelectorAll('.sub-perm-cb:checked')).map((el) => el.value);
-    if (atomicCaps.length === 0 && legacyPerms.length === 0) {
-      return alert('请至少勾选一项原子能力或岗位权限！');
+    if (atomicCaps.length === 0) {
+      return alert('请至少勾选一项原子能力积木！');
     }
 
-    // 兼容传统四权分立与新原子能力互斥校验
-    const hasStockCap = atomicCaps.includes('stock_in') || atomicCaps.includes('stock_out') || legacyPerms.includes('perm_stock');
-    const hasFinanceCap = atomicCaps.includes('finance_settle') || legacyPerms.includes('perm_finance_settle');
+    const hasStockCap = atomicCaps.includes('stock_in') || atomicCaps.includes('stock_out');
+    const hasFinanceCap = atomicCaps.includes('finance_settle');
     if (hasStockCap && hasFinanceCap) {
       return alert('🚨 四权分立内控拦截：\n「仓库实物出入库制单」与「财务点款销账」属于互斥不相容能力，严禁同一人兼任！');
     }
-    if ((role_code === 'auditor' || legacyPerms.includes('perm_audit_readonly')) && atomicCaps.length > 1) {
+    if ((role_code === 'auditor' || atomicCaps.includes('audit_readonly')) && atomicCaps.filter((k) => k !== 'audit_readonly').length > 0) {
       return alert('🚨 四权分立内控拦截：\n「独立稽核」属于第三方监督岗位，不可同时兼任业务操作能力！');
     }
 
@@ -582,7 +669,6 @@ export function bindLoginAndStaffActions() {
     }
   };
 
-  // 大当家限时临时代班授权弹窗
   window.openStaffDelegationModal = function (subUserId) {
     if (hqState.currentRoleCode !== 'owner') {
       return alert('仅大当家主账号可授予或收回临时代班权限！');
