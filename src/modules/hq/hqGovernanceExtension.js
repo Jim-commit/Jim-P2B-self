@@ -308,23 +308,38 @@ function renderHqGovernanceModalContent() {
   }
 }
 
-// 4. 供发布商品时调用的 AI 四道铁面预检
+// 4. 供发布商品时调用的 AI 四道铁面预检（优先读取数据库动态合规规则库，零写死）
 export async function runHqProductPreAudit({ productTitle, productDesc, price, videoUrl = '' }) {
   const findings = [];
   let caseType = 'promo_audit';
   const combinedText = `${productTitle || ''} ${productDesc || ''}`;
   const businessScope = hqState.currentTenantData?.business_scope || '';
 
-  const scopeRules = [
-    { prodKw: ['白酒', '散装酒', '米酒', '药酒', '果酒'], scopeKw: ['酒'], msg: '商品涉及酒类，但登记经营范围暂未包含酒类经营资质' },
-    { prodKw: ['农药', '化肥', '兽药', '种子'], scopeKw: ['农资', '种子', '化肥', '农药'], msg: '商品涉及农资种子，需补充农资经营许可凭证' },
-    { prodKw: ['处方药', '中药材饮片', '理疗仪'], scopeKw: ['药', '医疗器械'], msg: '商品涉及医药保健器械，需补充专项许可凭证' }
+  let scopeRules = [
+    { prodKw: ['白酒', '散装酒', '米酒', '药酒', '果酒'], scopeKw: ['酒'], msg: '商品涉及酒类，但登记经营范围暂未包含酒类经营资质', caseType: 'scope_block' },
+    { prodKw: ['农药', '化肥', '兽药', '种子'], scopeKw: ['农资', '种子', '化肥', '农药'], msg: '商品涉及农资种子，需补充农资经营许可凭证', caseType: 'scope_block' },
+    { prodKw: ['处方药', '中药材饮片', '理疗仪'], scopeKw: ['药', '医疗器械'], msg: '商品涉及医药保健器械，需补充专项许可凭证', caseType: 'scope_block' }
   ];
+  const dynamicScopeRaw = getCfgVal('dynamic_scope_rules_json', '');
+  if (dynamicScopeRaw) {
+    try {
+      const parsedRules = JSON.parse(dynamicScopeRaw);
+      if (Array.isArray(parsedRules) && parsedRules.length > 0) {
+        scopeRules = parsedRules;
+      }
+    } catch (e) {}
+  }
+
   if (businessScope) {
     for (const r of scopeRules) {
-      if (r.prodKw.some((k) => combinedText.includes(k)) && !r.scopeKw.some((k) => businessScope.includes(k))) {
+      if (
+        Array.isArray(r.prodKw) &&
+        Array.isArray(r.scopeKw) &&
+        r.prodKw.some((k) => combinedText.includes(k)) &&
+        !r.scopeKw.some((k) => businessScope.includes(k))
+      ) {
         findings.push(r.msg);
-        caseType = 'scope_block';
+        caseType = r.caseType || 'scope_block';
       }
     }
   }
@@ -466,6 +481,7 @@ export function initHqGovernanceExtensionBindings() {
       [
         {
           config_key: `tenant_self_circuit_${hqState.currentAgent}`,
+          config_label: `商号独立自救熔断(${hqState.currentAgent})`,
           config_value: JSON.stringify(payload),
           description: `商号独立自救熔断(${hqState.currentAgent})`
         }
