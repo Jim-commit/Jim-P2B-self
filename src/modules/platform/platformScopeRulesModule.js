@@ -7,15 +7,16 @@ export function initPlatformScopeRulesBindings() {
 
     const { data: tenant, error } = await supabase
       .from('platform_tenant')
-      .select('tenant_id, company_name, dynamic_scope_rules_json')
+      .select('tenant_id, company_name, custom_settings')
       .eq('tenant_id', tenantId)
       .single();
 
     if (error || !tenant) return alert('读取商号合规边界配置失败：' + (error?.message || '未找到商号'));
 
+    const settings = tenant.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
     const rulesObj =
-      tenant.dynamic_scope_rules_json && typeof tenant.dynamic_scope_rules_json === 'object'
-        ? tenant.dynamic_scope_rules_json
+      settings.dynamicScopeRules && typeof settings.dynamicScopeRules === 'object'
+        ? settings.dynamicScopeRules
         : {
             blockedKeywords: ['包治百病', '国家级', '绝对第一', '特效药'],
             allowedCategories: ['粮油副食', '生鲜果蔬', '手工特产', '日用百货', '五金农资'],
@@ -72,10 +73,20 @@ export function initPlatformScopeRulesBindings() {
       .filter(Boolean);
     const requireOriginProof = !!document.getElementById('admin-scope-origin-req')?.checked;
 
-    const payload = { allowedCategories, blockedKeywords, requireOriginProof };
+    const { data: latest } = await supabase
+      .from('platform_tenant')
+      .select('custom_settings')
+      .eq('tenant_id', tenantId)
+      .single();
+
+    const nextSettings = {
+      ...(latest?.custom_settings && typeof latest.custom_settings === 'object' ? latest.custom_settings : {}),
+      dynamicScopeRules: { allowedCategories, blockedKeywords, requireOriginProof }
+    };
+
     const { error } = await supabase
       .from('platform_tenant')
-      .update({ dynamic_scope_rules_json: payload })
+      .update({ custom_settings: nextSettings })
       .eq('tenant_id', tenantId);
 
     if (error) return alert('保存合规边界规则失败：' + error.message);
