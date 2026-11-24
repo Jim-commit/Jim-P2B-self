@@ -47,7 +47,7 @@
     }
   </style>
 </head>
-<body class="bg-[#f7f5f0] text-stone-800 font-sans p-3 sm:p-4 min-h-screen">
+<body class="bg-[#f7f5f0] text-stone-800 font-sans p-3 sm:p-4 min-h-screen" onclick="if(!event.target.closest('#hq-toolbox-wrapper')) document.getElementById('hq-toolbox-dropdown')?.classList.add('hidden')">
   <div class="max-w-7xl mx-auto space-y-3.5">
 
     <!-- 全局安全护盘预警横幅挂载点 -->
@@ -56,10 +56,14 @@
     <!-- 动态体验期温和演进与合规提醒横幅挂载点 -->
     <div id="hq-membership-grace-banner" class="hidden"></div>
     
-    <!-- 顶栏：主体招牌置顶 + 账目归己 + 经营诊断助手 -->
+    <!-- 顶栏：主体招牌置顶 + 内嵌风控闸门 + 清爽归类工具栏 -->
     <header id="hq-main-header" class="bg-gradient-to-r from-[#1b4332] via-[#1f4d3a] to-[#143628] text-white p-4 sm:p-5 rounded-3xl shadow-lg space-y-3 border border-emerald-700/40">
       
-      <div class="flex flex-wrap justify-between items-start sm:items-center gap-3">
+      <!-- 商号独立风控闸门内嵌插槽 -->
+      <div id="hq-header-circuit-slot"></div>
+
+      <!-- 第一层：商号招牌 + 系统级状态动作 -->
+      <div class="flex flex-wrap justify-between items-center gap-3">
         <div class="space-y-1">
           <div class="text-[11px] text-emerald-300/90 font-medium tracking-wider flex items-center gap-1.5">
             <span id="hq-title">源头直供与产销调度台</span>
@@ -83,33 +87,23 @@
           </div>
         </div>
 
-        <div id="hq-header-top-actions" class="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full lg:w-auto">
-          <div class="flex flex-wrap items-center gap-2">
-            <button type="button" onclick="window.openHqGovernanceModal('membership')" class="owner-only-guard bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/40 transition active:scale-95 flex items-center gap-1" title="自主选档续约、申请宽待延期、查看合规申诉与物物/劳务置换">
-              <span>🎖️</span> 会员契约 / 申诉 / 置换
-            </button>
-            <button type="button" id="btn-seasonal-pause" onclick="window.openSeasonalPauseModal()" class="owner-only-guard bg-white/10 hover:bg-white/20 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/30 transition active:scale-95 flex items-center gap-1">
-              <span>⏸️</span> 盘点 / 休市暂歇
-            </button>
-            <button type="button" onclick="window.exportFullTenantBackup()" class="owner-only-guard bg-white/10 hover:bg-white/20 text-emerald-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/30 transition active:scale-95 flex items-center gap-1" title="一键打包下载本店全套货品、门店与单据账本备份">
-              <span>💾</span> 备份自家账本
-            </button>
-            <button type="button" onclick="window.openContextualHelpModal()" class="bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/40 transition active:scale-95 flex items-center gap-1" title="智能诊断当前工作台待办与操作指引">
-              <span>💡</span> 经营诊断
-            </button>
-          </div>
-          <div class="flex items-center gap-2 ml-auto sm:ml-2">
-            <button onclick="window.openNotificationDrawer()" class="relative bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/40 transition active:scale-95 flex items-center gap-1">
-              <span>📬</span> 待办提醒
-              <span id="hq-notif-badge" class="hidden bg-rose-600 text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full">0</span>
-            </button>
-            <button onclick="window.loadHQData()" class="bg-white/95 hover:bg-white text-emerald-950 text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-xs transition active:scale-95">
-              ↻ 刷新
-            </button>
-            <button onclick="window.logoutHQ()" class="bg-rose-950/70 hover:bg-rose-800 text-rose-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-rose-700/50 transition active:scale-95">
-              退出
-            </button>
-          </div>
+        <div id="hq-header-top-actions" class="flex flex-wrap items-center gap-2 shrink-0">
+          <button type="button" id="btn-toggle-onboarding-guide" onclick="window.toggleOnboardingGuideQuick()" class="bg-white/10 hover:bg-white/20 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/30 transition active:scale-95 flex items-center gap-1" title="随时展开或隐去三步上手导引卡片">
+            <span>📖</span> 新手导引
+          </button>
+          <button type="button" onclick="window.openContextualHelpModal()" class="bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/40 transition active:scale-95 flex items-center gap-1" title="智能诊断当前工作台待办与操作指引">
+            <span>💡</span> 经营诊断
+          </button>
+          <button onclick="window.openNotificationDrawer()" class="relative bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-amber-400/40 transition active:scale-95 flex items-center gap-1">
+            <span>📬</span> 待办提醒
+            <span id="hq-notif-badge" class="hidden bg-rose-600 text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full">0</span>
+          </button>
+          <button onclick="window.loadHQData()" class="bg-white/95 hover:bg-white text-emerald-950 text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-xs transition active:scale-95">
+            ↻ 刷新
+          </button>
+          <button onclick="window.logoutHQ()" class="bg-rose-950/70 hover:bg-rose-800 text-rose-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-rose-700/50 transition active:scale-95">
+            退出
+          </button>
         </div>
       </div>
 
@@ -122,7 +116,7 @@
         <div id="active-policy-badges-bar" class="flex flex-wrap items-center gap-1.5 text-[10px]"></div>
       </div>
 
-      <!-- 第三层：高频业务工具 vs 安全维护按钮分区 -->
+      <!-- 第三层：高频业务工具 vs 策略与百宝箱下拉收纳 -->
       <div class="flex flex-wrap justify-between items-center gap-2 pt-0.5">
         <div class="flex flex-wrap items-center gap-2">
           <button id="btn-top-plan-agg" onclick="window.openPlanAggregateModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-amber-200 text-xs px-3.5 py-1.5 rounded-xl font-bold border border-amber-400/40 active:scale-95 transition flex items-center gap-1">
@@ -140,24 +134,41 @@
           <button id="btn-webhook-status" onclick="window.openWebhookModal()" class="bg-[#143628]/80 hover:bg-[#0e271d] text-emerald-200 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-500/30 active:scale-95 transition flex items-center gap-1">
             <span>🔔</span> 报单群通知
           </button>
-          <button onclick="window.openHqSuggestionModal()" class="bg-white/10 hover:bg-white/20 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/20 active:scale-95 transition flex items-center gap-1">
-            <span>📜</span> 建言堂
-          </button>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
           <button id="btn-global-policy" onclick="window.openGlobalPolicyModal('tiers')" class="bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-xs active:scale-95 transition">
             ⚙️ 全局经营策略
           </button>
-          <button id="btn-top-evict" onclick="window.revokeOtherTerminals()" class="owner-only-guard bg-rose-900/70 hover:bg-rose-800 text-rose-100 text-xs px-2.5 py-1.5 rounded-xl font-bold border border-rose-500/40 active:scale-95 transition" title="主力手机遗失或怀疑旧电脑忘退时，一键清退除本机外的所有登录终端">
-            🛡️ 终端清退
-          </button>
-          <button id="btn-top-chg-pwd" onclick="window.openChangePasswordModal()" class="bg-white/5 hover:bg-white/15 text-emerald-200 text-xs px-2.5 py-1.5 rounded-xl font-medium border border-emerald-600/40 active:scale-95 transition">
-            🔑 改密
-          </button>
-          <button id="btn-top-totp" onclick="window.openTotpSetupModal()" class="bg-white/5 hover:bg-white/15 text-emerald-200 text-xs px-2.5 py-1.5 rounded-xl font-medium border border-emerald-600/40 active:scale-95 transition">
-            🛡️ 验证器
-          </button>
+          <div id="hq-toolbox-wrapper" class="relative">
+            <button type="button" id="btn-hq-toolbox-toggle" onclick="document.getElementById('hq-toolbox-dropdown').classList.toggle('hidden')" class="bg-white/10 hover:bg-white/20 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/30 active:scale-95 transition flex items-center gap-1">
+              <span>🧰</span> 商号百宝箱 ▾
+            </button>
+            <div id="hq-toolbox-dropdown" class="hidden absolute right-0 mt-1.5 w-52 bg-white text-stone-800 rounded-2xl shadow-2xl border border-stone-200 p-1.5 z-40 space-y-1 text-xs font-bold">
+              <button type="button" id="btn-seasonal-pause" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.openSeasonalPauseModal();" class="owner-only-guard w-full text-left px-3 py-2 rounded-xl hover:bg-amber-50 text-amber-950 flex items-center gap-1.5">
+                <span>⏸️</span> 盘点 / 休市暂歇
+              </button>
+              <button type="button" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.openHqGovernanceModal('membership');" class="owner-only-guard w-full text-left px-3 py-2 rounded-xl hover:bg-emerald-50 text-emerald-950 flex items-center gap-1.5" title="自主选档续约、申请宽待延期、查看合规申诉与物物/劳务置换">
+                <span>🎖️</span> 会员契约 / 申诉 / 置换
+              </button>
+              <button type="button" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.exportFullTenantBackup();" class="owner-only-guard w-full text-left px-3 py-2 rounded-xl hover:bg-emerald-50 text-emerald-950 flex items-center gap-1.5" title="一键打包下载本店全套货品、门店与单据账本备份">
+                <span>💾</span> 备份自家全量账本
+              </button>
+              <button type="button" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.openHqSuggestionModal();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-100 text-stone-700 flex items-center gap-1.5">
+                <span>📜</span> 商道建言堂
+              </button>
+              <div class="border-t border-stone-100 my-1"></div>
+              <button type="button" id="btn-top-totp" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.openTotpSetupModal();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-emerald-50 text-emerald-900 flex items-center gap-1.5">
+                <span>🛡️</span> 手机验证器设置
+              </button>
+              <button type="button" id="btn-top-chg-pwd" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.openChangePasswordModal();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-100 text-stone-700 flex items-center gap-1.5">
+                <span>🔑</span> 修改安家主密码
+              </button>
+              <button type="button" id="btn-top-evict" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.revokeOtherTerminals();" class="owner-only-guard w-full text-left px-3 py-2 rounded-xl hover:bg-rose-50 text-rose-700 flex items-center gap-1.5" title="主力手机遗失或怀疑旧电脑忘退时，一键清退除本机外的所有登录终端">
+                <span>🚨</span> 清退其他登录终端
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -179,7 +190,7 @@
       <div class="flex justify-between items-center">
         <div class="flex items-center gap-2">
           <span class="bg-[#1b4332] text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-lg">📖 新手上手指南</span>
-          <b class="text-stone-900">老手可点右侧隐去，画面更清爽；三步即可跑通源头直供与门店对账</b>
+          <b class="text-stone-900">老手可点右侧隐去（随时可在顶栏点「📖 新手导引」重新打开）；三步跑通源头直供与对账</b>
         </div>
         <button type="button" onclick="window.dismissOnboardingGuide()" class="text-[11px] text-stone-500 hover:text-stone-900 bg-stone-100 px-2.5 py-1 rounded-xl font-bold">
           👁️ 隐去指引
@@ -305,7 +316,7 @@
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
             <h2 class="text-sm font-bold text-stone-900">🤖 掌柜经营参谋（缺货提醒 · 用度排产 · 定损核账 · 账款催收）</h2>
-            <p class="text-[11px] text-stone-400">看着真实需求安排采收生产，减少浪费；点击右侧按钮一键处理</p>
+            <p class="text-[11px] text-stone-400">看着真实需求安排备货与生产，减少积压浪费；点击右侧按钮一键处理</p>
           </div>
           <span class="text-[11px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-3 py-1 rounded-xl font-bold">
             合作门店: <b id="stat-active-stores">0 家</b> · 在外载具: <b id="stat-baskets">0 件</b>
@@ -615,14 +626,14 @@
 
       <div id="hq-gov-pane-barter" class="hidden space-y-3">
         <div class="bg-emerald-50/70 border border-emerald-200 p-3 rounded-2xl space-y-2">
-          <b class="text-emerald-950 block">🌾 新建双向以物换物 / 劳务工时置换契约（零现金记账平账）</b>
+          <b class="text-emerald-950 block">🤝 新建双向以物换物 / 劳务工时置换契约（零现金记账平账）</b>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input type="text" id="barter-partner-input" placeholder="对方合作社/门店/师傅名称 *" class="bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none">
+            <input type="text" id="barter-partner-input" placeholder="对方合作社/门店/企业名称 *" class="bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none">
             <input type="number" id="barter-fair-value" placeholder="双方协商折算公允基准值(元,选填)" class="bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 font-mono outline-none">
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input type="text" id="barter-my-offer" placeholder="我方提供（如：头茬大米 500 斤）*" class="bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none">
-            <input type="text" id="barter-partner-offer" placeholder="对方提供（如：瓦楞纸箱 1000 个）*" class="bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none">
+            <input type="text" id="barter-my-offer" placeholder="我方提供（如：标准配件 500 套）*" class="bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none">
+            <input type="text" id="barter-partner-offer" placeholder="对方提供（如：物流托盘/工时抵扣）*" class="bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none">
           </div>
           <button type="button" onclick="window.submitHqBarterContract()" class="w-full bg-[#1b4332] hover:bg-[#143628] text-white font-bold py-2 rounded-xl shadow-2xs">
             🤝 立约登记置换账本
@@ -829,7 +840,7 @@
 
       <div id="gp-pane-promo" class="hidden space-y-3">
         <div class="bg-amber-50/80 border border-amber-300 p-3 rounded-2xl space-y-2">
-          <b class="text-amber-950 block">⚖️ 常平仓丰歉调节器（丰收平准助农助工 / 紧缺限购定额防囤积）</b>
+          <b class="text-amber-950 block">⚖️ 常平仓丰歉调节器（阶段平准认领 / 紧缺限购定额防囤积）</b>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <label class="flex items-center justify-between bg-white p-2.5 rounded-xl border border-amber-200 cursor-pointer">
               <div>
