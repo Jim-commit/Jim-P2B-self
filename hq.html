@@ -2041,7 +2041,7 @@
     <video id="scanner-video" class="w-full max-w-sm h-72 object-cover rounded-2xl"></video>
     <button onclick="window.stopBarcodeScan()" class="mt-4 bg-white/20 text-white font-bold text-xs px-5 py-2 rounded-xl">关闭识码</button>
   </div>
-
+  <script type="module" src="./src/utils/circuitGuardListener.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
