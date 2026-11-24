@@ -52,14 +52,20 @@ export function polishHQHeaderVisualBalance() {
     new MutationObserver(() => mergeInnerBanner()).observe(secHost, { childList: true });
     secHost.dataset.observed = '1';
   }
-}
 
-export function syncOnboardingButtonState() {
-  const guide = document.getElementById('hq-onboarding-guide');
-  const btn = document.getElementById('btn-toggle-onboarding-guide');
-  if (!guide || !btn) return;
-  const isHidden = guide.classList.contains('hidden');
-  btn.innerHTML = isHidden ? '<span>📖</span> 新手导引' : '<span>📖</span> 隐去导引';
+  // 锁定白底百宝箱内「验证器」按钮为深色高对比度样式，防止外部状态脚本覆盖成浅绿字
+  const totpBtn = document.getElementById('btn-top-totp');
+  if (totpBtn && !totpBtn.dataset.styleLocked) {
+    const fixTotpStyle = () => {
+      const targetClass = 'w-full text-left px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold flex items-center gap-1.5';
+      if (totpBtn.className !== targetClass) {
+        totpBtn.className = targetClass;
+      }
+    };
+    fixTotpStyle();
+    new MutationObserver(fixTotpStyle).observe(totpBtn, { attributes: true, attributeFilter: ['class'] });
+    totpBtn.dataset.styleLocked = '1';
+  }
 }
 
 export function applyIndustryTerminology(tenant) {
@@ -73,6 +79,7 @@ export function applyIndustryTerminology(tenant) {
   const terms = isAgri
     ? {
         industryCategory: 'agri',
+        hqTitle: '源头直供与产销调度台',
         pauseBtnHtml: '<span>🍵</span> 农忙暂歇设置',
         pauseStatus: '农忙采收 / 休市暂歇',
         pauseDefaultReason: '产区农忙采收集中加工中',
@@ -90,6 +97,7 @@ export function applyIndustryTerminology(tenant) {
     : isFactory
     ? {
         industryCategory: 'factory',
+        hqTitle: '源头工坊与产销调度台',
         pauseBtnHtml: '<span>🏭</span> 检修 / 盘点暂歇',
         pauseStatus: '产线检修 / 仓库盘点暂歇',
         pauseDefaultReason: '车间产线检修与仓库盘点中',
@@ -106,6 +114,7 @@ export function applyIndustryTerminology(tenant) {
       }
     : {
         industryCategory: 'commerce',
+        hqTitle: '百工百业数字调度台',
         pauseBtnHtml: '<span>⏸️</span> 盘点 / 休市暂歇',
         pauseStatus: '仓库盘点 / 休市暂歇',
         pauseDefaultReason: '仓库盘点清仓与休市整理中',
@@ -136,6 +145,7 @@ export function applyIndustryTerminology(tenant) {
   });
 
   const mapText = {
+    'hq-title': terms.hqTitle,
     'plan-agg-modal-title': terms.harvestModalTitle,
     'counter-modal-title': terms.counterModalTitle,
     'gp-tab-promo': terms.promoTabName,
@@ -150,12 +160,12 @@ export function applyIndustryTerminology(tenant) {
     const advisorBox = document.getElementById('ai-advisor-cards');
     if (!advisorBox) return;
     advisorBox.querySelectorAll('b, h3, h4, div').forEach((el) => {
-      if (el.children.length === 0 && el.innerText.includes('食堂阳光集采包')) {
+      if (el.children.length === 0 && (el.innerText.includes('食堂阳光集采包') || el.innerText.includes('阳光集采包') || el.innerText.includes('工程集采报价包'))) {
         el.innerText = terms.groupPackTitle;
       }
     });
     advisorBox.querySelectorAll('p, span, div').forEach((el) => {
-      if (el.children.length === 0 && el.innerText.includes('全品阳光工价报价单')) {
+      if (el.children.length === 0 && (el.innerText.includes('全品阳光工价报价单') || el.innerText.includes('出厂集采报价单') || el.innerText.includes('全品阳光集采报价单'))) {
         el.innerText = terms.groupPackDesc;
       }
     });
@@ -287,7 +297,6 @@ export function loadGlobalPolicyFromTenant(tenant) {
   applyIndustryTerminology(tenant);
   renderActivePolicyBadgesBar();
   syncSeasonalPauseBannerUI();
-  syncOnboardingButtonState();
 
   const th1 = document.getElementById('th-tier1-label');
   const th2 = document.getElementById('th-tier2-label');
@@ -536,29 +545,17 @@ export function initPolicyBindings(callbacks) {
     } catch (e) {}
   });
 
-  // 顶栏「📖 新手导引」随时可显可隐切换
-  window.toggleOnboardingGuideQuick = function () {
-    const guide = document.getElementById('hq-onboarding-guide');
-    if (!guide) return;
-    const isHidden = guide.classList.contains('hidden');
-    if (isHidden) {
-      guide.classList.remove('hidden');
-      localStorage.removeItem('hq_hide_onboarding_' + hqState.currentAgent);
-    } else {
-      guide.classList.add('hidden');
-      localStorage.setItem('hq_hide_onboarding_' + hqState.currentAgent, '1');
-    }
-    syncOnboardingButtonState();
-  };
-
-  // 全局扫描经营参谋区域，自动将非涉农商号的「食堂阳光集采包」替换为普适政企集采包
   const syncUniversalWording = () => {
     const terms = window.__hqIndustryTerms;
     if (!terms) return;
     document.querySelectorAll('#ai-advisor-cards b, #ai-advisor-cards p, #ai-advisor-cards span, #ai-advisor-cards div').forEach((el) => {
       if (el.children.length > 0) return;
-      if (el.innerText.includes('食堂阳光集采包')) el.innerText = terms.groupPackTitle;
-      if (el.innerText.includes('全品阳光工价报价单')) el.innerText = terms.groupPackDesc;
+      if (el.innerText.includes('食堂阳光集采包') || el.innerText.includes('阳光集采包') || el.innerText.includes('工程集采报价包')) {
+        el.innerText = terms.groupPackTitle;
+      }
+      if (el.innerText.includes('全品阳光工价报价单') || el.innerText.includes('出厂集采报价单') || el.innerText.includes('全品阳光集采报价单')) {
+        el.innerText = terms.groupPackDesc;
+      }
     });
   };
   setInterval(syncUniversalWording, 1200);
