@@ -353,9 +353,17 @@ export function initCartOrderBindings() {
     const createdOrderNos = [];
     let grandTotal = 0;
 
-    Object.entries(groupedByTenant).forEach(([tenantId, tenantItems]) => {
+    for (const [tenantId, tenantItems] of Object.entries(groupedByTenant)) {
       const subTotal = tenantItems.reduce((sum, item) => sum + getEffectiveUnitPrice(item.prod, item.qty) * item.qty, 0);
       grandTotal += subTotal;
+
+      // 动作级精准熔断检查：天街下单 (mall_write) + 网上支付 (order_online_pay) + 大额交易限流 (rate_amount_guard)
+      if (window.checkBusinessCircuit) {
+        const mallAllowed = await window.checkBusinessCircuit('mall_write', tenantId, { amount: subTotal });
+        if (!mallAllowed) return;
+        const payAllowed = await window.checkBusinessCircuit('order_online_pay', tenantId, { amount: subTotal });
+        if (!payAllowed) return;
+      }
 
       const orderNo = `ON-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
       createdOrderNos.push(orderNo);
@@ -390,7 +398,7 @@ export function initCartOrderBindings() {
             ? `【天街门店自提单】随车捎带至 ${pickupCustomText}，客户 ${name} (${phone}) 到店自提（服务润利归属该门店）`
             : `【天街产区直发单】由仓管打单发快递。收件人: ${name} ${phone}`
       });
-    });
+    }
 
     const { error } = await MallService.submitOnlineOrder(orderPayloads, mallState.cart);
 
@@ -489,7 +497,6 @@ export function initCartOrderBindings() {
           const encodedItems = encodeURIComponent(JSON.stringify(items));
           const safeItemsSummary = itemsText.replace(/'/g, '');
 
-          // 关联自提门店详细指引（店名、地址与一键拨号）
           const storeObj = o.store_id
             ? mallState.pickupStores.find((s) => String(s.id) === String(o.store_id))
             : null;
