@@ -53,7 +53,6 @@ async function syncPalmTenantPolicy() {
       infoEl.innerHTML = `${mainCarrier.name}押金 <b>¥${mainCarrier.deposit}</b> · 回收线 ≥ <b>${warnLimit}</b> 件`;
     }
 
-    // 若大当家启动了紧急止损拉闸，在掌中宝顶栏下方同步提示（旧单交割照常运行）
     const header = document.querySelector('header');
     let brakeBanner = document.getElementById('palm-emergency-brake-banner');
     if (policy.emergencyBrakeActive) {
@@ -65,6 +64,17 @@ async function syncPalmTenantPolicy() {
       if (brakeBanner) {
         brakeBanner.className = 'mx-3 mt-2 bg-rose-950 text-white border border-rose-500 px-3 py-2 rounded-2xl text-[11px] leading-relaxed';
         brakeBanner.innerHTML = `🚨 <b>商号紧急止损拉闸中</b>：${policy.emergencyBrakeReason || '全网新单已熔断'}（随车旧单交割与收款照常进行）`;
+      }
+    } else if (policy.seasonalPause?.isPaused) {
+      const pauseLabel = policy.industryTerms?.pauseStatus || '盘点 / 休市暂歇';
+      if (!brakeBanner && header) {
+        brakeBanner = document.createElement('div');
+        brakeBanner.id = 'palm-emergency-brake-banner';
+        header.insertAdjacentElement('afterend', brakeBanner);
+      }
+      if (brakeBanner) {
+        brakeBanner.className = 'mx-3 mt-2 bg-amber-100 text-amber-950 border border-amber-400 px-3 py-2 rounded-2xl text-[11px] leading-relaxed';
+        brakeBanner.innerHTML = `⏸️ <b>当前处于【${pauseLabel}】</b>：${policy.seasonalPause.reason || '仓库盘点休市中'}（在途交割与载具回收照常进行）`;
       }
     } else {
       brakeBanner?.remove();
@@ -108,7 +118,6 @@ export function mountDriverFieldToolsBar(context = {}) {
     document.body.insertAdjacentElement('afterbegin', bar);
   }
 
-  // 监听岗位切换、面板显隐及商号登录变化
   const ownerSelect = document.getElementById('owner-role-preview-select');
   ownerSelect?.addEventListener('change', () => setTimeout(syncDriverFieldToolsVisibility, 50));
 
@@ -147,7 +156,7 @@ export function initDriverFieldToolsBindings(getLastSlipFn) {
     const modal = document.getElementById('modal-carpool-relay');
     const list = document.getElementById('carpool-relay-list');
     if (list && !list.innerHTML.trim()) {
-      list.innerHTML = '<div class="py-6 text-center text-stone-400">当前暂无周边门店待顺路捎带的余缺互调单</div>';
+      list.innerHTML = '<div class="py-6 text-center text-stone-400">当前暂无周边客户待顺路捎带的余缺互调单</div>';
     }
     modal?.classList.remove('hidden');
   };
@@ -157,7 +166,7 @@ export function initDriverFieldToolsBindings(getLastSlipFn) {
     const policy = window.__palmTenantPolicy || {};
     const companyName = window.__palmTenantCompany || '百工百业直供主体';
     const headerSub = policy.slipHeaderSub || '源头直供 · 诚信相照 · 货真价实';
-    const footerNote = policy.slipFooterNote || '门店掌柜确认：已当面点清货品与载具数量';
+    const footerNote = policy.slipFooterNote || '收货方确认：已当面点清货品与载具数量';
     const stampText = policy.slipStampText || '调度专用章';
 
     const receiptText = slip
@@ -167,11 +176,11 @@ export function initDriverFieldToolsBindings(getLastSlipFn) {
           `${headerSub}`,
           `--------------------------------`,
           `交割时间：${new Date().toLocaleString('zh-CN')}`,
-          `收货门店：${slip.storeName || '合作门店'}`,
+          `收货单位：${slip.storeName || '合作客户'}`,
           `单据编号：#${slip.orderNo || '-'}`,
           `实收金额：¥${Number(slip.collectedAmount || 0).toFixed(2)} (${slip.payMethod || '随车结'})`,
           `发新载具：${slip.carrierOut || 0} 件 | 回收旧载具：${slip.carrierReturn || 0} 件`,
-          `送货师傅：${slip.driverName || '当值司机'}`,
+          `经手师傅：${slip.driverName || '当值外勤'}`,
           `--------------------------------`,
           `${footerNote}`,
           `[电子核验印章：${stampText}]`
@@ -189,7 +198,7 @@ export function initDriverFieldToolsBindings(getLastSlipFn) {
       const devName = await printReceiptViaWebBluetooth(receiptText);
       alert(`🖨️ 已通过蓝牙小票机【${devName}】打印随车交割凭单！`);
     } catch (err) {
-      alert(`蓝牙打印提示：${err.message}\n\n（已为您复制凭单文本到剪贴板，可直接微信发给门店掌柜留存）`);
+      alert(`蓝牙打印提示：${err.message}\n\n（已为您复制凭单文本到剪贴板，可直接微信发给收货方留存）`);
       navigator.clipboard?.writeText(receiptText).catch(() => {});
     }
   };
