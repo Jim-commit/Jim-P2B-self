@@ -484,12 +484,48 @@ export function initPoolPlanBindings() {
           `• 调出门店：${item.from_store_name}\n` +
           `• 调剂货品：${item.product_name} (${item.spec || '整装'}) x ${item.qty}${item.measure_unit || '件'}\n` +
           `• 调剂总值：¥${totalVal}\n\n` +
-          `确认后将通知送货师傅顺路从【${item.from_store_name}】取货送达本店！`
+          `确认后系统将自动完成双边对账冲减（【${item.from_store_name}】同步冲减欠款 ¥${totalVal}），并通知送货师傅顺路取送！`
       )
     ) {
       return;
     }
 
+    // 优先调用数据库原子 RPC 执行同城余缺互调双边自动平账
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('rpc_settle_local_pool_swap', {
+      p_tenant_id: storeState.currentAgent,
+      p_pool_item_id: poolId,
+      p_from_store_id: item.from_store_id,
+      p_to_store_id: storeState.currentStore.id,
+      p_product_name: item.product_name,
+      p_qty: parseFloat(item.qty || 1),
+      p_unit_price: parseFloat(item.transfer_price || 0),
+      p_is_cash_paid: false,
+      p_operator_name: `${storeState.currentStore.name || '合作门店'}(自助认领)`
+    });
+
+    if (!rpcErr && rpcRes?.ok) {
+      // 同步刷新本地门店在账余额显示
+      if (storeState.currentStore && rpcRes.to_new_debt !== undefined) {
+        storeState.currentStore.current_debt = rpcRes.to_new_debt;
+      }
+
+      await notifyVendorWebhook(
+        storeState.currentAgent,
+        `🤝【同城余缺互调双边自动平账】\n单号：${rpcRes.order_no}\n调出方：${item.from_store_name}（已自动冲减欠款 ¥${totalVal}）\n调入方：${storeState.currentStore.name}（记入调入应付 ¥${totalVal}）\n货品：${item.product_name} x ${item.qty}件，请安排送货师傅顺路取送！`
+      );
+
+      alert(
+        `🎉 认领并双边自动平账成功！\n\n` +
+          `• 对账单号：${rpcRes.order_no}\n` +
+          `• 调出方【${item.from_store_name}】已自动冲减欠款 ¥${totalVal}\n` +
+          `• 本店【${storeState.currentStore.name}】记入调入应付 ¥${totalVal}\n` +
+          `• 已通知送货师傅顺路取货送达本店！`
+      );
+      await loadLocalPoolList();
+      return;
+    }
+
+    // 若 RPC 暂未启用则平滑降级走标准顺路单流程
     const { error } = await supabase
       .from('local_inventory_pool')
       .update({
