@@ -23,6 +23,10 @@ import {
   renderPendingCollectionBanner,
   initPoolPlanBindings
 } from './modules/store/storePoolPlanModule.js';
+import {
+  mountStoreSmartCareToolbar,
+  initStoreSmartCareBindings
+} from './modules/store/storeSmartCareModule.js';
 
 // ==========================================
 // 1. 弹窗与顶部导航菜单控制（全版本兼容）
@@ -38,7 +42,6 @@ window.closeAllMenus = () => {
   document.getElementById('more-actions-menu')?.classList.add('hidden');
 };
 
-// 左上角 ☰ 掌柜锦囊
 window.toggleLeftNavMenu = (e) => {
   e?.stopPropagation();
   const menu = document.getElementById('left-nav-menu');
@@ -47,7 +50,6 @@ window.toggleLeftNavMenu = (e) => {
   if (isHidden) menu?.classList.remove('hidden');
 };
 
-// 上中间 社区便利 ▾ 业态气泡下拉
 window.toggleShopTypeDropdown = (e) => {
   e?.stopPropagation();
   const menu = document.getElementById('shop-type-dropdown');
@@ -56,7 +58,6 @@ window.toggleShopTypeDropdown = (e) => {
   if (isHidden) menu?.classList.remove('hidden');
 };
 
-// 右上角 ··· 供货服务
 window.toggleRightNavMenu = (e) => {
   e?.stopPropagation();
   const menu = document.getElementById('right-nav-menu');
@@ -65,7 +66,6 @@ window.toggleRightNavMenu = (e) => {
   if (isHidden) menu?.classList.remove('hidden');
 };
 
-// 兼容旧版菜单入口
 window.toggleAgentMenu = window.toggleLeftNavMenu;
 window.toggleMoreActionsMenu = window.toggleRightNavMenu;
 
@@ -411,15 +411,21 @@ function renderSettlementSelector() {
       ? storeState.currentStore.allowed_settlements
       : ['cash', 'credit'];
 
-  if (!allowed.includes(storeState.currentSettlementType)) {
-    storeState.currentSettlementType = allowed[0] || 'cash';
+  // 优先读取供货方商号自定行规里的结算方式字典（零写死），平滑回退至 SETTLEMENT_CONFIG
+  const customMethods = storeState.currentTenantSettings?.settlementMethods;
+  const methodEntries =
+    Array.isArray(customMethods) && customMethods.length > 0
+      ? customMethods.map((m) => [m.code, { label: m.label }])
+      : Object.entries(SETTLEMENT_CONFIG).filter(([key]) => allowed.includes(key));
+
+  const validCodes = methodEntries.map(([k]) => k);
+  if (validCodes.length > 0 && !validCodes.includes(storeState.currentSettlementType)) {
+    storeState.currentSettlementType = validCodes[0];
   }
 
-  // 兼容新版随车送货凭单弹窗内 select
   const slipSelect = document.getElementById('slip-settlement-select');
   if (slipSelect) {
-    slipSelect.innerHTML = Object.entries(SETTLEMENT_CONFIG)
-      .filter(([key]) => allowed.includes(key))
+    slipSelect.innerHTML = methodEntries
       .map(([key, val]) => `<option value="${key}" ${key === storeState.currentSettlementType ? 'selected' : ''}>${val.label}</option>`)
       .join('');
     slipSelect.onchange = (e) => {
@@ -427,11 +433,9 @@ function renderSettlementSelector() {
     };
   }
 
-  // 兼容旧版快捷按钮条
   const box = document.getElementById('settlement-selector-bar');
   if (box) {
-    box.innerHTML = Object.entries(SETTLEMENT_CONFIG)
-      .filter(([key]) => allowed.includes(key))
+    box.innerHTML = methodEntries
       .map(([key, val]) => {
         const isCur = key === storeState.currentSettlementType;
         return `
@@ -453,7 +457,6 @@ function renderDynamicNotes() {
   const presets = getShopDynamicNotes(storeState.shopType);
   const allNotes = Array.from(new Set([...storeState.myCustomNotes, ...presets]));
 
-  // 新版底部常驻横滑胶囊条
   const notesBox = document.getElementById('dynamic-notes-box');
   if (notesBox) {
     notesBox.innerHTML = allNotes
@@ -474,7 +477,6 @@ function renderDynamicNotes() {
       .join('');
   }
 
-  // 旧版语音口信弹窗列表
   const listEl = document.getElementById('dynamic-notes-list');
   if (listEl) {
     listEl.innerHTML = allNotes
@@ -639,7 +641,6 @@ function renderFlyerPreview() {
   const qrImg = document.getElementById('flyer-qr-img');
   if (qrImg) qrImg.src = qrUrl;
 
-  // 渲染新版 Canvas 画报预览图
   window.renderLiveFlyerPreview();
 }
 
@@ -786,7 +787,6 @@ async function loadTerminalData() {
     safeSetText('store-boss', storeData.contact_name || storeData.boss_name || '主人家');
     safeSetText('store-driver', storeData.driver_name || '老张师傅');
 
-    // 新旧两套账本看板 ID 同步更新
     safeSetText('debt-val', debt.toFixed(2));
     safeSetText('credit-debt', `¥${debt.toFixed(2)}`);
     safeSetText('credit-avail', `¥${availCredit.toFixed(2)}`);
@@ -830,6 +830,7 @@ async function loadTerminalData() {
   renderDynamicNotes();
   renderProducts();
   updateCartSummary();
+  mountStoreSmartCareToolbar();
   await checkVendorProposalBadge();
 }
 
@@ -1006,7 +1007,6 @@ window.openFlyerModal = function (prodId) {
   storeState.currentFlyerProd = prod;
   storeState.currentFlyerStyle = 'neighborhood';
 
-  // 初始化新版画报编辑框默认值
   const storeName = storeState.currentStore?.name || '厚德便民门店';
   const { price } = getStorePriceInfo(prod);
   const retailRef = prod.tier_2_price ? parseFloat(prod.tier_2_price).toFixed(2) : (price * 1.15).toFixed(2);
@@ -1019,7 +1019,6 @@ window.openFlyerModal = function (prodId) {
   if (priceInput) priceInput.value = retailRef;
   if (noteInput) noteInput.value = '本店实测品质过硬，街坊邻里整件预订更划算！';
 
-  // 渲染风韵选择按钮
   const selectorBox = document.getElementById('style-selector-box');
   if (selectorBox) {
     const styles = [
@@ -1106,6 +1105,7 @@ async function initTerminal() {
     onReloadTerminal: loadTerminalData
   });
   initPoolPlanBindings();
+  initStoreSmartCareBindings();
 
   await syncAgentsFromCloud();
   await loadTerminalData();
