@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase.js';
 
-// 各前端入口页与默认熔断维度的映射关系
 const PAGE_SCOPE_MAP = {
   'hq.html': 'hq_write',
   'join.html': 'join_apply',
@@ -9,7 +8,8 @@ const PAGE_SCOPE_MAP = {
   'driver.html': 'driver_write'
 };
 
-let cachedPolicy = null;
+let cachedGlobalPolicy = null;
+let cachedSelfPolicies = {};
 let lastFetchTs = 0;
 
 function detectCurrentPageName() {
@@ -31,44 +31,60 @@ function detectCurrentTenantId() {
   );
 }
 
-async function fetchActiveCircuitPolicy(forceRefresh = false) {
-  if (!forceRefresh && cachedPolicy && Date.now() - lastFetchTs < 15000) {
-    return cachedPolicy;
+async function fetchCombinedPolicies(tenantId = null, forceRefresh = false) {
+  const keys = ['sovereign_active_circuit_policy'];
+  if (tenantId) keys.push(`tenant_self_circuit_${tenantId}`);
+
+  if (!forceRefresh && cachedGlobalPolicy && Date.now() - lastFetchTs < 15000) {
+    return {
+      globalPolicy: cachedGlobalPolicy,
+      selfPolicy: tenantId ? cachedSelfPolicies[tenantId] || null : null
+    };
   }
 
   try {
     const { data, error } = await supabase
       .from('platform_governance_config')
-      .select('config_value')
-      .eq('config_key', 'sovereign_active_circuit_policy')
-      .maybeSingle();
+      .select('config_key, config_value')
+      .in('config_key', keys);
 
-    if (error || !data?.config_value) {
-      cachedPolicy = { scopes: [], target_tenants: [], expires_at: null, public_notice: '', thresholds: {} };
-    } else {
-      cachedPolicy = JSON.parse(data.config_value);
+    cachedGlobalPolicy = { scopes: [], target_tenants: [], expires_at: null, public_notice: '', thresholds: {} };
+    if (tenantId) cachedSelfPolicies[tenantId] = null;
+
+    if (!error && Array.isArray(data)) {
+      data.forEach((row) => {
+        if (!row.config_value) return;
+        try {
+          const parsed = JSON.parse(row.config_value);
+          if (row.config_key === 'sovereign_active_circuit_policy') {
+            cachedGlobalPolicy = parsed;
+          } else if (tenantId && row.config_key === `tenant_self_circuit_${tenantId}`) {
+            cachedSelfPolicies[tenantId] = parsed;
+          }
+        } catch (e) {}
+      });
     }
     lastFetchTs = Date.now();
   } catch (e) {
-    cachedPolicy = { scopes: [], target_tenants: [], expires_at: null, public_notice: '', thresholds: {} };
+    cachedGlobalPolicy = { scopes: [], target_tenants: [], expires_at: null, public_notice: '', thresholds: {} };
   }
-  return cachedPolicy;
+
+  return {
+    globalPolicy: cachedGlobalPolicy,
+    selfPolicy: tenantId ? cachedSelfPolicies[tenantId] || null : null
+  };
 }
 
-function isPolicyHit(policy, requiredScope, tenantId = null) {
+function isPolicyHit(policy, requiredScope, tenantId = null, isSelfPolicy = false) {
   if (!policy || !Array.isArray(policy.scopes)) return false;
-
-  // 校验定时自动解封：已过期则自动放行
-  if (policy.expires_at && Date.now() >= new Date(policy.expires_at).getTime()) {
-    return false;
-  }
-
+  if (policy.expires_at && Date.now() >= new Date(policy.expires_at).getTime()) return false;
   if (!policy.scopes.includes(requiredScope)) return false;
 
-  const targets = Array.isArray(policy.target_tenants) ? policy.target_tenants : [];
-  if (targets.length === 0) return true; // 作用于全网
-  if (tenantId && targets.includes(String(tenantId))) return true; // 命中定点隔离商号
+  if (isSelfPolicy) return true;
 
+  const targets = Array.isArray(policy.target_tenants) ? policy.target_tenants : [];
+  if (targets.length === 0) return true;
+  if (tenantId && targets.includes(String(tenantId))) return true;
   return false;
 }
 
@@ -81,7 +97,6 @@ function renderMaintenanceOverlay(noticeText, isFullLock = false, expiresAt = nu
     : '';
 
   if (isFullLock) {
-    // 全网战时戒严（如开启了 login_gate）：展示全屏友好维护遮罩
     const mask = document.createElement('div');
     mask.id = 'baigong-circuit-fullscreen';
     mask.style.cssText =
@@ -98,7 +113,6 @@ function renderMaintenanceOverlay(noticeText, isFullLock = false, expiresAt = nu
     `;
     document.body.appendChild(mask);
   } else {
-    // 局部端口只读护盘：在顶部展示醒目温和安抚条（允许继续浏览查账，但提示写入暂停）
     const banner = document.createElement('div');
     banner.id = 'baigong-circuit-banner';
     banner.style.cssText =
@@ -111,27 +125,31 @@ function renderMaintenanceOverlay(noticeText, isFullLock = false, expiresAt = nu
   }
 }
 
-/**
- * 动作级精准拦截函数（供各业务页面按钮提交前调用）
- * 返回 true 表示放行；返回 false 表示命中熔断或大额限流（已自动弹出安抚公告）
- */
 export async function checkBusinessCircuit(requiredScope, tenantId = null, meta = {}) {
-  const policy = await fetchActiveCircuitPolicy(true);
   const resolvedTid = tenantId || detectCurrentTenantId();
-  const notice = policy.public_notice || '系统当前模块正在进行安全护盘维护，暂时暂停该项操作，请稍后再试。';
+  const { globalPolicy, selfPolicy } = await fetchCombinedPolicies(resolvedTid, true);
 
-  if (isPolicyHit(policy, requiredScope, resolvedTid)) {
+  // 1. 优先校验平台最高主权熔断
+  if (isPolicyHit(globalPolicy, requiredScope, resolvedTid, false)) {
+    const notice = globalPolicy.public_notice || '平台当前模块正在进行安全护盘维护，暂时暂停该项操作，请稍后再试。';
     alert(`🛡️ 平台护盘通知：\n\n${notice}`);
     return false;
   }
 
-  // 检查大额交易动态限流保护（rate_amount_guard）
+  // 2. 校验商号大当家自己启用的本店紧急拉闸保护
+  if (selfPolicy && isPolicyHit(selfPolicy, requiredScope, resolvedTid, true)) {
+    const selfNotice = selfPolicy.public_notice || '本店掌柜已开启临时盘点与安全保护锁，暂停该项业务提交，请稍后再试。';
+    alert(`🔒 商号安全自救提示：\n\n${selfNotice}`);
+    return false;
+  }
+
+  // 3. 校验平台大额交易限流
   if (
-    isPolicyHit(policy, 'rate_amount_guard', resolvedTid) &&
-    Number(policy.thresholds?.max_single_amount || 0) > 0 &&
+    isPolicyHit(globalPolicy, 'rate_amount_guard', resolvedTid, false) &&
+    Number(globalPolicy.thresholds?.max_single_amount || 0) > 0 &&
     meta.amount != null
   ) {
-    const cap = Number(policy.thresholds.max_single_amount);
+    const cap = Number(globalPolicy.thresholds.max_single_amount);
     if (Number(meta.amount) > cap) {
       alert(`🎚️ 大额交易风控降级提示：\n\n当前单笔交易限额为 ¥${cap}，您的单笔金额（¥${meta.amount}）已超出临时风控上限，请拆分下单或稍后再试。`);
       return false;
@@ -141,33 +159,41 @@ export async function checkBusinessCircuit(requiredScope, tenantId = null, meta 
   return true;
 }
 
-/**
- * 页面加载自动巡检初始化
- */
 export async function initPageCircuitGuard() {
-  const policy = await fetchActiveCircuitPolicy(true);
   const pageName = detectCurrentPageName();
   const tenantId = detectCurrentTenantId();
-  const notice = policy.public_notice || '系统正在进行安全护盘维护，预计稍后恢复正常营业。';
+  const { globalPolicy, selfPolicy } = await fetchCombinedPolicies(tenantId, true);
 
-  // 1. 优先检查是否开启了全网登录/访问总闸 (login_gate)
-  if (isPolicyHit(policy, 'login_gate', tenantId)) {
-    renderMaintenanceOverlay(notice, true, policy.expires_at);
+  if (isPolicyHit(globalPolicy, 'login_gate', tenantId, false)) {
+    renderMaintenanceOverlay(
+      globalPolicy.public_notice || '系统正在进行安全护盘维护，预计稍后恢复正常营业。',
+      true,
+      globalPolicy.expires_at
+    );
     return;
   }
 
-  // 2. 检查当前页面对应的写入通道是否被锁定
   const mappedScope = PAGE_SCOPE_MAP[pageName];
-  if (mappedScope && isPolicyHit(policy, mappedScope, tenantId)) {
-    renderMaintenanceOverlay(notice, false, policy.expires_at);
+  if (mappedScope) {
+    if (isPolicyHit(globalPolicy, mappedScope, tenantId, false)) {
+      renderMaintenanceOverlay(
+        globalPolicy.public_notice || '平台正在进行安全护盘维护，预计稍后恢复正常营业。',
+        false,
+        globalPolicy.expires_at
+      );
+    } else if (selfPolicy && isPolicyHit(selfPolicy, mappedScope, tenantId, true)) {
+      renderMaintenanceOverlay(
+        selfPolicy.public_notice || '本店掌柜已开启临时安全保护，暂停新单提交。',
+        false,
+        selfPolicy.expires_at
+      );
+    }
   }
 }
 
-// 挂载到全局 window 方便内联脚本调用
 window.checkBusinessCircuit = checkBusinessCircuit;
 window.initPageCircuitGuard = initPageCircuitGuard;
 
-// 自动启动页面巡检
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => initPageCircuitGuard());
 } else {
