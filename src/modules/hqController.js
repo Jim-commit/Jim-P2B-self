@@ -3,6 +3,10 @@ import { downloadCSV } from '../utils/storage.js';
 import { AuthSecurity } from '../utils/authSecurity.js';
 import { HQService } from '../services/hqService.js';
 import {
+  getNormalizedTenantRules,
+  evaluateTenantRiskRadar
+} from '../services/tenantRulesService.js';
+import {
   hqState,
   isDirectoryLead,
   isWarehouseBlindPrice,
@@ -40,6 +44,7 @@ import {
   loadAndRenderHqGovernanceExtension,
   initHqGovernanceExtensionBindings
 } from './hq/hqGovernanceExtension.js';
+import { initHqBusinessRulesBindings } from './hq/hqBusinessRulesModule.js';
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
@@ -173,6 +178,8 @@ function renderPerformanceAndCommissions() {
 }
 
 function renderThreeFlowsAndAIAdvisor() {
+  // 读取商号自定经营行规（零硬编码）
+  const rules = getNormalizedTenantRules(hqState.currentTenantData?.custom_settings || {});
   const defaultMin = parseInt(hqState.globalPolicy.defaultMinStock ?? 10);
   const goodsValue = hqState.allProducts.reduce((sum, p) => sum + parseFloat(p.tier_1_price || 0) * parseInt(p.stock ?? 0), 0);
   const toShipOrders = hqState.allOrders.filter((o) => (o.order_status === 'confirmed' || o.order_status === 'over_credit_approved') && o.delivery_status !== 'delivered' && !isDirectoryLead(o));
@@ -221,50 +228,105 @@ function renderThreeFlowsAndAIAdvisor() {
     aiTips.push({ level: 'rose', icon: '📦', title: `库存紧缺预警：【${p.name}】仅剩 ${p.stock ?? 0}${p.measure_unit || '件'}`, desc: '已低于安全预警线，建议立即开具采收/完工入库单备货，保障门店日常不断供。', btnText: '+ 立即开入库单', action: `window.openStockOpsModal(${p.id})` });
   });
 
-  const warnDays = parseInt(hqState.globalPolicy.expiryWarnDays ?? 30);
+  // 使用商号自定临期预警天数（替代静态写死）
+  const warnDays = parseInt(rules.expiryWarnDays ?? hqState.globalPolicy.expiryWarnDays ?? 30);
   if (warnDays > 0) {
     const nowTs = Date.now();
     const warnMs = warnDays * 24 * 3600 * 1000;
     hqState.allProducts.forEach((p) => {
-      const expStr = p.custom_specs?.expiry_date;
+      const expStr = p.custom_specs?.expiry_date || p.expiry_date;
       if (!expStr || parseInt(p.stock ?? 0) <= 0) return;
       const expTs = new Date(`${expStr}T23:59:59`).getTime();
       const diffDays = Math.ceil((expTs - nowTs) / (24 * 3600 * 1000));
       if (expTs - nowTs <= warnMs) {
-        aiTips.push({ level: diffDays <= 7 ? 'rose' : 'amber', icon: '⏳', title: `${diffDays <= 0 ? '批次已到期提醒' : `临期预警（余 ${diffDays} 天）`}：【${p.name}】在库 ${p.stock}${p.measure_unit || '件'}`, desc: `到期日为 ${expStr}（已进入设定的 ${warnDays} 天预警窗），建议优先安排配发或标注余缺调剂。`, btnText: '📦 安排优先配发', action: 'window.openPushOrderModal()' });
+        aiTips.push({ level: diffDays <= 7 ? 'rose' : 'amber', icon: '⏳', title: `${diffDays <= 0 ? '批次已到期提醒' : `临期预警（余 ${diffDays} 天）`}：【${p.name}】在库 ${p.stock}${p.measure_unit || '件'}`, desc: `到期日为 ${expStr}（已进入本商号设定的 ${warnDays} 天预警窗），建议优先安排配发或标注余缺调剂。`, btnText: '📦 安排优先配发', action: 'window.openPushOrderModal()' });
       }
     });
   }
 
+  // 运行本地毫秒级 AI 风险雷达评估（信用剪刀差、载具滞留、异常低价套利，支持白名单免打扰）
+  let aiRadarHtml = '';
   if (!isWarehouseBlindPrice()) {
-    visibleStores.forEach((s) => {
-      const debt = parseFloat(s.current_debt || 0);
-      const limit = parseFloat(s.credit_limit || 2000);
-      const baskets = parseInt(s.carrier_hold_count || s.basket_count || 0);
-      if (debt > limit * 0.85 && debt > 0) {
-        aiTips.push({ level: 'amber', icon: '💰', title: `信用账款提醒：【${s.name}】在账 ¥${debt.toFixed(2)}（接近周转额度 ¥${limit}）`, desc: '建议生成周期电子对账单发给掌柜核对回款平账，或安排业务员上门拜访催收。', btnText: '🤝 拜访催收/对账', action: `window.openSalesCollectModal(${s.id});` });
-      }
-      if (baskets >= 15) {
-        aiTips.push({ level: 'amber', icon: '🔄', title: `${hqState.carrierLabel}循环提醒：【${s.name}】借用 ${baskets} 件未归还`, desc: '在外周转载具较多，建议提醒送货师傅本趟回程顺路清点带回，物尽其用。', btnText: '🏪 查看门店档案', action: `window.switchTab('stores');` });
-      }
+    const radarAlerts = evaluateTenantRiskRadar({
+      stores: visibleStores,
+      products: hqState.allProducts,
+      orders: hqState.allOrders,
+      logs: hqState.allInventoryLogs,
+      rules
     });
+
+    aiRadarHtml = radarAlerts
+      .map(
+        (a) => `
+        <div class="p-3.5 rounded-2xl border ${
+          a.level === 'high' ? 'bg-rose-50/80 border-rose-300 text-rose-950' : 'bg-amber-50/80 border-amber-300 text-amber-950'
+        } flex flex-col justify-between gap-2">
+          <div>
+            <div class="flex items-center justify-between gap-1.5">
+              <span class="font-bold text-xs">🛡️ ${a.title}</span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                a.level === 'high' ? 'bg-rose-600 text-white' : 'bg-amber-500 text-stone-950'
+              }">${a.category} · ${a.score}分</span>
+            </div>
+            <p class="text-[11px] opacity-90 mt-1 leading-relaxed">${a.reason} ${a.suggestion}</p>
+          </div>
+          <div class="flex justify-end flex-wrap gap-1.5">
+            ${
+              a.actionType === 'switch_store_cash'
+                ? `<button type="button" onclick="window.applyAiSwitchStoreCash(${a.targetId}, '${a.key}')" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 rounded-xl font-bold text-[10px]">
+                     ✅ 采纳：切为随车现结
+                   </button>`
+                : ''
+            }
+            <button type="button" onclick="window.dismissAiAlertToWhitelist('${a.key}')" class="bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 px-2.5 py-1 rounded-xl font-bold text-[10px]">
+              误报放行（加白名单）
+            </button>
+          </div>
+        </div>
+      `
+      )
+      .join('');
   }
 
   if (leadsList.length > 0) {
     aiTips.push({ level: 'emerald', icon: '🤝', title: `新店合作意向：有 ${leadsList.length} 家意向门店申请上门送样洽谈`, desc: '意向门店已提交联系方式，及时联系送样并一键立户可共同完善城乡供需网络。', btnText: '立即承接立户 ➔', action: `window.switchTab('settle'); window.filterOrderStatus('directory_leads');` });
   }
 
-  if (aiTips.length === 0) {
+  if (aiTips.length === 0 && !aiRadarHtml) {
     aiTips.push({ level: 'emerald', icon: '🌿', title: '经营运转平稳：供需平衡、账目清白、货畅其流', desc: '当前所有在供良品库存充足，合作门店往来健康。可点击上方「📲 合作名片码」与更多门店和合作社建立直供联系。', btnText: '📲 分享合作名片', action: 'window.openPromoQrModal()' });
   }
 
+  // 商号自定行规参数栏（大当家可一键打开修改）
+  const rulesBarHtml = `
+    <div class="col-span-full flex flex-wrap items-center justify-between gap-2 bg-stone-50 border border-stone-200 px-3.5 py-2.5 rounded-2xl text-xs">
+      <div class="flex items-center gap-2 text-stone-700">
+        <span>📋</span>
+        <span>
+          本店自定行规：<b>拼单直发线 ${rules.groupBuyTargetQty} 件</b> · <b>载具警戒 ${rules.carrierWarnThreshold} 件</b> · <b>小额定损免批 ≤ ¥${rules.qcAutoApproveLimit}</b> · <b>AI 风控：${
+            rules.aiRiskSensitivity === 'strict' ? '保守护盘' : rules.aiRiskSensitivity === 'relaxed' ? '宽松放行' : '平衡模式'
+          }</b>
+        </span>
+      </div>
+      ${
+        hqState.currentRoleCode === 'owner'
+          ? `<button type="button" onclick="window.openHqBusinessRulesModal()" class="bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold px-3 py-1 rounded-xl text-[11px] shadow-2xs">
+               ⚙️ 自定义经营行规与风控阈值
+             </button>`
+          : '<span class="text-[10px] text-stone-400">由大当家统筹设定</span>'
+      }
+    </div>
+  `;
+
   document.getElementById('flow-info-ai').innerText = `${aiTips.length} 条`;
-  document.getElementById('ai-advisor-cards').innerHTML = aiTips
-    .map((t) => {
-      const colorCls = t.level === 'rose' ? 'bg-rose-50/70 border-rose-200 text-rose-950' : t.level === 'amber' ? 'bg-amber-50/70 border-amber-200 text-amber-950' : 'bg-emerald-50/70 border-emerald-200 text-emerald-950';
-      return `<div class="p-3.5 rounded-2xl border ${colorCls} flex flex-col justify-between gap-2.5"><div><div class="font-bold text-xs flex items-center gap-1.5"><span>${t.icon}</span><span>${t.title}</span></div><p class="text-[11px] opacity-85 mt-1 leading-relaxed">${t.desc}</p></div><div class="text-right"><button onclick="${t.action}" class="bg-white hover:bg-stone-50 text-stone-900 border border-stone-200 px-3 py-1 rounded-xl font-bold text-[11px] shadow-xs active:scale-95 transition">${t.btnText}</button></div></div>`;
-    })
-    .join('');
+  document.getElementById('ai-advisor-cards').innerHTML =
+    rulesBarHtml +
+    aiRadarHtml +
+    aiTips
+      .map((t) => {
+        const colorCls = t.level === 'rose' ? 'bg-rose-50/70 border-rose-200 text-rose-950' : t.level === 'amber' ? 'bg-amber-50/70 border-amber-200 text-amber-950' : 'bg-emerald-50/70 border-emerald-200 text-emerald-950';
+        return `<div class="p-3.5 rounded-2xl border ${colorCls} flex flex-col justify-between gap-2.5"><div><div class="font-bold text-xs flex items-center gap-1.5"><span>${t.icon}</span><span>${t.title}</span></div><p class="text-[11px] opacity-85 mt-1 leading-relaxed">${t.desc}</p></div><div class="text-right"><button onclick="${t.action}" class="bg-white hover:bg-stone-50 text-stone-900 border border-stone-200 px-3 py-1 rounded-xl font-bold text-[11px] shadow-xs active:scale-95 transition">${t.btnText}</button></div></div>`;
+      })
+      .join('');
 }
 
 window.loadHQData = async function () {
@@ -393,6 +455,7 @@ export async function initHQController() {
   initInventoryBindings();
   initOrderStoreBindings();
   initHqGovernanceExtensionBindings();
+  initHqBusinessRulesBindings();
 
   window.openContextualHelpModal = function () {
     const roleNames = {
