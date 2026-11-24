@@ -56,17 +56,17 @@
     <!-- 动态体验期温和演进与合规提醒横幅挂载点 -->
     <div id="hq-membership-grace-banner" class="hidden"></div>
     
-    <!-- 顶栏：主体招牌置顶 + 内嵌风控闸门 + 清爽归类工具栏 -->
+    <!-- 顶栏：主体招牌置顶 + 清爽归类工具栏 -->
     <header id="hq-main-header" class="bg-gradient-to-r from-[#1b4332] via-[#1f4d3a] to-[#143628] text-white p-4 sm:p-5 rounded-3xl shadow-lg space-y-3 border border-emerald-700/40">
       
-      <!-- 商号独立风控闸门内嵌插槽 -->
+      <!-- 仅在已触发紧急止损拉闸时亮出的醒目解除插槽 -->
       <div id="hq-header-circuit-slot"></div>
 
       <!-- 第一层：商号招牌 + 系统级状态动作 -->
       <div class="flex flex-wrap justify-between items-center gap-3">
         <div class="space-y-1">
           <div class="text-[11px] text-emerald-300/90 font-medium tracking-wider flex items-center gap-1.5">
-            <span id="hq-title">源头直供与产销调度台</span>
+            <span id="hq-title">百工百业数字调度台</span>
             <span class="text-emerald-600">|</span>
             <span>源头直供 · 账目归己 · 各管一摊</span>
           </div>
@@ -88,9 +88,6 @@
         </div>
 
         <div id="hq-header-top-actions" class="flex flex-wrap items-center gap-2 shrink-0">
-          <button type="button" id="btn-toggle-onboarding-guide" onclick="window.toggleOnboardingGuideQuick()" class="bg-white/10 hover:bg-white/20 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/30 transition active:scale-95 flex items-center gap-1" title="随时展开或隐去三步上手导引卡片">
-            <span>📖</span> 新手导引
-          </button>
           <button type="button" onclick="window.openContextualHelpModal()" class="bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/40 transition active:scale-95 flex items-center gap-1" title="智能诊断当前工作台待办与操作指引">
             <span>💡</span> 经营诊断
           </button>
@@ -144,7 +141,10 @@
             <button type="button" id="btn-hq-toolbox-toggle" onclick="document.getElementById('hq-toolbox-dropdown').classList.toggle('hidden')" class="bg-white/10 hover:bg-white/20 text-emerald-100 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/30 active:scale-95 transition flex items-center gap-1">
               <span>🧰</span> 商号百宝箱 ▾
             </button>
-            <div id="hq-toolbox-dropdown" class="hidden absolute right-0 mt-1.5 w-52 bg-white text-stone-800 rounded-2xl shadow-2xl border border-stone-200 p-1.5 z-40 space-y-1 text-xs font-bold">
+            <div id="hq-toolbox-dropdown" class="hidden absolute right-0 mt-1.5 w-56 bg-white text-stone-800 rounded-2xl shadow-2xl border border-stone-200 p-1.5 z-40 space-y-1 text-xs font-bold">
+              <button type="button" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.openTenantSelfCircuitModal();" class="owner-only-guard w-full text-left px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 flex items-center gap-1.5">
+                <span>🚨</span> 本店紧急止损拉闸
+              </button>
               <button type="button" id="btn-seasonal-pause" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.openSeasonalPauseModal();" class="owner-only-guard w-full text-left px-3 py-2 rounded-xl hover:bg-amber-50 text-amber-950 flex items-center gap-1.5">
                 <span>⏸️</span> 盘点 / 休市暂歇
               </button>
@@ -158,10 +158,10 @@
                 <span>📜</span> 商道建言堂
               </button>
               <div class="border-t border-stone-100 my-1"></div>
-              <button type="button" id="btn-top-totp" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.openTotpSetupModal();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-emerald-50 text-emerald-900 flex items-center gap-1.5">
+              <button type="button" id="btn-top-totp" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.openTotpSetupModal();" class="w-full text-left px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold flex items-center gap-1.5">
                 <span>🛡️</span> 手机验证器设置
               </button>
-              <button type="button" id="btn-top-chg-pwd" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.openChangePasswordModal();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-100 text-stone-700 flex items-center gap-1.5">
+              <button type="button" id="btn-top-chg-pwd" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.openChangePasswordModal();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-100 text-stone-800 flex items-center gap-1.5">
                 <span>🔑</span> 修改安家主密码
               </button>
               <button type="button" id="btn-top-evict" onclick="document.getElementById('hq-toolbox-dropdown').classList.add('hidden'); window.revokeOtherTerminals();" class="owner-only-guard w-full text-left px-3 py-2 rounded-xl hover:bg-rose-50 text-rose-700 flex items-center gap-1.5" title="主力手机遗失或怀疑旧电脑忘退时，一键清退除本机外的所有登录终端">
@@ -190,7 +190,7 @@
       <div class="flex justify-between items-center">
         <div class="flex items-center gap-2">
           <span class="bg-[#1b4332] text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-lg">📖 新手上手指南</span>
-          <b class="text-stone-900">老手可点右侧隐去（随时可在顶栏点「📖 新手导引」重新打开）；三步跑通源头直供与对账</b>
+          <b class="text-stone-900">老手可点右侧隐去（随时可在「💡 经营诊断」中恢复）；三步跑通源头直供与对账</b>
         </div>
         <button type="button" onclick="window.dismissOnboardingGuide()" class="text-[11px] text-stone-500 hover:text-stone-900 bg-stone-100 px-2.5 py-1 rounded-xl font-bold">
           👁️ 隐去指引
