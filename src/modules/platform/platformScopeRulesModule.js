@@ -1,7 +1,7 @@
 import { supabase } from '../../lib/supabase.js';
 
-export function initAdminScopeRulesBindings() {
-  window.openAdminDynamicScopeModal = async function (tenantId) {
+export function initPlatformScopeRulesBindings() {
+  window.openPlatformDynamicScopeModal = async function (tenantId) {
     if (!tenantId) return alert('请指定要配置的商号代号！');
     document.getElementById('modal-admin-dynamic-scope')?.remove();
 
@@ -59,6 +59,8 @@ export function initAdminScopeRulesBindings() {
     document.body.appendChild(modal);
   };
 
+  window.openAdminDynamicScopeModal = window.openPlatformDynamicScopeModal;
+
   window.saveAdminDynamicScopeRules = async function (tenantId) {
     const allowedCategories = (document.getElementById('admin-scope-cats')?.value || '')
       .split(/\r?\n/)
@@ -82,3 +84,5 @@ export function initAdminScopeRulesBindings() {
     alert('✅ 动态行业合规边界规则已保存，该商号上架自检已热更新！');
   };
 }
+
+export const initAdminScopeRulesBindings = initPlatformScopeRulesBindings;
