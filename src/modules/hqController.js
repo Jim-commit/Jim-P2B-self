@@ -45,6 +45,10 @@ import {
   initHqGovernanceExtensionBindings
 } from './hq/hqGovernanceExtension.js';
 import { initHqBusinessRulesBindings } from './hq/hqBusinessRulesModule.js';
+import {
+  renderHqDailyReconcileAndDualQueue,
+  initHqDailyReconcileBindings
+} from './hq/hqDailyReconcileModule.js';
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
@@ -178,7 +182,6 @@ function renderPerformanceAndCommissions() {
 }
 
 function renderThreeFlowsAndAIAdvisor() {
-  // 读取商号自定经营行规（零硬编码）
   const rules = getNormalizedTenantRules(hqState.currentTenantData?.custom_settings || {});
   const defaultMin = parseInt(hqState.globalPolicy.defaultMinStock ?? 10);
   const goodsValue = hqState.allProducts.reduce((sum, p) => sum + parseFloat(p.tier_1_price || 0) * parseInt(p.stock ?? 0), 0);
@@ -228,7 +231,6 @@ function renderThreeFlowsAndAIAdvisor() {
     aiTips.push({ level: 'rose', icon: '📦', title: `库存紧缺预警：【${p.name}】仅剩 ${p.stock ?? 0}${p.measure_unit || '件'}`, desc: '已低于安全预警线，建议立即开具采收/完工入库单备货，保障门店日常不断供。', btnText: '+ 立即开入库单', action: `window.openStockOpsModal(${p.id})` });
   });
 
-  // 使用商号自定临期预警天数（替代静态写死）
   const warnDays = parseInt(rules.expiryWarnDays ?? hqState.globalPolicy.expiryWarnDays ?? 30);
   if (warnDays > 0) {
     const nowTs = Date.now();
@@ -244,7 +246,6 @@ function renderThreeFlowsAndAIAdvisor() {
     });
   }
 
-  // 运行本地毫秒级 AI 风险雷达评估（信用剪刀差、载具滞留、异常低价套利，支持白名单免打扰）
   let aiRadarHtml = '';
   if (!isWarehouseBlindPrice()) {
     const radarAlerts = evaluateTenantRiskRadar({
@@ -296,7 +297,6 @@ function renderThreeFlowsAndAIAdvisor() {
     aiTips.push({ level: 'emerald', icon: '🌿', title: '经营运转平稳：供需平衡、账目清白、货畅其流', desc: '当前所有在供良品库存充足，合作门店往来健康。可点击上方「📲 合作名片码」与更多门店和合作社建立直供联系。', btnText: '📲 分享合作名片', action: 'window.openPromoQrModal()' });
   }
 
-  // 商号自定行规参数栏（大当家可一键打开修改）
   const rulesBarHtml = `
     <div class="col-span-full flex flex-wrap items-center justify-between gap-2 bg-stone-50 border border-stone-200 px-3.5 py-2.5 rounded-2xl text-xs">
       <div class="flex items-center gap-2 text-stone-700">
@@ -440,6 +440,7 @@ window.loadHQData = async function () {
   renderThreeFlowsAndAIAdvisor();
   renderPerformanceAndCommissions();
 
+  await renderHqDailyReconcileAndDualQueue();
   await loadAndRenderHqGovernanceExtension();
 };
 
@@ -456,6 +457,7 @@ export async function initHQController() {
   initOrderStoreBindings();
   initHqGovernanceExtensionBindings();
   initHqBusinessRulesBindings();
+  initHqDailyReconcileBindings();
 
   window.openContextualHelpModal = function () {
     const roleNames = {
@@ -593,7 +595,6 @@ export async function initHQController() {
     window.openModal('modal-hq-suggestion');
   };
   window.submitHqSuggestion = async () => {
-    // 动作级精准熔断检查：公域建言发布 (public_post)
     if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('public_post', hqState.currentAgent))) return;
 
     const content = document.getElementById('hq-suggestion-text')?.value.trim();
@@ -628,7 +629,6 @@ export async function initHQController() {
     navigator.clipboard.writeText(shareText).then(() => alert('✅ 专属合作文案与链接已复制！'));
   };
   window.exportPerformanceCSV = async () => {
-    // 动作级精准熔断检查：日常报表与数据导出防泄 (data_export)
     if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('data_export', hqState.currentAgent))) return;
 
     const execExport = () => {
