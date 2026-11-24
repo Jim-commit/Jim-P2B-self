@@ -4,7 +4,6 @@ import { platformState, recordAuditLog } from './platformState.js';
 const ARCHIVE_TAG = '__ARCHIVED_';
 const SOVEREIGN_KEY_STORAGE = 'baigong_sovereign_master_hash';
 const SOVEREIGN_DURESS_STORAGE = 'baigong_sovereign_duress_hash';
-const SOVEREIGN_DUAL_PIN_STORAGE = 'baigong_sovereign_dual_pin_hash';
 const SOVEREIGN_LOCK_STORAGE = 'baigong_sovereign_lockout_state';
 const SOVEREIGN_LAST_BACKUP_KEY = 'baigong_last_motherboard_backup_ts';
 const SOVEREIGN_HEARTBEAT_KEY = 'baigong_sovereign_last_heartbeat_ts';
@@ -13,26 +12,22 @@ const FAILOVER_ANON_KEY = 'baigong_failover_supabase_anon_key';
 
 const DEFAULT_SOVEREIGN_PASSPHRASE = 'SOVEREIGN#2026';
 
-// 默认内置 23 项动态控制注册表（支持在线随时热插拔新增、编辑或扩展至无限项）
+// 动态控制注册表（支持在线随时热插拔新增、编辑或扩展至无限项）
 const DEFAULT_CONTROL_REGISTRY = [
-  // 资金与支付通道
   { scope: 'membership_pay', label: '💳 商号会员缴费与升级', group: '资金与支付', delegable: false },
   { scope: 'order_online_pay', label: '📲 业务订单网上支付', group: '资金与支付', delegable: true },
   { scope: 'finance_settle', label: '💰 财务核销与信用调额', group: '资金与支付', delegable: true },
   { scope: 'driver_collect', label: '🚚 司机随车收款登记', group: '资金与支付', delegable: true },
   { scope: 'external_webhook', label: '🌐 外部支付异步回调', group: '资金与支付', delegable: false },
-  // 五大业务终端
   { scope: 'hq_write', label: '🏢 商号调度台写入', group: '业务终端', delegable: true },
   { scope: 'store_write', label: '🏪 合作门店端下单', group: '业务终端', delegable: true },
   { scope: 'driver_write', label: '🚚 司机外勤端回单', group: '业务终端', delegable: true },
   { scope: 'mall_write', label: '🛍️ 天街公域端采购', group: '业务终端', delegable: false },
   { scope: 'join_apply', label: '📝 新商号入驻提交', group: '业务终端', delegable: false },
-  // 供应链与存储防泄
   { scope: 'inventory_move', label: '📦 仓库库存与盘点调整', group: '供应链与存储', delegable: true },
   { scope: 'pool_exchange', label: '🔄 同城余缺互调池流转', group: '供应链与存储', delegable: true },
   { scope: 'data_export', label: '📤 日常报表与名录导出', group: '供应链与存储', delegable: true },
   { scope: 'storage_upload', label: '🖼️ 存储桶图片附件上传', group: '供应链与存储', delegable: false },
-  // 安全认证与内核风控
   { scope: 'login_gate', label: '🚪 全网新登录准入总闸', group: '安全与内核', delegable: false },
   { scope: 'auth_reset', label: '🔑 密钥重置与2FA申诉', group: '安全与内核', delegable: false },
   { scope: 'bulk_read_guard', label: '👁️ 跨页批量读取防爬虫', group: '安全与内核', delegable: false },
@@ -44,35 +39,14 @@ const DEFAULT_CONTROL_REGISTRY = [
   { scope: 'auto_cron', label: '⏱️ 自动到期停权与流转', group: '安全与内核', delegable: false }
 ];
 
-// 兜底基础表清单（当数据库尚未部署自发现 RPC 时使用，部署后全自动从 information_schema 获取全部表）
 const FALLBACK_PUBLIC_TABLES = [
-  'platform_admin_credential',
-  'platform_governance_config',
-  'platform_gov_configs',
-  'platform_membership_plan',
-  'platform_category',
-  'platform_category_dict',
-  'platform_standard_category',
-  'platform_tenant',
-  'tenant',
-  'tenant_application',
-  'driver',
-  'product',
-  'store',
-  'store_lead',
-  'store_order',
-  'orders',
-  'order_item',
-  'driver_collection_log',
-  'payment_record',
-  'inventory_log',
-  'local_inventory_pool',
-  'demand_forecast_plan',
-  'platform_compliance_case',
-  'platform_suggestion_board',
-  'audit_immutable_log',
-  'sys_qr_session',
-  'login_qr_session'
+  'platform_admin_credential', 'platform_governance_config', 'platform_gov_configs',
+  'platform_membership_plan', 'platform_category', 'platform_category_dict',
+  'platform_standard_category', 'platform_tenant', 'tenant', 'tenant_application',
+  'driver', 'product', 'store', 'store_lead', 'store_order', 'orders', 'order_item',
+  'driver_collection_log', 'payment_record', 'inventory_log', 'local_inventory_pool',
+  'demand_forecast_plan', 'platform_compliance_case', 'platform_suggestion_board',
+  'audit_immutable_log', 'sys_qr_session', 'login_qr_session'
 ];
 
 export function getCurrentAdminRole() {
@@ -115,7 +89,7 @@ export async function assertCircuitOpen(requiredScope, tenantId = null, customMe
   try {
     const policy = JSON.parse(data.config_value);
     if (policy.expires_at && Date.now() >= new Date(policy.expires_at).getTime()) {
-      return true; // 到点已自动解封
+      return true;
     }
 
     const scopes = Array.isArray(policy.scopes) ? policy.scopes : [];
@@ -130,7 +104,6 @@ export async function assertCircuitOpen(requiredScope, tenantId = null, customMe
       throw new Error(`CIRCUIT_BREAKER_ACTIVE:${requiredScope}`);
     }
 
-    // 大额与高频动态阈值检查
     if (scopes.includes('rate_amount_guard') && policy.thresholds?.max_single_amount > 0 && customMeta.amount != null) {
       if (Number(customMeta.amount) > Number(policy.thresholds.max_single_amount)) {
         alert(`🎚️ 触发大额交易风控降级：当前单笔限额为 ¥${policy.thresholds.max_single_amount}，请拆分或联系平台复核。`);
@@ -145,9 +118,6 @@ export async function assertCircuitOpen(requiredScope, tenantId = null, customMe
   return true;
 }
 
-/**
- * 动态全库表结构自发现 + 外键拓扑排序（支持无限增表自动纳管）
- */
 async function discoverDynamicTables() {
   const { data, error } = await supabase.rpc('rpc_discover_public_tables');
   if (error || !Array.isArray(data) || data.length === 0) {
@@ -159,7 +129,6 @@ async function discoverDynamicTables() {
     }));
   }
 
-  // 按外键依赖进行拓扑排序（父表在前，子表在后）
   const sorted = [];
   const visited = new Set();
   const map = new Map(data.map((item) => [item.table_name, item]));
@@ -168,27 +137,15 @@ async function discoverDynamicTables() {
     if (visited.has(tblName) || !map.has(tblName)) return;
     visited.add(tblName);
     const meta = map.get(tblName);
-    for (const dep of meta.depends_on || []) {
-      visit(dep);
-    }
+    for (const dep of meta.depends_on || []) visit(dep);
     sorted.push(meta);
   }
 
-  // 优先排序核心底座字典表
   const priorityOrder = [
-    'platform_admin_credential',
-    'platform_governance_config',
-    'platform_gov_configs',
-    'platform_membership_plan',
-    'platform_category',
-    'platform_category_dict',
-    'platform_standard_category',
-    'platform_tenant',
-    'tenant',
-    'tenant_application',
-    'driver',
-    'product',
-    'store'
+    'platform_admin_credential', 'platform_governance_config', 'platform_gov_configs',
+    'platform_membership_plan', 'platform_category', 'platform_category_dict',
+    'platform_standard_category', 'platform_tenant', 'tenant', 'tenant_application',
+    'driver', 'product', 'store'
   ];
   priorityOrder.forEach(visit);
   data.forEach((d) => visit(d.table_name));
@@ -223,7 +180,6 @@ async function getDynamicSystemParams() {
     lockout_minutes: 30,
     backup_overdue_days: 14,
     senior_ops_max_quarantine_mins: 60,
-    dead_man_switch_days: 0, // 0 表示关闭
     immutable_tables: ['audit_immutable_log', 'inventory_log'],
     excluded_tables: []
   };
@@ -243,9 +199,7 @@ async function fetchAllRowsFromTable(tableName, filterCol = null, filterVal = nu
 
   while (true) {
     let query = supabase.from(tableName).select('*').range(from, from + pageSize - 1);
-    if (filterCol && filterVal !== null) {
-      query = query.eq(filterCol, filterVal);
-    }
+    if (filterCol && filterVal !== null) query = query.eq(filterCol, filterVal);
     const { data, error } = await query;
     if (error) return [];
     if (!Array.isArray(data) || data.length === 0) break;
@@ -270,13 +224,46 @@ function downloadTextBlob(content, filename, mimeType = 'application/json;charse
 
 async function sha256Hex(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
- * 1. 全量导出单商号 JSON 备份（动态扫描所有带 tenant_id 的表 + 完整操作审计铁证）
+ * PBKDF2 (100,000次迭代) + AES-256-GCM 零依赖端到端加密封装（供诺亚方舟离线母包使用）
+ */
+async function encryptPayloadAesGcm(plainObject, passphrase) {
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  const aesKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  );
+
+  const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, enc.encode(JSON.stringify(plainObject)));
+  const toBase64 = (arr) => {
+    let bin = '';
+    const bytes = new Uint8Array(arr);
+    for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  };
+
+  return {
+    schema_version: 'baigong_noah_ark_encrypted_v1',
+    cipher_alg: 'PBKDF2-SHA256-100K-AES-256-GCM',
+    created_at: new Date().toISOString(),
+    salt_b64: toBase64(salt),
+    iv_b64: toBase64(iv),
+    ciphertext_b64: toBase64(cipherBuf)
+  };
+}
+
+/**
+ * 1. 全量导出单商号 JSON 备份（第一层：高级运营日常可用）
  */
 export async function exportTenantFullBackup(tenantId, companyName = '', silent = false) {
   if (!tenantId) throw new Error('缺少商号代号 (tenantId)');
@@ -306,11 +293,7 @@ export async function exportTenantFullBackup(tenantId, companyName = '', silent 
   if (Array.isArray(tables.platform_tenant)) {
     tables.platform_tenant = tables.platform_tenant.map((row) => {
       const { access_key, totp_secret, reset_claim_token, ...safeRow } = row;
-      return {
-        ...safeRow,
-        tenant_id: cleanTid,
-        credit_code: getOriginalCreditCode(safeRow.credit_code)
-      };
+      return { ...safeRow, tenant_id: cleanTid, credit_code: getOriginalCreditCode(safeRow.credit_code) };
     });
   }
   if (Array.isArray(tables.tenant)) {
@@ -328,10 +311,7 @@ export async function exportTenantFullBackup(tenantId, companyName = '', silent 
     audit_snapshot: tables.audit_immutable_log || []
   };
 
-  downloadTextBlob(
-    JSON.stringify(payload, null, 2),
-    `BAIGONG_BACKUP_${cleanTid}_${new Date().toISOString().slice(0, 10)}.json`
-  );
+  downloadTextBlob(JSON.stringify(payload, null, 2), `BAIGONG_BACKUP_${cleanTid}_${new Date().toISOString().slice(0, 10)}.json`);
 
   if (!silent) {
     await recordAuditLog('导出商号全量动态数据快照', 'INFO', {
@@ -359,7 +339,7 @@ function remapOrderItemsJson(itemsList, productIdMap) {
 }
 
 /**
- * 2. 打开商号 JSON 备份无损导入恢复弹窗（保持高级运营可用，带自增 ID 重映射与跨商号克隆）
+ * 2. 打开商号 JSON 备份无损导入恢复弹窗（第一层：高级运营可用）
  */
 export function openTenantImportRestoreModal(targetTenantId, targetCompanyName = '') {
   if (!isSeniorOpsOrAbove()) {
@@ -854,7 +834,7 @@ export function restoreArchivedTenant(archivedRowId, archivedTenantId, companyNa
 }
 
 /**
- * 4.5 高级运营有限下放权限：单商号限时微观止损（受最高主权动态天花板约束）
+ * 4.5 I级响应下放权限：高级运营单商号限时微观止损（绝不动全网）
  */
 export async function openDelegatedTenantQuarantineModal(tenantId, companyName = '') {
   if (!isSeniorOpsOrAbove()) {
@@ -877,8 +857,8 @@ export async function openDelegatedTenantQuarantineModal(tenantId, companyName =
     <div class="bg-white border border-amber-400 w-full max-w-md rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2">
         <div>
-          <h3 class="text-sm font-black text-stone-900">🛡️ 商号临时止损隔离（有限下放权限）</h3>
-          <p class="text-[11px] text-stone-500">目标：<b class="font-mono text-rose-700">${companyName || tenantId} (${tenantId})</b> · 权限上限：单次最长 <b>${maxMins}</b> 分钟</p>
+          <h3 class="text-sm font-black text-stone-900">🛡️ I级微观止损 · 单商号临时隔离</h3>
+          <p class="text-[11px] text-stone-500">目标：<b class="font-mono text-rose-700">${companyName || tenantId} (${tenantId})</b> · 单次最长 <b>${maxMins}</b> 分钟</p>
         </div>
         <button type="button" id="btn-close-delegated" class="text-stone-400 hover:text-stone-700 text-lg">✕</button>
       </div>
@@ -951,7 +931,7 @@ export async function openDelegatedTenantQuarantineModal(tenantId, companyName =
 }
 
 /**
- * 5. 渲染高级运营管理专属面板（归档回收站 + 一级/二级运营角色权限分配台，零暴露第三层）
+ * 5. 渲染高级运营管理专属面板
  */
 export async function renderSeniorGovernancePanel() {
   const archiveBody = document.getElementById('archived-tenants-table-body');
@@ -1039,7 +1019,7 @@ export async function renderSeniorGovernancePanel() {
 
 /**
  * ============================================================================
- * 6. 终极运营主权指令舱（全动态零硬编码 · 双向可往返 · 宏微双模式 · 极端生存版）
+ * 6. 第二层：终极运营主权指令舱（按实战分类页签化 · 宏微双缩放 · 双向可往返）
  * ============================================================================
  */
 async function checkSovereignLockout() {
@@ -1076,15 +1056,11 @@ function clearSovereignLockout() {
   localStorage.removeItem(SOVEREIGN_LOCK_STORAGE);
 }
 
-/**
- * 核验主权暗令（返回 'REAL' 真实主权 | 'DURESS' 胁迫伪装欺骗模式 | 'INVALID' 错误）
- */
 async function authenticateSovereignPassphrase(inputPass) {
   const trimmed = String(inputPass || '').trim();
   if (!trimmed) return 'INVALID';
   const inputHash = await sha256Hex(`BAIGONG_SOVEREIGN::${trimmed}`);
 
-  // 1. 先检查是否命中胁迫假暗令
   let duressHash = localStorage.getItem(SOVEREIGN_DURESS_STORAGE);
   if (!duressHash) {
     const { data: dCfg } = await supabase
@@ -1097,11 +1073,8 @@ async function authenticateSovereignPassphrase(inputPass) {
       localStorage.setItem(SOVEREIGN_DURESS_STORAGE, duressHash);
     }
   }
-  if (duressHash && inputHash === duressHash) {
-    return 'DURESS';
-  }
+  if (duressHash && inputHash === duressHash) return 'DURESS';
 
-  // 2. 再检查真实主权暗令
   const savedLocalHash = localStorage.getItem(SOVEREIGN_KEY_STORAGE);
   if (savedLocalHash && inputHash === savedLocalHash) return 'REAL';
 
@@ -1137,11 +1110,8 @@ async function inlineImageAsDataUrl(url) {
   }
 }
 
-/**
- * 动态全库母包导出（支持全库全量，也支持按指定单表或单商号切片导出）
- */
-async function exportDynamicDisasterMotherboard(options = {}) {
-  const { onlyTables = null, onlyTenantId = null, modeLabel = 'FULL' } = options;
+async function buildDynamicMotherboardObject(options = {}) {
+  const { onlyTables = null, onlyTenantId = null, modeLabel = 'FULL', inlineAllMedia = true } = options;
   const dynamicTables = await discoverDynamicTables();
   const sysParams = await getDynamicSystemParams();
   const excludedSet = new Set(sysParams.excluded_tables || []);
@@ -1153,26 +1123,29 @@ async function exportDynamicDisasterMotherboard(options = {}) {
     if (Array.isArray(onlyTables) && onlyTables.length > 0 && !onlyTables.includes(tbl)) continue;
 
     if (onlyTenantId) {
-      if (tbl === 'tenant') {
-        snapshot[tbl] = await fetchAllRowsFromTable('tenant', 'id', onlyTenantId);
-      } else if (meta.has_tenant_id) {
-        snapshot[tbl] = await fetchAllRowsFromTable(tbl, 'tenant_id', onlyTenantId);
-      } else {
-        snapshot[tbl] = [];
-      }
+      if (tbl === 'tenant') snapshot[tbl] = await fetchAllRowsFromTable('tenant', 'id', onlyTenantId);
+      else if (meta.has_tenant_id) snapshot[tbl] = await fetchAllRowsFromTable(tbl, 'tenant_id', onlyTenantId);
+      else snapshot[tbl] = [];
     } else {
       snapshot[tbl] = await fetchAllRowsFromTable(tbl);
     }
   }
 
-  if (Array.isArray(snapshot.tenant_application) && snapshot.tenant_application.length > 0) {
-    for (let i = 0; i < snapshot.tenant_application.length; i++) {
-      const app = snapshot.tenant_application[i];
-      if (app.license_image_url && !String(app.license_image_url).startsWith('data:image/')) {
-        snapshot.tenant_application[i] = {
-          ...app,
-          license_image_url: await inlineImageAsDataUrl(app.license_image_url)
-        };
+  if (inlineAllMedia) {
+    if (Array.isArray(snapshot.tenant_application)) {
+      for (let i = 0; i < snapshot.tenant_application.length; i++) {
+        const app = snapshot.tenant_application[i];
+        if (app.license_image_url && !String(app.license_image_url).startsWith('data:image/')) {
+          snapshot.tenant_application[i] = { ...app, license_image_url: await inlineImageAsDataUrl(app.license_image_url) };
+        }
+      }
+    }
+    if (Array.isArray(snapshot.product)) {
+      for (let i = 0; i < snapshot.product.length; i++) {
+        const prod = snapshot.product[i];
+        if (prod.image_url && !String(prod.image_url).startsWith('data:image/')) {
+          snapshot.product[i] = { ...prod, image_url: await inlineImageAsDataUrl(prod.image_url) };
+        }
       }
     }
   }
@@ -1181,7 +1154,7 @@ async function exportDynamicDisasterMotherboard(options = {}) {
   const integritySeal = await sha256Hex(`BAIGONG_MOTHERBOARD_SEAL::${canonicalJson}`);
   const sourceEndpoint = supabase?.supabaseUrl || window.location.origin;
 
-  const motherPayload = {
+  return {
     schema_version: 'baigong_sovereign_disaster_motherboard_v3_dynamic',
     export_mode: modeLabel,
     created_at: new Date().toISOString(),
@@ -1191,21 +1164,17 @@ async function exportDynamicDisasterMotherboard(options = {}) {
     table_counts: Object.fromEntries(Object.entries(snapshot).map(([k, v]) => [k, v.length])),
     tables: snapshot
   };
+}
 
+async function exportDynamicDisasterMotherboard(options = {}) {
+  const motherPayload = await buildDynamicMotherboardObject(options);
+  const modeLabel = options.modeLabel || 'FULL';
   const prefix = modeLabel === 'FULL' ? 'SOVEREIGN_FULL_DISASTER_MOTHERBOARD' : `SOVEREIGN_SLICE_${modeLabel}`;
-  downloadTextBlob(
-    JSON.stringify(motherPayload, null, 2),
-    `${prefix}_${new Date().toISOString().slice(0, 10)}.json`
-  );
-  if (modeLabel === 'FULL') {
-    localStorage.setItem(SOVEREIGN_LAST_BACKUP_KEY, String(Date.now()));
-  }
+  downloadTextBlob(JSON.stringify(motherPayload, null, 2), `${prefix}_${new Date().toISOString().slice(0, 10)}.json`);
+  if (modeLabel === 'FULL') localStorage.setItem(SOVEREIGN_LAST_BACKUP_KEY, String(Date.now()));
   return motherPayload;
 }
 
-/**
- * 导出司法级电子证据固定卷宗（带 UTC 时间戳与不可抵赖 SHA-256 哈希封印）
- */
 async function exportForensicEvidenceBundle(filterTenantId = '') {
   const evidenceTables = ['audit_immutable_log', 'platform_compliance_case', 'payment_record', 'inventory_log', 'driver_collection_log'];
   const bundleData = {};
@@ -1295,10 +1264,7 @@ async function exportRuntimeSourceCodeVault() {
     files: capturedFiles
   };
 
-  downloadTextBlob(
-    JSON.stringify(bundlePayload, null, 2),
-    `SOVEREIGN_FULL_SOURCE_VAULT_${new Date().toISOString().slice(0, 10)}.json`
-  );
+  downloadTextBlob(JSON.stringify(bundlePayload, null, 2), `SOVEREIGN_FULL_SOURCE_VAULT_${new Date().toISOString().slice(0, 10)}.json`);
   return bundlePayload.file_count;
 }
 
@@ -1325,9 +1291,8 @@ async function batchInsertTableRows(tableName, rows, preserveId = false) {
   for (let i = 0; i < cleaned.length; i += chunkSize) {
     const chunk = cleaned.slice(i, i + chunkSize);
     const { error } = await supabase.from(tableName).upsert(chunk);
-    if (!error) {
-      inserted += chunk.length;
-    } else {
+    if (!error) inserted += chunk.length;
+    else {
       const { error: insErr } = await supabase.from(tableName).insert(chunk);
       if (!insErr) inserted += chunk.length;
     }
@@ -1355,16 +1320,13 @@ async function appendMissingEvidenceRows(tableName, rows) {
   return added;
 }
 
-/**
- * 动态外科手术式重建与双向回溯引擎（支持全库重建 / 单表手术 / 单商号手术 / Dry-Run 演练 / 自动反向补丁快照）
- */
 async function executeSurgicalDisasterRebuild(motherJson, options, logCallback) {
   const {
     wipeBeforeRestore = true,
     dryRunOnly = false,
     autoUndoBackup = true,
-    targetTables = null, // null 表示全部表，数组表示仅手术指定表
-    targetTenantId = null // null 表示全网，字符串表示仅手术指定商号
+    targetTables = null,
+    targetTenantId = null
   } = options;
 
   if (!motherJson || !motherJson.tables) throw new Error('无效的灾难恢复母包文件');
@@ -1388,7 +1350,6 @@ async function executeSurgicalDisasterRebuild(motherJson, options, logCallback) 
     return true;
   });
 
-  // 1. 差异透视与 Dry-Run 零写入模拟校验
   logCallback(`📊 正在扫描 ${candidateTables.length} 张目标表的拓扑依赖与现库差异...`);
   let simulatedRows = 0;
   for (const m of candidateTables) {
@@ -1412,7 +1373,6 @@ async function executeSurgicalDisasterRebuild(motherJson, options, logCallback) 
     return simulatedRows;
   }
 
-  // 2. 手术前自动生成反向回退快照（Undo Rollback Patch）
   if (autoUndoBackup && wipeBeforeRestore) {
     logCallback('🛡️ 正在为即将覆盖的数据自动生成反向回退快照（Undo Rollback Patch）...');
     await exportDynamicDisasterMotherboard({
@@ -1423,7 +1383,6 @@ async function executeSurgicalDisasterRebuild(motherJson, options, logCallback) 
     logCallback('✅ 反向回退补丁已下载落盘！若发现回档误操作，灌入该补丁即可退回手术前一秒。');
   }
 
-  // 3. 按外键逆序清理非铁证表
   if (wipeBeforeRestore) {
     logCallback('🧹 正在按外键逆序清扫普通业务表旧数据（自动跳过物理锁定铁证表）...');
     for (const m of [...candidateTables].reverse()) {
@@ -1440,7 +1399,6 @@ async function executeSurgicalDisasterRebuild(motherJson, options, logCallback) 
     }
   }
 
-  // 4. 按外键正向拓扑顺序重映射灌入
   let totalRestored = 0;
   const catIdMap = new Map();
   const productIdMap = new Map();
@@ -1526,7 +1484,6 @@ async function executeSurgicalDisasterRebuild(motherJson, options, logCallback) 
       continue;
     }
 
-    // 通用动态表映射写入（自动适配未来任何新增表）
     const preservePrimaryKey = tbl === 'platform_governance_config' || tbl === 'tenant';
     const mappedGeneral = rows.map((r) => {
       const next = { ...r };
@@ -1546,7 +1503,6 @@ async function executeSurgicalDisasterRebuild(motherJson, options, logCallback) 
     logCallback(`✅ 重建表 [${tbl}]：写入 ${cnt} 行`);
   }
 
-  // 5. 逐表数目验真对账
   logCallback('📊 正在执行逐表数目验真对账...');
   let mismatchCount = 0;
   for (const m of candidateTables) {
@@ -1578,7 +1534,7 @@ async function executeSurgicalDisasterRebuild(motherJson, options, logCallback) 
 }
 
 /**
- * 打开全动态终极运营主权指令舱
+ * 打开全动态终极运营主权指令舱（按四大实战页签清晰分层，不杀鸡用牛刀）
  */
 async function openSovereignCommandVault() {
   const lockCheck = await checkSovereignLockout();
@@ -1590,8 +1546,6 @@ async function openSovereignCommandVault() {
   document.getElementById('sovereign-command-vault')?.remove();
   let isDuressMode = false;
   let loadedMotherboardJson = null;
-
-  // 策略版本栈（支持双向撤销 Undo / 重做 Redo）
   let policyHistoryStack = [];
   let policyRedoStack = [];
 
@@ -1605,8 +1559,8 @@ async function openSovereignCommandVault() {
         <div class="flex items-center gap-2.5">
           <span class="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black text-base">⚜️</span>
           <div>
-            <h3 class="text-sm font-black text-amber-400 tracking-wide">终极运营主权指令舱（全动态零硬编码 · 双向可往返内核）</h3>
-            <p class="text-[10px] text-stone-400">动态自发现表拓扑 · 热插拔控制维度 · 策略撤销重做 · 单表手术回档与反向快照 · 双暗令防胁迫</p>
+            <h3 class="text-sm font-black text-amber-400 tracking-wide">终极运营主权指令舱（分层分类调度台）</h3>
+            <p class="text-[10px] text-stone-400">I~III级在线精准调度 · IV级诺亚方舟加密封存 · 零硬编码动态扩展 · 双向可往返</p>
           </div>
         </div>
         <button type="button" id="btn-close-sovereign" class="text-stone-400 hover:text-white text-lg">✕</button>
@@ -1623,13 +1577,20 @@ async function openSovereignCommandVault() {
         </button>
       </div>
 
-      <!-- 解锁后的五大动态武器库 -->
-      <div id="sovereign-weapons-view" class="hidden space-y-3.5 max-h-[80vh] overflow-y-auto pr-1">
+      <!-- 解锁后的四大实战分类页签 -->
+      <div id="sovereign-weapons-view" class="hidden space-y-3">
+        <!-- 分类导航栏（避免所有武器堆砌，按需切换） -->
+        <div class="flex flex-wrap gap-1.5 bg-stone-900 p-1.5 rounded-2xl border border-stone-800">
+          <button type="button" data-tab="tab-circuit" class="sov-tab-btn flex-1 py-2 px-3 rounded-xl font-bold bg-amber-500 text-stone-950">⚡ I~III级·熔断与止损</button>
+          <button type="button" data-tab="tab-backup" class="sov-tab-btn flex-1 py-2 px-3 rounded-xl font-bold text-stone-400 hover:text-white">🧬 IV级·诺亚方舟与取证</button>
+          <button type="button" data-tab="tab-rebuild" class="sov-tab-btn flex-1 py-2 px-3 rounded-xl font-bold text-stone-400 hover:text-white">🏗️ 外科手术回档与重建</button>
+          <button type="button" data-tab="tab-kernel" class="sov-tab-btn flex-1 py-2 px-3 rounded-xl font-bold text-stone-400 hover:text-white">🔐 清理·阈值与双云内核</button>
+        </div>
 
-        <!-- 武器一：动态细粒度熔断矩阵 + 策略往返栈 + 热插拔扩展 -->
-        <div class="bg-stone-900 border border-rose-500/40 rounded-2xl p-3.5 space-y-2.5">
+        <!-- 页签 1：动态熔断与微观止损 -->
+        <div id="tab-circuit" class="sov-tab-panel bg-stone-900 border border-rose-500/40 rounded-2xl p-3.5 space-y-2.5 max-h-[72vh] overflow-y-auto">
           <div class="flex flex-wrap justify-between items-center gap-2">
-            <b class="text-rose-400 text-xs">⚡ 武器一：全动态细粒度熔断矩阵（宏观全局 / 微观定点 · 双向往返）</b>
+            <b class="text-rose-400 text-xs">⚡ 动态细粒度熔断矩阵（宏观全局 / 微观定点 · 双向往返）</b>
             <div class="flex items-center gap-1.5">
               <button type="button" id="btn-policy-undo" disabled class="px-2 py-0.5 rounded bg-stone-800 text-stone-500 text-[10px] font-bold">↩️ 撤销上版规则</button>
               <button type="button" id="btn-policy-redo" disabled class="px-2 py-0.5 rounded bg-stone-800 text-stone-500 text-[10px] font-bold">↪️ 重做规则</button>
@@ -1637,7 +1598,6 @@ async function openSovereignCommandVault() {
             </div>
           </div>
 
-          <!-- 快捷勾选与热插拔新增 -->
           <div class="flex flex-wrap items-center gap-1.5 text-[10px]">
             <button type="button" id="btn-circuit-select-all" class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-700/60 hover:bg-rose-900">全选所有维度</button>
             <button type="button" id="btn-circuit-select-finance" class="px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/60 hover:bg-amber-900">仅锁资金与缴费</button>
@@ -1645,10 +1605,8 @@ async function openSovereignCommandVault() {
             <button type="button" id="btn-circuit-add-scope" class="px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-700/60 hover:bg-sky-900 ml-auto">➕ 热插拔新增控制维度</button>
           </div>
 
-          <!-- 动态渲染的无限扩展复选矩阵 -->
           <div id="sovereign-dynamic-scopes-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] max-h-48 overflow-y-auto p-1 bg-stone-950/60 rounded-xl border border-stone-800"></div>
 
-          <!-- 全参数自定义栏（作用对象 + 时长 + 金额阈值 + 公告） -->
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px] bg-stone-950 p-2.5 rounded-xl border border-stone-800">
             <div>
               <label class="text-stone-400 block mb-1">🎯 定点商号 (留空=全网)：</label>
@@ -1676,32 +1634,46 @@ async function openSovereignCommandVault() {
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button type="button" id="btn-sovereign-apply-circuit" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl">🛑 应用自定义熔断策略</button>
-            <button type="button" id="btn-sovereign-unfreeze-all" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 rounded-xl">🟢 一键解除全部熔断</button>
-            <button type="button" id="btn-sovereign-wipe-sessions" class="bg-amber-900 hover:bg-amber-800 text-amber-200 border border-amber-600/50 font-bold py-2 rounded-xl">🔌 踢出全网所有在线终端</button>
+            <button type="button" id="btn-sovereign-apply-circuit" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl">🛑 应用自定义熔断策略</button>
+            <button type="button" id="btn-sovereign-unfreeze-all" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl">🟢 一键解除全部熔断</button>
+            <button type="button" id="btn-sovereign-wipe-sessions" class="bg-amber-900 hover:bg-amber-800 text-amber-200 border border-amber-600/50 font-bold py-2.5 rounded-xl">🔌 踢出全网所有在线终端</button>
           </div>
         </div>
 
-        <!-- 武器二：全栈母版离线备份、按需切片与司法取证 -->
-        <div class="bg-stone-900 border border-amber-500/40 rounded-2xl p-3.5 space-y-2.5">
+        <!-- 页签 2：诺亚方舟全栈灾备与司法取证 -->
+        <div id="tab-backup" class="sov-tab-panel hidden bg-stone-900 border border-amber-500/40 rounded-2xl p-3.5 space-y-3 max-h-[72vh] overflow-y-auto">
           <div class="flex justify-between items-center">
-            <b class="text-amber-300 text-xs">🧬 武器二：全栈母版备份、按需切片与司法电子取证</b>
+            <b class="text-amber-300 text-xs">🛸 IV级诺亚方舟灭顶灾备 · 加密封存与司法取证</b>
             <span id="sovereign-discovered-table-count" class="text-[10px] font-mono text-amber-400">正在自发现全库表结构...</span>
           </div>
-          <button type="button" id="btn-sovereign-export-trinity" class="w-full bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black py-2 rounded-xl shadow">
-            ⚡ 一键导出救生舱全套三件套（全库动态母包 + 全站递归源码 + 实时最新建库DDL）
-          </button>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <button type="button" id="btn-sovereign-export-all" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-1.5 rounded-xl">📥 全库数据母包</button>
-            <button type="button" id="btn-sovereign-export-code" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-1.5 rounded-xl">📦 全站源码快照</button>
-            <button type="button" id="btn-sovereign-export-sql" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-1.5 rounded-xl">🗄️ 实时建库DDL</button>
-            <button type="button" id="btn-sovereign-export-forensic" class="bg-sky-950 hover:bg-sky-900 text-sky-300 border border-sky-600/50 font-bold py-1.5 rounded-xl">⚖️ 司法取证卷宗</button>
+
+          <div class="bg-stone-950 border border-amber-500/30 rounded-xl p-3 space-y-2">
+            <div class="font-bold text-amber-200">1. 诺亚方舟“零依赖加密母包”封装（配合离线方舟 HTML 实现跨云/单机还魂）：</div>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input type="password" id="input-ark-encrypt-pass" placeholder="设置方舟母包 AES-256 加密口令（至少8位）" class="flex-1 bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 font-mono text-white">
+              <button type="button" id="btn-export-encrypted-ark" class="bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black px-4 py-2 rounded-xl shadow">
+                🛸 导出 AES-256 加密方舟母包
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-stone-950 border border-stone-800 rounded-xl p-3 space-y-2">
+            <div class="font-bold text-stone-300">2. 标准救生舱三件套与专项司法取证卷宗：</div>
+            <button type="button" id="btn-sovereign-export-trinity" class="w-full bg-amber-600 hover:bg-amber-500 text-stone-950 font-black py-2 rounded-xl">
+              ⚡ 一键导出救生舱三件套（全库动态母包 + 全站递归源码 + 实时最新建库DDL）
+            </button>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button type="button" id="btn-sovereign-export-all" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-2 rounded-xl">📥 明文全库母包</button>
+              <button type="button" id="btn-sovereign-export-code" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-2 rounded-xl">📦 全站源码快照</button>
+              <button type="button" id="btn-sovereign-export-sql" class="bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/40 font-bold py-2 rounded-xl">🗄️ 实时建库DDL</button>
+              <button type="button" id="btn-sovereign-export-forensic" class="bg-sky-950 hover:bg-sky-900 text-sky-300 border border-sky-600/50 font-bold py-2 rounded-xl">⚖️ 司法取证卷宗</button>
+            </div>
           </div>
         </div>
 
-        <!-- 武器三：双向可回溯灾难重建与外科手术回档 -->
-        <div class="bg-stone-900 border border-emerald-500/40 rounded-2xl p-3.5 space-y-2.5">
-          <b class="text-emerald-400 text-xs block">🏗️ 武器三：灾难重建与外科手术回档（支持单表/单商号点穴 · 反向补丁快照 · Dry-Run 演练）</b>
+        <!-- 页签 3：外科手术回档与重建 -->
+        <div id="tab-rebuild" class="sov-tab-panel hidden bg-stone-900 border border-emerald-500/40 rounded-2xl p-3.5 space-y-2.5 max-h-[72vh] overflow-y-auto">
+          <b class="text-emerald-400 text-xs block">🏗️ 外科手术式精准回档与全库重建（单表/单商号点穴 · 反向补丁 · Dry-Run 演练）</b>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <label class="bg-stone-950 border border-dashed border-emerald-500/50 hover:border-emerald-400 rounded-xl px-3 py-2 cursor-pointer text-center font-bold text-emerald-300">
               <span id="sovereign-mother-file-label">📂 选择恢复母包或反向补丁 (.json)</span>
@@ -1727,58 +1699,61 @@ async function openSovereignCommandVault() {
           </div>
 
           <div id="sovereign-mother-preview" class="hidden bg-stone-950 border border-stone-800 rounded-xl p-2 text-[11px] space-y-1"></div>
-          <div id="sovereign-rebuild-log" class="hidden bg-black border border-emerald-900/60 rounded-xl p-2 font-mono text-[10px] text-emerald-300 max-h-36 overflow-y-auto space-y-0.5"></div>
-          <button type="button" id="btn-sovereign-execute-rebuild" disabled class="w-full bg-stone-800 text-stone-500 font-black py-2 rounded-xl cursor-not-allowed transition">🔒 请先选择灾难恢复母包</button>
+          <div id="sovereign-rebuild-log" class="hidden bg-black border border-emerald-900/60 rounded-xl p-2 font-mono text-[10px] text-emerald-300 max-h-44 overflow-y-auto space-y-0.5"></div>
+          <button type="button" id="btn-sovereign-execute-rebuild" disabled class="w-full bg-stone-800 text-stone-500 font-black py-2.5 rounded-xl cursor-not-allowed transition">🔒 请先选择灾难恢复母包</button>
         </div>
 
-        <!-- 武器四：分级深度清理与物理粉碎 -->
-        <div class="bg-stone-900 border border-stone-700 rounded-2xl p-3.5 space-y-2">
-          <b class="text-stone-200 text-xs block">☢️ 武器四：分级精准清理与物理级彻底粉碎</b>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input type="text" id="input-sovereign-hard-purge-tid" placeholder="输入商号代号 (含归档后缀亦可)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
-            <select id="select-purge-grade" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 text-white">
-              <option value="grade_a">A级：仅清订单/财务测试流水（保留商品门店空壳）</option>
-              <option value="grade_c">C级：物理连根拔除全库所有关联记录（不可逆）</option>
-            </select>
-            <button type="button" id="btn-sovereign-hard-purge" class="bg-rose-900 hover:bg-rose-800 text-rose-100 font-bold py-1.5 rounded-xl border border-rose-600">执行分级清理</button>
-          </div>
-        </div>
-
-        <!-- 武器五：全局动态参数阈值、双暗令与双云热备端点 -->
-        <div class="bg-stone-900 border border-stone-800 rounded-2xl p-3.5 space-y-2.5">
-          <b class="text-stone-300 text-xs block">🔐 武器五：全参数阈值自定义、双暗令（真实/胁迫）与双云端点热切换</b>
-          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[10px]">
-            <div>
-              <label class="text-stone-400 block">暗令试错上限(次)</label>
-              <input type="number" id="param-max-attempts" min="1" value="3" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
-            </div>
-            <div>
-              <label class="text-stone-400 block">输错锁定时长(分)</label>
-              <input type="number" id="param-lock-mins" min="1" value="30" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
-            </div>
-            <div>
-              <label class="text-stone-400 block">冷备逾期提醒(天)</label>
-              <input type="number" id="param-backup-days" min="1" value="14" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
-            </div>
-            <div>
-              <label class="text-stone-400 block">高管下放止损上限(分)</label>
-              <input type="number" id="param-delegated-mins" min="0" value="60" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
-            </div>
-            <div class="flex items-end">
-              <button type="button" id="btn-save-sys-params" class="w-full bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold py-1.5 rounded-lg">保存全局参数</button>
+        <!-- 页签 4：分级清理、动态阈值与双云内核 -->
+        <div id="tab-kernel" class="sov-tab-panel hidden bg-stone-900 border border-stone-700 rounded-2xl p-3.5 space-y-3 max-h-[72vh] overflow-y-auto">
+          <div class="space-y-2 border-b border-stone-800 pb-3">
+            <b class="text-rose-400 text-xs block">☢️ 1. 分级深度清理与物理级彻底粉碎</b>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input type="text" id="input-sovereign-hard-purge-tid" placeholder="输入商号代号 (含归档后缀亦可)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
+              <select id="select-purge-grade" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 text-white">
+                <option value="grade_a">A级：仅清订单/财务测试流水（保留商品门店空壳）</option>
+                <option value="grade_c">C级：物理连根拔除全库所有关联记录（不可逆）</option>
+              </select>
+              <button type="button" id="btn-sovereign-hard-purge" class="bg-rose-900 hover:bg-rose-800 text-rose-100 font-bold py-1.5 rounded-xl border border-rose-600">执行分级清理</button>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input type="password" id="input-sovereign-new-pass" placeholder="新真实主权暗令 (≥10位)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
-            <input type="password" id="input-sovereign-duress-pass" placeholder="设置胁迫假暗令 (可选, ≥8位)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
-            <button type="button" id="btn-sovereign-save-pass" class="bg-stone-700 hover:bg-stone-600 text-white font-bold py-1.5 rounded-xl">更新双暗令密钥</button>
+          <div class="space-y-2 border-b border-stone-800 pb-3">
+            <b class="text-amber-300 text-xs block">⚙️ 2. 全局动态参数阈值与下放天花板自定义</b>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[10px]">
+              <div>
+                <label class="text-stone-400 block">暗令试错上限(次)</label>
+                <input type="number" id="param-max-attempts" min="1" value="3" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
+              </div>
+              <div>
+                <label class="text-stone-400 block">输错锁定时长(分)</label>
+                <input type="number" id="param-lock-mins" min="1" value="30" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
+              </div>
+              <div>
+                <label class="text-stone-400 block">冷备逾期提醒(天)</label>
+                <input type="number" id="param-backup-days" min="1" value="14" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
+              </div>
+              <div>
+                <label class="text-stone-400 block">高管下放止损上限(分)</label>
+                <input type="number" id="param-delegated-mins" min="0" value="60" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 font-mono text-white">
+              </div>
+              <div class="flex items-end">
+                <button type="button" id="btn-save-sys-params" class="w-full bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold py-1.5 rounded-lg">保存全局参数</button>
+              </div>
+            </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input type="text" id="input-failover-url" placeholder="备用云库 URL (https://xxx.supabase.co)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
-            <input type="password" id="input-failover-key" placeholder="备用云库 ANON_KEY" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
-            <button type="button" id="btn-save-failover" class="bg-sky-800 hover:bg-sky-700 text-white font-bold py-1.5 rounded-xl">配置备用云热切换</button>
+          <div class="space-y-2">
+            <b class="text-stone-300 text-xs block">🔐 3. 双暗令（真实/胁迫）与双云端点热切换</b>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input type="password" id="input-sovereign-new-pass" placeholder="新真实主权暗令 (≥10位)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
+              <input type="password" id="input-sovereign-duress-pass" placeholder="设置胁迫假暗令 (可选, ≥8位)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
+              <button type="button" id="btn-sovereign-save-pass" class="bg-stone-700 hover:bg-stone-600 text-white font-bold py-1.5 rounded-xl">更新双暗令密钥</button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input type="text" id="input-failover-url" placeholder="备用云库 URL (https://xxx.supabase.co)" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
+              <input type="password" id="input-failover-key" placeholder="备用云库 ANON_KEY" class="bg-stone-950 border border-stone-700 rounded-xl px-3 py-1.5 font-mono text-white">
+              <button type="button" id="btn-save-failover" class="bg-sky-800 hover:bg-sky-700 text-white font-bold py-1.5 rounded-xl">配置备用云热切换</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1786,6 +1761,18 @@ async function openSovereignCommandVault() {
   `;
 
   document.body.appendChild(overlay);
+
+  // 页签切换绑定
+  overlay.querySelectorAll('.sov-tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      overlay.querySelectorAll('.sov-tab-btn').forEach((b) => {
+        b.className = 'sov-tab-btn flex-1 py-2 px-3 rounded-xl font-bold text-stone-400 hover:text-white';
+      });
+      btn.className = 'sov-tab-btn flex-1 py-2 px-3 rounded-xl font-bold bg-amber-500 text-stone-950';
+      overlay.querySelectorAll('.sov-tab-panel').forEach((p) => p.classList.add('hidden'));
+      document.getElementById(btn.dataset.tab)?.classList.remove('hidden');
+    });
+  });
 
   const lockView = document.getElementById('sovereign-lock-view');
   const weaponsView = document.getElementById('sovereign-weapons-view');
@@ -1865,7 +1852,6 @@ async function openSovereignCommandVault() {
 
   async function saveCircuitPolicy(newPolicy, pushHistory = true) {
     if (isDuressMode) {
-      // 胁迫伪装模式下，不覆盖真实放行，静默开启只读护盘并给胁迫者展示成功假象
       const allScopes = (await getDynamicControlRegistry()).map((r) => r.scope);
       await supabase.from('platform_governance_config').upsert([{
         config_key: 'sovereign_active_circuit_policy',
@@ -1926,7 +1912,6 @@ async function openSovereignCommandVault() {
     localStorage.setItem(SOVEREIGN_HEARTBEAT_KEY, String(Date.now()));
 
     if (isDuressMode) {
-      // 胁迫模式下静默触发全网护盘
       const allScopes = (await getDynamicControlRegistry()).map((r) => r.scope);
       await supabase.from('platform_governance_config').upsert([{
         config_key: 'sovereign_active_circuit_policy',
@@ -1944,7 +1929,6 @@ async function openSovereignCommandVault() {
   passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleUnlock(); });
   setTimeout(() => passInput.focus(), 100);
 
-  // 快捷勾选 & 热插拔新增控制维度
   document.getElementById('btn-circuit-select-all').addEventListener('click', () => {
     document.querySelectorAll('.circuit-scope-chk').forEach((chk) => { chk.checked = true; });
   });
@@ -1978,7 +1962,6 @@ async function openSovereignCommandVault() {
     alert(`✅ 已热插拔新增控制维度【${labelText.trim()} (${scopeCode.trim()})】，可立即勾选生效！`);
   });
 
-  // 策略时间轴撤销 / 重做
   btnUndo.addEventListener('click', async () => {
     if (policyHistoryStack.length === 0) return;
     const { data: cur } = await supabase.from('platform_governance_config').select('config_value').eq('config_key', 'sovereign_active_circuit_policy').maybeSingle();
@@ -2040,7 +2023,31 @@ async function openSovereignCommandVault() {
     alert('🔌 已清退全网所有商号与扫码登录会话！');
   });
 
-  // 武器二：导出事件
+  // 页签 2：诺亚方舟加密母包封装与三件套导出
+  document.getElementById('btn-export-encrypted-ark').addEventListener('click', async (e) => {
+    const encPass = document.getElementById('input-ark-encrypt-pass').value.trim();
+    if (encPass.length < 8) return alert('为确保冷存绝对安全，方舟加密口令长度不能少于 8 位！');
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = '⏳ 正在抽取全库并执行 PBKDF2 + AES-256-GCM 加密...';
+    try {
+      const mother = await buildDynamicMotherboardObject({ modeLabel: 'FULL', inlineAllMedia: true });
+      const encryptedEnvelope = await encryptPayloadAesGcm(mother, encPass);
+      downloadTextBlob(
+        JSON.stringify(encryptedEnvelope, null, 2),
+        `NOAH_ARK_ENCRYPTED_MOTHERBOARD_${new Date().toISOString().slice(0, 10)}.json`
+      );
+      localStorage.setItem(SOVEREIGN_LAST_BACKUP_KEY, String(Date.now()));
+      document.getElementById('sovereign-backup-overdue-badge')?.remove();
+      alert(`🛸 诺亚方舟 AES-256-GCM 加密母包已生成落盘！\n\n• 收录全库 ${Object.keys(mother.tables).length} 张表及内联图片资源；\n• 无此加密口令任何人都无法解密读取，配合 NOAH_ARK_OFFLINE_CONSOLE.html 可随时跨云或单机还魂。`);
+    } catch (err) {
+      alert('❌ 加密封装失败：' + (err?.message || ''));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🛸 导出 AES-256 加密方舟母包';
+    }
+  });
+
   document.getElementById('btn-sovereign-export-trinity').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
@@ -2055,14 +2062,14 @@ async function openSovereignCommandVault() {
       alert('❌ 导出失败：' + (err?.message || ''));
     } finally {
       btn.disabled = false;
-      btn.textContent = '⚡ 一键导出救生舱全套三件套（全库动态母包 + 全站递归源码 + 实时最新建库DDL）';
+      btn.textContent = '⚡ 一键导出救生舱三件套（全库动态母包 + 全站递归源码 + 实时最新建库DDL）';
     }
   });
 
   document.getElementById('btn-sovereign-export-all').addEventListener('click', async () => {
     const m = await exportDynamicDisasterMotherboard({ modeLabel: 'FULL' });
     document.getElementById('sovereign-backup-overdue-badge')?.remove();
-    alert(`✅ 全库动态母包已导出（共收录 ${Object.keys(m.tables).length} 张表）！`);
+    alert(`✅ 明文全库动态母包已导出（共收录 ${Object.keys(m.tables).length} 张表）！`);
   });
 
   document.getElementById('btn-sovereign-export-code').addEventListener('click', async () => {
@@ -2081,7 +2088,7 @@ async function openSovereignCommandVault() {
     alert(`⚖️ 司法级电子证据固定卷宗已生成！\nSHA-256 封印：${doc.forensic_sha256_seal.slice(0, 24)}...`);
   });
 
-  // 武器三：外科手术回档与重建
+  // 页签 3：外科手术回档与重建
   const motherFileInput = document.getElementById('input-sovereign-mother-file');
   const motherPreview = document.getElementById('sovereign-mother-preview');
   const rebuildLogBox = document.getElementById('sovereign-rebuild-log');
@@ -2092,7 +2099,7 @@ async function openSovereignCommandVault() {
     if (!file) return;
     try {
       const parsed = JSON.parse(await file.text());
-      if (!parsed.tables) return alert('❌ 无效的母包或反向补丁 JSON 文件！');
+      if (!parsed.tables) return alert('❌ 请选择明文母包或反向补丁 JSON 文件（加密方舟包请使用离线方舟控制台解密还魂）！');
       loadedMotherboardJson = parsed;
       document.getElementById('sovereign-mother-file-label').textContent = `✅ 已载入：${file.name}`;
       const curEndpoint = supabase?.supabaseUrl || window.location.origin;
@@ -2101,10 +2108,10 @@ async function openSovereignCommandVault() {
       motherPreview.classList.remove('hidden');
       motherPreview.innerHTML = `
         <div class="text-emerald-300 font-bold">生成时间：${new Date(parsed.created_at).toLocaleString('zh-CN')} · 内含 ${Object.keys(parsed.tables).length} 张表</div>
-        ${isSameOrigin ? '<div class="text-rose-400 font-bold">⚠️ 环境警戒：检测到当前连接的是【原生产库】，执行覆盖前建议勾选“自动导出反向回退快照”！</div>' : '<div class="text-sky-300">🌐 环境检测：当前处于独立新库实例，可安全执行全量重建。</div>'}
+        ${isSameOrigin ? '<div class="text-rose-400 font-bold">⚠️ 环境警戒：检测到当前连接的是【原生产库】，执行覆盖前建议保持勾选“自动导出反向回退快照”！</div>' : '<div class="text-sky-300">🌐 环境检测：当前处于独立新库实例，可安全执行全量重建。</div>'}
       `;
       btnExecuteRebuild.disabled = false;
-      btnExecuteRebuild.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl shadow transition';
+      btnExecuteRebuild.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl shadow transition';
       btnExecuteRebuild.textContent = '🚀 立即执行外科手术回档 / 全库重建';
     } catch (err) {
       alert('❌ 文件解析失败：' + (err?.message || ''));
@@ -2140,13 +2147,7 @@ async function openSovereignCommandVault() {
     try {
       await executeSurgicalDisasterRebuild(
         loadedMotherboardJson,
-        {
-          wipeBeforeRestore: wipeBefore,
-          dryRunOnly: dryRun,
-          autoUndoBackup: autoUndo,
-          targetTables,
-          targetTenantId: rawTid || null
-        },
+        { wipeBeforeRestore: wipeBefore, dryRunOnly: dryRun, autoUndoBackup: autoUndo, targetTables, targetTenantId: rawTid || null },
         appendLog
       );
       if (!dryRun && typeof window.loadPlatformData === 'function') await window.loadPlatformData();
@@ -2158,7 +2159,7 @@ async function openSovereignCommandVault() {
     }
   });
 
-  // 武器四：分级深度清理
+  // 页签 4：分级清理、动态阈值与双云内核
   document.getElementById('btn-sovereign-hard-purge').addEventListener('click', async () => {
     const rawTid = document.getElementById('input-sovereign-hard-purge-tid').value.trim();
     const grade = document.getElementById('select-purge-grade').value;
@@ -2171,7 +2172,6 @@ async function openSovereignCommandVault() {
     const immutableSet = new Set(sysParams.immutable_tables || ['audit_immutable_log', 'inventory_log']);
 
     if (grade === 'grade_a') {
-      // A级：仅清订单/财务/流水，保留商号、门店、商品目录
       const keepTables = new Set(['platform_tenant', 'tenant', 'tenant_application', 'driver', 'product', 'store']);
       const { data: oldOrders } = await supabase.from('orders').select('id').in('tenant_id', [rawTid, baseTid]);
       const oIds = (oldOrders || []).map((o) => o.id);
@@ -2185,7 +2185,6 @@ async function openSovereignCommandVault() {
       await supabase.from('store').update({ current_debt: 0, used_return_quota: 0, carrier_hold_count: 0, basket_count: 0 }).in('tenant_id', [rawTid, baseTid]);
       alert(`🧹 A级清理完成：商号【${rawTid}】测试期订单与往来欠款已清空，商品与门店档案完整保留！`);
     } else {
-      // C级：物理连根拔除
       const { data: oldOrders } = await supabase.from('orders').select('id').in('tenant_id', [rawTid, baseTid]);
       const oIds = (oldOrders || []).map((o) => o.id);
       if (oIds.length > 0) await supabase.from('order_item').delete().in('order_id', oIds);
@@ -2201,7 +2200,6 @@ async function openSovereignCommandVault() {
     if (typeof window.loadPlatformData === 'function') await window.loadPlatformData();
   });
 
-  // 武器五：全局参数、双暗令与备用云切换
   document.getElementById('btn-save-sys-params').addEventListener('click', async () => {
     if (isDuressMode) return alert('✅ 全局参数已更新！');
     const curParams = await getDynamicSystemParams();
@@ -2232,22 +2230,14 @@ async function openSovereignCommandVault() {
       if (newPass.length < 10) return alert('真实主权暗令长度不能少于 10 位！');
       const newHash = await sha256Hex(`BAIGONG_SOVEREIGN::${newPass}`);
       localStorage.setItem(SOVEREIGN_KEY_STORAGE, newHash);
-      await supabase.from('platform_governance_config').upsert([{
-        config_key: '_sys_sovereign_seal_hash',
-        config_value: newHash,
-        updated_at: new Date().toISOString()
-      }]);
+      await supabase.from('platform_governance_config').upsert([{ config_key: '_sys_sovereign_seal_hash', config_value: newHash, updated_at: new Date().toISOString() }]);
     }
     if (duressPass) {
       if (duressPass.length < 8) return alert('胁迫假暗令长度不能少于 8 位！');
       if (duressPass === newPass) return alert('胁迫假暗令不能与真实暗令相同！');
       const dHash = await sha256Hex(`BAIGONG_SOVEREIGN::${duressPass}`);
       localStorage.setItem(SOVEREIGN_DURESS_STORAGE, dHash);
-      await supabase.from('platform_governance_config').upsert([{
-        config_key: '_sys_sovereign_duress_hash',
-        config_value: dHash,
-        updated_at: new Date().toISOString()
-      }]);
+      await supabase.from('platform_governance_config').upsert([{ config_key: '_sys_sovereign_duress_hash', config_value: dHash, updated_at: new Date().toISOString() }]);
     }
     alert('🔐 双暗令密钥已安全加密更新！');
   });
@@ -2298,7 +2288,6 @@ export function initStealthSovereignListener() {
     setTimeout(() => openSovereignCommandVault(), 300);
   }
 
-  // 动态冷备逾期静默提醒（仅对高级运营及以上显示，零暴露隐秘入口）
   setTimeout(async () => {
     if (!isSeniorOpsOrAbove()) return;
     const params = await getDynamicSystemParams();
