@@ -1,25 +1,39 @@
 import { parseWechatOrderText, speakChineseNotice } from '../../services/smartFieldAssistantService.js';
 import { storeState } from './storeState.js';
 
+function findTopAnchorElement() {
+  return (
+    document.querySelector('header') ||
+    document.querySelector('nav') ||
+    document.getElementById('store-title')?.closest('div.sticky, div.fixed, div.bg-emerald-950, div[class*="bg-[#1b4332]"], div') ||
+    null
+  );
+}
+
 export function mountStoreSmartCareToolbar() {
-  const headerEl = document.querySelector('header');
-  if (!headerEl || document.getElementById('store-smart-care-bar')) return;
+  if (document.getElementById('store-smart-care-bar')) return;
 
   const bar = document.createElement('div');
   bar.id = 'store-smart-care-bar';
-  bar.className = 'mx-3 mt-2 bg-stone-100 border border-stone-200 px-3 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs';
+  bar.className = 'mx-3 mt-2 mb-1 bg-stone-100 border border-stone-200 px-3 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-2xs';
   bar.innerHTML = `
     <div class="flex items-center gap-1.5 text-stone-700 font-bold">
       <span>⚡ 快捷助手：</span>
-      <button type="button" onclick="window.openWechatTextSplitModal()" class="bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold px-3 py-1 rounded-xl text-[11px] shadow-2xs">
+      <button type="button" onclick="window.openWechatTextSplitModal()" class="bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold px-3 py-1 rounded-xl text-[11px] shadow-2xs active:scale-95 transition">
         📋 微信文本清单智能拆单
       </button>
     </div>
-    <button type="button" onclick="window.toggleStoreElderCareMode()" id="btn-store-elder-mode" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-3 py-1 rounded-xl text-[11px] shadow-2xs">
+    <button type="button" onclick="window.toggleStoreElderCareMode()" id="btn-store-elder-mode" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-3 py-1 rounded-xl text-[11px] shadow-2xs active:scale-95 transition">
       👴 极简三键大字模式
     </button>
   `;
-  headerEl.insertAdjacentElement('afterend', bar);
+
+  const anchor = findTopAnchorElement();
+  if (anchor && anchor.parentNode) {
+    anchor.insertAdjacentElement('afterend', bar);
+  } else {
+    document.body.insertAdjacentElement('afterbegin', bar);
+  }
 
   if (localStorage.getItem('store_elder_care_mode') === '1') {
     renderStoreElderCareOverlay(true);
@@ -123,6 +137,20 @@ export function initStoreSmartCareBindings() {
     }
   };
 
+  window.fillSampleWechatText = function () {
+    const prods = (storeState.allProducts || []).slice(0, 3);
+    const input = document.getElementById('wechat-split-input');
+    if (!input) return;
+    if (prods.length > 0) {
+      input.value = prods
+        .map((p, i) => `${p.name} ${(i + 1) * 2}${p.measure_unit || '件'}`)
+        .join('\n');
+    } else {
+      input.value = '土鸡蛋 5箱\n菜籽油 2桶，大米 3袋';
+    }
+    window.previewWechatTextSplit();
+  };
+
   window.openWechatTextSplitModal = function () {
     document.getElementById('modal-wechat-text-split')?.remove();
     const modal = document.createElement('div');
@@ -136,6 +164,11 @@ export function initStoreSmartCareBindings() {
             <p class="text-[11px] text-stone-500 mt-0.5">直接粘贴微信聊天里的要货清单，自动匹配货品并填入数量</p>
           </div>
           <button type="button" onclick="document.getElementById('modal-wechat-text-split')?.remove()" class="text-stone-400 hover:text-stone-800 text-base font-bold">✕</button>
+        </div>
+
+        <div class="flex justify-between items-center text-[11px]">
+          <span class="text-stone-500">支持换行、逗号、顿号混排口语格式：</span>
+          <button type="button" onclick="window.fillSampleWechatText()" class="text-emerald-800 font-bold hover:underline">✨ 填入示例测试</button>
         </div>
 
         <textarea id="wechat-split-input" rows="4" placeholder="例如：\n土鸡蛋 5箱\n菜籽油 2桶，大米 3袋" class="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3 text-xs text-stone-800 outline-none focus:border-emerald-600"></textarea>
@@ -195,7 +228,9 @@ export function initStoreSmartCareBindings() {
     }
 
     matched.forEach((m) => {
-      if (typeof window.changeStoreCartQty === 'function') {
+      if (typeof window.changeOrderQty === 'function') {
+        window.changeOrderQty(m.product.id, m.qty);
+      } else if (typeof window.changeStoreCartQty === 'function') {
         window.changeStoreCartQty(m.product.id, m.qty);
       } else if (typeof window.addToStoreCart === 'function') {
         for (let i = 0; i < m.qty; i += 1) window.addToStoreCart(m.product.id);
