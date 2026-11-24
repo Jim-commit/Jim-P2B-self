@@ -95,6 +95,28 @@ export function renderCartDrawer() {
     .join('');
 }
 
+function resolveDynamicGroupBuyTarget() {
+  const tenantIds = Array.from(
+    new Set(
+      mallState.cart
+        .map((item) => mallState.currentTenantParam || item.prod?.tenant_id)
+        .filter(Boolean)
+    )
+  );
+  if (tenantIds.length === 0) return 10;
+
+  const targets = tenantIds
+    .map((tid) => {
+      const t = mallState.allTenants.find((x) => x.tenant_id === tid);
+      const customQty = Number(t?.custom_settings?.groupBuyTargetQty);
+      return !isNaN(customQty) && customQty > 0 ? customQty : null;
+    })
+    .filter((v) => v !== null);
+
+  if (targets.length === 0) return 10;
+  return Math.max(1, Math.min(...targets));
+}
+
 async function updateCheckoutProfitAndGroupNotice() {
   const noticeEl = document.getElementById('checkout-profit-notice');
   const groupBar = document.getElementById('checkout-group-buy-bar');
@@ -116,7 +138,7 @@ async function updateCheckoutProfitAndGroupNotice() {
     const existingQty = await MallService.fetchStoreGroupBuyCount(activeStoreId);
     const { totalQty } = calcCartSummary();
     const combinedQty = existingQty + totalQty;
-    const targetQty = 10;
+    const targetQty = resolveDynamicGroupBuyTarget();
     const pct = Math.min(100, Math.round((combinedQty / targetQty) * 100));
 
     groupBar.innerHTML = `
