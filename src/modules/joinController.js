@@ -487,6 +487,11 @@ window.handleVendorRegister = async function (e, isClaimAppeal = false) {
     );
   }
 
+  // 动作级精准熔断检查：新商号入驻提交 (join_apply)
+  if (window.checkBusinessCircuit && !(await window.checkBusinessCircuit('join_apply', tenantId))) {
+    return;
+  }
+
   const btn = document.getElementById('btn-submit-join');
   btn.disabled = true;
   btn.innerHTML = '正在核对一证一户分级唯一性并原子提交...';
