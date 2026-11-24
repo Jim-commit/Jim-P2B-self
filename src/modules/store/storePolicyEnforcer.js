@@ -1,148 +1,175 @@
 import { supabase } from '../../lib/supabase.js';
 
-function getActiveBoundTenantId() {
-  const params = new URLSearchParams(window.location.search);
-  const urlAgent = params.get('agent') || params.get('t');
-  if (urlAgent) return urlAgent.trim().toUpperCase();
+let activePolicyCache = {
+  tenantId: '',
+  companyName: '',
+  policy: {}
+};
 
-  const tagText = document.getElementById('menu-current-agent-tag')?.innerText?.trim();
-  if (tagText) return tagText.toUpperCase();
-
-  try {
-    const saved = localStorage.getItem('current_bound_agent') || localStorage.getItem('selected_agent_id');
-    if (saved) return saved.trim().toUpperCase();
-  } catch (e) {}
+function getCurrentStoreTenantId() {
+  const urlTid = new URLSearchParams(window.location.search).get('t')?.trim().toUpperCase();
+  if (urlTid) return urlTid;
+  const domTid = document.getElementById('store-tenant-id-display')?.innerText?.trim().toUpperCase();
+  if (domTid && domTid !== '--') return domTid;
+  for (let i = 0; i < sessionStorage.length; i += 1) {
+    const k = sessionStorage.key(i) || '';
+    if (k.startsWith('store_session_') || k.startsWith('store_auth_')) {
+      const val = sessionStorage.getItem(k);
+      if (val && val.length >= 4) return val.trim().toUpperCase();
+    }
+  }
   return '';
 }
 
-function renderStorePolicyBanner(policy, tenantName = '') {
-  const header = document.querySelector('header');
-  if (!header) return;
-
+function renderStorePolicyBanner(companyName, policy) {
   let banner = document.getElementById('store-live-policy-banner');
   if (!banner) {
+    const host = document.querySelector('header') || document.querySelector('main');
+    if (!host) return;
     banner = document.createElement('div');
     banner.id = 'store-live-policy-banner';
-    header.insertAdjacentElement('afterend', banner);
+    host.insertAdjacentElement('afterend', banner);
   }
 
+  const pauseStatusLabel = policy.industryTerms?.pauseStatus || '盘点 / 休市暂歇';
+  const tags = [];
+
   if (policy.emergencyBrakeActive) {
-    banner.className = 'mx-3 mt-2.5 bg-rose-950 text-white border-2 border-rose-500 p-3 rounded-2xl text-xs shadow-md space-y-1';
+    banner.className = 'mx-auto max-w-2xl mt-2 px-3';
     banner.innerHTML = `
-      <div class="font-bold flex items-center gap-1.5 text-rose-200">
-        <span>🚨 供货方【${tenantName || '合作社/工坊'}】已启动【紧急止损拉闸】</span>
+      <div class="bg-rose-950 text-white border-2 border-rose-500 p-3 rounded-2xl text-xs shadow-lg space-y-1">
+        <div class="font-bold text-sm flex items-center gap-1.5">
+          <span>🚨 【${companyName || '供货总舵'}】已启动紧急止损拉闸（全网熔断锁单）</span>
+        </div>
+        <p class="text-rose-200 text-[11px]">
+          拉闸说明：${policy.emergencyBrakeReason || '行情剧烈波动或紧急风控中，当前暂缓接收新订货单'}（已下单货品交割与对账不受影响）。
+        </p>
       </div>
-      <p class="text-[11px] text-rose-100 leading-relaxed">
-        原因：${policy.emergencyBrakeReason || '行情平准调价/紧急盘点中'}。当前新补货单提交已临时锁定，旧单收货与电子对账单不受影响。
-      </p>
     `;
-    const submitBtn = document.getElementById('btn-submit-order');
-    if (submitBtn) {
-      submitBtn.classList.add('opacity-60');
-      const txtEl = document.getElementById('btn-submit-order-text');
-      if (txtEl) txtEl.innerText = '🚨 供货方拉闸熔断中';
-    }
     return;
   }
 
   if (policy.seasonalPause?.isPaused) {
-    banner.className = 'mx-3 mt-2.5 bg-amber-50 text-amber-950 border border-amber-300 p-3 rounded-2xl text-xs space-y-1';
-    banner.innerHTML = `
-      <div class="font-bold">🍵 供货方暂歇接单告示：${policy.seasonalPause.reason || '产区农忙/盘点中'}</div>
-      ${policy.seasonalPause.resumeDate ? `<div class="text-[10px] text-amber-800 font-mono">预计恢复接单日期：${policy.seasonalPause.resumeDate}</div>` : ''}
-    `;
+    tags.push(`<span class="bg-amber-600 text-white px-2.5 py-0.5 rounded-full font-bold">⏸️ ${pauseStatusLabel}：${policy.seasonalPause.reason || '盘点/休市中'}</span>`);
+  }
+  if (parseInt(policy.rationLimitQty || 0, 10) > 0) {
+    tags.push(`<span class="bg-rose-100 text-rose-900 border border-rose-300 px-2.5 py-0.5 rounded-full font-bold">🛡️ 紧缺定额限购：单笔上限 ${policy.rationLimitQty} 件</span>`);
+  }
+  if (policy.storeTierEnabled !== false && Array.isArray(policy.storeTiers) && policy.storeTiers.length > 0) {
+    tags.push('<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 rounded-full">🟢 门店分级协议价与授信已生效</span>');
+  }
+  if (Array.isArray(policy.carriers) && policy.carriers[0]) {
+    tags.push(`<span class="bg-amber-50 text-amber-950 border border-amber-300 px-2.5 py-0.5 rounded-full">🧺 主载具【${policy.carriers[0].name}】押金 ¥${policy.carriers[0].deposit}/件</span>`);
+  }
+  if (policy.allowStoreReturn === false) {
+    tags.push('<span class="bg-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full">🚫 当前暂不开放常规退货申请</span>');
+  }
+
+  if (tags.length === 0) {
+    banner.innerHTML = '';
     return;
   }
 
-  const tags = [];
-  if (policy.storeTierEnabled !== false && Array.isArray(policy.storeTiers) && policy.storeTiers.length > 0) {
-    tags.push('🟢 已启用门店分级协议折算');
-  }
-  if (parseInt(policy.rationLimitQty || 0) > 0) {
-    tags.push(`🛡️ 紧缺限购 ≤ ${policy.rationLimitQty} 件/单`);
-  }
-  if (Array.isArray(policy.carriers) && policy.carriers.length > 0) {
-    const c0 = policy.carriers[0];
-    tags.push(`🧺 ${c0.name}押金 ¥${c0.deposit}/件`);
-  }
-
-  if (tags.length > 0) {
-    banner.className = 'mx-3 mt-2 bg-emerald-50/90 text-emerald-950 border border-emerald-200 px-3 py-1.5 rounded-2xl text-[11px] flex flex-wrap items-center gap-2';
-    banner.innerHTML = `<span class="font-bold text-emerald-800">📜 供货方契约行规：</span>` + tags.map((t) => `<span>${t}</span>`).join('<span class="text-emerald-300">|</span>');
-  } else {
-    banner.remove();
-  }
+  banner.className = 'mx-auto max-w-2xl mt-2 px-3';
+  banner.innerHTML = `
+    <div class="bg-white/95 border border-stone-200 p-2.5 rounded-2xl shadow-2xs flex flex-wrap items-center gap-1.5 text-[11px]">
+      <span class="font-bold text-stone-700">📜 总舵现行契约行规：</span>
+      ${tags.join('')}
+    </div>
+  `;
 }
 
-export async function syncAndEnforceStorePolicy() {
-  const tenantId = getActiveBoundTenantId();
+function validateStoreOrderAgainstPolicy() {
+  const { policy, companyName } = activePolicyCache;
+  if (!policy || typeof policy !== 'object') return { ok: true };
+
+  if (policy.emergencyBrakeActive) {
+    return {
+      ok: false,
+      msg: `🚨 拦截提交：【${companyName || '供货总舵'}】当前已启动「紧急止损拉闸」全盘熔断！\n\n原因：${policy.emergencyBrakeReason || '行情剧烈波动或风控核查中，暂缓接收新单'}。`
+    };
+  }
+
+  if (policy.seasonalPause?.isPaused) {
+    const label = policy.industryTerms?.pauseStatus || '盘点 / 休市暂歇';
+    return {
+      ok: false,
+      msg: `⏸️ 拦截提交：【${companyName || '供货总舵'}】当前处于「${label}」状态（${policy.seasonalPause.reason || '盘点休市中'}）${
+        policy.seasonalPause.resumeDate ? `，预计 ${policy.seasonalPause.resumeDate} 恢复接单` : ''
+      }。`
+    };
+  }
+
+  const rationMax = parseInt(policy.rationLimitQty || 0, 10);
+  if (rationMax > 0) {
+    let totalCartQty = 0;
+    document.querySelectorAll('input[type="number"][data-prod-id], .cart-qty-input, [id^="qty-input-"]').forEach((inp) => {
+      const val = parseInt(inp.value || '0', 10);
+      if (val > 0) totalCartQty += val;
+    });
+    if (totalCartQty > rationMax) {
+      return {
+        ok: false,
+        msg: `🛡️ 紧缺物资定额限购拦截：\n总舵当前开启了公平配给限购，单笔最多订购【${rationMax}】件，您当前已选【${totalCartQty}】件，请调减数量后再提交。`
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
+export async function refreshStoreTenantPolicy() {
+  const tenantId = getCurrentStoreTenantId();
   if (!tenantId) return;
 
   try {
-    const { data: tenant } = await supabase
+    const { data, error } = await supabase
       .from('platform_tenant')
       .select('tenant_id, company_name, custom_settings')
       .eq('tenant_id', tenantId)
       .single();
 
-    if (!tenant) return;
-    const policy = tenant.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
-    window.__currentTenantPolicy = policy;
-    window.__currentTenantName = tenant.company_name || tenant.tenant_id;
-    renderStorePolicyBanner(policy, window.__currentTenantName);
+    if (error || !data) return;
+    const policy = data.custom_settings && typeof data.custom_settings === 'object' ? data.custom_settings : {};
+    activePolicyCache = {
+      tenantId: data.tenant_id,
+      companyName: data.company_name || data.tenant_id,
+      policy
+    };
+    window.__storeTenantPolicy = policy;
+    renderStorePolicyBanner(activePolicyCache.companyName, policy);
   } catch (err) {
-    console.warn('同步供货方全局策略跳过:', err?.message);
+    console.warn('门店端同步总舵策略跳过:', err?.message);
   }
 }
 
 export function initStorePolicyEnforcer() {
-  const validateBeforeOrderAction = (e) => {
-    const policy = window.__currentTenantPolicy || {};
-    if (policy.emergencyBrakeActive) {
-      e.stopImmediatePropagation();
-      e.preventDefault();
-      alert(
-        `🚨 供货方【${window.__currentTenantName || '合作社/工坊'}】已启动【紧急止损拉闸】熔断保护！\n\n` +
-        `原因：${policy.emergencyBrakeReason || '当前行情平准调价中，暂缓接入新单'}\n` +
-        `提示：已确认的旧单交割与周期电子对账仍可正常进行。`
-      );
-      return false;
-    }
-    if (policy.seasonalPause?.isPaused) {
-      e.stopImmediatePropagation();
-      e.preventDefault();
-      alert(
-        `🍵 供货方当前处于【暂歇接单】状态：${policy.seasonalPause.reason || '产区农忙/盘点中'}\n` +
-        `${policy.seasonalPause.resumeDate ? `预计 ${policy.seasonalPause.resumeDate} 恢复接单。` : '请稍后再提交新单。'}`
-      );
-      return false;
-    }
+  refreshStoreTenantPolicy();
+  setTimeout(refreshStoreTenantPolicy, 1000);
+  setInterval(refreshStoreTenantPolicy, 30000);
 
-    const limitQty = parseInt(policy.rationLimitQty || 0);
-    const totalQty = parseInt(document.getElementById('cart-count-badge')?.innerText || '0');
-    if (limitQty > 0 && totalQty > limitQty) {
-      e.stopImmediatePropagation();
-      e.preventDefault();
-      alert(`🛡️ 当前处于紧缺平准保供期，供货方设定单笔最高限购 ${limitQty} 件（您当前待配篮共 ${totalQty} 件），请适当调减后再提交。`);
-      return false;
-    }
-    return true;
-  };
+  document.addEventListener(
+    'click',
+    (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const btnText = btn.innerText || '';
+      const isOrderSubmit =
+        btn.id === 'btn-submit-store-order' ||
+        btn.id === 'btn-confirm-order' ||
+        btn.getAttribute('onclick')?.includes('submitOrder') ||
+        btnText.includes('提交订货') ||
+        btnText.includes('确认下单');
 
-  // 在捕获阶段拦截下单入口与确认凭单按钮，确保 100% 真实生效
-  ['btn-submit-order', 'btn-slip-confirm'].forEach((btnId) => {
-    const btn = document.getElementById(btnId);
-    if (btn) {
-      btn.addEventListener('click', validateBeforeOrderAction, true);
-    }
-  });
+      if (!isOrderSubmit) return;
 
-  // 监听供货方标签变化，切换合作社/工坊时立即刷新对应策略
-  const tagEl = document.getElementById('menu-current-agent-tag');
-  if (tagEl) {
-    new MutationObserver(() => syncAndEnforceStorePolicy()).observe(tagEl, { childList: true, characterData: true, subtree: true });
-  }
-
-  syncAndEnforceStorePolicy();
-  setTimeout(syncAndEnforceStorePolicy, 1200);
+      const verdict = validateStoreOrderAgainstPolicy();
+      if (!verdict.ok) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        alert(verdict.msg);
+      }
+    },
+    true
+  );
 }
