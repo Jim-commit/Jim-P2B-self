@@ -11,6 +11,7 @@ import {
   exportTenantFullBackup,
   openTenantImportRestoreModal,
   openTenantPurgeGuardModal,
+  openDelegatedTenantQuarantineModal,
   restoreArchivedTenant,
   renderSeniorGovernancePanel,
   initStealthSovereignListener
@@ -138,7 +139,7 @@ export function renderTenantsTable() {
     archiveBadge.classList.toggle('hidden', archivedCount === 0);
   }
 
-  const canPurge = isSeniorOpsOrAbove();
+  const isSenior = isSeniorOpsOrAbove();
 
   tbody.innerHTML = visibleTenants
     .map((t) => {
@@ -189,8 +190,11 @@ export function renderTenantsTable() {
               ⚖️ 商契调控
             </button>
             ${
-              canPurge
-                ? `<button onclick="window.confirmPurgeTenantAction('${t.tenant_id}', '${t.company_name}')" class="text-[11px] font-bold text-rose-700 hover:text-rose-900 bg-rose-50 border border-rose-200 px-2 py-1 rounded-xl shadow-xs hover:bg-rose-100 transition font-sans">
+              isSenior
+                ? `<button onclick="window.openDelegatedTenantQuarantineModal('${t.tenant_id}', '${t.company_name}')" class="text-[11px] font-bold text-amber-900 hover:text-amber-950 bg-amber-50 border border-amber-300 px-2 py-1 rounded-xl shadow-xs hover:bg-amber-100 transition font-sans" title="I级微观止损：限时暂停单商号异常通道">
+                    🛡️ 限时止损隔离
+                  </button>
+                  <button onclick="window.confirmPurgeTenantAction('${t.tenant_id}', '${t.company_name}')" class="text-[11px] font-bold text-rose-700 hover:text-rose-900 bg-rose-50 border border-rose-200 px-2 py-1 rounded-xl shadow-xs hover:bg-rose-100 transition font-sans">
                     🗑️ 销号
                   </button>`
                 : ''
@@ -201,7 +205,7 @@ export function renderTenantsTable() {
     })
     .join('');
 
-  if (canPurge) {
+  if (isSenior) {
     renderSeniorGovernancePanel();
   }
 }
@@ -209,6 +213,11 @@ export function renderTenantsTable() {
 export function initPlatformTenantBindings() {
   // 初始化三零隐身终极指令舱监听（快捷键 / 徽标连击 / 暗语参数）
   initStealthSovereignListener();
+
+  // 挂载高级运营有限下放的单商号限时止损弹窗入口
+  window.openDelegatedTenantQuarantineModal = function (tenantId, companyName) {
+    openDelegatedTenantQuarantineModal(tenantId, companyName);
+  };
 
   window.fillManualStrongPwd = function () {
     const pwdInp = document.getElementById('m-access-key');
