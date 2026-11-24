@@ -636,7 +636,7 @@
           依礼颁布生效
         </button>
         <button type="button"
-          onclick="window.openAdminDynamicScopeModal(document.getElementById('adjust-tenant-id').value)"
+          onclick="window.openPlatformDynamicScopeModal(document.getElementById('adjust-tenant-id').value)"
           class="bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 font-bold px-2.5 py-2.5 rounded-xl active:scale-95 transition">
           ⚖️ 合规边界
         </button>
@@ -816,11 +816,11 @@
     import { initPlatformController } from './src/modules/platformController.js';
     import { mountPlatformEvolutionWidget } from './src/modules/platformEvolutionWidget.js';
     import { mountPlatformSelfCheckEnhancer } from './src/modules/platformSelfCheckEnhancer.js';
-    import { initAdminScopeRulesBindings } from './src/modules/admin/adminScopeRulesModule.js';
+    import { initPlatformScopeRulesBindings } from './src/modules/platform/platformScopeRulesModule.js';
 
     mountPlatformEvolutionWidget();
     mountPlatformSelfCheckEnhancer();
-    initAdminScopeRulesBindings();
+    initPlatformScopeRulesBindings();
     initPlatformController();
 
     // 在册主体名册表格自动挂载「⚖️ 合规边界」快捷入口
@@ -837,7 +837,7 @@
             btn.type = 'button';
             btn.className = 'btn-scope-rule-hook ml-1.5 px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-bold text-[10px]';
             btn.innerText = '⚖️ 合规边界';
-            btn.onclick = () => window.openAdminDynamicScopeModal(tid);
+            btn.onclick = () => window.openPlatformDynamicScopeModal(tid);
             lastCell.appendChild(btn);
           }
         });
