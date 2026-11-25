@@ -7,6 +7,12 @@ import {
 } from '../../services/ultimateEcosystemService.js';
 import { hqState } from './hqState.js';
 
+function isAgriEntity() {
+  const entityVal = document.getElementById('entity-type-selector')?.value || '';
+  const bizType = `${entityVal} ${hqState.currentTenantData?.business_type || ''} ${hqState.currentTenantData?.industry_type || ''}`;
+  return entityVal === 'coop' || /coop|农|合作社|生鲜|果蔬|粮油|种植|养殖/.test(bizType);
+}
+
 export function mountHqUltimateToolsButton() {
   const host = document.getElementById('ai-advisor-cards');
   if (!host || document.getElementById('hq-ultimate-toolbox-bar')) return;
@@ -17,7 +23,7 @@ export function mountHqUltimateToolsButton() {
   bar.innerHTML = `
     <div class="flex items-center gap-2 text-amber-950">
       <span>🧰</span>
-      <span><b>百工生态与应急百宝箱：</b>经营晴雨周报 · 食堂阳光集采报价包 · 证据公断卷宗 · 72h掌门传承 · 5分钟消防演习</span>
+      <span><b>百工生态与应急百宝箱：</b>经营晴雨周报 · 大客户阳光集采包 · 证据公断卷宗 · 商号临时托付 · 5分钟消防演习</span>
     </div>
     <button type="button" onclick="window.openHqUltimateToolboxModal()" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-3 py-1 rounded-xl text-[11px] shadow-2xs">
       打开生态百宝箱 ➔
@@ -40,6 +46,15 @@ export function initHqUltimateToolsBindings() {
     const isDormant = !!hqState.currentTenantData?.is_dormant;
     const trusteeName = hqState.currentTenantData?.emergency_trustee_name || '';
     const trusteePhone = hqState.currentTenantData?.emergency_trustee_phone || '';
+    const trusteeHours =
+      hqState.currentTenantData?.custom_settings?.emergency_trustee_hours ??
+      hqState.globalPolicy?.emergency_trustee_hours ??
+      72;
+    const dormantBtnLabel = isDormant
+      ? '🌱 唤醒恢复营业'
+      : isAgriEntity()
+      ? '❄️ 农闲休眠保号'
+      : '❄️ 淡季休眠保号';
 
     const modal = document.createElement('div');
     modal.id = 'modal-hq-ultimate-toolbox';
@@ -48,8 +63,8 @@ export function initHqUltimateToolsBindings() {
       <div class="bg-white border border-stone-200 rounded-3xl max-w-2xl w-full p-5 space-y-4 shadow-2xl text-xs my-auto">
         <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
           <div>
-            <b class="text-sm text-stone-900">🧰 百工生态经营百宝箱（第5-9期全功能集成）</b>
-            <p class="text-[11px] text-stone-500 mt-0.5">涵盖周报体检、机关食堂集采、争议公断卷宗、72h传承与实战消防演习</p>
+            <b class="text-sm text-stone-900">🧰 百工生态经营百宝箱（全行业普适集成）</b>
+            <p class="text-[11px] text-stone-500 mt-0.5">涵盖周报体检、大客户阳光集采、争议公断卷宗、商号临时托付与实战消防演习</p>
           </div>
           <button type="button" onclick="document.getElementById('modal-hq-ultimate-toolbox')?.remove()" class="text-stone-400 hover:text-stone-800 text-base font-bold">✕</button>
         </div>
@@ -74,11 +89,11 @@ export function initHqUltimateToolsBindings() {
           </div>
         </div>
 
-        <!-- 2. 食堂集采包 & 三阶证据公断卷宗 -->
+        <!-- 2. 大客户阳光集采包 & 三阶证据公断卷宗 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
-            <b class="text-stone-900 block">🏛️ 企事业单位/食堂阳光集采包</b>
-            <p class="text-[11px] text-stone-500">一键汇总营业执照核验、联保背书与全品阳光工价报价单。</p>
+            <b class="text-stone-900 block">🏛️ 大客户阳光集采包</b>
+            <p class="text-[11px] text-stone-500">一键汇总营业执照核验、主体信义背书与全品阳光集采报价单。</p>
             <button type="button" onclick="window.copyInstitutionalQuotePack()" class="w-full py-2 rounded-xl bg-[#1b4332] text-white font-bold text-[11px]">
               📋 一键复制阳光集采报价包
             </button>
@@ -93,16 +108,23 @@ export function initHqUltimateToolsBindings() {
           </div>
         </div>
 
-        <!-- 3. 72小时掌门传承托付 & 季节休眠保号 & 5分钟消防演习 -->
+        <!-- 3. 商号临时托付人（时间可自定义） & 季节休眠保号 & 5分钟消防演习 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
-            <b class="text-stone-900 block">🔑 72小时掌门传承紧急托付人</b>
+            <div class="flex items-center justify-between gap-1">
+              <b class="text-stone-900">🔑 商号临时托付人</b>
+              <label class="flex items-center gap-1 text-[10px] text-stone-600 font-mono bg-white border border-stone-200 px-2 py-0.5 rounded-lg">
+                <span>公示</span>
+                <input type="number" id="trustee-hours-input" min="1" max="720" value="${trusteeHours}" class="w-11 text-center font-bold text-stone-900 outline-none">
+                <span>小时</span>
+              </label>
+            </div>
             <div class="flex gap-1.5">
-              <input type="text" id="trustee-name-input" value="${trusteeName}" placeholder="托付人姓名(如监事长)" class="w-1/2 bg-white border border-stone-200 rounded-xl px-2 py-1.5 text-[11px]">
+              <input type="text" id="trustee-name-input" value="${trusteeName}" placeholder="托付人姓名(如合伙人/财务负责人)" class="w-1/2 bg-white border border-stone-200 rounded-xl px-2 py-1.5 text-[11px]">
               <input type="text" id="trustee-phone-input" value="${trusteePhone}" placeholder="托付人手机号" class="w-1/2 bg-white border border-stone-200 rounded-xl px-2 py-1.5 text-[11px] font-mono">
             </div>
             <button type="button" onclick="window.saveEmergencyTrustee()" class="w-full py-1.5 rounded-xl bg-stone-900 text-amber-300 font-bold text-[11px]">
-              💾 保存紧急传承托付人
+              💾 保存商号临时托付人
             </button>
           </div>
 
@@ -113,7 +135,7 @@ export function initHqUltimateToolsBindings() {
                 🧯 5分钟消防演习
               </button>
               <button type="button" onclick="window.toggleTenantDormantMode(${!isDormant})" class="flex-1 py-2 rounded-xl bg-amber-200 text-amber-950 font-bold text-[11px]">
-                ${isDormant ? '🌱 唤醒恢复营业' : '❄️ 农闲休眠保号'}
+                ${dormantBtnLabel}
               </button>
             </div>
           </div>
@@ -124,12 +146,17 @@ export function initHqUltimateToolsBindings() {
   };
 
   window.copyInstitutionalQuotePack = function () {
-    const text = buildInstitutionalProcurementPack({
+    const rawText = buildInstitutionalProcurementPack({
       tenant: hqState.currentTenantData,
       products: hqState.allProducts || []
     });
-    navigator.clipboard.writeText(text).then(() => {
-      alert('✅ 《企事业单位/食堂阳光集采报价与溯源凭证包》已复制，可直接发送食堂采购负责人！');
+    const cleanText = String(rawText || '')
+      .replace(/企事业单位\/食堂阳光集采/g, '大客户阳光集采')
+      .replace(/食堂采购负责人/g, '大客户采购负责人')
+      .replace(/食堂/g, '大客户');
+
+    navigator.clipboard.writeText(cleanText).then(() => {
+      alert('✅ 《大客户阳光集采报价与溯源凭证包》已复制，可直接发送大客户采购负责人！');
     });
   };
 
@@ -152,23 +179,39 @@ export function initHqUltimateToolsBindings() {
   };
 
   window.saveEmergencyTrustee = async function () {
-    if (hqState.currentRoleCode !== 'owner') return alert('仅大当家主账号可设定紧急传承托付人！');
+    if (hqState.currentRoleCode !== 'owner') return alert('仅大当家主账号可设定商号临时托付人！');
     const name = document.getElementById('trustee-name-input')?.value.trim();
     const phone = document.getElementById('trustee-phone-input')?.value.trim();
+    const hours = Math.max(1, parseInt(document.getElementById('trustee-hours-input')?.value || '72', 10) || 72);
+
     if (!name || !/^1\d{10}$/.test(phone || '')) {
       return alert('请填写正确的托付人姓名与 11 位手机号！');
     }
+
+    const nextSettings = {
+      ...(hqState.currentTenantData?.custom_settings || hqState.globalPolicy || {}),
+      emergency_trustee_hours: hours
+    };
+
     const { error } = await supabase
       .from('platform_tenant')
-      .update({ emergency_trustee_name: name, emergency_trustee_phone: phone })
+      .update({
+        emergency_trustee_name: name,
+        emergency_trustee_phone: phone,
+        custom_settings: nextSettings
+      })
       .eq('tenant_id', hqState.currentAgent);
     if (error) return alert('保存失败：' + error.message);
 
     if (hqState.currentTenantData) {
       hqState.currentTenantData.emergency_trustee_name = name;
       hqState.currentTenantData.emergency_trustee_phone = phone;
+      hqState.currentTenantData.custom_settings = nextSettings;
     }
-    alert(`✅ 已登记紧急传承托付人【${name} (${phone})】！\n如遇突发意外，托付人可凭双手机核验发起 72 小时冷静公示传承接管。`);
+    if (hqState.globalPolicy) {
+      hqState.globalPolicy.emergency_trustee_hours = hours;
+    }
+    alert(`✅ 已登记商号临时托付人【${name} (${phone})】！\n如遇突发意外，托付人可凭双手机核验发起 ${hours} 小时冷静公示传承接管。`);
   };
 
   window.toggleTenantDormantMode = async function (nextDormant) {
@@ -181,7 +224,7 @@ export function initHqUltimateToolsBindings() {
 
     alert(
       nextDormant
-        ? '❄️ 已开启【季节性休眠保号】：保留全部名录、账号与历史账目凭证，非产季免受消息打扰！'
+        ? '❄️ 已开启【季节性休眠保号】：保留全部名录、账号与历史账目凭证，淡季/非产季免受消息打扰！'
         : '🌱 已唤醒商号恢复正常营业！'
     );
     document.getElementById('modal-hq-ultimate-toolbox')?.remove();
