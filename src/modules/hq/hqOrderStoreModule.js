@@ -529,10 +529,18 @@ export function initOrderStoreBindings() {
     const pricing = s.custom_pricing && typeof s.custom_pricing === 'object' ? s.custom_pricing : {};
     const salesSelect = document.getElementById('policy-sales-owner-select');
     if (salesSelect) {
-      const salesStaff = hqState.allSubUsers.filter((u) => u.role_code === 'sales' && u.is_active);
+      const activeStaff = (hqState.allSubUsers || []).filter((u) => u.is_active !== false);
+      const ownerAccount = hqState.currentAgent || 'owner';
+      const roleLabels = { sales: '业务跟单', warehouse: '仓储调度', finance: '账房财务', driver: '送货师傅', manager: '店长主管' };
       salesSelect.innerHTML =
-        '<option value="">🌐 全员公海门店 (所有业务员可见)</option>' +
-        salesStaff.map((u) => `<option value="${u.account_name}" ${pricing.sales_owner === u.account_name ? 'selected' : ''}>🤝 ${u.real_name} (${u.account_name})</option>`).join('');
+        '<option value="">🌐 全员公海客户 (所有内部人员可见)</option>' +
+        `<option value="${ownerAccount}" ${pricing.sales_owner === ownerAccount ? 'selected' : ''}>👑 老板主账号亲自跟进 (${hqState.currentOperatorName || '老板'})</option>` +
+        activeStaff
+          .map(
+            (u) =>
+              `<option value="${u.account_name}" ${pricing.sales_owner === u.account_name ? 'selected' : ''}>🤝 ${u.real_name} (${roleLabels[u.role_code] || u.role_code || '员工'} · ${u.account_name})</option>`
+          )
+          .join('');
     }
 
     document.getElementById('policy-store-id').value = s.id;
