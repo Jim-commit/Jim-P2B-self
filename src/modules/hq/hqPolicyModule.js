@@ -8,7 +8,7 @@ export const NINE_2FA_ITEMS = [
   { key: 'twoFaLimitOn', domId: 'gp-2fa-limit-on', layer: 'L1 · 资金与价盘安全', code: '2FA-04', title: '调高合作门店信用额度', desc: '上调单家合作门店赊账信用天花板时触发双因素授权', scope: '总舵 ➔ 门店订货台' },
   { key: 'twoFaStockAuditOn', domId: 'gp-2fa-stock-audit-on', layer: 'L2 · 货品与资产边界', code: '2FA-05', title: '库存盘亏核销 / 强行平仓', desc: '仓储盘点出现库存报损核销或强制修正账面库存时触发核验', scope: '总舵仓储台账' },
   { key: 'twoFaDeleteOn', domId: 'gp-2fa-delete-on', layer: 'L2 · 货品与资产边界', code: '2FA-06', title: '删除在供货品 / 清理档案', desc: '永久下架删除商品或清理往来档案时防止误删或恶意清空', scope: '总舵 ➔ 全端货架' },
-  { key: 'twoFaPolicyOn', domId: 'gp-2fa-policy-on', layer: 'L3 · 规则与数据主权', code: '2FA-07', title: '改写全局经营策略与风控规则', desc: '修改分级折扣、多载具押金、返利比例及本页 9 项风控开关时触发核验', scope: '全端全局策略生效' },
+  { key: 'twoFaPolicyOn', domId: 'gp-2fa-policy-on', layer: 'L3 · 规则与数据主权', code: '2FA-07', title: '改写全局经营策略与风控规则', desc: '修改分级折扣、多载具押金、返利分润及本页 9 项风控开关时触发核验', scope: '全端全局策略生效' },
   { key: 'twoFaExportOn', domId: 'gp-2fa-export-on', layer: 'L3 · 规则与数据主权', code: '2FA-08', title: '导出全量核心账本与分润表', desc: '批量导出客户档案、价格体系及返利核算 CSV 时防数据批量外泄', scope: '总舵数据主权保护' },
   { key: 'twoFaEmergencyBrakeOn', domId: 'gp-2fa-emergency-brake-on', layer: 'L4 · 全局应急熔断', code: '2FA-09', title: '🚨 紧急止损拉闸（全盘熔断锁单）', desc: '遭遇异常刷单、行情剧烈波动或突发事故时，一键熔断全网新单入口（拉闸与合闸均需 2FA）', scope: '立即锁定门店订货台与天街专柜下单' }
 ];
@@ -53,7 +53,6 @@ export function polishHQHeaderVisualBalance() {
     secHost.dataset.observed = '1';
   }
 
-  // 锁定白底百宝箱内「验证器」按钮为深色高对比度样式，防止外部状态脚本覆盖成浅绿字
   const totpBtn = document.getElementById('btn-top-totp');
   if (totpBtn && !totpBtn.dataset.styleLocked) {
     const fixTotpStyle = () => {
@@ -208,6 +207,10 @@ export function renderActivePolicyBadgesBar() {
   if (gp.rebateEnabled !== false) {
     chips.push('<span class="bg-white/10 text-emerald-100 border border-white/15 px-2.5 py-0.5 rounded-full">🎁 进货返利生效中</span>');
   }
+  if (gp.pickupServiceEnabled) {
+    const unitTxt = gp.pickupServiceMode === 'percent' ? `${gp.pickupServiceValue || 0}%` : `¥${gp.pickupServiceValue || 0}/单`;
+    chips.push(`<span class="bg-white/10 text-emerald-100 border border-white/15 px-2.5 py-0.5 rounded-full">📍 自提代收服务费 ${unitTxt}</span>`);
+  }
   if (gp.campaignActive) {
     chips.push('<span class="bg-white/10 text-amber-200 border border-amber-300/30 px-2.5 py-0.5 rounded-full">🔥 促销活动进行中</span>');
   }
@@ -268,6 +271,9 @@ export function loadGlobalPolicyFromTenant(tenant) {
   const gp = {
     ...JSON.parse(JSON.stringify(DEFAULT_GLOBAL_POLICY)),
     activePolicyName: '商号现行默认策略',
+    pickupServiceEnabled: true,
+    pickupServiceMode: 'fixed',
+    pickupServiceValue: 1.5,
     twoFaEmergencyBrakeOn: true,
     emergencyBrakeActive: false,
     emergencyBrakeReason: '',
@@ -276,6 +282,9 @@ export function loadGlobalPolicyFromTenant(tenant) {
   };
 
   if (!gp.activePolicyName) gp.activePolicyName = '商号现行默认策略';
+  if (gp.pickupServiceEnabled === undefined) gp.pickupServiceEnabled = true;
+  if (!gp.pickupServiceMode) gp.pickupServiceMode = 'fixed';
+  if (gp.pickupServiceValue === undefined) gp.pickupServiceValue = 1.5;
   if (gp.twoFaEmergencyBrakeOn === undefined) gp.twoFaEmergencyBrakeOn = true;
   if (!gp.tier1Name || gp.tier1Name === '平准供货底价') gp.tier1Name = '批发平准基准价';
   if (!gp.tier2Name || gp.tier2Name === '集采惠价') gp.tier2Name = '网上平准零售基准价';
@@ -413,8 +422,8 @@ function enhancePolicyModalHierarchy() {
       scope: '保存即同步至【合作门店订货台（自动折算分级价/校验授信）】与【百工掌中宝（交割单打印档案）】'
     },
     promo: {
-      layer: `第二层 · ${terms.promoTabName.replace(/^②\s*/, '')}层`,
-      scope: '保存即同步至【合作门店订货台 / 百工天街专柜（阶梯折算与限购）】及【本台绩效返利核算】'
+      layer: `第二层 · ${terms.promoTabName.replace(/^②\s*/, '')}层（含推客分润与自提履约费独立核算）`,
+      scope: '保存即同步至【合作门店订货台 / 百工天街专柜（阶梯折算与限购）】及【本台绩效返利与分润台账】'
     },
     carriers: {
       layer: '第三层 · 循环载具资产层',
@@ -870,6 +879,14 @@ export function initPolicyBindings(callbacks) {
     document.getElementById('gp-promoter-enabled').checked = gp.promoterEnabled !== false;
     document.getElementById('gp-promoter-rate').value = gp.promoterRate ?? 8.0;
     document.getElementById('gp-referral-bonus').value = gp.referralBonus ?? 100;
+
+    const pickupChk = document.getElementById('gp-pickup-service-enabled');
+    const pickupMode = document.getElementById('gp-pickup-service-mode');
+    const pickupVal = document.getElementById('gp-pickup-service-value');
+    if (pickupChk) pickupChk.checked = gp.pickupServiceEnabled !== false;
+    if (pickupMode) pickupMode.value = gp.pickupServiceMode || 'fixed';
+    if (pickupVal) pickupVal.value = gp.pickupServiceValue ?? 1.5;
+
     document.getElementById('gp-campaign-active').checked = !!gp.campaignActive;
 
     document.getElementById('gp-2fa-cash-on').checked = gp.twoFaCashOn !== false;
@@ -925,6 +942,9 @@ export function initPolicyBindings(callbacks) {
         promoterEnabled: true,
         promoterRate: 8.0,
         referralBonus: 100,
+        pickupServiceEnabled: true,
+        pickupServiceMode: 'fixed',
+        pickupServiceValue: 1.5,
         campaignActive: true,
         promos: [{ title: '产区丰收季直供惠', rule: '合作门店单笔订满 20 件赠同款 1 件' }],
         carriers: [{ name: '塑料周转筐', deposit: 15 }],
@@ -975,6 +995,9 @@ export function initPolicyBindings(callbacks) {
         promoterEnabled: true,
         promoterRate: 6.0,
         referralBonus: 200,
+        pickupServiceEnabled: true,
+        pickupServiceMode: 'percent',
+        pickupServiceValue: 2.0,
         campaignActive: false,
         promos: [],
         carriers: [{ name: '标准木托盘', deposit: 80 }],
@@ -1019,6 +1042,9 @@ export function initPolicyBindings(callbacks) {
         promoterEnabled: true,
         promoterRate: 5.0,
         referralBonus: 150,
+        pickupServiceEnabled: true,
+        pickupServiceMode: 'fixed',
+        pickupServiceValue: 2.0,
         campaignActive: false,
         promos: [],
         carriers: [{ name: '周转铁料箱', deposit: 50 }],
@@ -1065,6 +1091,9 @@ export function initPolicyBindings(callbacks) {
         promoterEnabled: true,
         promoterRate: 10.0,
         referralBonus: 80,
+        pickupServiceEnabled: true,
+        pickupServiceMode: 'fixed',
+        pickupServiceValue: 1.0,
         campaignActive: false,
         promos: [],
         carriers: [
@@ -1172,6 +1201,9 @@ export function initPolicyBindings(callbacks) {
         promoterEnabled: document.getElementById('gp-promoter-enabled').checked,
         promoterRate: parseFloat(document.getElementById('gp-promoter-rate').value) || 0,
         referralBonus: parseFloat(document.getElementById('gp-referral-bonus').value) || 0,
+        pickupServiceEnabled: document.getElementById('gp-pickup-service-enabled')?.checked ?? true,
+        pickupServiceMode: document.getElementById('gp-pickup-service-mode')?.value || 'fixed',
+        pickupServiceValue: parseFloat(document.getElementById('gp-pickup-service-value')?.value) || 0,
         campaignActive: document.getElementById('gp-campaign-active').checked,
         promos,
         carriers: carriers.length > 0 ? carriers : DEFAULT_GLOBAL_POLICY.carriers,
