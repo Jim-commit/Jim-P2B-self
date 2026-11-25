@@ -6,8 +6,20 @@ import {
   printReceiptViaWebBluetooth
 } from '../../services/ultimateEcosystemService.js';
 import { HQService } from '../../services/hqService.js';
-import { hqState, generateUnifiedVoucherNo, isAuditorReadOnly } from './hqState.js';
+import {
+  hqState,
+  generateUnifiedVoucherNo,
+  isAuditorReadOnly,
+  getOrgRuntimeContext,
+  getVisibleStoresForCurrentRole,
+  getVisibleOrdersForCurrentRole
+} from './hqState.js';
 import { getTenantLexicon } from '../soulEngine/silentMemoryAndLexicon.js';
+import {
+  getProductWarehouseStocks,
+  calcWarehouseTransfer,
+  rememberOperatorOrgPreference
+} from '../soulEngine/multiOrgAndWarehouseEngine.js';
 
 function isAgriEntity() {
   const entityVal = document.getElementById('entity-type-selector')?.value || '';
@@ -22,13 +34,11 @@ function parseWechatOrderText(rawText, stores = [], products = []) {
   const text = String(rawText || '').trim();
   if (!text) return { matchedStore: null, matchedItems: [], unmatchedLines: [] };
 
-  // 1. 尝试匹配客户/门店名
   const matchedStore =
     stores.find((s) => s.name && text.includes(s.name)) ||
     stores.find((s) => s.contact && s.contact !== '掌柜' && text.includes(s.contact)) ||
     null;
 
-  // 2. 按标点或换行切分语句逐条匹配商品/项目与数量
   const segments = text
     .split(/[\r\n,，;；。！!？?]+/)
     .map((s) => s.trim())
@@ -45,7 +55,6 @@ function parseWechatOrderText(rawText, stores = [], products = []) {
         hitProd = p;
         break;
       }
-      // 宽松关键词匹配（至少连续3个字重合）
       const shortName = p.name.replace(/\s+/g, '').slice(0, 3);
       if (shortName.length >= 2 && seg.includes(shortName)) {
         hitProd = p;
@@ -53,7 +62,6 @@ function parseWechatOrderText(rawText, stores = [], products = []) {
       }
     }
 
-    // 提取数字数量（支持“5箱”、“要3”、“x10”、“*2”等常见写法）
     const qtyMatch = seg.match(/(?:要|来|发|配|订|x|X|\*|×)?\s*(\d+)\s*(?:箱|件|斤|套|桶|袋|瓶|个|台|次|小时|趟|批|份)?/);
     const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
 
@@ -71,15 +79,34 @@ function parseWechatOrderText(rawText, stores = [], products = []) {
 
 export function mountHqUltimateToolsButton() {
   const host = document.getElementById('ai-advisor-cards');
-  if (!host || document.getElementById('hq-ultimate-toolbox-bar')) return;
+  if (!host) return;
+  document.getElementById('hq-ultimate-toolbox-bar')?.remove();
+
+  const { orgCfg, isOwner, effectiveBranch } = getOrgRuntimeContext();
+
+  // 手电筒原则：只有开启多分公司/多仓库时才亮出组织视角切换器，单店单仓保持极简
+  const branchSwitcherHtml = orgCfg.isMultiBranch
+    ? `<div class="flex items-center gap-1.5 bg-white border border-amber-300 px-2.5 py-1 rounded-xl">
+         <span class="text-[11px] font-bold text-stone-700">🏢 ${orgCfg.branchLabel}视角：</span>
+         ${
+           isOwner
+             ? `<select onchange="window.switchActiveOrgBranch(this.value)" class="text-[11px] font-bold text-emerald-950 bg-transparent outline-none cursor-pointer">
+                  <option value="ALL" ${effectiveBranch === 'ALL' ? 'selected' : ''}>🌐 全集团总览汇总</option>
+                  ${orgCfg.branches.map((b) => `<option value="${b}" ${effectiveBranch === b ? 'selected' : ''}>📍 ${b}</option>`).join('')}
+                </select>`
+             : `<span class="text-[11px] font-bold text-emerald-900">${effectiveBranch}（已锁定本分支）</span>`
+         }
+       </div>`
+    : '';
 
   const bar = document.createElement('div');
   bar.id = 'hq-ultimate-toolbox-bar';
   bar.className = 'col-span-full bg-amber-50/70 border border-amber-300 px-3.5 py-2.5 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs';
   bar.innerHTML = `
-    <div class="flex items-center gap-2 text-amber-950">
+    <div class="flex flex-wrap items-center gap-2 text-amber-950">
       <span>🧰</span>
-      <span><b>实战神器与经营百宝箱：</b>微信聊天拆单 · 一把清冲账 · 多仓货品搬家 · 睡前语音播报 · 阳光集采与证据卷宗</span>
+      <span><b>实战神器与经营百宝箱：</b>微信聊天拆单 · 一把清冲账 · 多仓多分支管控 · 睡前语音播报 · 阳光集采与证据卷宗</span>
+      ${branchSwitcherHtml}
     </div>
     <button type="button" onclick="window.openHqUltimateToolboxModal()" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-3 py-1 rounded-xl text-[11px] shadow-2xs">
       打开实战百宝箱 ➔
@@ -89,18 +116,35 @@ export function mountHqUltimateToolsButton() {
 }
 
 export function initHqUltimateToolsBindings() {
+  window.switchActiveOrgBranch = function (branchVal) {
+    hqState.activeBranchView = branchVal || 'ALL';
+    rememberOperatorOrgPreference(hqState.currentAgent, hqState.currentAccountCode || 'owner', {
+      activeBranch: hqState.activeBranchView
+    });
+    mountHqUltimateToolsButton();
+    if (typeof window.loadHQData === 'function') window.loadHQData();
+  };
+
   window.openHqUltimateToolboxModal = function () {
     document.getElementById('modal-hq-ultimate-toolbox')?.remove();
 
     const rawSettings = hqState.currentTenantData?.custom_settings || {};
     const lex = getTenantLexicon(rawSettings);
-    const warehouses = Array.isArray(rawSettings.warehouses) && rawSettings.warehouses.length > 0 ? rawSettings.warehouses : ['主仓库'];
+    const { orgCfg, isOwner, effectiveBranch } = getOrgRuntimeContext();
+    const warehouses = orgCfg.warehouses;
+    const branches = orgCfg.branches;
+
+    const visibleStores = getVisibleStoresForCurrentRole();
+    const visibleOrders = getVisibleOrdersForCurrentRole();
 
     const report = buildWeeklyHealthReport({
-      tenantName: hqState.currentTenantData?.company_name || hqState.currentAgent,
-      stores: hqState.allStores || [],
+      tenantName:
+        effectiveBranch !== 'ALL' && orgCfg.isMultiBranch
+          ? `${hqState.currentTenantData?.company_name || hqState.currentAgent} (${effectiveBranch})`
+          : hqState.currentTenantData?.company_name || hqState.currentAgent,
+      stores: visibleStores,
       products: hqState.allProducts || [],
-      orders: hqState.allOrders || []
+      orders: visibleOrders
     });
 
     const isDormant = !!hqState.currentTenantData?.is_dormant;
@@ -116,13 +160,17 @@ export function initHqUltimateToolsBindings() {
       ? '❄️ 农闲休眠保号'
       : '❄️ 淡季休眠保号';
 
-    const storeOptionsHtml = (hqState.allStores || [])
+    const storeOptionsHtml = visibleStores
       .map((s) => `<option value="${s.id}">${s.name} (欠款 ¥${parseFloat(s.current_debt || 0).toFixed(2)})</option>`)
       .join('');
 
     const prodOptionsHtml = (hqState.allProducts || [])
       .filter((p) => p.status !== 'inactive' && p.status !== 'draft')
-      .map((p) => `<option value="${p.id}">${p.name} (存${p.stock ?? 0}${p.measure_unit || '件'})</option>`)
+      .map((p) => {
+        const whMap = getProductWarehouseStocks(p, warehouses);
+        const whSummary = warehouses.length > 1 ? ` [${warehouses.map((w) => `${w}:${whMap[w] ?? 0}`).join(' · ')}]` : ` (存${p.stock ?? 0})`;
+        return `<option value="${p.id}">${p.name}${whSummary}</option>`;
+      })
       .join('');
 
     const modal = document.createElement('div');
@@ -141,7 +189,7 @@ export function initHqUltimateToolsBindings() {
         <!-- 1. 掌柜经营晴雨周报 + 睡前30秒语音播报 -->
         <div class="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2">
           <div class="flex flex-wrap justify-between items-center gap-1.5">
-            <b class="text-emerald-950">📊 老板经营晴雨周报（${report.periodLabel}）</b>
+            <b class="text-emerald-950">📊 ${effectiveBranch !== 'ALL' && orgCfg.isMultiBranch ? `【${effectiveBranch}】` : '全店'}经营晴雨周报（${report.periodLabel}）</b>
             <div class="flex flex-wrap gap-1.5">
               <button type="button" onclick="window.speakDailyBusinessBroadcast()" class="bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold px-2.5 py-1 rounded-xl text-[10px]">
                 📻 睡前30秒语音播报
@@ -163,7 +211,7 @@ export function initHqUltimateToolsBindings() {
           </div>
         </div>
 
-        <!-- 2. 新增一线神器：粘贴微信聊天拆单 & 一把清多笔冲账 -->
+        <!-- 2. 一线神器：粘贴微信聊天拆单 & 一把清多笔冲账 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="p-3 bg-blue-50/60 border border-blue-200 rounded-2xl space-y-2">
             <b class="text-blue-950 block">💬 粘贴微信聊天记录 · 智能拆单</b>
@@ -187,37 +235,65 @@ export function initHqUltimateToolsBindings() {
           </div>
         </div>
 
-        <!-- 3. 多存放点管理与「货品搬家」（手电筒式渐进显隐：有第2个存放点自动亮出搬家功能） -->
-        <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
+        <!-- 3. 集团拓展区（手电筒渐进式显隐）：多分公司/分部管理 & 多仓库独立实账搬家 -->
+        <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2.5">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <b class="text-stone-900">🏠 多${lex.warehouseLabel}与「货品搬家」</b>
-              <span class="text-[10px] text-stone-500 ml-1">当前存放点：<b>${warehouses.join('、')}</b></span>
+              <b class="text-stone-900">🏢 多分公司/分部与多${lex.warehouseLabel}架构</b>
+              <span class="text-[10px] text-stone-500 ml-1">
+                分支：<b>${branches.length > 0 ? branches.join('、') : '单店经营（未分部）'}</b> · ${lex.warehouseLabel}：<b>${warehouses.join('、')}</b>
+              </span>
             </div>
-            <button type="button" onclick="window.addTenantWarehousePrompt()" class="bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-bold px-2.5 py-1 rounded-xl text-[10px]">
-              + 新增存放点（分仓/工程车）
-            </button>
+            ${
+              isOwner
+                ? `<div class="flex flex-wrap gap-1.5">
+                     <button type="button" onclick="window.addTenantBranchPrompt()" class="bg-white hover:bg-indigo-50 text-indigo-900 border border-indigo-300 font-bold px-2.5 py-1 rounded-xl text-[10px]">
+                       + 开设分公司/分部
+                     </button>
+                     <button type="button" onclick="window.addTenantWarehousePrompt()" class="bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-bold px-2.5 py-1 rounded-xl text-[10px]">
+                       + 新增${lex.warehouseLabel}
+                     </button>
+                   </div>`
+                : ''
+            }
           </div>
+
+          ${
+            orgCfg.isMultiBranch
+              ? `<div class="bg-indigo-50/70 border border-indigo-200 rounded-xl p-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                   <span class="text-indigo-950 font-bold">⚖️ 跨分公司调货内部结算规矩：</span>
+                   <select onchange="window.updateInterBranchSettleMode(this.value)" class="bg-white border border-indigo-200 rounded-lg px-2 py-1 font-bold text-indigo-950">
+                     <option value="cost" ${orgCfg.interBranchSettleMode === 'cost' ? 'selected' : ''}>按进货成本价内部结算（兄弟明算账）</option>
+                     <option value="transfer_rate" ${orgCfg.interBranchSettleMode === 'transfer_rate' ? 'selected' : ''}>按批发基准价内部结算</option>
+                     <option value="zero" ${orgCfg.interBranchSettleMode === 'zero' ? 'selected' : ''}>总部统一平调（不计内部挂账）</option>
+                   </select>
+                 </div>`
+              : ''
+          }
+
           ${
             warehouses.length > 1
-              ? `<div class="grid grid-cols-1 sm:grid-cols-4 gap-1.5 pt-1 bg-white p-2 rounded-xl border border-stone-200">
-                   <select id="move-prod-id" class="bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 text-[11px]">${prodOptionsHtml}</select>
-                   <select id="move-from-wh" class="bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 text-[11px]">
-                     ${warehouses.map((w) => `<option value="${w}">从：${w}</option>`).join('')}
-                   </select>
-                   <select id="move-to-wh" class="bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 text-[11px]">
-                     ${warehouses.map((w, idx) => `<option value="${w}" ${idx === 1 ? 'selected' : ''}>搬到：${w}</option>`).join('')}
-                   </select>
-                   <div class="flex gap-1">
-                     <input type="number" min="1" id="move-qty" placeholder="数量" class="w-16 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 font-mono text-[11px]">
-                     <button type="button" onclick="window.executeWarehouseMove()" class="flex-1 bg-[#1b4332] text-white font-bold rounded-lg px-2 py-1 text-[11px]">🚚 搬家平账</button>
+              ? `<div class="space-y-1.5 bg-white p-2.5 rounded-xl border border-stone-200">
+                   <div class="text-[11px] font-bold text-stone-700">🚚 分仓库存实账「货品搬家」（自动改写各仓独立余量并生成对称凭单）：</div>
+                   <div class="grid grid-cols-1 sm:grid-cols-4 gap-1.5">
+                     <select id="move-prod-id" class="bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 text-[11px]">${prodOptionsHtml}</select>
+                     <select id="move-from-wh" class="bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 text-[11px]">
+                       ${warehouses.map((w) => `<option value="${w}">从：${w}</option>`).join('')}
+                     </select>
+                     <select id="move-to-wh" class="bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 text-[11px]">
+                       ${warehouses.map((w, idx) => `<option value="${w}" ${idx === 1 ? 'selected' : ''}>搬到：${w}</option>`).join('')}
+                     </select>
+                     <div class="flex gap-1">
+                       <input type="number" min="1" id="move-qty" placeholder="数量" class="w-16 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 font-mono text-[11px]">
+                       <button type="button" onclick="window.executeWarehouseMove()" class="flex-1 bg-[#1b4332] text-white font-bold rounded-lg px-2 py-1 text-[11px]">🚚 搬家平账</button>
+                     </div>
                    </div>
                  </div>`
-              : `<p class="text-[10px] text-stone-400">当前只有 1 个主存放点，界面保持极简；新增第 2 个存放点后自动开启「货品搬家」同城调拨。</p>`
+              : `<p class="text-[10px] text-stone-400">单公司单仓模式下界面保持最清爽；当业务做大新增第 2 个分公司或存放点后，跨仓实账调拨与分部独立报表自动亮起。</p>`
           }
         </div>
 
-        <!-- 4. 大客户阳光集采包 & 三阶证据公断卷宗 -->
+        <!-- 4. 大客户阳光集采包 & 交易争议电子证据卷宗 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
             <b class="text-stone-900 block">🏛️ 大客户阳光集采包</b>
@@ -236,7 +312,7 @@ export function initHqUltimateToolsBindings() {
           </div>
         </div>
 
-        <!-- 5. 商号临时托付人（天数可自定义） & 季节休眠保号 & 5分钟消防演习 -->
+        <!-- 5. 商号临时托付人 & 淡季休眠保号 & 5分钟安全演习 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
             <div class="flex items-center justify-between gap-1">
@@ -273,14 +349,49 @@ export function initHqUltimateToolsBindings() {
     document.body.appendChild(modal);
   };
 
-  // 【神器 1】粘贴微信聊天智能拆单 -> 自动打开开单窗并填入客户与货品数量
+  window.addTenantBranchPrompt = async function () {
+    if (hqState.currentRoleCode !== 'owner') return alert('仅老板主账号可开设分公司/分部！');
+    const name = prompt('请输入分公司/分部名称（例如：城东分公司、城西分部、工程事业部）：');
+    if (!name || !name.trim()) return;
+    const prev = hqState.currentTenantData?.custom_settings || {};
+    const list = Array.isArray(prev.branches) ? [...prev.branches] : [];
+    if (list.length === 0) list.push('总部直营');
+    if (!list.includes(name.trim())) list.push(name.trim());
+
+    const nextSettings = { ...prev, branches: list };
+    const { error } = await supabase
+      .from('platform_tenant')
+      .update({ custom_settings: nextSettings })
+      .eq('tenant_id', hqState.currentAgent);
+    if (error) return alert('保存分公司失败：' + error.message);
+
+    if (hqState.currentTenantData) hqState.currentTenantData.custom_settings = nextSettings;
+    mountHqUltimateToolsButton();
+    alert(`✅ 已新增【${name.trim()}】！顶部组织视角切换器与跨分部核算规则已亮起。`);
+    window.openHqUltimateToolboxModal();
+  };
+
+  window.updateInterBranchSettleMode = async function (mode) {
+    if (hqState.currentRoleCode !== 'owner') return;
+    const prev = hqState.currentTenantData?.custom_settings || {};
+    const nextSettings = { ...prev, interBranchSettleMode: mode };
+    const { error } = await supabase
+      .from('platform_tenant')
+      .update({ custom_settings: nextSettings })
+      .eq('tenant_id', hqState.currentAgent);
+    if (!error && hqState.currentTenantData) {
+      hqState.currentTenantData.custom_settings = nextSettings;
+    }
+  };
+
+  // 【神器 1】粘贴微信聊天智能拆单
   window.runWechatSmartParseToOrder = function () {
     const raw = document.getElementById('wx-smart-order-text')?.value || '';
     if (!raw.trim()) return alert('请先粘贴客户发来的微信消息内容！');
 
     const { matchedStore, matchedItems, unmatchedLines } = parseWechatOrderText(
       raw,
-      hqState.allStores || [],
+      getVisibleStoresForCurrentRole(),
       hqState.allProducts || []
     );
 
@@ -356,7 +467,7 @@ export function initHqUltimateToolsBindings() {
     if (typeof window.loadHQData === 'function') await window.loadHQData();
   };
 
-  // 【神器 3】新增存放点与同城多仓「货品搬家」
+  // 【神器 3】新增存放点与同城多仓真实分仓余量「货品搬家」
   window.addTenantWarehousePrompt = async function () {
     if (hqState.currentRoleCode !== 'owner') return alert('仅老板主账号可新增存放点！');
     const name = prompt('请输入新增存放点名称（例如：城西分仓、二号工程车、门店前置仓）：');
@@ -373,7 +484,7 @@ export function initHqUltimateToolsBindings() {
     if (error) return alert('保存存放点失败：' + error.message);
 
     if (hqState.currentTenantData) hqState.currentTenantData.custom_settings = nextSettings;
-    alert(`✅ 已新增存放点【${name.trim()}】，「货品搬家」调拨功能已自动开启！`);
+    alert(`✅ 已新增存放点【${name.trim()}】，「货品搬家」独立分仓实账已自动开启！`);
     window.openHqUltimateToolboxModal();
   };
 
@@ -387,21 +498,40 @@ export function initHqUltimateToolsBindings() {
     if (!prod || qty <= 0) return alert('请选择货品并输入有效的搬家数量！');
     if (fromWh === toWh) return alert('调出存放点和调入存放点不能是同一个地方！');
 
+    const { orgCfg } = getOrgRuntimeContext();
+    const xfer = calcWarehouseTransfer(prod, orgCfg.warehouses, fromWh, toWh, qty, orgCfg);
+    if (xfer.actualMove <= 0) {
+      return alert(`⚠️ 【${fromWh}】当前可用库存为 0，无法搬出！`);
+    }
+
+    // 1. 真实改写产品 custom_specs.warehouse_stocks 各仓独立余量（总库存守恒不变）
+    const nextSpecs = {
+      ...(prod.custom_specs && typeof prod.custom_specs === 'object' ? prod.custom_specs : {}),
+      warehouse_stocks: xfer.nextWarehouseStocks
+    };
+    const { error: uErr } = await supabase
+      .from('product')
+      .update({ custom_specs: nextSpecs })
+      .eq('id', prod.id);
+    if (uErr) return alert('更新分仓库存余量失败：' + uErr.message);
+    prod.custom_specs = nextSpecs;
+
+    // 2. 记一出一入对称调拨凭单（含跨分部内部结算金额留痕）
     const ckNo = generateUnifiedVoucherNo('CK');
     const rkNo = generateUnifiedVoucherNo('RK');
-    const curStock = parseInt(prod.stock ?? 0);
+    const settleTag =
+      xfer.internalSettleAmount > 0 ? ` · 内部结算基准 ¥${xfer.internalSettleAmount.toFixed(2)}` : '';
 
-    // 记一出一入对称调拨凭单（总库存不变，留痕清晰平账）
     await HQService.recordInventoryChange(hqState.currentAgent, {
       tenant_id: hqState.currentAgent,
       product_id: prod.id,
       product_name: prod.name,
       action_type: 'out_loss',
-      delta_qty: -qty,
-      before_stock: curStock,
-      after_stock: curStock,
+      delta_qty: -xfer.actualMove,
+      before_stock: xfer.fromBefore,
+      after_stock: xfer.fromAfter,
       operator_name: hqState.currentOperatorName,
-      remark: `[单号:${ckNo}] [货品搬家调出 · ${fromWh} ➔ ${toWh}] 关联入库单 ${rkNo}`,
+      remark: `[单号:${ckNo}] [货品搬家调出 · ${fromWh} ➔ ${toWh}${settleTag}] 关联入库单 ${rkNo}`,
       created_at: new Date().toISOString()
     });
     await HQService.recordInventoryChange(hqState.currentAgent, {
@@ -409,15 +539,21 @@ export function initHqUltimateToolsBindings() {
       product_id: prod.id,
       product_name: prod.name,
       action_type: 'in_purchase',
-      delta_qty: qty,
-      before_stock: curStock,
-      after_stock: curStock,
+      delta_qty: xfer.actualMove,
+      before_stock: xfer.toBefore,
+      after_stock: xfer.toAfter,
       operator_name: hqState.currentOperatorName,
-      remark: `[单号:${rkNo}] [货品搬家调入 · ${fromWh} ➔ ${toWh}] 关联出库单 ${ckNo}`,
+      remark: `[单号:${rkNo}] [货品搬家调入 · ${fromWh} ➔ ${toWh}${settleTag}] 关联出库单 ${ckNo}`,
       created_at: new Date().toISOString()
     });
 
-    alert(`🚚 货品搬家完成！\n【${prod.name}】× ${qty} 已从【${fromWh}】搬至【${toWh}】，对称调拨凭单 (${ckNo} / ${rkNo}) 已自动平账入库。`);
+    alert(
+      `🚚 货品搬家完成！\n` +
+        `• 【${prod.name}】× ${xfer.actualMove} 已从【${fromWh}】搬至【${toWh}】\n` +
+        `• 最新分仓余量：${fromWh} 剩 ${xfer.fromAfter}，${toWh} 现有 ${xfer.toAfter}\n` +
+        `• 对称凭单：${ckNo} / ${rkNo}${settleTag}`
+    );
+    window.openHqUltimateToolboxModal();
     if (typeof window.loadHQData === 'function') await window.loadHQData();
   };
 
@@ -425,19 +561,24 @@ export function initHqUltimateToolsBindings() {
   window.speakDailyBusinessBroadcast = function () {
     const rawSettings = hqState.currentTenantData?.custom_settings || {};
     const lex = getTenantLexicon(rawSettings);
+    const { orgCfg, effectiveBranch } = getOrgRuntimeContext();
+    const visibleStores = getVisibleStoresForCurrentRole();
+    const visibleOrders = getVisibleOrdersForCurrentRole();
+
     const report = buildWeeklyHealthReport({
       tenantName: hqState.currentTenantData?.company_name || hqState.currentAgent,
-      stores: hqState.allStores || [],
+      stores: visibleStores,
       products: hqState.allProducts || [],
-      orders: hqState.allOrders || []
+      orders: visibleOrders
     });
 
     const todayStr = new Date().toISOString().slice(0, 10);
-    const todayOrders = (hqState.allOrders || []).filter((o) => String(o.created_at || '').startsWith(todayStr));
+    const todayOrders = visibleOrders.filter((o) => String(o.created_at || '').startsWith(todayStr));
     const todaySales = todayOrders.reduce((sum, o) => sum + parseFloat(o.net_settle_amount || o.total_amount || 0), 0);
+    const scopePrefix = effectiveBranch !== 'ALL' && orgCfg.isMultiBranch ? `${effectiveBranch}` : '全店';
 
     const speechText =
-      `老板辛苦了，为您播报今日生意账本：` +
+      `老板辛苦了，为您播报${scopePrefix}今日生意账本：` +
       `今天一共开了 ${todayOrders.length} 笔${lex.orderLabel}，成交总额 ${todaySales.toFixed(2)} 元。` +
       `近7天累计成交 ${report.weekSales} 元，目前所有${lex.partnerLabel}累计应收欠款 ${report.totalReceivable} 元，` +
       `在外未还的${lex.carrierLabel}还有 ${report.totalBaskets} 件。` +
@@ -561,9 +702,9 @@ export function initHqUltimateToolsBindings() {
     const lex = getTenantLexicon(rawSettings);
     const report = buildWeeklyHealthReport({
       tenantName: hqState.currentTenantData?.company_name || hqState.currentAgent,
-      stores: hqState.allStores || [],
+      stores: getVisibleStoresForCurrentRole(),
       products: hqState.allProducts || [],
-      orders: hqState.allOrders || []
+      orders: getVisibleOrdersForCurrentRole()
     });
     const text =
       `【${report.tenantName} · 经营晴雨周报】\n` +
