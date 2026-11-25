@@ -10,6 +10,13 @@ import {
   isAuditorReadOnly,
   generateUnifiedVoucherNo
 } from './hqState.js';
+import {
+  getNormalizedItemPlugins,
+  renderItemPluginBadgesHtml,
+  renderPluginsEditorPanel,
+  collectPluginsFromDOM
+} from '../soulEngine/universalPluginsEngine.js';
+import { getTenantLexicon } from '../soulEngine/silentMemoryAndLexicon.js';
 
 export function extractVoucherMeta(log) {
   const raw = log.remark || '';
@@ -67,7 +74,10 @@ export function renderProductTable() {
       : hqState.allProducts.filter((p) => Array.isArray(p.tags) && p.tags.includes(hqState.activeProdFilter));
 
   if (hqState.onlyLowStockFilter) {
-    filtered = filtered.filter((p) => parseInt(p.stock ?? 0) <= parseInt(p.custom_specs?.min_stock ?? defaultMin));
+    filtered = filtered.filter((p) => {
+      const plg = getNormalizedItemPlugins(p);
+      return plg.stock.enabled && parseInt(p.stock ?? 0) <= parseInt(p.custom_specs?.min_stock ?? defaultMin);
+    });
   }
   if (hqState.onlyDraftFilter) {
     filtered = filtered.filter((p) => p.status === 'draft');
@@ -87,11 +97,13 @@ export function renderProductTable() {
 
   tbody.innerHTML =
     filtered.length === 0
-      ? '<tr><td colspan="10" class="p-8 text-center text-stone-400">未找到匹配的货品记录</td></tr>'
+      ? '<tr><td colspan="10" class="p-8 text-center text-stone-400">未找到匹配的货品或项目记录</td></tr>'
       : filtered
           .map((p) => {
             const tags = Array.isArray(p.tags) ? p.tags : [];
             const tagBadges = tags.map((t) => `<span class="bg-emerald-50 text-emerald-900 border border-emerald-200 px-1.5 py-0.2 rounded text-[10px] mr-1">${t}</span>`).join('');
+            const pluginBadges = renderItemPluginBadgesHtml(p);
+            const plg = getNormalizedItemPlugins(p);
             const isBM = isBrickMortarAllowed(p);
             const isEC = isEcommerceAllowed(p);
             const isDraft = p.status === 'draft';
@@ -115,6 +127,11 @@ export function renderProductTable() {
 
             const expDate = p.custom_specs?.expiry_date || '';
             const expBadge = expDate ? `<span class="block text-[10px] font-mono text-amber-800 mt-0.5">效期至: ${expDate}</span>` : '';
+            const packHint =
+              plg.stock.enabled && plg.stock.packRatio > 1 && plg.stock.subUnit
+                ? `<span class="block text-[10px] text-emerald-800 font-mono">1${p.measure_unit || '件'}=${plg.stock.packRatio}${plg.stock.subUnit}</span>`
+                : '';
+
             const curStock = parseInt(p.stock ?? 0);
             const minLine = parseInt(p.custom_specs?.min_stock ?? defaultMin);
             const isLow = curStock <= minLine;
@@ -127,6 +144,12 @@ export function renderProductTable() {
                 </td>
                 <td class="p-2.5 font-mono text-amber-900 font-bold">¥${p.tier_2_price || p.tier_1_price}</td>
               `;
+
+            const stockCellHtml = plg.stock.enabled
+              ? `<button onclick="window.openStockOpsModal(${p.id})" class="px-2.5 py-1 rounded-xl font-bold border transition active:scale-95 ${
+                  isLow ? 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse' : 'bg-emerald-50 text-emerald-950 border-emerald-200 hover:bg-emerald-100'
+                }" title="点击开具 RK入库单 或 CK出库单">${curStock} ${p.measure_unit || '件'} ⚙️</button>`
+              : `<span class="text-[11px] text-stone-400 font-sans">按次/按项目交付</span>`;
 
             const opsHtml = readOnly
               ? '<span class="text-stone-300 text-[10px]">受限只读</span>'
@@ -147,18 +170,15 @@ export function renderProductTable() {
                 </td>
                 <td class="p-2.5 font-sans">
                   <b class="text-stone-900 block">${p.name}</b>
+                  <div class="mt-0.5">${pluginBadges}</div>
                   <button type="button" onclick="window.openTraceCardModal(${p.id})" class="font-mono text-[10px] text-emerald-800 hover:underline font-bold">
                     🌾 溯源卡 ${p.trace_code_prefix || 'QC-'}${p.id} ${p.barcode ? '· 码:' + p.barcode : ''}
                   </button>
                 </td>
                 <td class="p-2.5">${tagBadges || '-'}</td>
-                <td class="p-2.5 font-mono">${p.spec || '整装'} / ${p.measure_unit || '件'}${expBadge}</td>
+                <td class="p-2.5 font-mono">${p.spec || '整装'} / ${p.measure_unit || '件'}${packHint}${expBadge}</td>
                 ${priceColsHtml}
-                <td class="p-2.5 font-mono">
-                  <button onclick="window.openStockOpsModal(${p.id})" class="px-2.5 py-1 rounded-xl font-bold border transition active:scale-95 ${
-              isLow ? 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse' : 'bg-emerald-50 text-emerald-950 border-emerald-200 hover:bg-emerald-100'
-            }" title="点击开具 RK入库单 或 CK出库单">${curStock} ${p.measure_unit || '件'} ⚙️</button>
-                </td>
+                <td class="p-2.5 font-mono">${stockCellHtml}</td>
                 <td class="p-2.5 text-right space-x-1.5">${opsHtml}</td>
               </tr>
             `;
@@ -251,6 +271,16 @@ function renderTagChips() {
     .join('');
 }
 
+function mountPluginsPanelInProductModal(prod = null) {
+  document.getElementById('universal-plugins-panel')?.remove();
+  const attrBox = document.getElementById('custom-attrs-container');
+  const anchor = attrBox?.parentElement || document.getElementById('prod-remark')?.parentElement;
+  if (anchor) {
+    anchor.insertAdjacentHTML('afterend', renderPluginsEditorPanel(prod));
+  }
+  window.togglePluginSection('stock');
+}
+
 function applyChannelPermissions(tenant, prod = null) {
   const bmChk = document.getElementById('chk-channel-bm');
   const ecChk = document.getElementById('chk-channel-ec');
@@ -287,6 +317,21 @@ function checkProductCompliance(name, summaryText, price, targetStatus) {
 }
 
 export function initInventoryBindings() {
+  window.togglePluginSection = function (pluginKey) {
+    const chk = document.getElementById(`plg-chk-${pluginKey}`);
+    const box = document.getElementById(`plg-box-${pluginKey}`);
+    if (chk && box) {
+      box.classList.toggle('hidden', !chk.checked);
+    }
+    // 手电筒联动：只有勾选“管库存”时，弹窗里的初始库存与警戒库存才亮出，纯服务项目自动隐藏
+    if (pluginKey === 'stock' && chk) {
+      const stockInput = document.getElementById('prod-stock');
+      const minStockInput = document.getElementById('prod-min-stock');
+      if (stockInput?.parentElement) stockInput.parentElement.classList.toggle('opacity-40', !chk.checked);
+      if (minStockInput?.parentElement) minStockInput.parentElement.classList.toggle('opacity-40', !chk.checked);
+    }
+  };
+
   window.onMainCategoryChange = function (mainCatName) {
     const l1Obj = hqState.allPlatformCats.find((c) => c.level === 1 && c.name === mainCatName);
     const subSelect = document.getElementById('prod-cat-sub');
@@ -605,7 +650,8 @@ export function initInventoryBindings() {
   };
 
   window.openAddProductModal = function () {
-    document.getElementById('prod-modal-title').innerText = '📦 实名保真 · 发布新货品或服务';
+    const lex = getTenantLexicon(hqState.currentTenantData?.custom_settings || {});
+    document.getElementById('prod-modal-title').innerText = `📦 发布新${lex.itemLabel}`;
     document.getElementById('editing-prod-id').value = '';
     hqState.uploadedImageBase64 = '';
     hqState.selectedTags = [];
@@ -618,7 +664,7 @@ export function initInventoryBindings() {
     document.getElementById('prod-min-stock').value = String(hqState.globalPolicy.defaultMinStock ?? 10);
     document.getElementById('prod-cat-tertiary').value = '';
     document.getElementById('prod-spec').value = '整装';
-    document.getElementById('prod-measure-unit').value = '箱';
+    document.getElementById('prod-measure-unit').value = (lex.defaultUnits && lex.defaultUnits[0]) || '箱';
     document.getElementById('prod-trace-prefix').value = `${hqState.currentAgent}-QC-`;
     document.getElementById('prod-origin-place').value = '源头合作社/工坊原产';
     document.getElementById('prod-expiry-date').value = '';
@@ -627,13 +673,15 @@ export function initInventoryBindings() {
     document.getElementById('custom-attrs-container').innerHTML = '';
     renderTagChips();
     applyChannelPermissions(hqState.currentTenantData, null);
+    mountPluginsPanelInProductModal(null);
     window.openModal('product-modal');
   };
 
   window.openEditProductModal = function (id) {
     const p = hqState.allProducts.find((x) => x.id === id);
     if (!p) return;
-    document.getElementById('prod-modal-title').innerText = '✏️ 润饰货品细节与双渠道定价';
+    const lex = getTenantLexicon(hqState.currentTenantData?.custom_settings || {});
+    document.getElementById('prod-modal-title').innerText = `✏️ 修改${lex.itemLabel}细节与业务插件`;
     document.getElementById('editing-prod-id').value = p.id;
     applyChannelPermissions(hqState.currentTenantData, p);
 
@@ -665,6 +713,7 @@ export function initInventoryBindings() {
     document.getElementById('image-preview-box').innerHTML = hqState.uploadedImageBase64 ? `<img src="${hqState.uploadedImageBase64}" class="w-full h-full object-cover">` : '无图';
     hqState.selectedTags = Array.isArray(p.tags) ? [...p.tags] : [];
     renderTagChips();
+    mountPluginsPanelInProductModal(p);
     window.openModal('product-modal');
   };
 
@@ -692,6 +741,7 @@ export function initInventoryBindings() {
       if (k && v) attrs[k] = v;
     });
 
+    const plugins = collectPluginsFromDOM();
     const minStock = parseInt(document.getElementById('prod-min-stock').value) || (hqState.globalPolicy.defaultMinStock ?? 10);
     const expiryDate = document.getElementById('prod-expiry-date')?.value || '';
     const channelLabel = isBM && !isEC ? '实体店' : !isBM && isEC ? '电子商务' : '实体与电商双轨';
@@ -711,7 +761,7 @@ export function initInventoryBindings() {
       barcode: document.getElementById('prod-barcode').value.trim(),
       spec: document.getElementById('prod-spec').value.trim() || '整装',
       measure_unit: document.getElementById('prod-measure-unit').value.trim() || '箱',
-      stock: parseInt(document.getElementById('prod-stock').value) || 0,
+      stock: plugins.stock.enabled ? parseInt(document.getElementById('prod-stock').value) || 0 : 0,
       tier_1_price: safeTier1,
       tier_2_price: safeTier2,
       trace_code_prefix: document.getElementById('prod-trace-prefix').value.trim() || 'QC-',
@@ -719,7 +769,7 @@ export function initInventoryBindings() {
       image_url: hqState.uploadedImageBase64,
       remark: document.getElementById('prod-remark').value.trim(),
       tags: hqState.selectedTags,
-      custom_specs: { attrs, min_stock: minStock, expiry_date: expiryDate, summary: summaryText },
+      custom_specs: { attrs, min_stock: minStock, expiry_date: expiryDate, summary: summaryText, plugins },
       status: targetStatus
     };
 
@@ -732,8 +782,8 @@ export function initInventoryBindings() {
 
     alert(
       targetStatus === 'draft'
-        ? `💾 货品【${name}】已暂存为「待定价草稿」，待完善定价与实拍照后即可正式上架！`
-        : `🎉 合规核验通过！货品【${name}】已正式上架生效（投放渠道：${channelLabel}）！`
+        ? `💾 【${name}】已暂存为「待定价草稿」，待完善定价与实拍照后即可正式上架！`
+        : `🎉 合规核验通过！【${name}】已正式上架生效（投放渠道：${channelLabel}）！`
     );
     window.closeAddProductModal();
     window.loadHQData();
