@@ -8,7 +8,8 @@ import {
   isBrickMortarAllowed,
   isWarehouseBlindPrice,
   isAuditorReadOnly,
-  generateUnifiedVoucherNo
+  generateUnifiedVoucherNo,
+  getOrgRuntimeContext
 } from './hqState.js';
 import {
   getNormalizedItemPlugins,
@@ -17,6 +18,11 @@ import {
   collectPluginsFromDOM
 } from '../soulEngine/universalPluginsEngine.js';
 import { getTenantLexicon } from '../soulEngine/silentMemoryAndLexicon.js';
+import {
+  getProductWarehouseStocks,
+  calcWarehouseStockDelta,
+  rememberOperatorOrgPreference
+} from '../soulEngine/multiOrgAndWarehouseEngine.js';
 
 export function extractVoucherMeta(log) {
   const raw = log.remark || '';
@@ -68,6 +74,7 @@ export function renderProductTable() {
   const tbody = document.getElementById('product-table-body');
   if (!tbody) return;
   const defaultMin = parseInt(hqState.globalPolicy.defaultMinStock ?? 10);
+  const { orgCfg } = getOrgRuntimeContext();
   let filtered =
     hqState.activeProdFilter === '全部'
       ? hqState.allProducts
@@ -136,6 +143,15 @@ export function renderProductTable() {
             const minLine = parseInt(p.custom_specs?.min_stock ?? defaultMin);
             const isLow = curStock <= minLine;
 
+            // 手电筒渐进式显隐：多仓模式自动展示分仓独立余量胶囊，单仓保持极简
+            let multiWhHtml = '';
+            if (plg.stock.enabled && orgCfg.isMultiWarehouse) {
+              const whMap = getProductWarehouseStocks(p, orgCfg.warehouses);
+              multiWhHtml = `<div class="mt-1 flex flex-wrap gap-1">${orgCfg.warehouses
+                .map((w) => `<span class="text-[9px] bg-stone-100 text-stone-600 border border-stone-200 px-1.5 py-0.2 rounded font-mono">${w}:${whMap[w] ?? 0}</span>`)
+                .join('')}</div>`;
+            }
+
             const priceColsHtml = blindPrice
               ? ''
               : `
@@ -146,9 +162,12 @@ export function renderProductTable() {
               `;
 
             const stockCellHtml = plg.stock.enabled
-              ? `<button onclick="window.openStockOpsModal(${p.id})" class="px-2.5 py-1 rounded-xl font-bold border transition active:scale-95 ${
-                  isLow ? 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse' : 'bg-emerald-50 text-emerald-950 border-emerald-200 hover:bg-emerald-100'
-                }" title="点击开具 RK入库单 或 CK出库单">${curStock} ${p.measure_unit || '件'} ⚙️</button>`
+              ? `<div>
+                   <button onclick="window.openStockOpsModal(${p.id})" class="px-2.5 py-1 rounded-xl font-bold border transition active:scale-95 ${
+                     isLow ? 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse' : 'bg-emerald-50 text-emerald-950 border-emerald-200 hover:bg-emerald-100'
+                   }" title="点击开具 RK入库单 或 CK出库单">${curStock} ${p.measure_unit || '件'} ⚙️</button>
+                   ${multiWhHtml}
+                 </div>`
               : `<span class="text-[11px] text-stone-400 font-sans">按次/按项目交付</span>`;
 
             const opsHtml = readOnly
@@ -323,7 +342,6 @@ export function initInventoryBindings() {
     if (chk && box) {
       box.classList.toggle('hidden', !chk.checked);
     }
-    // 手电筒联动：只有勾选“管库存”时，弹窗里的初始库存与警戒库存才亮出，纯服务项目自动隐藏
     if (pluginKey === 'stock' && chk) {
       const stockInput = document.getElementById('prod-stock');
       const minStockInput = document.getElementById('prod-min-stock');
@@ -417,13 +435,37 @@ export function initInventoryBindings() {
     if (!p) return;
     const curStock = parseInt(p.stock ?? 0);
     const unit = p.measure_unit || '件';
+    const { orgCfg } = getOrgRuntimeContext();
+    const whMap = getProductWarehouseStocks(p, orgCfg.warehouses);
 
     document.getElementById('stock-ops-prod-id').value = p.id;
     document.getElementById('stock-ops-cur-stock').value = curStock;
     document.getElementById('stock-ops-title').innerText = `📦 开具极简入库/出库单 · ${p.name}`;
     document.getElementById('stock-ops-subtitle').innerText = isWarehouseBlindPrice()
-      ? `当前账面库存：${curStock} ${unit}`
-      : `当前账面库存：${curStock} ${unit} · 批发基准价 ¥${p.tier_1_price}`;
+      ? `当前账面总库存：${curStock} ${unit}`
+      : `当前账面总库存：${curStock} ${unit} · 批发基准价 ¥${p.tier_1_price}`;
+
+    // 手电筒显隐：只有多仓模式才在出入库弹窗顶部动态挂载仓库选择器，静默默认常用仓
+    document.getElementById('stock-ops-wh-box')?.remove();
+    if (orgCfg.isMultiWarehouse) {
+      const preferredWh = orgCfg.warehouses.includes(hqState.activeWarehouse) ? hqState.activeWarehouse : orgCfg.warehouses[0];
+      const qtyInputEl = document.getElementById('stock-ops-qty-input');
+      const anchor = qtyInputEl?.parentElement;
+      if (anchor) {
+        const whHtml = `
+          <div id="stock-ops-wh-box" class="bg-blue-50/70 border border-blue-200 rounded-xl p-2 mb-2 text-xs">
+            <label class="text-[11px] font-bold text-blue-950 block mb-1">🏠 选择操作${orgCfg.warehouseLabel}（自动记住您的常用仓）：</label>
+            <select id="stock-ops-warehouse-select" class="w-full bg-white border border-blue-200 rounded-lg px-2 py-1 font-bold text-stone-800">
+              ${orgCfg.warehouses
+                .map((w) => `<option value="${w}" ${w === preferredWh ? 'selected' : ''}>${w}（当前余量：${whMap[w] ?? 0} ${unit}）</option>`)
+                .join('')}
+            </select>
+          </div>
+        `;
+        anchor.insertAdjacentHTML('beforebegin', whHtml);
+      }
+    }
+
     document.getElementById('stock-ops-qty-input').value = '';
     document.getElementById('stock-ops-source').value = '';
     document.getElementById('stock-ops-operator').value = hqState.currentOperatorName;
@@ -497,6 +539,11 @@ export function initInventoryBindings() {
     const p = hqState.allProducts.find((x) => x.id === prodId);
     if (!p) return;
 
+    const { orgCfg } = getOrgRuntimeContext();
+    const targetWh = document.getElementById('stock-ops-warehouse-select')?.value || orgCfg.warehouses[0] || '主仓库';
+    const currentWhMap = getProductWarehouseStocks(p, orgCfg.warehouses);
+    const currentWhQty = currentWhMap[targetWh] ?? curStock;
+
     let afterStock = curStock;
     let deltaQty = 0;
 
@@ -509,16 +556,40 @@ export function initInventoryBindings() {
       deltaQty = -inputVal;
       afterStock = Math.max(0, curStock - inputVal);
     } else {
-      afterStock = inputVal;
-      deltaQty = afterStock - curStock;
+      // 实地盘点：多仓模式下按当前选中仓库校准，单仓模式下按总库存校准
+      if (orgCfg.isMultiWarehouse) {
+        deltaQty = inputVal - currentWhQty;
+        afterStock = Math.max(0, curStock + deltaQty);
+      } else {
+        afterStock = inputVal;
+        deltaQty = afterStock - curStock;
+      }
     }
 
+    const whDelta = calcWarehouseStockDelta(p, orgCfg.warehouses, targetWh, deltaQty);
+    const finalTotalStock = orgCfg.isMultiWarehouse ? whDelta.nextTotalStock : afterStock;
+
     const execStockWrite = async () => {
-      const { error: uErr } = await supabase.from('product').update({ stock: afterStock }).eq('id', prodId);
+      const updatePayload = { stock: finalTotalStock };
+      if (orgCfg.isMultiWarehouse) {
+        updatePayload.custom_specs = {
+          ...(p.custom_specs && typeof p.custom_specs === 'object' ? p.custom_specs : {}),
+          warehouse_stocks: whDelta.nextWarehouseStocks
+        };
+      }
+      const { error: uErr } = await supabase.from('product').update(updatePayload).eq('id', prodId);
       if (uErr) return alert('更新库存失败：' + uErr.message);
 
+      if (orgCfg.isMultiWarehouse) {
+        hqState.activeWarehouse = targetWh;
+        rememberOperatorOrgPreference(hqState.currentAgent, hqState.currentAccountCode || 'owner', {
+          lastWarehouse: targetWh
+        });
+      }
+
       const voucherNo = hqState.currentVoucherNo || generateUnifiedVoucherNo(deltaQty >= 0 ? 'RK' : 'CK');
-      const fullRemark = `[单号:${voucherNo}] [${subType} · ${sourceParty}] ${remark}`.trim();
+      const whTag = orgCfg.isMultiWarehouse ? ` [仓库:${targetWh}]` : '';
+      const fullRemark = `[单号:${voucherNo}] [${subType} · ${sourceParty}]${whTag} ${remark}`.trim();
 
       await HQService.recordInventoryChange(hqState.currentAgent, {
         tenant_id: hqState.currentAgent,
@@ -527,7 +598,7 @@ export function initInventoryBindings() {
         action_type: hqState.currentStockOpsMode,
         delta_qty: deltaQty,
         before_stock: curStock,
-        after_stock: afterStock,
+        after_stock: finalTotalStock,
         operator_name: operator,
         remark: fullRemark,
         created_at: new Date().toISOString()
@@ -536,9 +607,9 @@ export function initInventoryBindings() {
       alert(
         `✅ 单据已制单入账！\n\n` +
           `• 正式单号：${voucherNo}\n` +
-          `• 单据子类：${subType}\n` +
+          `• 单据子类：${subType}${orgCfg.isMultiWarehouse ? `（${targetWh}：${whDelta.beforeWhStock} ➔ ${whDelta.afterWhStock}）` : ''}\n` +
           `• 货品名称：${p.name}\n` +
-          `• 库存变动：${curStock} ➔ ${afterStock} ${p.measure_unit || '件'}`
+          `• 总库存变动：${curStock} ➔ ${finalTotalStock} ${p.measure_unit || '件'}`
       );
       window.closeModal('modal-stock-ops');
       window.loadHQData();
@@ -749,6 +820,9 @@ export function initInventoryBindings() {
     const rawTier2 = parseFloat(document.getElementById('prod-price-tier2').value);
     const safeTier2 = !isNaN(rawTier2) && rawTier2 > 0 ? rawTier2 : safeTier1;
 
+    const existingProd = editId ? hqState.allProducts.find((x) => Number(x.id) === Number(editId)) : null;
+    const prevSpecs = existingProd?.custom_specs && typeof existingProd.custom_specs === 'object' ? existingProd.custom_specs : {};
+
     const payload = {
       tenant_id: hqState.currentAgent,
       channel_brick_and_mortar: isBM,
@@ -769,7 +843,7 @@ export function initInventoryBindings() {
       image_url: hqState.uploadedImageBase64,
       remark: document.getElementById('prod-remark').value.trim(),
       tags: hqState.selectedTags,
-      custom_specs: { attrs, min_stock: minStock, expiry_date: expiryDate, summary: summaryText, plugins },
+      custom_specs: { ...prevSpecs, attrs, min_stock: minStock, expiry_date: expiryDate, summary: summaryText, plugins },
       status: targetStatus
     };
 
