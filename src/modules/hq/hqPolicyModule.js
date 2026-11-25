@@ -108,7 +108,7 @@ export function applyIndustryTerminology(tenant) {
         aidBadge: '🏭 产能平准集采认领开启',
         aidSettingTitle: '🏭 产能平准集采特惠',
         promoTabName: '② 产能平准与阶梯价',
-        groupPackTitle: '🏛️ 政企单位 / 工程集采报价包',
+        groupPackTitle: '🏛️ 大客户阳光集采包',
         groupPackDesc: '一键汇总企业资质核验、出厂质保背书与全品出厂集采报价单。'
       }
     : {
@@ -125,7 +125,7 @@ export function applyIndustryTerminology(tenant) {
         aidBadge: '📦 余缺平准调剂认领开启',
         aidSettingTitle: '📦 阶段平准集采认领特惠',
         promoTabName: '② 阶段调剂与阶梯价',
-        groupPackTitle: '🏛️ 政企单位 / 大客户阳光集采包',
+        groupPackTitle: '🏛️ 大客户阳光集采包',
         groupPackDesc: '一键汇总营业执照核验、主体信义背书与全品阳光集采报价单。'
       };
 
@@ -159,7 +159,7 @@ export function applyIndustryTerminology(tenant) {
     const advisorBox = document.getElementById('ai-advisor-cards');
     if (!advisorBox) return;
     advisorBox.querySelectorAll('b, h3, h4, div').forEach((el) => {
-      if (el.children.length === 0 && (el.innerText.includes('食堂阳光集采包') || el.innerText.includes('阳光集采包') || el.innerText.includes('工程集采报价包'))) {
+      if (el.children.length === 0 && (el.innerText.includes('大客户阳光集采包') || el.innerText.includes('阳光集采包') || el.innerText.includes('工程集采报价包'))) {
         el.innerText = terms.groupPackTitle;
       }
     });
