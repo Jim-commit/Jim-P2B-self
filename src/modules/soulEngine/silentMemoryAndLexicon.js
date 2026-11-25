@@ -9,6 +9,7 @@ export const DEFAULT_LEXICON = {
   itemLabel: '货品/项目',        // 可改叫：商品、货品、项目、服务、物料
   orderLabel: '业务单',          // 可改叫：送货单、结算单、项目单、服务单
   warehouseLabel: '存放点',      // 可改叫：仓库、总仓、分仓、工程车
+  carrierLabel: '外借器具',      // 可改叫：周转箱、空桶、钢瓶、模具、样机
   defaultUnits: ['箱', '件', '斤', '套', '户/月', '小时', '趟', '批']
 };
 
