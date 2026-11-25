@@ -90,7 +90,7 @@ export function applyIndustryTerminology(tenant) {
         aidBadge: '🌾 丰产助农平准认领开启',
         aidSettingTitle: '🌾 丰产助农/助工平准特惠',
         promoTabName: '② 丰歉平准与阶梯价',
-        groupPackTitle: '🏛️ 企事业单位 / 食堂阳光集采包',
+        groupPackTitle: '🏛️ 大客户阳光集采包',
         groupPackDesc: '一键汇总营业执照核验、联保背书与全品阳光工价报价单。'
       }
     : isFactory
