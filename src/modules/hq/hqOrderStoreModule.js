@@ -10,6 +10,13 @@ import {
   generateUnifiedVoucherNo,
   calcStoreEffectivePrice
 } from './hqState.js';
+import {
+  recordOrderHabit,
+  getLastDealPrice,
+  getPartnerTop6Items,
+  calcRoundOffDiscount,
+  checkBelowCostAlert
+} from '../soulEngine/silentMemoryAndLexicon.js';
 
 function calcStoreCreditScore(store) {
   const debt = parseFloat(store.current_debt || 0);
@@ -813,6 +820,7 @@ export function initOrderStoreBindings() {
     await supabase.from('store_order').update({ order_status: 'confirmed', driver_action_instruction: driverCmd }).eq('id', orderId);
     if (order?.items) {
       await HQService.deductStockForItems(hqState.currentAgent, hqState.allProducts, order.items, order.order_no || order.id, hqState.currentOperatorName);
+      recordOrderHabit(hqState.currentAgent, { partnerId: order.store_id, items: order.items });
     }
     alert('✅ 已确认接单并自动扣减对应库存，已汇入「本车装车总拣货单」！');
     window.loadHQData();
@@ -929,7 +937,7 @@ export function initOrderStoreBindings() {
     if (o.note) notesArr.push(`• 交接附言：${o.note}`);
     const baskets = parseInt(store?.carrier_hold_count || store?.basket_count || 0);
     const carrierListStr = hqState.globalPolicy.carriers.map((c) => `${c.name}(¥${c.deposit}/件)`).join('、');
-    notesArr.push(`• 该门店累计借存周转载具：${baskets} 件（支持回收载具标准：${carrierListStr}，本次归还：_____ 件）`);
+    notesArr.push(`• 该门店累计借存${hqState.carrierLabel}：${baskets} 件（支持回收标准：${carrierListStr}，本次归还：_____ 件）`);
     const specialNotesEl = document.getElementById('print-slip-special-notes');
     if (specialNotesEl) specialNotesEl.innerHTML = notesArr.map((n) => `<div>${n}</div>`).join('');
 
@@ -1325,7 +1333,10 @@ export function initOrderStoreBindings() {
       const prod = hqState.allProducts.find((p) => p.name === it.name || p.name.includes(it.name));
       if (prod) {
         const qtyInput = document.getElementById(`push-qty-${prod.id}`);
-        if (qtyInput) qtyInput.value = parseInt(it.qty || 0);
+        if (qtyInput) {
+          qtyInput.value = parseInt(it.qty || 0);
+          window.recalcPushOrderSummary?.();
+        }
       } else {
         unmatched.push(`${it.name}x${it.qty}${it.unit || '件'}`);
       }
@@ -1356,7 +1367,111 @@ export function initOrderStoreBindings() {
     }
   };
 
+  // ============================================================================
+  // 主动开单 / 配货：静默历史拿价 + 常拿货 Top6 + 亏本红字提醒 + 一键抹零头
+  // ============================================================================
+  let pushRoundMode = 'none'; // 'none' | 'fen' | 'jiao' | 'yuan' | 'custom'
+
+  window.setPushRoundMode = function (mode) {
+    pushRoundMode = pushRoundMode === mode && mode !== 'custom' ? 'none' : mode;
+    window.recalcPushOrderSummary();
+  };
+
+  window.recalcPushOrderSummary = function () {
+    const blindPrice = isWarehouseBlindPrice();
+    let rawTotal = 0;
+
+    hqState.allProducts
+      .filter((p) => p.status !== 'inactive' && p.status !== 'draft')
+      .forEach((p) => {
+        const qty = parseInt(document.getElementById(`push-qty-${p.id}`)?.value || '0', 10);
+        const priceEl = document.getElementById(`push-price-${p.id}`);
+        const price = priceEl ? parseFloat(priceEl.value || '0') : parseFloat(p.tier_1_price || '0');
+        if (qty > 0 && !isNaN(price)) {
+          rawTotal += price * qty;
+        }
+      });
+
+    const summaryBar = document.getElementById('push-smart-summary-bar');
+    if (!summaryBar) return;
+    if (blindPrice) {
+      summaryBar.innerHTML = `<span class="text-stone-500 text-[11px]">库管盲价模式：仅核对出库数量，不显示金额</span>`;
+      return;
+    }
+
+    const customValStr = document.getElementById('push-custom-final-input')?.value;
+    const customFinal = customValStr !== undefined && customValStr !== '' ? parseFloat(customValStr) : null;
+    const calc =
+      pushRoundMode === 'none'
+        ? { rawTotal: Number(rawTotal.toFixed(2)), finalAmount: Number(rawTotal.toFixed(2)), bossDiscount: 0 }
+        : calcRoundOffDiscount(rawTotal, pushRoundMode, customFinal);
+
+    summaryBar.innerHTML = `
+      <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-2.5 space-y-2 text-xs">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span class="text-stone-700 font-bold">💰 货款合计：<b class="font-mono text-stone-900">¥${calc.rawTotal.toFixed(2)}</b></span>
+          <div class="flex flex-wrap items-center gap-1">
+            <button type="button" onclick="window.setPushRoundMode('jiao')" class="px-2 py-0.5 rounded-lg text-[11px] font-bold border transition ${
+              pushRoundMode === 'jiao' ? 'bg-[#1b4332] text-amber-300 border-[#1b4332]' : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-100'
+            }">✂️ 抹角分</button>
+            <button type="button" onclick="window.setPushRoundMode('yuan')" class="px-2 py-0.5 rounded-lg text-[11px] font-bold border transition ${
+              pushRoundMode === 'yuan' ? 'bg-[#1b4332] text-amber-300 border-[#1b4332]' : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-100'
+            }">✂️ 抹个位</button>
+            <div class="flex items-center gap-1 ml-1">
+              <span class="text-[11px] text-stone-500">一口价:</span>
+              <input type="number" step="0.01" id="push-custom-final-input" value="${pushRoundMode === 'custom' && customFinal !== null ? customFinal : ''}"
+                oninput="window.setPushRoundMode('custom')" placeholder="凑整实收"
+                class="w-20 bg-white border border-stone-300 rounded-lg px-1.5 py-0.5 font-mono font-bold text-[11px] outline-none">
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-t border-emerald-200/60 pt-1.5">
+          <span class="text-[11px] text-amber-900 font-bold">
+            ${calc.bossDiscount > 0 ? `🎁 老板抹零让利：-¥${calc.bossDiscount.toFixed(2)}` : calc.bossDiscount < 0 ? `📈 凑整调增：+¥${Math.abs(calc.bossDiscount).toFixed(2)}` : '未抹零，按原价实收'}
+          </span>
+          <span class="text-sm font-black text-emerald-950 font-mono">本单实收：¥${calc.finalAmount.toFixed(2)}</span>
+        </div>
+      </div>
+    `;
+  };
+
+  window.onPushPriceInput = function (prodId) {
+    const prod = hqState.allProducts.find((p) => Number(p.id) === Number(prodId));
+    const priceEl = document.getElementById(`push-price-${prodId}`);
+    const warnEl = document.getElementById(`push-cost-warn-${prodId}`);
+    if (prod && priceEl && warnEl) {
+      const check = checkBelowCostAlert(priceEl.value, prod);
+      if (check.isLoss) {
+        priceEl.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800');
+        warnEl.innerHTML = `<span class="text-[10px] text-rose-600 font-bold block mt-0.5">${check.message}</span>`;
+      } else {
+        priceEl.classList.remove('border-rose-500', 'bg-rose-50', 'text-rose-800');
+        warnEl.innerHTML = '';
+      }
+    }
+    window.recalcPushOrderSummary();
+  };
+
+  window.quickAddPushTopItem = function (prodId) {
+    const qtyEl = document.getElementById(`push-qty-${prodId}`);
+    if (qtyEl) {
+      qtyEl.value = (parseInt(qtyEl.value || '0', 10) || 0) + 1;
+      qtyEl.classList.add('ring-2', 'ring-amber-400');
+      setTimeout(() => qtyEl.classList.remove('ring-2', 'ring-amber-400'), 400);
+      window.recalcPushOrderSummary();
+    }
+  };
+
+  window.applyPushLastPrice = function (prodId, lastPrice) {
+    const priceEl = document.getElementById(`push-price-${prodId}`);
+    if (priceEl) {
+      priceEl.value = Number(lastPrice).toFixed(2);
+      window.onPushPriceInput(prodId);
+    }
+  };
+
   window.openPushOrderModal = function () {
+    pushRoundMode = 'none';
     const visibleStores = getVisibleStoresForCurrentRole();
     const storeSelect = document.getElementById('push-store-select');
     storeSelect.innerHTML = visibleStores.map((s) => `<option value="${s.id}">${s.name} (信用余 ¥${(s.credit_limit || 2000) - (s.current_debt || 0)})</option>`).join('');
@@ -1370,16 +1485,78 @@ export function initOrderStoreBindings() {
       document.getElementById('push-driver-name').value = s.driver_name || '张师傅';
       if (s.default_settlement) document.getElementById('push-settlement-select').value = s.default_settlement;
     }
+
+    const blindPrice = isWarehouseBlindPrice();
+    const activeProducts = hqState.allProducts.filter((p) => p.status !== 'inactive' && p.status !== 'draft');
+    const top6 = getPartnerTop6Items(hqState.currentAgent, storeId, activeProducts, hqState.allOrders || []);
+
     const prodBox = document.getElementById('push-products-list');
     if (prodBox) {
-      prodBox.innerHTML = hqState.allProducts
-        .filter((p) => p.status !== 'inactive' && p.status !== 'draft')
+      const top6Html =
+        top6.length > 0
+          ? `<div class="bg-amber-50/90 border border-amber-200 rounded-xl p-2 mb-2 flex flex-wrap items-center gap-1.5">
+               <span class="text-[11px] font-bold text-amber-900">🔥 他常拿的货：</span>
+               ${top6
+                 .map(
+                   (item) => `
+                   <button type="button" onclick="window.quickAddPushTopItem(${item.id})"
+                     class="text-[11px] bg-white hover:bg-amber-100 text-amber-950 border border-amber-300 px-2 py-0.5 rounded-full font-bold transition shadow-2xs">
+                     + ${item.name} <span class="text-stone-400 font-normal">(${item._orderCount}次)</span>
+                   </button>`
+                 )
+                 .join('')}
+             </div>`
+          : '';
+
+      const rowsHtml = activeProducts
         .map((p) => {
           const { price } = calcStoreEffectivePrice(s, p);
-          const priceLabel = isWarehouseBlindPrice() ? `${p.measure_unit || '件'}` : `¥${price.toFixed(2)}/${p.measure_unit || '件'}`;
-          return `<div class="flex justify-between items-center py-1 border-b border-stone-50"><span class="text-stone-700">${p.name} (${priceLabel} · 存${p.stock ?? 0})</span><input type="number" min="0" value="0" id="push-qty-${p.id}" class="w-16 bg-stone-50 border border-stone-200 rounded px-1.5 py-0.5 text-center font-bold font-mono"></div>`;
+          const lastDeal = !blindPrice ? getLastDealPrice(hqState.currentAgent, storeId, p.id, hqState.allOrders || []) : null;
+          const unitLabel = p.measure_unit || '件';
+
+          const lastPriceBadge =
+            lastDeal && Number(lastDeal.price) !== Number(price)
+              ? `<button type="button" onclick="window.applyPushLastPrice(${p.id}, ${lastDeal.price})" title="点击一键改用上次成交价"
+                   class="text-[10px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.2 rounded-md font-mono font-bold ml-1">
+                   📌 上次 ¥${Number(lastDeal.price).toFixed(2)}
+                 </button>`
+              : lastDeal
+              ? `<span class="text-[10px] text-emerald-700 font-mono ml-1">✓ 同上次拿价</span>`
+              : '';
+
+          return `
+            <div class="py-1.5 border-b border-stone-100">
+              <div class="flex justify-between items-center gap-2">
+                <div class="min-w-0 flex-1">
+                  <span class="text-stone-800 font-bold text-xs">${p.name}</span>
+                  <span class="text-[10px] text-stone-400 font-mono ml-1">(存${p.stock ?? 0}${unitLabel})</span>
+                  ${lastPriceBadge}
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  ${
+                    blindPrice
+                      ? `<span class="text-[11px] text-stone-400 font-mono">${unitLabel}</span>`
+                      : `<div class="flex items-center bg-stone-50 border border-stone-200 rounded px-1.5 py-0.5">
+                           <span class="text-[10px] text-stone-400 mr-0.5">¥</span>
+                           <input type="number" step="0.01" value="${price.toFixed(2)}" id="push-price-${p.id}"
+                             oninput="window.onPushPriceInput(${p.id})"
+                             class="w-14 bg-transparent font-mono font-bold text-xs text-emerald-950 outline-none text-right">
+                           <span class="text-[10px] text-stone-400 ml-0.5">/${unitLabel}</span>
+                         </div>`
+                  }
+                  <input type="number" min="0" value="0" id="push-qty-${p.id}"
+                    oninput="window.recalcPushOrderSummary()"
+                    class="w-14 bg-stone-50 border border-stone-200 rounded px-1.5 py-0.5 text-center font-bold font-mono">
+                </div>
+              </div>
+              <div id="push-cost-warn-${p.id}"></div>
+            </div>
+          `;
         })
         .join('');
+
+      prodBox.innerHTML = `${top6Html}${rowsHtml}<div id="push-smart-summary-bar" class="mt-2.5"></div>`;
+      window.recalcPushOrderSummary();
     }
   };
 
@@ -1391,22 +1568,63 @@ export function initOrderStoreBindings() {
     const note = document.getElementById('push-note-input').value.trim();
 
     const items = [];
-    let totalAmount = 0;
+    let rawTotalAmount = 0;
     for (const p of hqState.allProducts) {
       const qty = parseInt(document.getElementById(`push-qty-${p.id}`)?.value || '0');
       if (qty > 0) {
-        const { price } = calcStoreEffectivePrice(store, p);
+        const customPriceEl = document.getElementById(`push-price-${p.id}`);
+        const price = customPriceEl ? parseFloat(customPriceEl.value || '0') : calcStoreEffectivePrice(store, p).price;
         items.push({ id: p.id, name: p.name, spec: p.spec, measure_unit: p.measure_unit, price, qty });
-        totalAmount += price * qty;
+        rawTotalAmount += price * qty;
       }
     }
     if (items.length === 0) return alert('请至少挑选 1 样货品！');
 
+    // 计算抹零/一口价老板让利
+    const customValStr = document.getElementById('push-custom-final-input')?.value;
+    const customFinal = customValStr !== undefined && customValStr !== '' ? parseFloat(customValStr) : null;
+    const roundRes =
+      pushRoundMode === 'none'
+        ? { rawTotal: Number(rawTotalAmount.toFixed(2)), finalAmount: Number(rawTotalAmount.toFixed(2)), bossDiscount: 0 }
+        : calcRoundOffDiscount(rawTotalAmount, pushRoundMode, customFinal);
+
+    const discountNote =
+      roundRes.bossDiscount > 0
+        ? ` [老板抹零让利 -¥${roundRes.bossDiscount.toFixed(2)}]`
+        : roundRes.bossDiscount < 0
+        ? ` [凑整调增 +¥${Math.abs(roundRes.bossDiscount).toFixed(2)}]`
+        : '';
+
     const orderNo = generateUnifiedVoucherNo('CK');
-    const { error } = await supabase.from('store_order').insert([{ order_no: orderNo, tenant_id: hqState.currentAgent, store_id: storeId, store_name: store.name, driver_name: driver, order_source: 'vendor_push', settlement_type: settlement, settlement_note: note, items, items_return: [], items_exchange: [], total_amount: totalAmount, return_amount: 0, net_settle_amount: totalAmount, order_status: 'confirmed', delivery_status: 'ordered', note: `[主动铺底配发] ${note}`, driver_action_instruction: `【主动配货】核验交付 ${items.length}项` }]);
+    const { error } = await supabase.from('store_order').insert([
+      {
+        order_no: orderNo,
+        tenant_id: hqState.currentAgent,
+        store_id: storeId,
+        store_name: store.name,
+        driver_name: driver,
+        order_source: 'vendor_push',
+        settlement_type: settlement,
+        settlement_note: `${note}${discountNote}`.trim(),
+        items,
+        items_return: [],
+        items_exchange: [],
+        total_amount: roundRes.rawTotal,
+        return_amount: roundRes.bossDiscount > 0 ? roundRes.bossDiscount : 0,
+        net_settle_amount: roundRes.finalAmount,
+        order_status: 'confirmed',
+        delivery_status: 'ordered',
+        note: `[主动铺底配发] ${note}${discountNote}`.trim(),
+        driver_action_instruction: `【主动配货】核验交付 ${items.length}项`
+      }
+    ]);
     if (error) return alert('配发失败: ' + error.message);
+
+    // 静默自学习：记住本单客户拿价与常拿货频次
+    recordOrderHabit(hqState.currentAgent, { partnerId: storeId, items });
+
     await HQService.deductStockForItems(hqState.currentAgent, hqState.allProducts, items, orderNo, hqState.currentOperatorName);
-    alert(`✅ 统一出库配货单 (${orderNo}) 已生成并自动扣库！`);
+    alert(`✅ 统一出库配货单 (${orderNo}) 已生成并自动扣库！${roundRes.bossDiscount > 0 ? `\n已应用老板抹零让利 ¥${roundRes.bossDiscount.toFixed(2)}，实收 ¥${roundRes.finalAmount.toFixed(2)}` : ''}`);
     window.closeModal('push-modal');
     window.loadHQData();
   };
