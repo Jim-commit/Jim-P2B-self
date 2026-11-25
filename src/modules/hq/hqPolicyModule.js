@@ -209,7 +209,7 @@ export function renderActivePolicyBadgesBar() {
   }
   if (gp.pickupServiceEnabled) {
     const unitTxt = gp.pickupServiceMode === 'percent' ? `${gp.pickupServiceValue || 0}%` : `¥${gp.pickupServiceValue || 0}/单`;
-    chips.push(`<span class="bg-white/10 text-emerald-100 border border-white/15 px-2.5 py-0.5 rounded-full">📍 自提代收服务费 ${unitTxt}</span>`);
+    chips.push(`<span class="bg-white/10 text-emerald-100 border border-white/15 px-2.5 py-0.5 rounded-full">📍 门店自提履约补贴 ${unitTxt}</span>`);
   }
   if (gp.campaignActive) {
     chips.push('<span class="bg-white/10 text-amber-200 border border-amber-300/30 px-2.5 py-0.5 rounded-full">🔥 促销活动进行中</span>');
