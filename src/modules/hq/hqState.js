@@ -2,6 +2,11 @@ import {
   checkStaffCapability,
   getStaffPriceVisibility
 } from '../../services/modularAuthService.js';
+import {
+  getNormalizedOrgAndWarehouses,
+  getOperatorOrgPreference,
+  filterRecordsByActiveBranch
+} from '../soulEngine/multiOrgAndWarehouseEngine.js';
 
 export const DEFAULT_GLOBAL_POLICY = {
   storeTierEnabled: true,
@@ -29,7 +34,7 @@ export const DEFAULT_GLOBAL_POLICY = {
   referralBonus: 100,
   campaignActive: false,
   promos: [{ title: '产区直供季', rule: '单笔满 20 件赠同款 1 件' }],
-  carriers: [{ name: '周转筐', deposit: 15 }],
+  carriers: [{ name: '外借器具', deposit: 15 }],
   tier1Name: '批发平准基准价',
   tier2Name: '网上平准零售基准价',
   twoFaCashOn: true,
@@ -57,15 +62,19 @@ export const FORBIDDEN_WORDS = [
 ];
 
 const initAgent = localStorage.getItem('hq_active_agent') || '';
+const initAccount = sessionStorage.getItem('hq_sub_account_' + initAgent) || '';
+const initOrgPref = getOperatorOrgPreference(initAgent, initAccount || 'owner');
 
 export const hqState = {
   currentAgent: initAgent,
   currentRoleCode: sessionStorage.getItem('hq_sub_role_' + initAgent) || 'owner',
-  currentAccountCode: sessionStorage.getItem('hq_sub_account_' + initAgent) || '',
-  currentOperatorName: sessionStorage.getItem('hq_sub_name_' + initAgent) || '大当家主账号',
+  currentAccountCode: initAccount,
+  currentOperatorName: sessionStorage.getItem('hq_sub_name_' + initAgent) || '老板主账号',
   currentSubUserRecord: null,
   globalPolicy: JSON.parse(JSON.stringify(DEFAULT_GLOBAL_POLICY)),
-  carrierLabel: '周转筐',
+  carrierLabel: '外借器具',
+  activeBranchView: initOrgPref.activeBranch || 'ALL',
+  activeWarehouse: initOrgPref.lastWarehouse || '',
   currentStoreForVis: null,
   currentTenantData: null,
   allProducts: [],
@@ -96,6 +105,24 @@ export const hqState = {
   currentTraceCardText: '',
   hqQrPollTimer: null
 };
+
+export function getOrgRuntimeContext() {
+  const customSettings = hqState.currentTenantData?.custom_settings || {};
+  const orgCfg = getNormalizedOrgAndWarehouses(customSettings);
+  const matchedStaff =
+    hqState.currentSubUserRecord ||
+    (hqState.allSubUsers || []).find((u) => u.account_name === hqState.currentAccountCode);
+
+  const operatorBranch = matchedStaff?.branch_name || matchedStaff?.department || '';
+  const isOwner = hqState.currentRoleCode === 'owner';
+
+  return {
+    orgCfg,
+    operatorBranch,
+    isOwner,
+    effectiveBranch: !isOwner && operatorBranch ? operatorBranch : hqState.activeBranchView || 'ALL'
+  };
+}
 
 export function isDirectoryLead(o) {
   return (
@@ -179,10 +206,41 @@ export function isAuditorReadOnly() {
 }
 
 export function getVisibleStoresForCurrentRole() {
-  if (hqState.currentRoleCode !== 'sales') return hqState.allStores;
-  return hqState.allStores.filter((s) => {
+  const { orgCfg, operatorBranch, isOwner } = getOrgRuntimeContext();
+  let list = hqState.allStores || [];
+
+  // 多分支模式下自动按分支隔离（单主体经营时自动跳过，零干扰）
+  if (orgCfg.isMultiBranch) {
+    list = filterRecordsByActiveBranch(list, {
+      activeBranch: hqState.activeBranchView,
+      operatorBranch,
+      isOwner,
+      getRecordBranch: (s) => s.custom_pricing?.branch_name || ''
+    });
+  }
+
+  if (hqState.currentRoleCode !== 'sales') return list;
+  return list.filter((s) => {
     const ownerAcc = s.custom_pricing?.sales_owner || '';
     return !ownerAcc || ownerAcc === hqState.currentAccountCode || ownerAcc === hqState.currentOperatorName;
+  });
+}
+
+export function getVisibleOrdersForCurrentRole() {
+  const { orgCfg, operatorBranch, isOwner } = getOrgRuntimeContext();
+  const list = hqState.allOrders || [];
+  if (!orgCfg.isMultiBranch) return list;
+
+  return filterRecordsByActiveBranch(list, {
+    activeBranch: hqState.activeBranchView,
+    operatorBranch,
+    isOwner,
+    getRecordBranch: (o) => {
+      const m = String(o?.note || o?.settlement_note || '').match(/\[分部:([^\]]+)\]/);
+      if (m) return m[1];
+      const st = (hqState.allStores || []).find((s) => Number(s.id) === Number(o.store_id));
+      return st?.custom_pricing?.branch_name || '';
+    }
   });
 }
 
@@ -197,7 +255,16 @@ export function generateUnifiedVoucherNo(prefix) {
 }
 
 export function calcStoreEffectivePrice(store, prod) {
-  const basePrice = parseFloat(prod?.tier_1_price || 0);
+  const { effectiveBranch } = getOrgRuntimeContext();
+  let basePrice = parseFloat(prod?.tier_1_price || 0);
+
+  // 如果当前分支设定了独立区域定价，优先采用分支定价
+  const branchKey = store?.custom_pricing?.branch_name || (effectiveBranch !== 'ALL' ? effectiveBranch : '');
+  if (branchKey && prod?.custom_specs?.branch_prices?.[branchKey] !== undefined) {
+    const bp = parseFloat(prod.custom_specs.branch_prices[branchKey]);
+    if (!isNaN(bp) && bp > 0) basePrice = bp;
+  }
+
   if (!store) return { price: basePrice, badge: '批发基准', note: '' };
 
   const pricing = store.custom_pricing && typeof store.custom_pricing === 'object' ? store.custom_pricing : {};
