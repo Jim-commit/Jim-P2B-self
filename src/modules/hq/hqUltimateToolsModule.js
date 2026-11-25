@@ -46,10 +46,14 @@ export function initHqUltimateToolsBindings() {
     const isDormant = !!hqState.currentTenantData?.is_dormant;
     const trusteeName = hqState.currentTenantData?.emergency_trustee_name || '';
     const trusteePhone = hqState.currentTenantData?.emergency_trustee_phone || '';
-    const trusteeHours =
+    const savedDays =
+      hqState.currentTenantData?.custom_settings?.emergency_trustee_days ??
+      hqState.globalPolicy?.emergency_trustee_days;
+    const savedHours =
       hqState.currentTenantData?.custom_settings?.emergency_trustee_hours ??
-      hqState.globalPolicy?.emergency_trustee_hours ??
-      72;
+      hqState.globalPolicy?.emergency_trustee_hours;
+    const trusteeDays = savedDays ?? (savedHours ? Math.max(1, Math.round(Number(savedHours) / 24)) : 3);
+
     const dormantBtnLabel = isDormant
       ? '🌱 唤醒恢复营业'
       : isAgriEntity()
@@ -108,19 +112,19 @@ export function initHqUltimateToolsBindings() {
           </div>
         </div>
 
-        <!-- 3. 商号临时托付人（时间可自定义） & 季节休眠保号 & 5分钟消防演习 -->
+        <!-- 3. 商号临时托付人（天数可自定义） & 季节休眠保号 & 5分钟消防演习 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
             <div class="flex items-center justify-between gap-1">
               <b class="text-stone-900">🔑 商号临时托付人</b>
               <label class="flex items-center gap-1 text-[10px] text-stone-600 font-mono bg-white border border-stone-200 px-2 py-0.5 rounded-lg">
                 <span>公示</span>
-                <input type="number" id="trustee-hours-input" min="1" max="720" value="${trusteeHours}" class="w-11 text-center font-bold text-stone-900 outline-none">
-                <span>小时</span>
+                <input type="number" id="trustee-days-input" min="1" max="30" value="${trusteeDays}" class="w-10 text-center font-bold text-stone-900 outline-none">
+                <span>天</span>
               </label>
             </div>
             <div class="flex gap-1.5">
-              <input type="text" id="trustee-name-input" value="${trusteeName}" placeholder="托付人姓名(如合伙人/财务负责人)" class="w-1/2 bg-white border border-stone-200 rounded-xl px-2 py-1.5 text-[11px]">
+              <input type="text" id="trustee-name-input" value="${trusteeName}" placeholder="托付人姓名 (如合伙人/财务)" class="w-1/2 bg-white border border-stone-200 rounded-xl px-2 py-1.5 text-[11px]">
               <input type="text" id="trustee-phone-input" value="${trusteePhone}" placeholder="托付人手机号" class="w-1/2 bg-white border border-stone-200 rounded-xl px-2 py-1.5 text-[11px] font-mono">
             </div>
             <button type="button" onclick="window.saveEmergencyTrustee()" class="w-full py-1.5 rounded-xl bg-stone-900 text-amber-300 font-bold text-[11px]">
@@ -182,7 +186,7 @@ export function initHqUltimateToolsBindings() {
     if (hqState.currentRoleCode !== 'owner') return alert('仅大当家主账号可设定商号临时托付人！');
     const name = document.getElementById('trustee-name-input')?.value.trim();
     const phone = document.getElementById('trustee-phone-input')?.value.trim();
-    const hours = Math.max(1, parseInt(document.getElementById('trustee-hours-input')?.value || '72', 10) || 72);
+    const days = Math.max(1, parseInt(document.getElementById('trustee-days-input')?.value || '3', 10) || 3);
 
     if (!name || !/^1\d{10}$/.test(phone || '')) {
       return alert('请填写正确的托付人姓名与 11 位手机号！');
@@ -190,7 +194,8 @@ export function initHqUltimateToolsBindings() {
 
     const nextSettings = {
       ...(hqState.currentTenantData?.custom_settings || hqState.globalPolicy || {}),
-      emergency_trustee_hours: hours
+      emergency_trustee_days: days,
+      emergency_trustee_hours: days * 24
     };
 
     const { error } = await supabase
@@ -209,9 +214,10 @@ export function initHqUltimateToolsBindings() {
       hqState.currentTenantData.custom_settings = nextSettings;
     }
     if (hqState.globalPolicy) {
-      hqState.globalPolicy.emergency_trustee_hours = hours;
+      hqState.globalPolicy.emergency_trustee_days = days;
+      hqState.globalPolicy.emergency_trustee_hours = days * 24;
     }
-    alert(`✅ 已登记商号临时托付人【${name} (${phone})】！\n如遇突发意外，托付人可凭双手机核验发起 ${hours} 小时冷静公示传承接管。`);
+    alert(`✅ 已登记商号临时托付人【${name} (${phone})】！\n如遇突发意外，托付人可凭双手机核验发起 ${days} 天冷静公示临时接管。`);
   };
 
   window.toggleTenantDormantMode = async function (nextDormant) {
