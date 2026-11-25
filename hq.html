@@ -586,10 +586,10 @@
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
             <h2 class="text-sm font-bold text-stone-900">🤝 外部推客分润 & 合作驿站进货阶梯返利台账</h2>
-            <p class="text-[11px] text-stone-400">实干得利 · 邻里驿站服务润利全归小店，AI 自动核算返利明细</p>
+            <p class="text-[11px] text-stone-400">实干得利 · 推客引流分润与自提点代收服务费分开核算，AI 自动汇总明细</p>
           </div>
           <button onclick="window.openGlobalPolicyModal('promo')" class="owner-only-guard text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-3 py-1.5 rounded-xl transition">
-            ⚙️ 调整返利与推客分润比例
+            ⚙️ 调整返利与推客/自提分润比例
           </button>
         </div>
 
@@ -877,31 +877,33 @@
           <div id="gp-online-tiers-container" class="space-y-1.5 max-h-24 overflow-y-auto no-scrollbar"></div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+          <!-- 1. 实体店多档进货返利 -->
           <div class="bg-emerald-50/70 p-3 rounded-2xl border border-emerald-200 space-y-2">
             <div class="flex justify-between items-center">
-              <b class="text-emerald-950">🎁 实体店多档进货返利</b>
-              <div class="flex items-center gap-1.5">
+              <b class="text-emerald-950">🎁 实体店进货返利</b>
+              <div class="flex items-center gap-1">
                 <label class="flex items-center gap-1 text-[10px] font-bold text-emerald-900 cursor-pointer">
                   <input type="checkbox" id="gp-rebate-enabled" checked class="rounded text-emerald-800"> 启用
                 </label>
-                <button type="button" onclick="window.addRebateTierRow()" class="bg-emerald-800 text-white px-2 py-0.5 rounded-lg text-[10px] font-bold">+ 增档</button>
+                <button type="button" onclick="window.addRebateTierRow()" class="bg-emerald-800 text-white px-1.5 py-0.5 rounded-lg text-[10px] font-bold">+ 增档</button>
                 <button type="button" onclick="window.removeLastRow('gp-rebate-tiers-container')" class="bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded-lg text-[10px] font-bold">- 减档</button>
               </div>
             </div>
             <div id="gp-rebate-tiers-container" class="space-y-1.5 max-h-24 overflow-y-auto no-scrollbar"></div>
           </div>
 
+          <!-- 2. 外部推客与拉新分润（纯销售引流佣金） -->
           <div class="bg-amber-50/70 p-3 rounded-2xl border border-amber-200 space-y-2">
             <div class="flex justify-between items-center">
-              <b class="text-amber-950">📣 驿站自提与引流润利</b>
+              <b class="text-amber-950">📣 外部推客与拉新分润</b>
               <label class="flex items-center gap-1 text-[10px] font-bold text-amber-950 cursor-pointer">
                 <input type="checkbox" id="gp-promoter-enabled" checked class="rounded text-amber-700"> 启用
               </label>
             </div>
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-2 gap-1.5">
               <div>
-                <label class="block text-[10px] text-stone-600 mb-0.5">天街带货润利比例(%)：</label>
+                <label class="block text-[10px] text-stone-600 mb-0.5">天街带货分润(%)：</label>
                 <input type="number" step="0.5" id="gp-promoter-rate" value="8.0" class="w-full bg-white border border-amber-300 rounded-xl px-2 py-1 font-mono font-bold outline-none">
               </div>
               <div>
@@ -909,6 +911,31 @@
                 <input type="number" step="10" id="gp-referral-bonus" value="100" class="w-full bg-white border border-amber-300 rounded-xl px-2 py-1 font-mono font-bold outline-none">
               </div>
             </div>
+            <p class="text-[10px] text-amber-900/80 leading-tight">推广成交或引荐签约入驻立户时触发，与提货地点无关。</p>
+          </div>
+
+          <!-- 3. 门店/自提点代收履约费（纯末端暂存核销服务费） -->
+          <div class="bg-cyan-50/70 p-3 rounded-2xl border border-cyan-200 space-y-2">
+            <div class="flex justify-between items-center">
+              <b class="text-cyan-950">📍 自提点代收履约费</b>
+              <label class="flex items-center gap-1 text-[10px] font-bold text-cyan-950 cursor-pointer">
+                <input type="checkbox" id="gp-pickup-service-enabled" checked class="rounded text-cyan-700"> 启用
+              </label>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <div>
+                <label class="block text-[10px] text-stone-600 mb-0.5">计费方式：</label>
+                <select id="gp-pickup-service-mode" class="w-full bg-white border border-cyan-300 rounded-xl px-1.5 py-1 font-bold outline-none text-[11px]">
+                  <option value="fixed">按单固定(元/单)</option>
+                  <option value="percent">按单比例(%)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] text-stone-600 mb-0.5">服务费标准：</label>
+                <input type="number" step="0.5" id="gp-pickup-service-value" value="1.5" class="w-full bg-white border border-cyan-300 rounded-xl px-2 py-1 font-mono font-bold outline-none">
+              </div>
+            </div>
+            <p class="text-[10px] text-cyan-900/80 leading-tight">买家选门店/驿站自提时，结算给承接暂存验货的自提点。</p>
           </div>
         </div>
 
