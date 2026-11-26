@@ -23,14 +23,15 @@
     <header class="bg-gradient-to-br from-[#1b4332] via-[#2d6a4f] to-[#1b4332] text-white p-4 pt-3.5 rounded-b-[2rem] shadow-lg space-y-2.5 relative">
       <div class="flex justify-between items-center text-xs relative">
         
-        <!-- 左侧：对外拓客、跨端切换与安全备份 (☰ · 低频拓展区) -->
+        <!-- 左侧：对外拓展、跨端切换与门店工具箱 (☰) -->
         <div class="relative">
-          <button type="button" onclick="window.toggleLeftNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white" title="找供货方与拓客工具箱">
+          <button type="button" onclick="window.toggleLeftNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white" title="找供货方与经营工具箱">
             <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
               <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
             </svg>
           </button>
 
+          <!-- 左上角综合工具箱浮层（低频拓展、海报、加价锁配置与数据备份） -->
           <div id="left-nav-menu" class="hidden absolute left-0 top-11 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.14)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all max-h-[84vh] overflow-y-auto no-scrollbar">
             
             <div class="px-2.5 py-1 text-[10px] font-bold text-stone-400">找供货方 · 跨工作台切换</div>
@@ -60,7 +61,7 @@
               </a>
             </div>
 
-            <div class="px-2.5 py-1 text-[10px] font-bold text-stone-400 border-t border-stone-100 pt-1.5">微信拓客 · 邻里互助</div>
+            <div class="px-2.5 py-1 text-[10px] font-bold text-stone-400 border-t border-stone-100 pt-1.5">揽客海报 · 邻里互助</div>
 
             <button type="button" onclick="window.openMultiPosterModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-amber-50/90 hover:bg-amber-100 border border-amber-200 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98] mb-1">
               <span class="w-6 h-6 rounded-lg bg-amber-500 text-stone-950 flex items-center justify-center text-xs font-bold">🎨</span>
@@ -110,21 +111,13 @@
               </div>
             </button>
 
-            <div class="px-2.5 py-1 text-[10px] font-bold text-stone-400 border-t border-stone-100 pt-1.5 mt-1">数据主权 · 换机与公约</div>
+            <div class="px-2.5 py-1 text-[10px] font-bold text-stone-400 border-t border-stone-100 pt-1.5 mt-1">定价规则 · 制度与备份</div>
 
-            <button type="button" onclick="window.openStoreDataSyncModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-emerald-50 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
-              <span class="w-6 h-6 rounded-lg bg-[#1b4332] text-amber-300 flex items-center justify-center text-xs">📲</span>
+            <button type="button" onclick="window.openStorePricingAndLockModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-emerald-50 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
+              <span class="w-6 h-6 rounded-lg bg-[#1b4332] text-amber-300 flex items-center justify-center text-xs">⚙️</span>
               <div>
-                <div class="font-bold text-emerald-950 text-[11px]">换手机账本迁移与恢复码</div>
-                <div class="text-[9px] text-stone-400">一键导出恢复码 · 熟客调价全带走</div>
-              </div>
-            </button>
-
-            <button type="button" onclick="window.exportStoreLocalBackup(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-stone-100 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
-              <span class="w-6 h-6 rounded-lg bg-stone-200 text-stone-800 flex items-center justify-center text-xs">💾</span>
-              <div>
-                <div class="font-bold text-stone-800 text-[11px]">下载本店离线独立账本</div>
-                <div class="text-[9px] text-stone-400">存微信文件助手 · 断网随时查</div>
+                <div class="font-bold text-emerald-950 text-[11px]">零售加价率与4位安全锁</div>
+                <div class="text-[9px] text-stone-400">默认加价倍率 · 更换掌柜安全码</div>
               </div>
             </button>
 
@@ -135,10 +128,18 @@
                 <div class="text-[9px] text-stone-400">诚信账期 · 爱护载具</div>
               </div>
             </button>
+
+            <button type="button" onclick="window.exportStoreLocalBackup(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-stone-100 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98]">
+              <span class="w-6 h-6 rounded-lg bg-stone-200 text-stone-800 flex items-center justify-center text-xs">💾</span>
+              <div>
+                <div class="font-bold text-stone-800 text-[11px]">导出本店独立账本备份</div>
+                <div class="text-[9px] text-stone-400">数据主权归己 · 随时带走</div>
+              </div>
+            </button>
           </div>
         </div>
 
-        <!-- 居中：精简大气门店招牌（多门店切换 + 掌柜称呼 + 实时经营毛利状态胶囊） -->
+        <!-- 居中：精简大气门店招牌（多门店切换 + 掌柜称呼 + 实时经营状态提示） -->
         <div class="flex flex-col items-center">
           <div class="flex items-center gap-1.5 relative">
             <button type="button" onclick="window.toggleMultiBranchDropdown(event)" class="flex items-center gap-1 text-left group" title="名下有多家门店或收货点可点此切换">
@@ -147,6 +148,7 @@
             </button>
             <span class="bg-emerald-500/25 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-bold">🏅 诚信驿站</span>
 
+            <!-- 多门店 / 多收货点快捷切换浮层 -->
             <div id="multi-branch-dropdown" class="hidden absolute left-1/2 -translate-x-1/2 top-9 w-60 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.16)] p-2 z-50 text-stone-800 border border-stone-200/80 text-xs">
               <div class="px-2 py-1 text-[10px] font-bold text-stone-400 flex justify-between items-center border-b border-stone-100 pb-1 mb-1">
                 <span>名下门店 / 收货点切换</span>
@@ -167,13 +169,13 @@
           </div>
         </div>
 
-        <!-- 右侧：存桌面 + 中频日常经营与账目中心 (···) -->
+        <!-- 右侧：存桌面 + 高频账目与经营中心 (···) -->
         <div class="relative flex items-center gap-1">
           <button type="button" onclick="window.triggerPwaInstall()" class="px-2 py-1 rounded-full bg-white/15 hover:bg-white/25 text-amber-300 text-[10px] font-bold transition active:scale-95" title="存到手机桌面">
             📲 存桌面
           </button>
 
-          <button type="button" onclick="window.toggleRightNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white relative" title="日常经营与商品总库">
+          <button type="button" onclick="window.toggleRightNavMenu(event)" class="w-8 h-8 rounded-full hover:bg-white/10 active:bg-white/20 flex items-center justify-center transition active:scale-90 text-white relative" title="经营账本与单据中心">
             <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
               <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
             </svg>
@@ -181,14 +183,14 @@
             <span id="dot-vendor-feedback" class="hidden absolute top-0.5 right-0.5 w-2 h-2 bg-amber-400 border-2 border-[#1b4332] rounded-full"></span>
           </button>
 
-          <!-- 右上角日常经营与管理中心（按使用频度从高到低排列，合并商品总库与调价安全锁） -->
-          <div id="right-nav-menu" class="hidden absolute right-0 top-11 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.14)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all">
+          <!-- 右上角经营与账目中心（按使用频度从高到低排列，零重复） -->
+          <div id="right-nav-menu" class="hidden absolute right-0 top-11 w-60 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.14)] p-2 z-40 text-stone-800 border border-stone-200/80 text-xs transition-all">
             <div class="px-2.5 py-1 text-[10px] font-semibold text-stone-400 flex justify-between items-center border-b border-stone-100 pb-1.5 mb-1">
-              <span>经营账本 · 商品总库与单据</span>
-              <span id="menu-current-agent-tag" class="text-emerald-800 font-mono font-bold truncate max-w-[90px]"></span>
+              <span>经营账本与单据中心</span>
+              <span id="menu-current-agent-tag" class="text-emerald-800 font-mono font-bold truncate max-w-[95px]"></span>
             </div>
 
-            <button type="button" onclick="window.openStoreBusinessReportModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-amber-50/85 hover:bg-amber-100/85 border border-amber-200/80 rounded-xl flex items-center gap-2.5 transition mb-1">
+            <button type="button" onclick="window.openStoreBusinessReportModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200/80 rounded-xl flex items-center gap-2.5 transition mb-1">
               <span class="w-6 h-6 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center text-xs font-bold">📊</span>
               <div>
                 <div class="font-bold text-amber-950 text-[11px]">今日经营看板与毛利估算</div>
@@ -196,15 +198,7 @@
               </div>
             </button>
 
-            <button type="button" onclick="window.openStoreProductCatalogModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-emerald-50/85 hover:bg-emerald-100/85 border border-emerald-200/80 rounded-xl flex items-center gap-2.5 transition mb-1">
-              <span class="w-6 h-6 rounded-lg bg-[#1b4332] text-amber-300 flex items-center justify-center text-xs font-bold">🏷️</span>
-              <div>
-                <div class="font-bold text-emerald-950 text-[11px]">本店商品总库 · 通调/单调价与锁</div>
-                <div class="text-[9px] text-emerald-800">跨供货商检索 · 分类通调 · 单品改价</div>
-              </div>
-            </button>
-
-            <button type="button" onclick="window.openStoreCreditBookModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-rose-50/75 hover:bg-rose-100/75 border border-rose-200/75 rounded-xl flex items-center justify-between transition mb-1">
+            <button type="button" onclick="window.openStoreCreditBookModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-rose-50/70 hover:bg-rose-100/70 border border-rose-200/70 rounded-xl flex items-center justify-between transition mb-1">
               <div class="flex items-center gap-2.5">
                 <span class="w-6 h-6 rounded-lg bg-rose-600 text-white flex items-center justify-center text-xs font-bold">📒</span>
                 <div>
@@ -234,6 +228,14 @@
               <span id="menu-proposal-count" class="hidden text-[9px] bg-amber-500 text-white font-bold px-1.5 py-0.2 rounded-full">有修润建议</span>
             </button>
 
+            <button type="button" onclick="window.openStoreRetailPriceTunerModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-indigo-50/70 rounded-xl flex items-center gap-2.5 transition">
+              <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center text-xs">🏷️</span>
+              <div>
+                <div class="font-bold text-stone-800 text-[11px]">商品检索与单品零售价微调</div>
+                <div class="text-[9px] text-stone-400">查进货底价 · 改单品零售价记忆</div>
+              </div>
+            </button>
+
             <button type="button" onclick="window.callDriver(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left hover:bg-emerald-50 rounded-xl flex items-center gap-2.5 transition">
               <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-900 flex items-center justify-center text-xs">📞</span>
               <div>
@@ -245,10 +247,10 @@
         </div>
       </div>
 
-      <!-- 供货方胶囊导航（自动精简公司后缀不截断 + 几十家供货方秒搜筛选） -->
+      <!-- 供货方胶囊导航（几十家供货方自动防截断 + 点“全部名册”秒搜筛选） -->
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
         <span class="text-[10px] text-emerald-200 font-bold whitespace-nowrap shrink-0">供货方:</span>
-        <div id="agents-nav-chips" class="flex gap-1.5 overflow-x-auto no-scrollbar items-center max-w-[68%]"></div>
+        <div id="agents-nav-chips" class="flex gap-1.5 overflow-x-auto no-scrollbar items-center max-w-[66%]"></div>
         <button type="button" onclick="window.openAllAgentsModal()" id="btn-all-agents" class="hidden px-2.5 py-0.5 rounded-full text-[10px] bg-amber-400 text-stone-900 font-bold whitespace-nowrap shrink-0 active:scale-95 shadow-sm">
           🗂️ 全部名册 (<span id="total-agents-count">0</span>)
         </button>
@@ -277,7 +279,7 @@
       </div>
     </header>
 
-    <!-- 分类、特殊标签与门店高频双主按钮（高频区：收银亮码 + 照上次再订 + 缺货待办提醒） -->
+    <!-- 分类、特殊标签与门店高频双功能条（柜台收银亮码 + 照上次再来一单） -->
     <div class="sticky top-0 z-10 bg-white border-b border-stone-100 p-2.5 space-y-1.5 shadow-sm">
       <div id="category-bar" class="flex gap-2 overflow-x-auto no-scrollbar text-xs"></div>
       <div id="quick-tag-pills" class="flex gap-1.5 overflow-x-auto no-scrollbar text-[11px] pt-0.5">
@@ -288,20 +290,14 @@
         <button type="button" onclick="window.filterBySpecialTag('🔄 余缺平价调剂')" class="tag-filter-chip bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-lg whitespace-nowrap">🔄 余缺调剂</button>
       </div>
 
-      <!-- 门店高频核心双按钮 -->
+      <!-- 门店高频双捷径：向下柜台收银亮码 + 向上照上次补货 -->
       <div class="pt-1 flex items-center justify-between gap-2">
-        <button type="button" onclick="window.openStoreCounterPosModal()" class="flex-1 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold py-2 px-3 rounded-xl text-[11px] shadow-2xs active:scale-95 transition flex items-center justify-center gap-1">
+        <button type="button" onclick="window.openStoreCounterPosModal()" class="flex-1 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold py-1.5 px-3 rounded-xl text-[11px] shadow-2xs active:scale-95 transition flex items-center justify-center gap-1">
           <span>💰 柜台收银 / 亮收款码</span>
         </button>
-        <button type="button" onclick="window.repeatLastOrder()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold py-2 px-3 rounded-xl text-[11px] shadow-2xs active:scale-95 transition flex items-center justify-center gap-1">
+        <button type="button" onclick="window.repeatLastOrder()" class="flex-1 bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold py-1.5 px-3 rounded-xl text-[11px] shadow-2xs active:scale-95 transition flex items-center justify-center gap-1">
           <span>⚡ 照上次再来一单</span>
         </button>
-      </div>
-
-      <!-- 缺货/效期备忘动态提示条（有待补货记录时自动浮现） -->
-      <div id="store-shortage-memo-strip" class="hidden bg-rose-50 border border-rose-200 rounded-xl px-2.5 py-1.5 flex items-center justify-between gap-2 text-[11px]">
-        <span id="store-shortage-memo-text" class="text-rose-950 font-bold truncate">📌 缺货备忘：暂无</span>
-        <button type="button" onclick="window.openStoreProductCatalogModal('shortage')" class="text-rose-700 font-bold underline shrink-0">查看/清零</button>
       </div>
     </div>
 
@@ -310,7 +306,7 @@
       <div class="p-12 text-center text-stone-400 text-xs">调取良品清单中，稍候即现...</div>
     </main>
 
-    <!-- 底部常驻进货单条 -->
+    <!-- 底部常驻进货单条（含快捷清空重选按钮） -->
     <footer class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 space-y-2 z-30 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-[10px]">
         <span class="text-stone-400 whitespace-nowrap font-medium">💬 捎句话:</span>
@@ -763,7 +759,7 @@
     </div>
   </div>
 
-  <!-- 单品画报定制弹窗 -->
+  <!-- 原有单品画报定制弹窗（兼容货架单品图标点击） -->
   <div id="marketing-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -873,7 +869,7 @@
       <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
         <div>
           <b class="text-base text-stone-900 block">💰 柜台收银 · 扫码直出价 / 亮码</b>
-          <span class="text-[11px] text-emerald-800 font-bold">🛡️ 资金直达掌柜账户 · 自动按本店总库零售价核算</span>
+          <span class="text-[11px] text-emerald-800 font-bold">🛡️ 资金直达掌柜账户 · 自动按加价率或单品微调价出单</span>
         </div>
         <button type="button" onclick="window.closeStoreCounterPosModal()" class="w-7 h-7 rounded-full bg-stone-100 text-stone-500 font-bold">✕</button>
       </div>
@@ -888,6 +884,7 @@
       <!-- 面板1：并行双模式收银台 -->
       <div id="pos-panel-collect" class="space-y-2.5">
         
+        <!-- 并行模式切换：连续扫条码直接出零售价 VS 随手输入金额 -->
         <div class="grid grid-cols-2 gap-1.5 bg-amber-50/80 border border-amber-200 p-1 rounded-2xl text-[11px] font-bold">
           <button type="button" id="pos-mode-scan-btn" onclick="window.setStorePosEntryMode('scan')" class="py-1.5 px-2 rounded-xl bg-amber-400 text-stone-950 shadow-2xs flex items-center justify-center gap-1">
             <span>⚡ 扫码直出零售价</span>
@@ -897,6 +894,7 @@
           </button>
         </div>
 
+        <!-- 热卖商品快捷记忆胶囊（最近卖得勤快的商品一点就加） -->
         <div id="pos-hot-items-chips" class="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5"></div>
 
         <!-- 模式A：连续扫码直出价区块 -->
@@ -913,12 +911,13 @@
             </div>
           </div>
 
+          <!-- 已扫商品明细清单（支持微调单品零售价并永久记忆） -->
           <div id="pos-scanned-basket-list" class="max-h-36 overflow-y-auto space-y-1.5 bg-stone-50 border border-stone-200 rounded-2xl p-2">
             <div class="text-center text-stone-400 py-3 text-[11px]">开启相机扫商品条码，或点上方热卖商品胶囊自动计价</div>
           </div>
         </div>
 
-        <!-- 模式B：随手输金额区块 -->
+        <!-- 模式B：随手输金额区块（计算器大按键） -->
         <div id="pos-manual-mode-area" class="hidden space-y-2">
           <input type="text" id="pos-item-desc" placeholder="商品或服务说明（可选，默认：柜台零售）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none focus:border-emerald-700">
           <div class="bg-stone-100 p-2 rounded-2xl grid grid-cols-4 gap-1.5 font-mono text-sm font-bold">
@@ -960,6 +959,7 @@
           <button type="button" onclick="window.selectStorePosMethod(this, '熟客记账')" class="pos-method-btn border border-stone-200 bg-stone-50 text-stone-700 rounded-xl py-2 text-center">📝 熟客先记账</button>
         </div>
 
+        <!-- 熟客先记账输入框（选“熟客先记账”时展开，带历史熟客自动记忆） -->
         <div id="pos-credit-customer-box" class="hidden bg-rose-50/70 border border-rose-200 rounded-xl p-2.5 space-y-1.5">
           <label class="block font-bold text-rose-950 text-[11px]">记入哪位熟客名下（自动记忆老街坊）：</label>
           <input type="text" id="pos-credit-customer-name" list="pos-saved-customers-list" placeholder="如：王大婶 / 东头李师傅 138xxxx" class="w-full bg-white border border-rose-200 rounded-xl px-2.5 py-1.5 font-bold outline-none">
