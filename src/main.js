@@ -27,6 +27,8 @@ import {
   mountStoreSmartCareToolbar,
   initStoreSmartCareBindings
 } from './modules/store/storeSmartCareModule.js';
+import { getTenantLexicon } from './modules/soulEngine/silentMemoryAndLexicon.js';
+import { initStoreTerminalBridge } from './modules/soulEngine/multiTerminalBridge.js';
 
 // ==========================================
 // 1. 弹窗与顶部导航菜单控制（全版本兼容）
@@ -283,6 +285,11 @@ function renderProducts() {
     document.getElementById('goods-list') ||
     document.getElementById('items-container');
   if (!container) return;
+
+  if (!Array.isArray(storeState.allProducts) || storeState.allProducts.length === 0) {
+    container.innerHTML = '<div class="py-12 text-center text-stone-400 text-xs">当前供货方暂未上架公开良品，可切换顶部其他供货方或致电沟通。</div>';
+    return;
+  }
 
   let filtered = storeState.allProducts;
   if (storeState.currentCategory !== '全部') {
@@ -748,7 +755,7 @@ async function loadTerminalData() {
   const curAgObj = storeState.myAgents.find((a) => a.id === storeState.currentAgent);
   const agentDisplayName = curAgObj ? curAgObj.name : storeState.currentAgent;
   safeSetText('current-agent-name', agentDisplayName);
-  safeSetText('menu-current-agent-tag', agentDisplayName);
+  safeSetText('menu-current-agent-tag', storeState.currentAgent);
 
   const [tenantRes, storeData, productsData] = await Promise.all([
     supabase
@@ -764,6 +771,13 @@ async function loadTerminalData() {
   storeState.currentTenantSettings = tenant.custom_settings && typeof tenant.custom_settings === 'object' ? tenant.custom_settings : {};
   storeState.currentTenantSponsorOrg = (tenant.sponsor_org || '').trim();
   storeState.allowStoreSelfReturn = storeState.currentTenantSettings.allowStoreReturn !== false;
+
+  // 同步当前商号的五维动态词典
+  const lex = getTenantLexicon(storeState.currentTenantSettings);
+  document.querySelectorAll('[data-lex]').forEach((el) => {
+    const key = el.getAttribute('data-lex');
+    if (key && lex[key]) el.textContent = lex[key];
+  });
 
   const pauseBar = document.getElementById('store-seasonal-pause-banner');
   const sp = storeState.currentTenantSettings.seasonalPause;
@@ -834,6 +848,7 @@ async function loadTerminalData() {
   renderProducts();
   updateCartSummary();
   mountStoreSmartCareToolbar();
+  await initStoreTerminalBridge();
   await checkVendorProposalBadge();
 }
 
@@ -845,6 +860,7 @@ window.switchAgent = async function (agentId) {
   storeState.currentCategory = '全部';
   storeState.currentTagFilter = '全部';
   localStorage.setItem('active_agent', agentId);
+  localStorage.setItem('active_agent_id', agentId);
   await loadTerminalData();
 };
 
@@ -856,6 +872,7 @@ window.removeAgentFromList = async function (agentId, e) {
   if (storeState.currentAgent === agentId) {
     storeState.currentAgent = storeState.myAgents[0]?.id || '';
     localStorage.setItem('active_agent', storeState.currentAgent);
+    localStorage.setItem('active_agent_id', storeState.currentAgent);
   }
   renderAllAgentsModalList();
   await loadTerminalData();
@@ -1118,6 +1135,10 @@ async function initTerminal() {
     await loadTerminalData();
   } catch (err) {
     console.error('门店端数据加载异常:', err);
+    const container = document.getElementById('product-container');
+    if (container && container.innerText.includes('调取良品清单中')) {
+      container.innerHTML = '<div class="py-12 text-center text-stone-400 text-xs">良品清单加载遇到波动，请检查网络或点右上角刷新重试。</div>';
+    }
   }
 }
 
