@@ -1,4 +1,3 @@
-
 import { supabase } from '../../lib/supabase.js';
 import { downloadCSV } from '../../utils/storage.js';
 import { HQService } from '../../services/hqService.js';
