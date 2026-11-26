@@ -331,20 +331,64 @@ render();
   URL.revokeObjectURL(url);
 }
 
+let partnerLiveTickerStarted = false;
+let lastKnownCollectionLogId = 0;
+
 /**
- * 4. 挂载首页“掌柜一句话/语音万能记账栏” + “静默流失温柔提醒” + “淡季休眠条”
+ * 夫妻店 / 合伙人异地同账实时动态播报监听
+ */
+function startPartnerLiveActivityTicker() {
+  if (partnerLiveTickerStarted) return;
+  partnerLiveTickerStarted = true;
+
+  setInterval(async () => {
+    if (!hqState.currentAgent || document.hidden) return;
+    const { data } = await supabase
+      .from('driver_collection_log')
+      .select('id, store_name, driver_name, amount, pay_method')
+      .eq('tenant_id', hqState.currentAgent)
+      .order('id', { ascending: false })
+      .limit(1);
+
+    const latest = data?.[0];
+    if (!latest) return;
+    if (lastKnownCollectionLogId === 0) {
+      lastKnownCollectionLogId = latest.id;
+      return;
+    }
+    if (latest.id > lastKnownCollectionLogId) {
+      lastKnownCollectionLogId = latest.id;
+      const ticker = document.getElementById('partner-live-activity-ticker');
+      if (ticker) {
+        ticker.innerHTML = `🔔 <b>刚收到协同动态：</b>${latest.driver_name || '执事'} 在【${latest.store_name}】登记 ¥${parseFloat(latest.amount || 0).toFixed(2)}（${latest.pay_method || '已记'}）`;
+        ticker.classList.remove('hidden');
+        speakAccountingFeedback(`刚收到协同动态，${latest.store_name}，${latest.amount}元`);
+      }
+    }
+  }, 12000);
+}
+
+/**
+ * 4. 挂载首页“掌柜一句话/语音万能记账栏” + “静默流失温柔提醒” + “淡季休眠条” + “夫妻店实时播报”
  */
 export function mountSixteenRealmsQuickBar() {
   const prefs = getAccessibilityPrefs();
   applyGlobalLargeTextStyle(prefs.largeText);
 
+  const rawSettings = hqState.currentTenantData?.custom_settings || {};
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlKey = urlParams.get('k') || '';
+  const serverToken = rawSettings.collab_passcode_token || '';
+  if (urlParams.get('readonly') === '1' && serverToken && urlKey !== serverToken) {
+    alert('🔐 当前查账链接已随掌柜换锁失效，请联系商号掌柜获取最新只读链接！');
+    return;
+  }
+
   const host = document.getElementById('ai-advisor-cards');
   if (!host) return;
   document.getElementById('sixteen-realms-quick-bar')?.remove();
 
-  const rawSettings = hqState.currentTenantData?.custom_settings || {};
   const isSeasonalDormant = !!rawSettings.seasonalPause?.isPaused;
-
   const visibleStores = getVisibleStoresForCurrentRole();
   const visibleOrders = getVisibleOrdersForCurrentRole();
   const churnList = isSeasonalDormant ? [] : detectSilentChurnPartners(visibleStores, visibleOrders);
@@ -369,6 +413,7 @@ export function mountSixteenRealmsQuickBar() {
   bar.id = 'sixteen-realms-quick-bar';
   bar.className = 'col-span-full bg-white border border-emerald-200 p-3 rounded-2xl space-y-2 text-xs shadow-2xs';
   bar.innerHTML = `
+    <div id="partner-live-activity-ticker" class="hidden bg-emerald-900 text-amber-300 rounded-xl px-3 py-1.5 text-[11px] font-bold"></div>
     ${dormantHtml}
     <div class="flex flex-wrap items-center justify-between gap-1.5">
       <div class="flex items-center gap-1.5">
@@ -402,6 +447,7 @@ export function mountSixteenRealmsQuickBar() {
     ${churnHtml}
   `;
   host.insertAdjacentElement('afterbegin', bar);
+  startPartnerLiveActivityTicker();
 }
 
 /**
@@ -424,9 +470,6 @@ export function initSixteenRealmsBindings() {
     rec.start();
   };
 
-  /**
-   * 粘贴微信要货消息一键转单弹窗
-   */
   window.openWeChatPasteOrderModal = async function () {
     document.getElementById('modal-wechat-paste-order')?.remove();
     let clipText = '';
@@ -700,7 +743,7 @@ export function initSixteenRealmsBindings() {
   };
 
   /**
-   * 记一笔散客账弹窗（集成：计算器大按键、毛重去皮、铺货试卖、搭赠样品、顺带记空筐、上次价带出、一键抹零、自动建档）
+   * 记一笔散客账弹窗
    */
   window.openZeroBarrierWalkInOrderModal = function () {
     document.getElementById('modal-zero-barrier-order')?.remove();
@@ -759,7 +802,6 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 生鲜农产过磅毛重减皮重小算盘 -->
           <div id="zb-tare-box" class="hidden bg-stone-100 p-2 rounded-xl flex items-center gap-1.5 text-[11px]">
             <span class="font-bold text-stone-700 shrink-0">过磅去皮：</span>
             <input type="number" step="0.01" id="zb-gross-wt" oninput="window.calcZeroBarrierTareWeight()" placeholder="毛重" class="w-20 bg-white border border-stone-300 rounded-lg px-2 py-1 font-mono">
@@ -790,7 +832,6 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 算盘级大按键计算器键盘 -->
           <div id="zb-abacus-keypad" class="hidden bg-stone-100 p-2 rounded-2xl grid grid-cols-4 gap-1.5 font-mono text-sm font-bold">
             ${['7', '8', '9', '清空', '4', '5', '6', '退格', '1', '2', '3', '切单价', '0', '00', '.', '切数量']
               .map(
@@ -804,7 +845,6 @@ export function initSixteenRealmsBindings() {
               .join('')}
           </div>
 
-          <!-- 合计、搭赠样品与一键抹零 -->
           <div class="bg-amber-50/70 border border-amber-200 rounded-2xl px-3 py-2 flex items-center justify-between gap-2">
             <div>
               <span class="text-[10px] text-stone-500 block">本笔实收合计 (元)</span>
@@ -820,7 +860,6 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 随手顺带记周转筐/押金桶 -->
           <div class="bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 flex items-center justify-between text-[11px]">
             <span class="font-bold text-stone-700">🧺 顺带周转筐/桶：</span>
             <div class="flex items-center gap-3">
@@ -835,7 +874,6 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 选项：纯记往来账 & 自动建档 -->
           <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-600 pt-0.5">
             <label class="inline-flex items-center gap-1.5 cursor-pointer font-bold">
               <input type="checkbox" id="zb-pure-ledger-only" class="rounded text-emerald-800">
@@ -1001,7 +1039,6 @@ export function initSixteenRealmsBindings() {
       if (newProdRows?.[0]) matchedProd = newProdRows[0];
     }
 
-    // 同步更新客户欠筐/周转桶净变动
     if (matchedStore && (basketOut > 0 || basketBack > 0)) {
       const prevBaskets = parseInt(matchedStore.pending_baskets || 0, 10);
       const nextBaskets = Math.max(0, prevBaskets + basketOut - basketBack);
@@ -1071,7 +1108,7 @@ export function initSixteenRealmsBindings() {
   };
 
   /**
-   * 实用工具箱总弹窗（全套五阶段功能集成）
+   * 实用工具箱总弹窗
    */
   window.openSixteenRealmsHubModal = function () {
     document.getElementById('modal-sixteen-realms-hub')?.remove();
@@ -1133,7 +1170,6 @@ export function initSixteenRealmsBindings() {
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <!-- 1. 填错单据作废退库 -->
           <div class="p-3 bg-rose-50/60 border border-rose-200 rounded-2xl space-y-2">
             <b class="text-rose-950 block">↩️ 填错单据“作废退库”后悔药</b>
             <p class="text-[10px] text-stone-600">输入填错的单据号，系统自动作废该单并退回对应库存，留痕更正不怕点错。</p>
@@ -1143,7 +1179,6 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 2. 两家账互相抵掉 -->
           <div class="p-3 bg-indigo-50/60 border border-indigo-200 rounded-2xl space-y-2">
             <b class="text-indigo-950 block">🔄 两家账互相抵掉（三角债/以物抵账平账）</b>
             <div class="grid grid-cols-2 gap-1.5">
@@ -1156,7 +1191,6 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 3. 微信体面对账单 & 今日收摊日结小票 -->
           <div class="p-3 bg-sky-50/70 border border-sky-200 rounded-2xl space-y-2">
             <b class="text-sky-950 block">💬 微信发对账单 & 今日收摊小结</b>
             <div class="flex gap-1.5">
@@ -1168,7 +1202,6 @@ export function initSixteenRealmsBindings() {
             </button>
           </div>
 
-          <!-- 4. 凑够才生产预售拼单 -->
           <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2">
             <b class="text-emerald-950 block">🌾 凑单开产（先凑需求、满额再生产）</b>
             <div class="grid grid-cols-2 gap-1.5">
@@ -1180,7 +1213,6 @@ export function initSixteenRealmsBindings() {
             </button>
           </div>
 
-          <!-- 5. 一户一码 / 58mm热敏与A4贴纸 -->
           <div class="p-3 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-2">
             <b class="text-amber-950 block">🏷️ 一户一码补货贴（58mm热敏 / A4 6联）</b>
             <p class="text-[10px] text-stone-600">普通家用打印机或蓝牙热敏小票机直接出纸，贴货架扫码补货。</p>
@@ -1190,7 +1222,6 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 6. 一键岗位客户交接包 & 换锁协同口令 -->
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
             <div class="flex justify-between items-center">
               <b class="text-stone-900">🤝 员工离职交接 & 换锁安全口令</b>
@@ -1206,7 +1237,6 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 7. 离线独立HTML账本、年度封账、家人只读链接 & 公益落款 -->
           <div class="sm:col-span-2 p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div>
