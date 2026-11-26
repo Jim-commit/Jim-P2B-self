@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（门店智能定价毛利看板 · 熟客赊账本 · 多品接龙海报 · 双模式扫码收银）
+ * 百工百业 · 五端统一协同与跨端桥接引擎（本店商品总库通调/单调价 · 经营毛利看板 · 熟客赊账本 · 多品接龙海报 · 双模式扫码收银）
  * 覆盖：index.html (门店工作台) / driver.html (送货与上门) / mall.html / suppliers.html (逛大集)
  */
 import { supabase } from '../../lib/supabase.js';
@@ -159,17 +159,27 @@ function openBridgeSheetModal({ id, title, subtitle, bodyHtml, confirmText, onCo
 
 /**
  * =========================================================================
- * 门店智能定价、收银、毛利看板、熟客赊账本与多品接龙海报存储引擎
+ * 门店在库商品总库、三级定价（单品锁定 > 品类百分比 > 默认百分比）、收银、毛利与熟客赊账引擎
  * =========================================================================
  */
 const POS_PAYCODE_KEY = 'baigong_store_pos_paycode_v1';
 const POS_LEDGER_KEY = 'baigong_store_pos_ledger_v1';
 const POS_BARCODE_DB_KEY = 'baigong_store_barcode_memory_v1';
 const POS_RETAIL_OVERRIDE_KEY = 'baigong_store_retail_price_overrides_v1';
-const POS_MARKUP_RATE_KEY = 'baigong_store_default_markup_rate_v1';
+const POS_CATEGORY_MARKUP_KEY = 'baigong_store_category_markups_v1';
+const POS_DEFAULT_MARKUP_PCT_KEY = 'baigong_store_default_markup_pct_v1';
 const POS_CREDIT_BOOK_KEY = 'baigong_store_credit_customers_v1';
+const POS_SHORTAGE_MEMO_KEY = 'baigong_store_shortage_memos_v1';
 
-let cachedSupplierCatalog = [];
+let cachedUnifiedStoreProducts = []; // 汇集所有已绑定供货方的在架商品（含供货商名、分类、进货底价）
+let cachedTenantNameMap = {};
+
+function shortenSupplierCompanyName(rawName) {
+  const s = String(rawName || '').trim();
+  return s
+    .replace(/有限责任公司|股份有限公司|有限公司|供应链管理|商贸|合作社|直供中心/g, '')
+    .trim() || s;
+}
 
 function readPosPaycodeConfig() {
   try {
@@ -219,15 +229,31 @@ function writeRetailPriceOverrides(map) {
   localStorage.setItem(POS_RETAIL_OVERRIDE_KEY, JSON.stringify(map));
 }
 
-function getDefaultMarkupRate() {
-  const val = parseFloat(localStorage.getItem(POS_MARKUP_RATE_KEY) || '1.25');
-  return isNaN(val) || val < 1 ? 1.25 : val;
+function readCategoryMarkupPcts() {
+  try {
+    return JSON.parse(localStorage.getItem(POS_CATEGORY_MARKUP_KEY) || '{}');
+  } catch {
+    return {};
+  }
 }
 
-function setDefaultMarkupRate(rate) {
-  const clean = Math.max(1, Number(parseFloat(rate || '1.25').toFixed(2)));
-  localStorage.setItem(POS_MARKUP_RATE_KEY, String(clean));
+function writeCategoryMarkupPcts(map) {
+  localStorage.setItem(POS_CATEGORY_MARKUP_KEY, JSON.stringify(map));
+}
+
+function getDefaultMarkupPct() {
+  const val = parseFloat(localStorage.getItem(POS_DEFAULT_MARKUP_PCT_KEY) || '20');
+  return isNaN(val) || val < 0 ? 20 : val;
+}
+
+function setDefaultMarkupPct(pct) {
+  const clean = Math.max(0, Number(parseFloat(pct || '20').toFixed(1)));
+  localStorage.setItem(POS_DEFAULT_MARKUP_PCT_KEY, String(clean));
   return clean;
+}
+
+function getDefaultMarkupRate() {
+  return 1 + getDefaultMarkupPct() / 100;
 }
 
 function readStoreCreditBook() {
@@ -242,17 +268,43 @@ function writeStoreCreditBook(list) {
   localStorage.setItem(POS_CREDIT_BOOK_KEY, JSON.stringify(list));
 }
 
+function readShortageMemos() {
+  try {
+    return JSON.parse(localStorage.getItem(POS_SHORTAGE_MEMO_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function writeShortageMemos(list) {
+  localStorage.setItem(POS_SHORTAGE_MEMO_KEY, JSON.stringify(list));
+  refreshShortageMemoBanner();
+}
+
+function refreshShortageMemoBanner() {
+  const list = readShortageMemos();
+  const strip = document.getElementById('store-shortage-memo-strip');
+  const txtEl = document.getElementById('store-shortage-memo-text');
+  if (!strip || !txtEl) return;
+  if (list.length > 0) {
+    txtEl.innerText = `📌 缺货/效期备忘 (${list.length}项)：${list.slice(0, 3).map((x) => x.name).join('、')}`;
+    strip.classList.remove('hidden');
+  } else {
+    strip.classList.add('hidden');
+  }
+}
+
 /**
- * 智能三层零售价计算（优先级：1.掌柜单品微调记忆价 > 2.条码记忆库价格 > 3.进货价 × 默认加价率）
+ * 智能三层零售定价（1.掌柜单品微调锁定价 > 2.该品类通调加价百分比 > 3.全店默认加价百分比）
  */
-function resolveSmartRetailPrice(itemName, costPrice = 0, barcode = '') {
+function resolveSmartRetailPrice(itemName, costPrice = 0, barcode = '', category = '') {
   const cleanName = String(itemName || '').trim();
   const overrides = readRetailPriceOverrides();
   if (cleanName && overrides[cleanName] && Number(overrides[cleanName].retailPrice) > 0) {
     return {
       retailPrice: Number(overrides[cleanName].retailPrice),
       costPrice: Number(overrides[cleanName].costPrice || costPrice || 0),
-      isCustomTuned: true
+      priceSource: '单品锁定'
     };
   }
   if (barcode) {
@@ -261,17 +313,23 @@ function resolveSmartRetailPrice(itemName, costPrice = 0, barcode = '') {
       return {
         retailPrice: Number(bdb[barcode].price),
         costPrice: Number(bdb[barcode].costPrice || costPrice || 0),
-        isCustomTuned: true
+        priceSource: '条码记忆'
       };
     }
   }
   const cPrice = Number(costPrice || 0);
   if (cPrice > 0) {
-    const rate = getDefaultMarkupRate();
-    const calc = Number((cPrice * rate).toFixed(1));
-    return { retailPrice: calc, costPrice: cPrice, isCustomTuned: false };
+    const catMap = readCategoryMarkupPcts();
+    const hasCatPct = category && catMap[category] !== undefined && catMap[category] !== '';
+    const pct = hasCatPct ? Number(catMap[category]) : getDefaultMarkupPct();
+    const calc = Number((cPrice * (1 + pct / 100)).toFixed(1));
+    return {
+      retailPrice: calc,
+      costPrice: cPrice,
+      priceSource: hasCatPct ? `${category}+${pct}%` : `默认+${pct}%`
+    };
   }
-  return { retailPrice: 0, costPrice: 0, isCustomTuned: false };
+  return { retailPrice: 0, costPrice: 0, priceSource: '待定价' };
 }
 
 /**
@@ -300,24 +358,24 @@ function refreshStoreHeaderLiveStats() {
       debtBadge.classList.add('hidden');
     }
   }
+  refreshShortageMemoBanner();
 }
 
 /**
- * 绑定门店全套智能收银、经营毛利看板、熟客赊账本、单品调价与多品接龙海报交互
+ * 绑定门店全套智能收银、在库商品总库（检索/通调/单调/锁）、毛利看板、熟客赊账本与多品接龙海报
  */
 function bindNativeStoreCounterPosBindings() {
   let cameraStream = null;
   let selectedPayMethod = '微信/支付宝';
-  let currentEntryMode = 'scan'; // 'scan' | 'manual'
-  let scannedBasket = []; // [{ key, barcode, name, costPrice, retailPrice, qty, isCustomTuned }]
+  let currentEntryMode = 'scan';
+  let scannedBasket = [];
 
   window.stopStorePosCamera = function () {
     if (cameraStream) {
       cameraStream.getTracks().forEach((t) => t.stop());
       cameraStream = null;
     }
-    const vid = document.getElementById('pos-barcode-video');
-    vid?.classList.add('hidden');
+    document.getElementById('pos-barcode-video')?.classList.add('hidden');
     const toggleBtn = document.getElementById('btn-toggle-pos-cam');
     if (toggleBtn) toggleBtn.innerText = '开启相机连扫';
   };
@@ -395,7 +453,7 @@ function bindNativeStoreCounterPosBindings() {
               <span>进价 ¥${it.costPrice.toFixed(2)}</span>
               <span>·</span>
               <button type="button" onclick="window.tuneScannedItemRetailPrice(${idx})" class="text-emerald-800 font-bold underline">
-                零售 ¥${it.retailPrice.toFixed(2)} ${it.isCustomTuned ? '(已锁定)' : '(点此微调)'}
+                零售 ¥${it.retailPrice.toFixed(2)} (${it.priceSource})
               </button>
             </div>
           </div>
@@ -420,13 +478,13 @@ function bindNativeStoreCounterPosBindings() {
   window.tuneScannedItemRetailPrice = function (idx) {
     const it = scannedBasket[idx];
     if (!it) return;
-    const raw = prompt(`微调【${it.name}】零售单价（当前进价 ¥${it.costPrice.toFixed(2)}，修改后永久记住）：`, String(it.retailPrice));
+    const raw = prompt(`微调【${it.name}】零售单价（进货价 ¥${it.costPrice.toFixed(2)}，修改后永久锁定）：`, String(it.retailPrice));
     if (raw === null) return;
     const nextPrice = parseFloat(raw);
     if (isNaN(nextPrice) || nextPrice < 0) return alert('请输入有效零售价格！');
 
     it.retailPrice = Number(nextPrice.toFixed(2));
-    it.isCustomTuned = true;
+    it.priceSource = '单品锁定';
     const overrides = readRetailPriceOverrides();
     overrides[it.name] = { retailPrice: it.retailPrice, costPrice: it.costPrice };
     writeRetailPriceOverrides(overrides);
@@ -439,10 +497,10 @@ function bindNativeStoreCounterPosBindings() {
     renderScannedBasketList();
   };
 
-  function pushProductToScannedBasket({ name, costPrice = 0, barcode = '' }) {
+  function pushProductToScannedBasket({ name, costPrice = 0, barcode = '', category = '' }) {
     const cleanName = String(name || '').trim();
     if (!cleanName) return;
-    const resolved = resolveSmartRetailPrice(cleanName, costPrice, barcode);
+    const resolved = resolveSmartRetailPrice(cleanName, costPrice, barcode, category);
     const hitIdx = scannedBasket.findIndex((x) => x.name === cleanName);
     if (hitIdx >= 0) {
       scannedBasket[hitIdx].qty += 1;
@@ -453,7 +511,7 @@ function bindNativeStoreCounterPosBindings() {
         costPrice: resolved.costPrice,
         retailPrice: resolved.retailPrice,
         qty: 1,
-        isCustomTuned: resolved.isCustomTuned
+        priceSource: resolved.priceSource
       });
     }
     if (currentEntryMode !== 'scan') window.setStorePosEntryMode('scan');
@@ -474,8 +532,7 @@ function bindNativeStoreCounterPosBindings() {
       .sort((a, b) => freqMap[b] - freqMap[a])
       .slice(0, 4);
 
-    // 补充货架前几款商品作为默认快捷胶囊
-    const catalogExtras = (cachedSupplierCatalog || [])
+    const catalogExtras = (cachedUnifiedStoreProducts || [])
       .map((p) => p.name)
       .filter((n) => n && !hotNames.includes(n))
       .slice(0, Math.max(0, 5 - hotNames.length));
@@ -487,18 +544,18 @@ function bindNativeStoreCounterPosBindings() {
     }
     host.innerHTML = chips
       .map((n) => {
-        const prod = (cachedSupplierCatalog || []).find((p) => p.name === n);
+        const prod = (cachedUnifiedStoreProducts || []).find((p) => p.name === n);
         const cost = parseFloat(prod?.tier_1_price || 0);
-        const info = resolveSmartRetailPrice(n, cost);
-        return `<button type="button" onclick="window.quickPickHotItemToPos('${String(n).replace(/'/g, '')}', ${cost})" class="bg-stone-100 hover:bg-amber-100 text-stone-800 border border-stone-200 px-2.5 py-1 rounded-xl whitespace-nowrap text-[10px] font-bold shrink-0">
+        const info = resolveSmartRetailPrice(n, cost, '', prod?.category || '');
+        return `<button type="button" onclick="window.quickPickHotItemToPos('${String(n).replace(/'/g, '')}', ${cost}, '${String(prod?.category || '').replace(/'/g, '')}')" class="bg-stone-100 hover:bg-amber-100 text-stone-800 border border-stone-200 px-2.5 py-1 rounded-xl whitespace-nowrap text-[10px] font-bold shrink-0">
           + ${n}${info.retailPrice > 0 ? ` ¥${info.retailPrice}` : ''}
         </button>`;
       })
       .join('');
   }
 
-  window.quickPickHotItemToPos = function (name, costPrice) {
-    pushProductToScannedBasket({ name, costPrice });
+  window.quickPickHotItemToPos = function (name, costPrice, category = '') {
+    pushProductToScannedBasket({ name, costPrice, category });
   };
 
   window.refreshStorePosRoundBtn = function () {
@@ -568,7 +625,6 @@ function bindNativeStoreCounterPosBindings() {
     const query = String(rawCodeOrName || '').trim();
     if (!query) return;
 
-    // 1. 先查条码记忆库
     const db = readBarcodeMemoryDb();
     if (db[query]) {
       const hit = db[query];
@@ -576,25 +632,29 @@ function bindNativeStoreCounterPosBindings() {
       return;
     }
 
-    // 2. 再按商品名称模糊匹配供货商货架目录（自动按进货价 × 加价率出零售价）
-    const matchedCatalog = (cachedSupplierCatalog || []).find(
+    const matchedCatalog = (cachedUnifiedStoreProducts || []).find(
       (p) => p.name && (p.name.includes(query) || query.includes(p.name))
     );
     if (matchedCatalog) {
       pushProductToScannedBasket({
         name: matchedCatalog.name,
         costPrice: parseFloat(matchedCatalog.tier_1_price || 0),
-        barcode: /^\d{6,}$/.test(query) ? query : ''
+        barcode: /^\d{6,}$/.test(query) ? query : '',
+        category: matchedCatalog.category || ''
       });
       if (/^\d{6,}$/.test(query)) {
-        const info = resolveSmartRetailPrice(matchedCatalog.name, parseFloat(matchedCatalog.tier_1_price || 0));
+        const info = resolveSmartRetailPrice(
+          matchedCatalog.name,
+          parseFloat(matchedCatalog.tier_1_price || 0),
+          '',
+          matchedCatalog.category || ''
+        );
         db[query] = { name: matchedCatalog.name, price: info.retailPrice, costPrice: info.costPrice };
         writeBarcodeMemoryDb(db);
       }
       return;
     }
 
-    // 3. 首次遇到的全新条码或商品：建档一次，永久记忆
     window.stopStorePosCamera();
     const isBarcodeDigits = /^\d{5,}$/.test(query);
     const prodName = isBarcodeDigits
@@ -661,7 +721,6 @@ function bindNativeStoreCounterPosBindings() {
             const rawVal = codes?.[0]?.rawValue;
             if (rawVal) {
               const now = Date.now();
-              // 1.8秒冷却防连扫重复误触
               if (rawVal === lastScanCode && now - lastScanTs < 1800) return;
               lastScanCode = rawVal;
               lastScanTs = now;
@@ -932,7 +991,7 @@ function bindNativeStoreCounterPosBindings() {
   };
 
   /**
-   * 1. 今日经营看板与毛利估算弹窗（右上角菜单第1项）
+   * 1. 今日经营看板与毛利估算弹窗
    */
   window.openStoreBusinessReportModal = function () {
     const storeName = (document.getElementById('store-title')?.innerText || '厚德便民门店').trim();
@@ -946,19 +1005,17 @@ function bindNativeStoreCounterPosBindings() {
     const todayDigital = todayRows.filter((r) => r.method === '微信/支付宝').reduce((s, r) => s + Number(r.amount || 0), 0);
     const todayCredit = todayRows.filter((r) => r.method === '熟客记账').reduce((s, r) => s + Number(r.amount || 0), 0);
 
-    // 7日累计概览
     const sevenDaysAgo = Date.now() - 7 * 86400 * 1000;
     const weekRows = allRows.filter((r) => new Date(r.createdAt || 0).getTime() >= sevenDaysAgo);
     const weekSales = weekRows.reduce((s, r) => s + Number(r.amount || 0), 0);
     const weekProfit = weekRows.reduce((s, r) => s + Number(r.profit || 0), 0);
 
-    // 熟客总挂账
     const unpaidCustomers = readStoreCreditBook().reduce((s, c) => s + Math.max(0, Number(c.balance || 0)), 0);
 
     openBridgeSheetModal({
       id: 'modal-store-business-report',
       title: `📊 ${storeName} · 经营状况与盈利看板`,
-      subtitle: `默认加价倍率 ${getDefaultMarkupRate()}x · 单品微调价自动参与毛利核算`,
+      subtitle: `全店默认加价 +${getDefaultMarkupPct()}% · 支持分类通调与单品锁定`,
       confirmText: '📋 复制今日经营战报发微信',
       bodyHtml: `
         <div class="bg-gradient-to-br from-[#1b4332] to-[#143628] text-white rounded-2xl p-4 space-y-3">
@@ -998,7 +1055,230 @@ function bindNativeStoreCounterPosBindings() {
   };
 
   /**
-   * 2. 熟客赊账本（谁欠门店钱 · 历史明细 · 一键还款平账）
+   * 2. 本店在库商品总库 · 跨供货商检索 · 分类/全店通调价 · 单品微调价 · 缺货快记 · 4位安全锁（合并原图一图二）
+   */
+  window.openStoreProductCatalogModal = function (initialFilterMode = 'all') {
+    const curDefaultPct = getDefaultMarkupPct();
+    const payCfg = readPosPaycodeConfig();
+
+    const categories = Array.from(
+      new Set((cachedUnifiedStoreProducts || []).map((p) => p.category || '默认分类').filter(Boolean))
+    );
+    const suppliers = Array.from(
+      new Set((cachedUnifiedStoreProducts || []).map((p) => p.supplierShortName).filter(Boolean))
+    );
+
+    const catOptions = [
+      '<option value="__ALL__">全店所有商品</option>',
+      ...categories.map((c) => `<option value="${c}">分类：${c}</option>`)
+    ].join('');
+
+    const supFilterOptions = [
+      '<option value="">全部供货方</option>',
+      ...suppliers.map((s) => `<option value="${s}">供货：${s}</option>`)
+    ].join('');
+
+    openBridgeSheetModal({
+      id: 'modal-store-product-catalog',
+      title: '🏷️ 本店商品总库 · 通调/单调价与安全锁',
+      subtitle: '汇集各家供货方商品 · 支持通调加价率、单品改价与缺货备忘',
+      hideFooter: true,
+      bodyHtml: `
+        <!-- 紧凑通调价与安全锁控制条（直接输入百分比，不浪费栏位） -->
+        <div class="bg-stone-50 border border-stone-200 rounded-2xl p-2.5 space-y-2">
+          <div class="flex items-center gap-1.5">
+            <select id="cat-bulk-target" class="flex-1 min-w-0 bg-white border border-stone-200 rounded-xl px-2 py-1.5 font-bold text-stone-800 outline-none truncate">
+              ${catOptions}
+            </select>
+            <div class="flex items-center bg-white border border-stone-200 rounded-xl px-2 py-1 shrink-0">
+              <span class="text-[10px] text-stone-500 mr-1">加价</span>
+              <input type="number" step="1" min="0" id="cat-bulk-pct-input" value="${curDefaultPct}" class="w-12 font-mono font-bold text-emerald-950 text-center outline-none">
+              <span class="font-bold text-stone-600">%</span>
+            </div>
+            <button type="button" onclick="window.applyBulkMarkupRule()" class="bg-[#1b4332] text-amber-300 font-bold px-3 py-1.5 rounded-xl shrink-0">
+              通调
+            </button>
+          </div>
+          <div class="flex items-center justify-between text-[10px] text-stone-500 pt-1 border-t border-stone-200/70">
+            <span>全店基准加价：<b>+${curDefaultPct}%</b>（单品锁定价不受通调覆盖）</span>
+            <button type="button" onclick="window.promptChangeOwnerPinInCatalog()" class="text-emerald-800 font-bold underline">
+              🔒 ${payCfg.pin ? '改4位安全锁' : '设4位安全锁'}
+            </button>
+          </div>
+        </div>
+
+        <!-- 检索与供货方/缺货筛选 -->
+        <div class="flex gap-1.5">
+          <input type="text" id="catalog-search-kw" oninput="window.renderUnifiedStoreCatalogList()" placeholder="🔍 搜品名/条码..." class="flex-1 min-w-0 bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 font-bold outline-none">
+          <select id="catalog-filter-supplier" onchange="window.renderUnifiedStoreCatalogList()" class="w-28 bg-stone-50 border border-stone-200 rounded-xl px-2 py-1.5 font-bold text-stone-700 outline-none truncate">
+            ${supFilterOptions}
+          </select>
+          <button type="button" id="btn-catalog-only-shortage" data-active="${initialFilterMode === 'shortage' ? '1' : '0'}" onclick="window.toggleCatalogShortageFilter()" class="px-2.5 py-1.5 rounded-xl border font-bold shrink-0 ${
+            initialFilterMode === 'shortage'
+              ? 'bg-rose-600 text-white border-rose-600'
+              : 'bg-stone-100 text-stone-700 border-stone-200'
+          }">
+            📌 缺货(${readShortageMemos().length})
+          </button>
+        </div>
+
+        <!-- 在库商品总表 -->
+        <div id="unified-catalog-list-host" class="max-h-72 overflow-y-auto divide-y divide-stone-100 border border-stone-200 rounded-2xl px-2.5"></div>
+      `
+    });
+    window.renderUnifiedStoreCatalogList();
+  };
+
+  window.toggleCatalogShortageFilter = function () {
+    const btn = document.getElementById('btn-catalog-only-shortage');
+    if (!btn) return;
+    const isNow = btn.getAttribute('data-active') === '1';
+    btn.setAttribute('data-active', isNow ? '0' : '1');
+    btn.className = !isNow
+      ? 'px-2.5 py-1.5 rounded-xl border font-bold shrink-0 bg-rose-600 text-white border-rose-600'
+      : 'px-2.5 py-1.5 rounded-xl border font-bold shrink-0 bg-stone-100 text-stone-700 border-stone-200';
+    window.renderUnifiedStoreCatalogList();
+  };
+
+  window.applyBulkMarkupRule = function () {
+    const target = document.getElementById('cat-bulk-target')?.value || '__ALL__';
+    const pctVal = parseFloat(document.getElementById('cat-bulk-pct-input')?.value || '');
+    if (isNaN(pctVal) || pctVal < 0) return alert('请输入有效的加价百分比数字（例如 20）！');
+
+    if (target === '__ALL__') {
+      setDefaultMarkupPct(pctVal);
+      alert(`✅ 已将全店默认加价率设为 +${pctVal}%！`);
+    } else {
+      const map = readCategoryMarkupPcts();
+      map[target] = pctVal;
+      writeCategoryMarkupPcts(map);
+      alert(`✅ 已将【${target}】分类的通调加价率设为 +${pctVal}%！`);
+    }
+    window.renderUnifiedStoreCatalogList();
+  };
+
+  window.promptChangeOwnerPinInCatalog = function () {
+    const payCfg = readPosPaycodeConfig();
+    if (payCfg.pin) {
+      const oldPin = prompt('🔒 请输入原 4 位掌柜安全码验证：');
+      if (oldPin === null) return;
+      if (oldPin.trim() !== String(payCfg.pin)) return alert('❌ 原安全码不正确！');
+    }
+    const newPin = prompt('请设置新的 4 位数字掌柜安全码（如 8888）：');
+    if (!newPin || newPin.trim().length !== 4) return alert('安全码必须是 4 位数字！');
+    writePosPaycodeConfig({ ...payCfg, pin: newPin.trim() });
+    alert('🔒 4 位掌柜安全码已更新锁定！');
+  };
+
+  window.renderUnifiedStoreCatalogList = function () {
+    const host = document.getElementById('unified-catalog-list-host');
+    if (!host) return;
+    const kw = (document.getElementById('catalog-search-kw')?.value || '').trim().toLowerCase();
+    const supFilter = document.getElementById('catalog-filter-supplier')?.value || '';
+    const onlyShortage = document.getElementById('btn-catalog-only-shortage')?.getAttribute('data-active') === '1';
+
+    const shortageList = readShortageMemos();
+    const shortageNames = new Set(shortageList.map((x) => x.name));
+    const overrides = readRetailPriceOverrides();
+
+    // 合并所有供货方商品与本地独立调价商品
+    const mergedMap = new Map();
+    (cachedUnifiedStoreProducts || []).forEach((p) => {
+      mergedMap.set(p.name, {
+        name: p.name,
+        spec: p.spec || p.measure_unit || '件',
+        category: p.category || '默认分类',
+        supplierShortName: p.supplierShortName || '合作供货方',
+        costPrice: parseFloat(p.tier_1_price || 0)
+      });
+    });
+    Object.keys(overrides).forEach((name) => {
+      if (!mergedMap.has(name)) {
+        mergedMap.set(name, {
+          name,
+          spec: '本地建档',
+          category: '本店自采',
+          supplierShortName: '本地/自采',
+          costPrice: Number(overrides[name].costPrice || 0)
+        });
+      }
+    });
+
+    const rows = Array.from(mergedMap.values()).filter((item) => {
+      if (kw && !item.name.toLowerCase().includes(kw) && !item.category.toLowerCase().includes(kw)) return false;
+      if (supFilter && item.supplierShortName !== supFilter) return false;
+      if (onlyShortage && !shortageNames.has(item.name)) return false;
+      return true;
+    });
+
+    if (rows.length === 0) {
+      host.innerHTML = '<div class="py-8 text-center text-stone-400">暂无匹配商品记录</div>';
+      return;
+    }
+
+    host.innerHTML = rows
+      .slice(0, 50)
+      .map((item) => {
+        const info = resolveSmartRetailPrice(item.name, item.costPrice, '', item.category);
+        const isShortage = shortageNames.has(item.name);
+        return `
+        <div class="py-2.5 flex items-center justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1">
+              <b class="text-stone-900 truncate">${item.name}</b>
+              <span class="text-[9px] bg-stone-100 text-stone-600 px-1.5 rounded shrink-0">${item.supplierShortName}</span>
+            </div>
+            <div class="text-[10px] text-stone-500 mt-0.5">
+              <span>${item.category} · 进价 ¥${item.costPrice.toFixed(2)}</span>
+              <span class="text-emerald-800 ml-1">[${info.priceSource}]</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button type="button" onclick="window.toggleShortageMemoItem('${String(item.name).replace(/'/g, '')}', '${String(item.supplierShortName).replace(/'/g, '')}')" class="px-2 py-1 rounded-xl text-[10px] font-bold border ${
+              isShortage ? 'bg-rose-600 text-white border-rose-600' : 'bg-stone-50 text-stone-600 border-stone-200'
+            }" title="标记快没货了/快到期">
+              ${isShortage ? '📌已记缺货' : '📌记缺货'}
+            </button>
+            <button type="button" onclick="window.promptTuneCatalogSinglePrice('${String(item.name).replace(/'/g, '')}', ${item.costPrice}, ${info.retailPrice})" class="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold px-2.5 py-1 rounded-xl text-[11px]">
+              售 ¥${info.retailPrice.toFixed(2)} ✎
+            </button>
+          </div>
+        </div>`;
+      })
+      .join('');
+  };
+
+  window.promptTuneCatalogSinglePrice = function (name, cost, curRetail) {
+    const raw = prompt(`单调【${name}】零售价（进货价 ¥${Number(cost).toFixed(2)}，修改后永久锁定，填 0 可恢复按通调比例计算）：`, String(curRetail));
+    if (raw === null) return;
+    const val = parseFloat(raw);
+    if (isNaN(val) || val < 0) return alert('请输入有效金额！');
+    const overrides = readRetailPriceOverrides();
+    if (val === 0) {
+      delete overrides[name];
+    } else {
+      overrides[name] = { retailPrice: Number(val.toFixed(2)), costPrice: Number(cost) };
+    }
+    writeRetailPriceOverrides(overrides);
+    window.renderUnifiedStoreCatalogList();
+  };
+
+  window.toggleShortageMemoItem = function (name, supplierName) {
+    const list = readShortageMemos();
+    const idx = list.findIndex((x) => x.name === name);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+    } else {
+      list.unshift({ name, supplierName, time: new Date().toLocaleDateString('zh-CN') });
+    }
+    writeShortageMemos(list);
+    const btn = document.getElementById('btn-catalog-only-shortage');
+    if (btn) btn.innerText = `📌 缺货(${list.length})`;
+    window.renderUnifiedStoreCatalogList();
+  };
+
+  /**
+   * 3. 熟客赊账本（谁欠门店钱 · 历史明细 · 一键还款平账）
    */
   window.openStoreCreditBookModal = function () {
     const list = readStoreCreditBook().filter((c) => Number(c.balance || 0) > 0);
@@ -1068,7 +1348,6 @@ function bindNativeStoreCounterPosBindings() {
     ];
     writeStoreCreditBook(list);
 
-    // 同步记入今日收银实收流水（毛利已在挂账时计算，此处只记现金流回收）
     const ledger = readPosLedgerList();
     ledger.unshift({
       id: Date.now(),
@@ -1086,118 +1365,64 @@ function bindNativeStoreCounterPosBindings() {
   };
 
   /**
-   * 3. 商品检索与单品零售价微调弹窗（支持全库搜索、查看进货底价、微调单品零售价并永久记忆）
+   * 4. 换手机账本迁移与恢复码（左上角工具箱 · 零服务器依赖全量迁移）
    */
-  window.openStoreRetailPriceTunerModal = function () {
-    const rate = getDefaultMarkupRate();
+  window.openStoreDataSyncModal = function () {
+    const snapshot = {
+      paycode: readPosPaycodeConfig(),
+      ledger: readPosLedgerList().slice(0, 120),
+      barcodes: readBarcodeMemoryDb(),
+      overrides: readRetailPriceOverrides(),
+      catMarkups: readCategoryMarkupPcts(),
+      defaultPct: getDefaultMarkupPct(),
+      creditBook: readStoreCreditBook(),
+      shortages: readShortageMemos()
+    };
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(snapshot))));
+
     openBridgeSheetModal({
-      id: 'modal-store-price-tuner',
-      title: '🏷️ 商品检索与单品零售价微调',
-      subtitle: `未微调商品自动按「进货价 × ${rate}倍」定价；微调后永久锁定`,
+      id: 'modal-store-data-sync',
+      title: '📲 换手机账本迁移与一键恢复',
+      subtitle: '可将本店熟客赊账、收款码、单品调价与流水完整迁移至新手机',
       hideFooter: true,
       bodyHtml: `
-        <input type="text" id="tuner-search-input" oninput="window.renderStorePriceTunerList(this.value)" placeholder="🔍 输入商品名称搜索，查看进货底价与微调零售价..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold">
-        <div id="tuner-items-host" class="max-h-72 overflow-y-auto divide-y divide-stone-100 border border-stone-200 rounded-2xl px-3"></div>
+        <div class="space-y-1.5">
+          <label class="block font-bold text-stone-700">第一步：复制本机备份码发到自己微信【文件传输助手】：</label>
+          <textarea id="store-export-code-box" rows="3" readonly class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 font-mono text-[10px] text-stone-600">${encoded}</textarea>
+          <button type="button" onclick="navigator.clipboard?.writeText(document.getElementById('store-export-code-box').value); alert('✅ 门店账本备份码已复制，快发到微信文件传输助手保存吧！');" class="w-full py-2 rounded-xl bg-[#1b4332] text-amber-300 font-bold">
+            📋 一键复制本机账本备份码
+          </button>
+        </div>
+        <div class="space-y-1.5 pt-2 border-t border-stone-100">
+          <label class="block font-bold text-stone-700">第二步：在新手机粘贴备份码并恢复：</label>
+          <textarea id="store-import-code-box" rows="2" placeholder="在此粘贴从旧手机复制的备份码..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 font-mono text-[10px] outline-none"></textarea>
+          <button type="button" onclick="window.restoreStoreDataFromCode()" class="w-full py-2 rounded-xl bg-amber-400 text-stone-950 font-bold">
+            🔄 立即从备份码还原全部账目
+          </button>
+        </div>
       `
     });
-    window.renderStorePriceTunerList('');
   };
 
-  window.renderStorePriceTunerList = function (kw = '') {
-    const host = document.getElementById('tuner-items-host');
-    if (!host) return;
-    const cleanKw = String(kw || '').trim().toLowerCase();
-    const overrides = readRetailPriceOverrides();
-    const allNames = new Set([
-      ...(cachedSupplierCatalog || []).map((p) => p.name),
-      ...Object.keys(overrides)
-    ]);
-    const list = Array.from(allNames)
-      .filter((n) => n && (!cleanKw || n.toLowerCase().includes(cleanKw)))
-      .slice(0, 30);
-
-    if (list.length === 0) {
-      host.innerHTML = '<div class="py-6 text-center text-stone-400">暂无匹配商品</div>';
-      return;
+  window.restoreStoreDataFromCode = function () {
+    const raw = document.getElementById('store-import-code-box')?.value.trim();
+    if (!raw) return alert('请先粘贴备份码！');
+    try {
+      const parsed = JSON.parse(decodeURIComponent(escape(atob(raw))));
+      if (parsed.paycode) writePosPaycodeConfig(parsed.paycode);
+      if (Array.isArray(parsed.ledger)) writePosLedgerList(parsed.ledger);
+      if (parsed.barcodes) writeBarcodeMemoryDb(parsed.barcodes);
+      if (parsed.overrides) writeRetailPriceOverrides(parsed.overrides);
+      if (parsed.catMarkups) writeCategoryMarkupPcts(parsed.catMarkups);
+      if (parsed.defaultPct !== undefined) setDefaultMarkupPct(parsed.defaultPct);
+      if (Array.isArray(parsed.creditBook)) writeStoreCreditBook(parsed.creditBook);
+      if (Array.isArray(parsed.shortages)) writeShortageMemos(parsed.shortages);
+      refreshStoreHeaderLiveStats();
+      document.getElementById('modal-store-data-sync')?.remove();
+      alert('✅ 门店账本、熟客赊账、收款码与商品调价已全部成功还原！');
+    } catch {
+      alert('❌ 备份码格式有误，请确认完整复制后再试！');
     }
-
-    host.innerHTML = list
-      .map((name) => {
-        const prod = (cachedSupplierCatalog || []).find((p) => p.name === name);
-        const cost = parseFloat(prod?.tier_1_price || overrides[name]?.costPrice || 0);
-        const info = resolveSmartRetailPrice(name, cost);
-        return `
-          <div class="py-2.5 flex items-center justify-between gap-2">
-            <div class="min-w-0">
-              <b class="text-stone-900 truncate block">${name}</b>
-              <span class="text-[10px] text-stone-500">进货底价：¥${cost.toFixed(2)} ${info.isCustomTuned ? '· <b class="text-emerald-800">已微调锁定</b>' : '· 自动倍率'}</span>
-            </div>
-            <button type="button" onclick="window.promptTuneSingleRetailPrice('${String(name).replace(/'/g, '')}', ${cost}, ${info.retailPrice})" class="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold px-2.5 py-1 rounded-xl text-[11px] shrink-0">
-              零售 ¥${info.retailPrice.toFixed(2)} ✎
-            </button>
-          </div>`;
-      })
-      .join('');
-  };
-
-  window.promptTuneSingleRetailPrice = function (name, cost, curRetail) {
-    const raw = prompt(`设置【${name}】的本店零售价（进货价 ¥${Number(cost).toFixed(2)}）：`, String(curRetail));
-    if (raw === null) return;
-    const nextVal = parseFloat(raw);
-    if (isNaN(nextVal) || nextVal < 0) return alert('请输入有效价格！');
-    const overrides = readRetailPriceOverrides();
-    overrides[name] = { retailPrice: Number(nextVal.toFixed(2)), costPrice: Number(cost) };
-    writeRetailPriceOverrides(overrides);
-    window.renderStorePriceTunerList(document.getElementById('tuner-search-input')?.value || '');
-  };
-
-  /**
-   * 4. 零售加价率与 4 位掌柜安全锁设置弹窗（左上角菜单）
-   */
-  window.openStorePricingAndLockModal = function () {
-    const curRate = getDefaultMarkupRate();
-    const curPct = Math.round((curRate - 1) * 100);
-    const payCfg = readPosPaycodeConfig();
-
-    openBridgeSheetModal({
-      id: 'modal-store-pricing-lock',
-      title: '⚙️ 默认零售加价率与 4 位掌柜安全锁',
-      subtitle: '自动根据供货进货价换算零售价 · 保护收款码防替换',
-      confirmText: '✅ 保存门店核心设置',
-      bodyHtml: `
-        <div>
-          <label class="block font-bold text-stone-700 mb-1">默认零售加价率（当前：加价 ${curPct}%，即进货价 × ${curRate}）：</label>
-          <div class="grid grid-cols-4 gap-1.5 mb-1.5 text-[11px] font-bold">
-            <button type="button" onclick="document.getElementById('set-markup-rate').value='1.15'" class="py-1.5 rounded-xl bg-stone-100 hover:bg-emerald-100">+15% (1.15x)</button>
-            <button type="button" onclick="document.getElementById('set-markup-rate').value='1.20'" class="py-1.5 rounded-xl bg-stone-100 hover:bg-emerald-100">+20% (1.20x)</button>
-            <button type="button" onclick="document.getElementById('set-markup-rate').value='1.25'" class="py-1.5 rounded-xl bg-stone-100 hover:bg-emerald-100">+25% (1.25x)</button>
-            <button type="button" onclick="document.getElementById('set-markup-rate').value='1.30'" class="py-1.5 rounded-xl bg-stone-100 hover:bg-emerald-100">+30% (1.30x)</button>
-          </div>
-          <input type="number" step="0.05" min="1" id="set-markup-rate" value="${curRate}" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold text-emerald-950">
-        </div>
-        <div>
-          <label class="block font-bold text-stone-700 mb-1">🔒 掌柜 4 位安全码（${payCfg.pin ? '已设置，修改需验证旧码' : '尚未设置'}）：</label>
-          <input type="password" maxlength="4" id="set-new-owner-pin" placeholder="输入新的 4 位数字安全码（留空则不改）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold">
-        </div>
-      `,
-      onConfirm: async (close) => {
-        const nextRate = parseFloat(document.getElementById('set-markup-rate')?.value || '1.25');
-        if (isNaN(nextRate) || nextRate < 1) return alert('加价倍率不能小于 1.0！');
-        setDefaultMarkupRate(nextRate);
-
-        const newPin = document.getElementById('set-new-owner-pin')?.value.trim();
-        if (newPin) {
-          if (newPin.length !== 4) return alert('安全码必须是 4 位数字！');
-          if (payCfg.pin) {
-            const oldCheck = prompt('请输入原来的 4 位掌柜安全码进行验证：');
-            if (oldCheck !== String(payCfg.pin)) return alert('❌ 原安全码验证失败！');
-          }
-          writePosPaycodeConfig({ ...payCfg, pin: newPin });
-        }
-        close();
-        alert(`✅ 设置已保存！默认零售倍率已设为 ${nextRate} 倍。`);
-      }
-    });
   };
 
   /**
@@ -1205,14 +1430,14 @@ function bindNativeStoreCounterPosBindings() {
    */
   window.openMultiPosterModal = function () {
     const storeName = (document.getElementById('store-title')?.innerText || '厚德便民门店').trim();
-    const catalog = cachedSupplierCatalog || [];
+    const catalog = cachedUnifiedStoreProducts || [];
     const optionsHtml =
       catalog.length === 0
         ? '<p class="text-stone-400 text-center py-3">当前供货方暂无在架商品，请先切换有货的供货方</p>'
         : catalog
-            .slice(0, 20)
+            .slice(0, 24)
             .map((p, idx) => {
-              const info = resolveSmartRetailPrice(p.name, parseFloat(p.tier_1_price || 0));
+              const info = resolveSmartRetailPrice(p.name, parseFloat(p.tier_1_price || 0), '', p.category || '');
               return `
               <label class="flex items-center justify-between gap-2 p-2 rounded-xl bg-stone-50 border border-stone-200 cursor-pointer hover:bg-amber-50/60">
                 <div class="flex items-center gap-2 min-w-0">
@@ -1273,13 +1498,11 @@ function bindNativeStoreCounterPosBindings() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // 端庄墨绿底框 + 暖白宣纸内页
       ctx.fillStyle = '#1b4332';
       ctx.fillRect(0, 0, W, H);
       ctx.fillStyle = '#faf8f3';
       ctx.fillRect(28, 28, W - 56, H - 56);
 
-      // 顶部标题匾额
       ctx.fillStyle = '#1b4332';
       ctx.fillRect(28, 28, W - 56, 155);
       ctx.fillStyle = '#fcd34d';
@@ -1291,7 +1514,6 @@ function bindNativeStoreCounterPosBindings() {
       ctx.font = '22px sans-serif';
       ctx.fillText(slogan, W / 2, 138);
 
-      // 商品列表卡片
       checked.forEach((el, i) => {
         const y = 210 + i * 105;
         const pName = el.getAttribute('data-name') || '';
@@ -1319,7 +1541,6 @@ function bindNativeStoreCounterPosBindings() {
         ctx.fillText(`¥${pPrice}`, W - 76, y + 54);
       });
 
-      // 底部落款
       ctx.textAlign = 'center';
       ctx.fillStyle = '#1b4332';
       ctx.font = 'bold 22px sans-serif';
@@ -1349,7 +1570,7 @@ let storeBridgeWatcherStarted = false;
 let lastRenderedStoreAgent = '';
 
 /**
- * 1. 门店工作台 (index.html)
+ * 1. 门店工作台 (index.html)：去噪精雕 + 全供货商商品总库同步 + 凑单开产接龙
  */
 export async function initStoreTerminalBridge() {
   showWeChatPinGuideIfFirstTime();
@@ -1369,22 +1590,35 @@ export async function initStoreTerminalBridge() {
   }
 
   async function renderCrowdBannerForActiveAgent(forceRefresh = false) {
+    // 1. 清理重复的“字太小看不清？点此切换”黄色横幅，收紧首屏高度
+    document.querySelectorAll('div').forEach((el) => {
+      if (el.innerText?.includes('字太小看不清？点此切换') && el.children.length <= 3) {
+        el.style.display = 'none';
+      }
+    });
+
+    // 2. 供货方胶囊自动显示精简商号名（防止“上海乐购供应链管理有限”截断）
+    document.querySelectorAll('#agents-nav-chips button').forEach((btn) => {
+      const raw = btn.innerText || '';
+      const hasDot = raw.startsWith('●') || raw.startsWith('○');
+      const prefix = hasDot ? raw.slice(0, 2) : '';
+      const pureName = (hasDot ? raw.slice(2) : raw).trim();
+      const shortName = shortenSupplierCompanyName(pureName);
+      if (shortName && shortName !== pureName) {
+        btn.innerText = `${prefix}${shortName}`;
+      }
+      btn.style.maxWidth = '115px';
+      btn.style.overflow = 'hidden';
+      btn.style.textOverflow = 'ellipsis';
+      btn.style.whiteSpace = 'nowrap';
+    });
+
     const activeAgent = (
       document.getElementById('menu-current-agent-tag')?.innerText ||
       localStorage.getItem('active_agent') ||
       localStorage.getItem('active_agent_id') ||
       stickerAgent
     ).trim();
-
-    document.querySelectorAll('button, span').forEach((el) => {
-      const txt = el.innerText || '';
-      if ((txt.includes('有限公司') || txt.includes('供应链') || txt.includes('合作社')) && el.tagName === 'BUTTON') {
-        el.style.maxWidth = '135px';
-        el.style.overflow = 'hidden';
-        el.style.textOverflow = 'ellipsis';
-        el.style.whiteSpace = 'nowrap';
-      }
-    });
 
     const container =
       document.getElementById('product-container') ||
@@ -1413,7 +1647,19 @@ export async function initStoreTerminalBridge() {
     }
     lastRenderedStoreAgent = activeAgent;
 
-    const [tenantRes, crowdRes, productsRes] = await Promise.all([
+    // 汇聚当前及已绑定的所有供货方商品进入本店统一商品总库
+    let boundIds = [activeAgent];
+    try {
+      const savedAgents = JSON.parse(localStorage.getItem('bound_agents_list') || '[]');
+      savedAgents.forEach((a) => {
+        const id = typeof a === 'string' ? a : a?.tenant_id;
+        if (id && !boundIds.includes(id)) boundIds.push(id);
+      });
+    } catch {
+      // 忽略本地列表解析异常
+    }
+
+    const [tenantRes, crowdRes, allTenantsRes, allProductsRes] = await Promise.all([
       supabase
         .from('platform_tenant')
         .select('tenant_id, company_name, custom_settings')
@@ -1427,15 +1673,27 @@ export async function initStoreTerminalBridge() {
         .order('id', { ascending: false })
         .limit(5),
       supabase
+        .from('platform_tenant')
+        .select('tenant_id, company_name')
+        .in('tenant_id', boundIds),
+      supabase
         .from('product')
-        .select('id, name, spec, measure_unit, tier_1_price, status')
-        .eq('tenant_id', activeAgent)
+        .select('id, tenant_id, name, category, spec, measure_unit, tier_1_price, status')
+        .in('tenant_id', boundIds)
         .eq('status', 'active')
-        .limit(100)
+        .limit(250)
     ]);
 
-    if (productsRes?.data) {
-      cachedSupplierCatalog = productsRes.data;
+    if (allTenantsRes?.data) {
+      allTenantsRes.data.forEach((t) => {
+        cachedTenantNameMap[t.tenant_id] = shortenSupplierCompanyName(t.company_name || t.tenant_id);
+      });
+    }
+    if (allProductsRes?.data) {
+      cachedUnifiedStoreProducts = allProductsRes.data.map((p) => ({
+        ...p,
+        supplierShortName: cachedTenantNameMap[p.tenant_id] || p.tenant_id
+      }));
     }
 
     const tenant = tenantRes?.data;
