@@ -104,7 +104,7 @@
     <div id="carpool-relay-banner" class="hidden mx-3 mt-2 bg-cyan-50 border border-cyan-300 text-cyan-950 p-2.5 rounded-2xl flex items-center justify-between text-xs shadow-xs">
       <div>
         <b class="font-bold">🚚 顺路捎带接力 (<span id="carpool-relay-count">0</span> 单可顺路带货)</b>
-        <span class="block text-[10px] text-cyan-800">周边门店余缺调剂或散件包裹，顺路接力送达</span>
+        <span class="block text-[10px] text-cyan-800">周边<span data-lex="partnerLabel">门店</span>余缺调剂或散件包裹，顺路接力送达</span>
       </div>
       <button type="button" onclick="window.openCarpoolRelayModal()" class="bg-cyan-700 hover:bg-cyan-800 text-white font-bold px-3 py-1.5 rounded-xl text-[11px] shadow active:scale-95">
         查看顺路单
@@ -122,7 +122,7 @@
           <b id="oc-goods-val" class="font-mono text-sm font-bold text-stone-900">¥0</b>
         </div>
         <div class="bg-rose-50/70 border border-rose-200 p-2.5 rounded-2xl">
-          <span class="text-[10px] text-rose-600 block">门店在账欠款</span>
+          <span class="text-[10px] text-rose-600 block"><span data-lex="partnerLabel">门店</span>在账欠款</span>
           <b id="oc-debt-val" class="font-mono text-sm font-bold text-rose-700">¥0</b>
         </div>
         <div class="bg-emerald-50/70 border border-emerald-200 p-2.5 rounded-2xl">
@@ -154,9 +154,9 @@
     <main id="pane-deliver" class="hidden p-3 flex-1 space-y-3">
       <div class="flex justify-between items-center px-1">
         <div class="flex items-center gap-1.5">
-          <h2 class="text-xs font-bold text-stone-700">📋 配送合作门店列表</h2>
+          <h2 class="text-xs font-bold text-stone-700">📋 配送<span data-lex="partnerLabel">合作门店</span>列表</h2>
           <button id="btn-toggle-only-orders" onclick="window.toggleOnlyOrdersFilter()" class="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-lg font-bold transition">
-            全部门店
+            全部<span data-lex="partnerLabel">门店</span>
           </button>
         </div>
         <div class="flex items-center gap-2">
@@ -203,7 +203,7 @@
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">选择货品：</label>
+          <label class="block text-stone-600 font-bold mb-1">选择<span data-lex="itemLabel">货品</span>：</label>
           <select id="palm-wh-prod-select" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none"></select>
         </div>
 
@@ -239,8 +239,8 @@
     <!-- 工作区 C：业务员 / 客户经理拜访跟进与上门催收 -->
     <main id="pane-sales-stores" class="hidden p-3 flex-1 space-y-3 text-xs">
       <div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl space-y-1">
-        <b class="text-amber-950 block">🤝 我的专属跟单门店、GPS采集与上门催收</b>
-        <span class="text-[10px] text-amber-900 block">仅显示归属您跟进及公海门店；催收支持拍照识别回执金额与掌柜签名留痕，单据自动推给财务核账</span>
+        <b class="text-amber-950 block">🤝 我的专属跟单<span data-lex="partnerLabel">门店</span>、GPS采集与上门催收</b>
+        <span class="text-[10px] text-amber-900 block">仅显示归属您跟进及公海客户；催收支持拍照识别回执金额与掌柜签名留痕，单据自动推给财务核账</span>
       </div>
       <div id="palm-sales-stores-list" class="space-y-2.5"></div>
     </main>
@@ -251,13 +251,13 @@
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-sm font-bold text-stone-900">🔧 商号内部 · 实地定损与鉴证单</h2>
-            <p class="text-[10px] text-stone-400 mt-0.5">写入商号私有账本，由大当家/财务核准后直接冲减门店欠款（不惊动平台）</p>
+            <p class="text-[10px] text-stone-400 mt-0.5">写入商号私有账本，由大当家/财务核准后直接冲减客户欠款（不惊动平台）</p>
           </div>
           <span id="qc-voucher-no" class="font-mono text-[10px] bg-rose-100 text-rose-900 px-2 py-0.5 rounded font-bold">DS-0000000000-0000</span>
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">涉及合作门店 *：</label>
+          <label class="block text-stone-600 font-bold mb-1">涉及<span data-lex="partnerLabel">合作门店</span> *：</label>
           <select id="qc-store-select" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none"></select>
         </div>
 
@@ -266,7 +266,7 @@
             <label class="block text-stone-600 font-bold mb-1">定损责任归属 *：</label>
             <select id="qc-verdict-select" class="w-full bg-white border border-stone-200 rounded-xl px-2 py-2 font-bold outline-none">
               <option value="质量/运输问题 · 全额冲抵">✅ 源头质量/运输破损</option>
-              <option value="门店保管不当 · 折价分担">⚖️ 门店存放不当折价</option>
+              <option value="门店保管不当 · 折价分担">⚖️ 客户存放不当折价</option>
               <option value="现场检修完好 · 无需冲账">🛠️ 现场修复完好</option>
             </select>
           </div>
@@ -277,9 +277,9 @@
         </div>
 
         <div>
-          <label class="block text-stone-600 font-bold mb-1">定损货品与破损明细说明 *：</label>
+          <label class="block text-stone-600 font-bold mb-1">定损<span data-lex="itemLabel">货品</span>与破损明细说明 *：</label>
           <div class="flex gap-1.5">
-            <textarea id="qc-detail-input" rows="2" placeholder="写明货品名称、批次、破损数量与处理意见..." class="flex-1 bg-white border border-stone-200 rounded-xl p-2.5 outline-none"></textarea>
+            <textarea id="qc-detail-input" rows="2" placeholder="写明品名、批次、破损数量与处理意见..." class="flex-1 bg-white border border-stone-200 rounded-xl p-2.5 outline-none"></textarea>
             <button type="button" onclick="window.startVoiceInput('qc-detail-input')" class="bg-amber-100 text-amber-950 border border-amber-300 px-3 rounded-xl font-bold shrink-0">
               🎤 语音
             </button>
@@ -299,7 +299,7 @@
 
         <div>
           <div class="flex justify-between items-center mb-1">
-            <label class="font-bold text-stone-700">门店掌柜现场确认签名 *：</label>
+            <label class="font-bold text-stone-700">客户现场确认签名 *：</label>
             <button type="button" onclick="window.clearQcSignature()" class="text-[10px] text-rose-600 hover:underline">重签</button>
           </div>
           <div class="border border-stone-300 rounded-xl bg-white overflow-hidden">
@@ -318,7 +318,7 @@
       <div class="bg-stone-50 border border-stone-200 p-4 rounded-3xl space-y-3 text-xs">
         <div class="flex flex-wrap justify-between items-center gap-1.5">
           <div>
-            <h2 class="text-sm font-bold text-stone-900">🤝 顺路登记 · 意向合作门店</h2>
+            <h2 class="text-sm font-bold text-stone-900">🤝 顺路登记 · 意向<span data-lex="partnerLabel">合作门店</span></h2>
             <p class="text-[10px] text-stone-400 mt-0.5">支持拍门头/名片自动识字、采集定位与语音速记</p>
           </div>
           <div class="flex items-center gap-1.5">
@@ -334,7 +334,7 @@
 
         <div class="space-y-2.5">
           <div>
-            <label class="block text-stone-600 font-bold mb-1">合作门店招牌全名 *：</label>
+            <label class="block text-stone-600 font-bold mb-1"><span data-lex="partnerLabel">合作门店</span>招牌全名 *：</label>
             <input type="text" id="lead-name-input" placeholder="如：利民五金电料 / 旺顺家常饭庄" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none font-bold">
           </div>
           <div class="grid grid-cols-2 gap-2">
@@ -353,12 +353,12 @@
               </select>
             </div>
             <div>
-              <label class="block text-stone-600 font-bold mb-1">当家掌柜称呼：</label>
+              <label class="block text-stone-600 font-bold mb-1">当家负责人称呼：</label>
               <input type="text" id="lead-boss-input" placeholder="如：刘掌柜 / 赵大厨" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none">
             </div>
           </div>
           <div>
-            <label class="block text-stone-600 font-bold mb-1">掌柜联系电话 *：</label>
+            <label class="block text-stone-600 font-bold mb-1">联系电话 *：</label>
             <input type="tel" id="lead-phone-input" maxlength="11" placeholder="11位手机号码" class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm font-mono outline-none font-bold">
           </div>
           <div>
@@ -650,7 +650,7 @@
 
         <div class="bg-stone-50 p-2.5 rounded-2xl border border-stone-200 space-y-1">
           <div class="flex justify-between items-center">
-            <span class="text-stone-500">本单新配货品：</span>
+            <span class="text-stone-500">本单新配<span data-lex="itemLabel">货品</span>：</span>
             <b id="modal-order-amount-text" class="font-mono text-stone-800 font-bold">¥0.00</b>
           </div>
           <div class="flex justify-between items-center text-rose-700">
@@ -663,7 +663,7 @@
           </div>
           <div class="flex justify-between text-[11px] text-stone-500 pt-0.5">
             <span>历次在账: <b id="modal-debt-text" class="font-mono text-rose-600">¥0.00</b> / 授信: <b id="modal-limit-text" class="font-mono text-stone-700">¥2000</b></span>
-            <span>店内周转载具: <b id="modal-basket-text" class="font-mono text-amber-800 font-bold">0 件</b></span>
+            <span>店内周转<span data-lex="carrierLabel">载具</span>: <b id="modal-basket-text" class="font-mono text-amber-800 font-bold">0 件</b></span>
           </div>
         </div>
 
@@ -689,7 +689,7 @@
 
         <div id="multi-carrier-return-box" class="bg-amber-50/80 border border-amber-200 p-2.5 rounded-xl space-y-1.5">
           <div class="flex justify-between items-center text-[11px] font-bold text-amber-950">
-            <span>🔄 随车带回收回周转载具（按押金单价抵款）：</span>
+            <span>🔄 随车带回收回周转<span data-lex="carrierLabel">载具</span>（按押金单价抵款）：</span>
             <span id="multi-carrier-deduct-total" class="font-mono text-emerald-800">抵 ¥0.00</span>
           </div>
           <div id="multi-carrier-rows" class="space-y-1.5"></div>
@@ -775,7 +775,7 @@
         <div class="flex justify-between"><span class="text-stone-500">配送负责人：</span><b id="chk-driver" class="font-bold">张师傅</b></div>
         <div class="flex justify-between"><span class="text-stone-500">实收现钞 (点清交出纳)：</span><b id="chk-cash" class="font-mono text-emerald-800 font-bold">¥0.00</b></div>
         <div class="flex justify-between"><span class="text-stone-500">电子扫码/转账 (出纳对账)：</span><b id="chk-wechat" class="font-mono text-emerald-800 font-bold">¥0.00</b></div>
-        <div class="flex justify-between"><span class="text-stone-500">收回周转载具：</span><b id="chk-baskets" class="font-mono text-amber-800 font-bold">0 件</b></div>
+        <div class="flex justify-between"><span class="text-stone-500">收回周转<span data-lex="carrierLabel">载具</span>：</span><b id="chk-baskets" class="font-mono text-amber-800 font-bold">0 件</b></div>
         <div class="flex justify-between"><span class="text-stone-500">抹零礼让总计：</span><b id="chk-discount" class="font-mono text-rose-600">¥0.00</b></div>
         <div class="pt-2 border-t border-stone-200 flex justify-between items-center text-sm"><span class="font-bold text-stone-800">交缴实款合计：</span><b id="chk-total" class="font-mono text-lg font-bold text-emerald-950">¥0.00</b></div>
       </div>
@@ -807,11 +807,25 @@
 
   <script type="module" src="./src/utils/circuitGuardListener.js"></script>
   <script type="module">
+    import { supabase } from './src/lib/supabase.js';
     import { initDriverController } from './src/modules/driverController.js';
     import { initDriverCarpoolBindings } from './src/modules/driver/driverCarpoolExtension.js';
     import { mountDriverFieldToolsBar, initDriverFieldToolsBindings } from './src/modules/driver/driverFieldToolsModule.js';
     import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
     import { initWechatBrowserGuide } from './src/lib/wechatBrowserGuard.js';
+    import { getTenantLexicon } from './src/modules/soulEngine/silentMemoryAndLexicon.js';
+
+    async function syncPalmDynamicLexicon() {
+      const tenantId = (document.getElementById('tenant-display')?.innerText || localStorage.getItem('hq_active_agent') || '').trim();
+      if (!tenantId || tenantId === '--') return;
+      const { data } = await supabase.from('platform_tenant').select('custom_settings').eq('tenant_id', tenantId).maybeSingle();
+      if (!data) return;
+      const lex = getTenantLexicon(data.custom_settings || {});
+      document.querySelectorAll('[data-lex]').forEach((el) => {
+        const key = el.getAttribute('data-lex');
+        if (key && lex[key]) el.textContent = lex[key];
+      });
+    }
 
     enforceGlobalGovernance();
     initDriverController();
@@ -819,6 +833,7 @@
     initDriverFieldToolsBindings();
     mountDriverFieldToolsBar();
     initWechatBrowserGuide({ appName: '百工掌中宝' });
+    setTimeout(syncPalmDynamicLexicon, 800);
 
     // 自动捕获每次现场签收交割摘要，供蓝牙小票机一键打印三联凭单
     const origSubmitCollection = window.submitCollection;
