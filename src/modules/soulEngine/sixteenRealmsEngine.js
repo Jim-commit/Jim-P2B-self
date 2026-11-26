@@ -345,7 +345,7 @@ function startPartnerLiveActivityTicker() {
     if (!hqState.currentAgent || document.hidden) return;
     const { data } = await supabase
       .from('driver_collection_log')
-      .select('id, store_name, driver_name, amount, pay_method')
+      .select('id, store_name, driver_name, amount, pay_method, collect_type')
       .eq('tenant_id', hqState.currentAgent)
       .order('id', { ascending: false })
       .limit(1);
@@ -360,16 +360,19 @@ function startPartnerLiveActivityTicker() {
       lastKnownCollectionLogId = latest.id;
       const ticker = document.getElementById('partner-live-activity-ticker');
       if (ticker) {
-        ticker.innerHTML = `🔔 <b>刚收到协同动态：</b>${latest.driver_name || '执事'} 在【${latest.store_name}】登记 ¥${parseFloat(latest.amount || 0).toFixed(2)}（${latest.pay_method || '已记'}）`;
+        const isPhoto = latest.collect_type === 'photo_evidence';
+        ticker.innerHTML = isPhoto
+          ? `🔔 <b>刚收到现场照片：</b>${latest.driver_name || '执事'} 上传了【${latest.store_name}】`
+          : `🔔 <b>刚收到协同动态：</b>${latest.driver_name || '执事'} 在【${latest.store_name}】登记 ¥${parseFloat(latest.amount || 0).toFixed(2)}（${latest.pay_method || '已记'}）`;
         ticker.classList.remove('hidden');
-        speakAccountingFeedback(`刚收到协同动态，${latest.store_name}，${latest.amount}元`);
+        speakAccountingFeedback(isPhoto ? '刚收到一张现场留底照片' : `刚收到协同动态，${latest.store_name}，${latest.amount}元`);
       }
     }
   }, 12000);
 }
 
 /**
- * 4. 挂载首页“掌柜一句话/语音万能记账栏” + “静默流失温柔提醒” + “淡季休眠条” + “夫妻店实时播报”
+ * 4. 挂载首页“掌柜一句话/语音万能记账栏” + “新商号白纸冷启动引导” + “静默流失温柔提醒” + “淡季休眠条” + “夫妻店实时播报”
  */
 export function mountSixteenRealmsQuickBar() {
   const prefs = getAccessibilityPrefs();
@@ -391,7 +394,22 @@ export function mountSixteenRealmsQuickBar() {
   const isSeasonalDormant = !!rawSettings.seasonalPause?.isPaused;
   const visibleStores = getVisibleStoresForCurrentRole();
   const visibleOrders = getVisibleOrdersForCurrentRole();
+  const activeProducts = (hqState.allProducts || []).filter((p) => p.status !== 'inactive');
   const churnList = isSeasonalDormant ? [] : detectSilentChurnPartners(visibleStores, visibleOrders);
+
+  // 新商号冷启动白纸引导卡（名下尚无客户且无商品时自动出现，有数据后自动隐藏）
+  const coldStartHtml =
+    visibleStores.length === 0 && activeProducts.length === 0
+      ? `<div class="bg-amber-50 border border-amber-300 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-amber-950">
+           <div>
+             <b>🌱 欢迎新商号开张！两步即可开始营业（无需先填复杂资料）：</b>
+             <span class="block text-[10px] text-amber-800 mt-0.5">第一步：直接点右侧「记一笔散客账」边开单边自动建档；第二步：打开「实用工具箱」打印门店补货贴纸。</span>
+           </div>
+           <button type="button" onclick="window.openZeroBarrierWalkInOrderModal()" class="bg-[#1b4332] text-amber-300 font-bold px-3 py-1.5 rounded-xl shrink-0">
+             ⚡ 记第一笔生意
+           </button>
+         </div>`
+      : '';
 
   const dormantHtml = isSeasonalDormant
     ? `<div class="bg-stone-900 text-amber-300 rounded-xl px-3 py-1.5 flex items-center justify-between gap-2 text-[11px]">
@@ -414,6 +432,7 @@ export function mountSixteenRealmsQuickBar() {
   bar.className = 'col-span-full bg-white border border-emerald-200 p-3 rounded-2xl space-y-2 text-xs shadow-2xs';
   bar.innerHTML = `
     <div id="partner-live-activity-ticker" class="hidden bg-emerald-900 text-amber-300 rounded-xl px-3 py-1.5 text-[11px] font-bold"></div>
+    ${coldStartHtml}
     ${dormantHtml}
     <div class="flex flex-wrap items-center justify-between gap-1.5">
       <div class="flex items-center gap-1.5">
@@ -1153,7 +1172,7 @@ export function initSixteenRealmsBindings() {
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-2.5">
           <div>
             <b class="text-sm text-stone-900">🧰 实用工具箱 · 改错对账与基层协作快捷舱</b>
-            <p class="text-[11px] text-stone-500 mt-0.5">作废重开 · 两家互抵账 · 微信对账 · 收摊日结 · 家人只读链接 · 换锁口令 · 年度封账</p>
+            <p class="text-[11px] text-stone-500 mt-0.5">作废重开 · 两家互抵账 · 微信对账 · 收摊日结 · 现场拍照回看 · 家人只读链接 · 年度封账</p>
           </div>
           <div class="flex flex-wrap items-center gap-1.5">
             <button type="button" onclick="window.toggleRealmLargeText()" class="px-2.5 py-1 rounded-xl border ${prefs.largeText ? 'bg-stone-900 text-amber-300 border-stone-900' : 'bg-stone-100 text-stone-700 border-stone-200'} font-bold text-[11px]">
@@ -1240,8 +1259,8 @@ export function initSixteenRealmsBindings() {
           <div class="sm:col-span-2 p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <b class="text-stone-900 block">💾 离线独立HTML账本 / 年度封账归档 & 家人只读查账链接</b>
-                <span class="text-[10px] text-stone-500">可发至微信【文件传输助手】永久存档；家人点开只读链接无需背密码即可看收支与库存</span>
+                <b class="text-stone-900 block">💾 离线独立HTML账本 / 年度封账归档 & 家人只读查账 & 现场留底照</b>
+                <span class="text-[10px] text-stone-500">可发至微信【文件传输助手】永久存档；随时调看司机在外面拍的签收/破损/空筐照</span>
               </div>
               <button type="button" onclick="window.toggleCharityMicroLight(${!charityEnabled})" class="px-3 py-1 rounded-xl border ${charityEnabled ? 'bg-amber-100 border-amber-400 text-amber-950' : 'bg-white border-stone-300 text-stone-600'} font-bold text-[11px]">
                 ${charityEnabled ? '🕯️ 微光落款已开' : '🕯️ 开启公益落款'}
@@ -1257,12 +1276,55 @@ export function initSixteenRealmsBindings() {
               <button type="button" onclick="window.copyFamilyReadOnlyViewLink()" class="py-1.5 px-3 rounded-xl bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-bold">
                 👁️ 复制家人只读查账链接
               </button>
+              <button type="button" onclick="window.viewFieldPhotoEvidences()" class="py-1.5 px-3 rounded-xl bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-bold">
+                📷 查看现场留底照片
+              </button>
             </div>
           </div>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
+  };
+
+  window.viewFieldPhotoEvidences = async function () {
+    const { data, error } = await supabase
+      .from('driver_collection_log')
+      .select('id, store_name, driver_name, pay_method, created_at')
+      .eq('tenant_id', hqState.currentAgent)
+      .eq('collect_type', 'photo_evidence')
+      .order('id', { ascending: false })
+      .limit(12);
+
+    if (error) return alert('加载照片失败：' + error.message);
+    const list = data || [];
+    if (list.length === 0) return alert('暂无现场留底照片（送货师傅可在掌中宝顶部点击“📷 拍照留底”上传）。');
+
+    document.getElementById('modal-field-photo-gallery')?.remove();
+    const gal = document.createElement('div');
+    gal.id = 'modal-field-photo-gallery';
+    gal.className = 'fixed inset-0 bg-stone-950/80 z-50 flex items-center justify-center p-4 overflow-y-auto';
+    gal.innerHTML = `
+      <div class="bg-white rounded-3xl max-w-2xl w-full p-5 space-y-3 shadow-2xl text-xs my-auto">
+        <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+          <b class="text-sm text-stone-900">📷 现场交割 / 验退 / 空筐留底照片档案</b>
+          <button type="button" onclick="document.getElementById('modal-field-photo-gallery')?.remove()" class="text-stone-400 font-bold text-base">✕</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[70vh] overflow-y-auto">
+          ${list
+            .map(
+              (item) => `
+              <div class="border border-stone-200 rounded-2xl p-2.5 space-y-1.5 bg-stone-50">
+                <img src="${item.pay_method}" alt="现场存证" class="w-full h-44 object-cover rounded-xl bg-stone-200"/>
+                <b class="text-stone-900 block">${item.store_name}</b>
+                <span class="text-[10px] text-stone-500 block">经手人：${item.driver_name || '-'} · ${String(item.created_at || '').slice(0, 16)}</span>
+              </div>`
+            )
+            .join('')}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(gal);
   };
 
   window.toggleRealmLargeText = function () {
