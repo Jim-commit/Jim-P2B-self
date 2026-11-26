@@ -67,53 +67,82 @@ export const HQService = {
     }
   },
 
+  async deductSingleProductStock(tenantId, prod, qty, orderNo, operatorLabel, warehouses, targetWh, subReason = '配货发运自动扣库') {
+    if (!prod || qty <= 0) return;
+    const isMultiWh = warehouses.length > 1;
+    const beforeStock = parseInt(prod.stock ?? 0);
+    const whDelta = calcWarehouseStockDelta(prod, warehouses, targetWh, -qty);
+    const afterStock = isMultiWh ? whDelta.nextTotalStock : Math.max(0, beforeStock - qty);
+    prod.stock = afterStock;
+
+    const updatePayload = { stock: afterStock };
+    if (isMultiWh) {
+      const nextSpecs = {
+        ...(prod.custom_specs && typeof prod.custom_specs === 'object' ? prod.custom_specs : {}),
+        warehouse_stocks: whDelta.nextWarehouseStocks
+      };
+      prod.custom_specs = nextSpecs;
+      updatePayload.custom_specs = nextSpecs;
+    }
+
+    await supabase.from('product').update(updatePayload).eq('id', prod.id);
+
+    const whTag = isMultiWh ? ` [仓库:${targetWh}]` : '';
+    await this.recordInventoryChange(tenantId, {
+      tenant_id: tenantId,
+      product_id: prod.id,
+      product_name: prod.name,
+      action_type: 'order_ship',
+      delta_qty: -qty,
+      before_stock: beforeStock,
+      after_stock: afterStock,
+      operator_name: operatorLabel,
+      remark: `[单号:${orderNo}] [门店受单配发]${whTag} ${subReason}`,
+      created_at: new Date().toISOString()
+    });
+  },
+
   async deductStockForItems(tenantId, allProducts, items, orderNo, operatorLabel, options = {}) {
     if (!Array.isArray(items) || items.length === 0) return;
     const warehouses = Array.isArray(options?.warehouses) && options.warehouses.length > 0 ? options.warehouses : ['主仓库'];
-    const isMultiWh = warehouses.length > 1;
     const targetWh = options?.warehouse && warehouses.includes(options.warehouse) ? options.warehouse : warehouses[0];
 
     for (const it of items) {
       const prod = allProducts.find((p) => String(p.id) === String(it.id) || p.name === it.name);
       if (!prod) continue;
 
-      // 智能识别活插件：纯服务/无库存项自动跳过扣库，不产生虚假负库存
       const plg = getNormalizedItemPlugins(prod);
       if (!plg.stock.enabled) continue;
 
-      const qty = parseInt(it.qty || 0);
+      const qty = parseFloat(it.qty || 0);
       if (qty <= 0) continue;
 
-      const beforeStock = parseInt(prod.stock ?? 0);
-      const whDelta = calcWarehouseStockDelta(prod, warehouses, targetWh, -qty);
-      const afterStock = isMultiWh ? whDelta.nextTotalStock : Math.max(0, beforeStock - qty);
-      prod.stock = afterStock;
+      // 1. 扣减主商品库存
+      await this.deductSingleProductStock(tenantId, prod, qty, orderNo, operatorLabel, warehouses, targetWh, '配货发运自动扣库');
 
-      const updatePayload = { stock: afterStock };
-      if (isMultiWh) {
-        const nextSpecs = {
-          ...(prod.custom_specs && typeof prod.custom_specs === 'object' ? prod.custom_specs : {}),
-          warehouse_stocks: whDelta.nextWarehouseStocks
-        };
-        prod.custom_specs = nextSpecs;
-        updatePayload.custom_specs = nextSpecs;
+      // 2. 若配置了简易组合装子料配方，自动按比例扣减对应子料库存
+      const comps = Array.isArray(plg.stock.bundleComponents) ? plg.stock.bundleComponents : [];
+      for (const comp of comps) {
+        const subProd = allProducts.find(
+          (p) => p.id !== prod.id && (p.name === comp.name || p.name.includes(comp.name))
+        );
+        const subQty = Number((qty * parseFloat(comp.qty || 0)).toFixed(2));
+        if (subProd && subQty > 0) {
+          const subPlg = getNormalizedItemPlugins(subProd);
+          if (subPlg.stock.enabled) {
+            await this.deductSingleProductStock(
+              tenantId,
+              subProd,
+              subQty,
+              orderNo,
+              operatorLabel,
+              warehouses,
+              targetWh,
+              `组合装子料扣减（随【${prod.name}】×${qty}）`
+            );
+          }
+        }
       }
-
-      await supabase.from('product').update(updatePayload).eq('id', prod.id);
-
-      const whTag = isMultiWh ? ` [仓库:${targetWh}]` : '';
-      await this.recordInventoryChange(tenantId, {
-        tenant_id: tenantId,
-        product_id: prod.id,
-        product_name: prod.name,
-        action_type: 'order_ship',
-        delta_qty: -qty,
-        before_stock: beforeStock,
-        after_stock: afterStock,
-        operator_name: operatorLabel,
-        remark: `[单号:${orderNo}] [门店受单配发]${whTag} 配货发运自动扣库`,
-        created_at: new Date().toISOString()
-      });
     }
   },
 
