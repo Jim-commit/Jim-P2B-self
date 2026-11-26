@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（卡片弹窗 + 自动记忆联系人 + 弱网本地暂存补传 + 身份切换与送货导航）
+ * 百工百业 · 五端统一协同与跨端桥接引擎（卡片弹窗 + 自动记忆联系人 + 弱网本地暂存补传 + 拍照留底 + 买卖身份切换）
  * 覆盖：index.html (门店端) / driver.html (掌中宝) / mall.html (天街端) / suppliers.html (名录端)
  */
 import { supabase } from '../../lib/supabase.js';
@@ -171,9 +171,14 @@ export async function initStoreTerminalBridge() {
           <b class="block">🏷️ 已识别门店专属补货贴（编号 #${stickerStoreId}）</b>
           <span class="text-[10px] text-amber-800">直接点下方商品“+”号选择数量，底部一键生成送货凭单</span>
         </div>
-        <button type="button" onclick="window.repeatLastOrder?.()" class="bg-[#1b4332] text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] shrink-0">
-          ⚡ 一键复购上次
-        </button>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <a href="hq.html" class="bg-white border border-amber-300 text-amber-950 font-bold px-2 py-1.5 rounded-xl text-[10px]">
+            🔄 切供货台
+          </a>
+          <button type="button" onclick="window.repeatLastOrder?.()" class="bg-[#1b4332] text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px]">
+            ⚡ 一键复购
+          </button>
+        </div>
       `;
       container.parentNode?.insertBefore(stickerBar, container);
     }
@@ -252,7 +257,7 @@ export async function initStoreTerminalBridge() {
 }
 
 /**
- * 2. 掌中宝 / 一线移动工作台 (driver.html) — 弱网暂存 + 发车预告 + 地图导航 + 身份切换
+ * 2. 掌中宝 / 一线移动工作台 (driver.html) — 弱网暂存 + 发车预告 + 地图导航 + 随手拍照留底 + 身份切换
  */
 const OFFLINE_QUEUE_KEY = 'baigong_palm_offline_queue';
 
@@ -283,12 +288,18 @@ export function initDriverTerminalBridge() {
         <button type="button" id="btn-palm-sync-offline" onclick="window.flushPalmOfflineQueue()" class="hidden bg-amber-400 text-stone-950 font-bold px-2 py-0.5 rounded-lg text-[10px]">
           📶 待补传 0 笔
         </button>
+        <button type="button" onclick="window.openPalmPhotoEvidenceModal()" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
+          📷 拍照留底
+        </button>
         <button type="button" onclick="window.copyDriverDepartureNotice()" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
           🚚 发车预告
         </button>
         <button type="button" onclick="window.openPalmMapNavigation()" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
           🗺️ 导航送货
         </button>
+        <a href="index.html" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
+          🔄 我要进货
+        </a>
         <button type="button" onclick="window.openPalmQuickWalkInModal()" class="bg-[#1b4332] text-white font-bold px-2.5 py-0.5 rounded-lg text-[10px]">
           ⚡ 散客开单
         </button>
@@ -301,6 +312,70 @@ export function initDriverTerminalBridge() {
     </div>
   `;
   navHost.insertAdjacentElement('beforebegin', bar);
+
+  window.openPalmPhotoEvidenceModal = function () {
+    openBridgeSheetModal({
+      id: 'modal-palm-photo-evidence',
+      title: '📷 交割 / 破损 / 空筐随手拍照留底',
+      subtitle: '自动压缩图片存入云端账本，口说无凭一拍即清',
+      confirmText: '✅ 上传留底存证',
+      bodyHtml: `
+        <div>
+          <label class="block font-bold text-stone-700 mb-1">关联客户或事项说明 *：</label>
+          <input type="text" id="pe-note" placeholder="如：兴隆饭庄到货签收 / 第3箱破损验退 / 回收空筐8个" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
+        </div>
+        <div>
+          <label class="block font-bold text-stone-700 mb-1">点击调用相机拍照或选图 *：</label>
+          <input type="file" id="pe-file-input" accept="image/*" capture="environment" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-xs">
+        </div>
+      `,
+      onConfirm: async (close) => {
+        const noteText = document.getElementById('pe-note')?.value.trim();
+        const file = document.getElementById('pe-file-input')?.files?.[0];
+        if (!noteText) return alert('请填写关联客户或现场说明！');
+        if (!file) return alert('请先拍一张现场照片！');
+
+        const tenantId = (document.getElementById('tenant-display')?.innerText || localStorage.getItem('hq_active_agent') || '').trim();
+        const operator = (document.getElementById('driver-name-display')?.innerText || '一线执事').trim();
+
+        const dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const maxW = 640;
+              const scale = Math.min(1, maxW / img.width);
+              canvas.width = Math.round(img.width * scale);
+              canvas.height = Math.round(img.height * scale);
+              canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(canvas.toDataURL('image/jpeg', 0.65));
+            };
+            img.src = ev.target?.result;
+          };
+          reader.readAsDataURL(file);
+        });
+
+        const { error } = await supabase.from('driver_collection_log').insert([{
+          tenant_id: tenantId,
+          store_id: 0,
+          store_name: `📷 现场留底 (${noteText.slice(0, 22)})`,
+          driver_name: operator,
+          collect_type: 'photo_evidence',
+          amount: 0,
+          discount_amount: 0,
+          basket_return: 0,
+          basket_deduct_amount: 0,
+          pay_method: dataUrl,
+          settled_to_hq: true
+        }]);
+
+        if (error) return alert('上传留底失败：' + error.message);
+        close();
+        alert('✅ 现场照片已压缩存入云端账本，随时可调阅核验！');
+      }
+    });
+  };
 
   window.copyDriverDepartureNotice = function () {
     const operator = (document.getElementById('driver-name-display')?.innerText || '送货师傅').trim();
