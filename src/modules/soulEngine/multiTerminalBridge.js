@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（端庄大气一体门头版 · 海纳百川 · 大道至简）
+ * 百工百业 · 五端统一协同与跨端桥接引擎（端庄大气一体门头版 · 全端自适应不裁切 · 大道至简）
  * 覆盖：index.html (需方下单端) / driver.html (我在执行端) / mall.html / suppliers.html (逛大集)
  */
 import { supabase } from '../../lib/supabase.js';
@@ -55,7 +55,7 @@ function showWeChatPinGuideIfFirstTime() {
 }
 
 /**
- * 端庄大气一体式商号门头身份切换栏（同色墨绿顶冠，与主招牌无缝融为一体，消除拼接感）
+ * 端庄大气一体式商号门头身份切换栏（自动适配窄屏卡片与宽屏通栏 header，完整露出绝不裁切）
  */
 function mountMobileQuickRoleSwitchDock(currentFile) {
   if (document.getElementById('baigong-mobile-role-dock')) return;
@@ -66,19 +66,22 @@ function mountMobileQuickRoleSwitchDock(currentFile) {
     { file: 'mall.html', label: '逛大集' }
   ];
 
-  // 找到原有的深绿主招牌容器，直接把切换栏融入其顶部，形成完整一块门头匾额
   const greenHeader =
     document.querySelector('header') ||
     Array.from(document.querySelectorAll('div')).find((el) => {
       const cls = String(el.className || '');
-      return (cls.includes('bg-[#1b4332]') || cls.includes('bg-emerald-9') || cls.includes('bg-green-9')) && el.offsetHeight > 80;
+      return (cls.includes('bg-[#1b4332]') || cls.includes('bg-emerald-9') || cls.includes('bg-green-9')) && el.offsetHeight > 70;
     });
 
   const barWrap = document.createElement('div');
   barWrap.id = 'baigong-mobile-role-dock';
-  barWrap.className = 'w-full bg-[#143628] border-b border-emerald-800/70 px-3 py-2 rounded-t-3xl';
+  const isWideHeader = greenHeader && greenHeader.offsetWidth > 640;
+  barWrap.className = isWideHeader
+    ? 'w-full bg-[#143628] border-b border-emerald-800/70 px-3 py-1.5'
+    : 'w-full bg-[#143628] border-b border-emerald-800/70 px-3 py-2 rounded-t-3xl mx-auto';
+
   barWrap.innerHTML = `
-    <div class="max-w-md mx-auto bg-[#0f291e]/80 p-1 rounded-xl grid grid-cols-4 gap-1 text-xs text-center">
+    <div class="max-w-md mx-auto bg-[#0f291e]/85 p-1 rounded-xl grid grid-cols-4 gap-1 text-xs text-center">
       ${items
         .map((it) => {
           const isActive = currentFile === it.file || (currentFile === 'suppliers.html' && it.file === 'mall.html');
@@ -93,17 +96,21 @@ function mountMobileQuickRoleSwitchDock(currentFile) {
   `;
 
   if (greenHeader) {
-    greenHeader.style.borderTopLeftRadius = '0px';
-    greenHeader.style.borderTopRightRadius = '0px';
-    greenHeader.style.marginTop = '0px';
-    greenHeader.insertAdjacentElement('beforebegin', barWrap);
-    // 让外层包裹宽度与绿招牌完全一致
-    if (greenHeader.parentElement) {
-      barWrap.style.maxWidth = getComputedStyle(greenHeader).maxWidth !== 'none' ? getComputedStyle(greenHeader).maxWidth : '';
-      barWrap.classList.add('mx-auto');
+    if (!isWideHeader) {
+      greenHeader.style.borderTopLeftRadius = '0px';
+      greenHeader.style.borderTopRightRadius = '0px';
+      greenHeader.style.marginTop = '0px';
+      if (greenHeader.parentElement) {
+        const mw = getComputedStyle(greenHeader).maxWidth;
+        if (mw && mw !== 'none') barWrap.style.maxWidth = mw;
+      }
+      greenHeader.insertAdjacentElement('beforebegin', barWrap);
+    } else {
+      // 宽屏通栏 header（如 mall.html / suppliers.html）直接插入 header 内部最顶部，避免被 sticky 裁切
+      greenHeader.style.paddingTop = '0px';
+      greenHeader.insertAdjacentElement('afterbegin', barWrap);
     }
   } else {
-    barWrap.className = 'w-full bg-[#1b4332] py-2 px-3 shadow-xs';
     document.body.insertAdjacentElement('afterbegin', barWrap);
   }
 }
@@ -633,6 +640,25 @@ export function initDriverTerminalBridge() {
 export async function initMallTerminalBridge() {
   showWeChatPinGuideIfFirstTime();
   mountMobileQuickRoleSwitchDock('mall.html');
+
+  // 规整宽屏集市头部：去重“进专柜”按钮、润色大白话副标题、收紧过宽 Tab 栏
+  document.querySelectorAll('p, span, div').forEach((el) => {
+    if (el.children.length === 0 && el.innerText?.includes('物勒工名·服务归店·产区直达')) {
+      el.innerText = '源头直供 · 邻里拼单 · 百业找货找人';
+    }
+  });
+  document.querySelectorAll('button, a').forEach((btn) => {
+    const t = btn.innerText || '';
+    if (t.includes('进专柜') && !t.includes('4')) {
+      btn.style.display = 'none';
+    }
+    if (t.includes('天街良品') && btn.parentElement) {
+      btn.parentElement.style.maxWidth = '680px';
+      btn.parentElement.style.marginLeft = 'auto';
+      btn.parentElement.style.marginRight = 'auto';
+    }
+  });
+
   const [crowdRes, claimRes, charityTenantsRes] = await Promise.all([
     supabase
       .from('platform_suggestion_board')
