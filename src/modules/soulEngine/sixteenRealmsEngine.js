@@ -49,6 +49,32 @@ function applyGlobalLargeTextStyle(enabled) {
   `;
 }
 
+/**
+ * 子账号与临时工“只增不删”安全锁（非老板主账号自动隐藏危险删除按钮，误录只能走作废留痕）
+ */
+function applyNonOwnerDeleteSafetyLock() {
+  const isOwner = hqState.currentRoleCode === 'owner';
+  let lockStyle = document.getElementById('baigong-non-owner-delete-lock');
+  if (isOwner) {
+    lockStyle?.remove();
+    return;
+  }
+  if (!lockStyle) {
+    lockStyle = document.createElement('style');
+    lockStyle.id = 'baigong-non-owner-delete-lock';
+    document.head.appendChild(lockStyle);
+  }
+  lockStyle.textContent = `
+    button[onclick*="deleteStore"],
+    button[onclick*="deleteProduct"],
+    button[onclick*="deleteOrder"],
+    button[onclick*="clearAll"],
+    .btn-danger-delete {
+      display: none !important;
+    }
+  `;
+}
+
 function speakAccountingFeedback(text) {
   const prefs = getAccessibilityPrefs();
   if (!prefs.voiceSpeak || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -377,6 +403,7 @@ function startPartnerLiveActivityTicker() {
 export function mountSixteenRealmsQuickBar() {
   const prefs = getAccessibilityPrefs();
   applyGlobalLargeTextStyle(prefs.largeText);
+  applyNonOwnerDeleteSafetyLock();
 
   const rawSettings = hqState.currentTenantData?.custom_settings || {};
   const urlParams = new URLSearchParams(window.location.search);
@@ -397,7 +424,6 @@ export function mountSixteenRealmsQuickBar() {
   const activeProducts = (hqState.allProducts || []).filter((p) => p.status !== 'inactive');
   const churnList = isSeasonalDormant ? [] : detectSilentChurnPartners(visibleStores, visibleOrders);
 
-  // 新商号冷启动白纸引导卡（名下尚无客户且无商品时自动出现，有数据后自动隐藏）
   const coldStartHtml =
     visibleStores.length === 0 && activeProducts.length === 0
       ? `<div class="bg-amber-50 border border-amber-300 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-amber-950">
