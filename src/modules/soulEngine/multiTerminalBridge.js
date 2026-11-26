@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（海纳百川 · 大道至简 · 独立顶栏不遮挡 · 温和空态引导）
+ * 百工百业 · 五端统一协同与跨端桥接引擎（海纳百川 · 大道至简 · 上部严丝合缝对齐版）
  * 覆盖：index.html (需方下单端) / driver.html (我在执行端) / mall.html / suppliers.html (逛大集)
  */
 import { supabase } from '../../lib/supabase.js';
@@ -55,32 +55,39 @@ function showWeChatPinGuideIfFirstTime() {
 }
 
 /**
- * 全端通用顶部居中快捷身份切换栏（独立顶栏流式排版，绝不压盖店名招牌，也不遮挡底部提交按钮）
+ * 全端通用顶部身份切换栏（自动匹配主容器宽度与对齐方式，不偏不倚）
  */
 function mountMobileQuickRoleSwitchDock(currentFile) {
   if (document.getElementById('baigong-mobile-role-dock')) return;
   const items = [
-    { file: 'hq.html', icon: '🏠', label: '我是供方（接单）' },
-    { file: 'index.html', icon: '🛒', label: '我是需方（下单）' },
-    { file: 'driver.html', icon: '🚚', label: '我在执行（送货/上门）' },
-    { file: 'mall.html', icon: '🛍️', label: '逛大集（找货/找人）' }
+    { file: 'hq.html', icon: '🏠', label: '我是供方' },
+    { file: 'index.html', icon: '🛒', label: '我是需方' },
+    { file: 'driver.html', icon: '🚚', label: '我在执行' },
+    { file: 'mall.html', icon: '🛍️', label: '逛大集' }
   ];
+
+  const mainShell = document.querySelector('body > div, main, #app');
   const barWrap = document.createElement('div');
   barWrap.id = 'baigong-mobile-role-dock';
-  barWrap.className = 'w-full bg-stone-100/95 border-b border-stone-200 py-1.5 px-2 flex justify-center z-30';
+  barWrap.className = 'w-full px-2 pt-2 pb-1 z-30';
   barWrap.innerHTML = `
-    <div class="max-w-full overflow-x-auto bg-white border border-stone-300 rounded-2xl shadow-2xs px-1.5 py-1 flex items-center gap-1 text-[11px]">
+    <div class="max-w-md mx-auto bg-white border border-stone-200 rounded-2xl shadow-2xs p-1 grid grid-cols-4 gap-1 text-[11px] text-center">
       ${items
         .map((it) => {
           const isActive = currentFile === it.file || (currentFile === 'suppliers.html' && it.file === 'mall.html');
-          return `<a href="${it.file}" class="px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition ${
-            isActive ? 'bg-[#1b4332] text-amber-300' : 'text-stone-700 hover:bg-stone-100'
+          return `<a href="${it.file}" class="py-1.5 px-1 rounded-xl font-bold truncate transition ${
+            isActive ? 'bg-[#1b4332] text-amber-300 shadow-2xs' : 'text-stone-700 hover:bg-stone-100'
           }">${it.icon} ${it.label}</a>`;
         })
         .join('')}
     </div>
   `;
-  document.body.insertAdjacentElement('afterbegin', barWrap);
+
+  if (mainShell && mainShell.parentNode === document.body) {
+    mainShell.insertAdjacentElement('afterbegin', barWrap);
+  } else {
+    document.body.insertAdjacentElement('afterbegin', barWrap);
+  }
 }
 
 function openBridgeSheetModal({ id, title, subtitle, bodyHtml, confirmText, onConfirm }) {
@@ -146,6 +153,13 @@ export async function initStoreTerminalBridge() {
       stickerAgent
     ).trim();
 
+    // 修复上部供货方长名称被右侧按钮截断的样式问题
+    document.querySelectorAll('button, span').forEach((el) => {
+      if (el.innerText?.includes('供货方') && el.parentElement) {
+        el.parentElement.style.overflowX = 'auto';
+      }
+    });
+
     const container =
       document.getElementById('product-container') ||
       document.getElementById('product-list') ||
@@ -176,14 +190,9 @@ export async function initStoreTerminalBridge() {
       topBar.className = 'mb-2.5 bg-amber-50/90 border border-amber-300 text-amber-950 px-3 py-2 rounded-2xl flex items-center justify-between gap-2 text-xs';
       topBar.innerHTML = `
         <span class="font-bold truncate">${stickerStoreId ? `🏷️ 专属快捷码 #${stickerStoreId}` : `🛒 需方下单台${myIdentityHint}`}</span>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <a href="hq.html" class="bg-white hover:bg-amber-100 border border-amber-300 text-amber-950 font-bold px-2.5 py-1 rounded-xl text-[11px]">
-            🏠 切供方
-          </a>
-          <button type="button" onclick="window.repeatLastOrder?.()" class="bg-[#1b4332] text-white font-bold px-2.5 py-1 rounded-xl text-[11px]">
-            ⚡ 照上次订
-          </button>
-        </div>
+        <button type="button" onclick="window.repeatLastOrder?.()" class="bg-[#1b4332] text-white font-bold px-3 py-1 rounded-xl text-[11px] shrink-0">
+          ⚡ 照上次再订
+        </button>
       `;
       container.parentNode?.insertBefore(topBar, container);
     }
@@ -341,9 +350,6 @@ export function initDriverTerminalBridge() {
         <button type="button" onclick="window.openPalmMapNavigation()" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
           🗺️ 地图导航
         </button>
-        <a href="index.html" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
-          🛒 切为需方
-        </a>
         <button type="button" onclick="window.openPalmQuickWalkInModal()" class="bg-[#1b4332] text-white font-bold px-2.5 py-0.5 rounded-lg text-[10px]">
           ⚡ 现场开单
         </button>
