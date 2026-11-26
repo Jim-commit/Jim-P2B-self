@@ -16,105 +16,149 @@ function generateMobileVoucherNo(prefix = 'CK') {
   return `${prefix}-${ymd}-${rnd}`;
 }
 
+let storeBridgeWatcherStarted = false;
+let lastRenderedStoreAgent = '';
+
 /**
  * 1. 门店端 (index.html)：
  *    - 识别总部打印的「一户一码快捷补货贴」(?agent=...&store_id=...) 自动锁定商号并亮出极速补货条
- *    - 展示当前供货商发布的「🌾 凑单开产牌」，门店掌柜一键认领数量
+ *    - 展示当前供货商发布的「🌾 凑单开产牌」，门店掌柜一键认领数量（支持切换供货商实时联动刷新）
  */
 export async function initStoreTerminalBridge() {
   const params = getUrlParams();
-  const stickerAgent = params.get('agent') || params.get('t') || '';
-  const stickerStoreId = params.get('store_id') || '';
+  const stickerAgent = (params.get('agent') || params.get('t') || '').trim();
+  const stickerStoreId = (params.get('store_id') || '').trim();
 
   if (stickerAgent) {
     localStorage.setItem('active_agent_id', stickerAgent);
+    localStorage.setItem('active_agent', stickerAgent);
   }
   if (stickerStoreId) {
     localStorage.setItem('sticker_bound_store_id', stickerStoreId);
   }
 
-  const activeAgent = stickerAgent || localStorage.getItem('active_agent_id') || '';
-  if (!activeAgent) return;
+  async function renderCrowdBannerForActiveAgent(forceRefresh = false) {
+    const activeAgent = (
+      document.getElementById('menu-current-agent-tag')?.innerText ||
+      localStorage.getItem('active_agent') ||
+      localStorage.getItem('active_agent_id') ||
+      stickerAgent
+    ).trim();
 
-  const [tenantRes, crowdRes] = await Promise.all([
-    supabase.from('platform_tenant').select('tenant_id, company_name, custom_settings').eq('tenant_id', activeAgent).maybeSingle(),
-    supabase
-      .from('platform_suggestion_board')
-      .select('*')
-      .eq('proposer_type', 'c2b_demand')
-      .ilike('category', `%凑单开产 · ${activeAgent}%`)
-      .order('id', { ascending: false })
-      .limit(5)
-  ]);
+    if (!activeAgent || activeAgent === '未接入') {
+      document.getElementById('store-sticker-welcome-bar')?.remove();
+      document.getElementById('store-crowd-produce-box')?.remove();
+      lastRenderedStoreAgent = '';
+      return;
+    }
 
-  const tenant = tenantRes?.data;
-  if (tenant?.custom_settings) {
-    const lex = getTenantLexicon(tenant.custom_settings);
-    document.querySelectorAll('[data-lex]').forEach((el) => {
-      const k = el.getAttribute('data-lex');
-      if (k && lex[k]) el.textContent = lex[k];
-    });
+    if (!forceRefresh && activeAgent === lastRenderedStoreAgent && document.getElementById('product-container')) {
+      return;
+    }
+    lastRenderedStoreAgent = activeAgent;
+
+    const [tenantRes, crowdRes] = await Promise.all([
+      supabase
+        .from('platform_tenant')
+        .select('tenant_id, company_name, custom_settings')
+        .eq('tenant_id', activeAgent)
+        .maybeSingle(),
+      supabase
+        .from('platform_suggestion_board')
+        .select('*')
+        .eq('proposer_type', 'c2b_demand')
+        .ilike('category', `%凑单开产 · ${activeAgent}%`)
+        .order('id', { ascending: false })
+        .limit(5)
+    ]);
+
+    const tenant = tenantRes?.data;
+    if (tenant?.custom_settings) {
+      const lex = getTenantLexicon(tenant.custom_settings);
+      document.querySelectorAll('[data-lex]').forEach((el) => {
+        const k = el.getAttribute('data-lex');
+        if (k && lex[k]) el.textContent = lex[k];
+      });
+    }
+
+    const container =
+      document.getElementById('product-container') ||
+      document.getElementById('product-list') ||
+      document.getElementById('goods-list') ||
+      document.getElementById('items-container');
+    if (!container) return;
+
+    document.getElementById('store-sticker-welcome-bar')?.remove();
+    document.getElementById('store-crowd-produce-box')?.remove();
+
+    // 若通过「一户一码实体贴纸」扫码进入，顶部亮出扫码极速补货欢迎条
+    if (stickerStoreId) {
+      const stickerBar = document.createElement('div');
+      stickerBar.id = 'store-sticker-welcome-bar';
+      stickerBar.className = 'mb-3 bg-amber-50 border border-amber-300 text-amber-950 p-3 rounded-2xl flex items-center justify-between gap-2 text-xs shadow-2xs';
+      stickerBar.innerHTML = `
+        <div>
+          <b class="block">🏷️ 已识别门店专属补货贴（编号 #${stickerStoreId}）</b>
+          <span class="text-[10px] text-amber-800">直接点下方商品“+”号选择数量，底部一键生成送货凭单</span>
+        </div>
+        <button type="button" onclick="window.repeatLastOrder?.()" class="bg-[#1b4332] text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] shrink-0">
+          ⚡ 一键复购上次
+        </button>
+      `;
+      container.parentNode?.insertBefore(stickerBar, container);
+    }
+
+    // 若供货商发布了「凑单开产牌」，在商品列表上方亮出拼单认领卡片
+    const crowdList = crowdRes?.data || [];
+    if (crowdList.length > 0) {
+      const crowdBox = document.createElement('div');
+      crowdBox.id = 'store-crowd-produce-box';
+      crowdBox.className = 'mb-3 bg-emerald-50/90 border border-emerald-300 p-3 rounded-2xl space-y-2 text-xs';
+      crowdBox.innerHTML = `
+        <div class="flex items-center justify-between">
+          <b class="text-emerald-950">🌾 源头「凑单开产」预售接龙（凑满即开炉直供）</b>
+          <span class="text-[10px] bg-emerald-800 text-white px-2 py-0.5 rounded-full font-bold">零库存优价</span>
+        </div>
+        ${crowdList
+          .map(
+            (c) => `
+            <div class="bg-white p-2.5 rounded-xl border border-emerald-200 flex items-center justify-between gap-2">
+              <span class="text-[11px] text-stone-800 leading-snug">${c.content}</span>
+              <button type="button" onclick="window.claimCrowdProduceItem(${c.id}, '${String(c.content).replace(/'/g, '')}')" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[10px] shrink-0">
+                🙋 我要认领
+              </button>
+            </div>`
+          )
+          .join('')}
+      `;
+      container.parentNode?.insertBefore(crowdBox, container);
+    }
+
+    window.claimCrowdProduceItem = async function (noticeId, contentText) {
+      const qtyStr = prompt(`请输入您本店要认领的数量：\n（${contentText}）`, '10');
+      const qty = parseInt(qtyStr || '0', 10);
+      if (!qty || qty <= 0) return;
+
+      const storeTitle = document.getElementById('store-title')?.innerText || '合作门店';
+      const { error } = await supabase.from('platform_suggestion_board').insert([{
+        proposer_type: 'c2b_demand',
+        proposer_name: storeTitle,
+        category: `[凑单认领 · ${activeAgent}]`,
+        content: `🙋【凑单认领】${storeTitle} 认领 ${qty} 件（响应：${contentText.slice(0, 40)}...）`
+      }]);
+      if (error) return alert('认领提交失败：' + error.message);
+      alert(`✅ 认领成功！已向源头供货方登记您认领 ${qty} 件，凑满开产后将优先为您配发！`);
+    };
   }
 
-  const crowdList = crowdRes?.data || [];
-  const container = document.getElementById('product-container');
-  if (!container) return;
+  await renderCrowdBannerForActiveAgent(true);
 
-  // 若通过「一户一码实体贴纸」扫码进入，顶部亮出扫码极速补货欢迎条
-  if (stickerStoreId) {
-    const stickerBar = document.createElement('div');
-    stickerBar.className = 'mb-3 bg-amber-50 border border-amber-300 text-amber-950 p-3 rounded-2xl flex items-center justify-between gap-2 text-xs shadow-2xs';
-    stickerBar.innerHTML = `
-      <div>
-        <b class="block">🏷️ 已识别门店专属补货贴（编号 #${stickerStoreId}）</b>
-        <span class="text-[10px] text-amber-800">直接点下方商品“+”号选择数量，底部一键生成送货凭单</span>
-      </div>
-      <button type="button" onclick="window.repeatLastOrder?.()" class="bg-[#1b4332] text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] shrink-0">
-        ⚡ 一键复购上次
-      </button>
-    `;
-    container.parentNode?.insertBefore(stickerBar, container);
+  if (!storeBridgeWatcherStarted) {
+    storeBridgeWatcherStarted = true;
+    setInterval(() => {
+      renderCrowdBannerForActiveAgent(false);
+    }, 3000);
   }
-
-  // 若供货商发布了「凑单开产牌」，在商品列表上方亮出拼单认领卡片
-  if (crowdList.length > 0) {
-    const crowdBox = document.createElement('div');
-    crowdBox.className = 'mb-3 bg-emerald-50/90 border border-emerald-300 p-3 rounded-2xl space-y-2 text-xs';
-    crowdBox.innerHTML = `
-      <div class="flex items-center justify-between">
-        <b class="text-emerald-950">🌾 源头「凑单开产」预售接龙（凑满即开炉直供）</b>
-        <span class="text-[10px] bg-emerald-800 text-white px-2 py-0.5 rounded-full font-bold">零库存优价</span>
-      </div>
-      ${crowdList
-        .map(
-          (c) => `
-          <div class="bg-white p-2.5 rounded-xl border border-emerald-200 flex items-center justify-between gap-2">
-            <span class="text-[11px] text-stone-800 leading-snug">${c.content}</span>
-            <button type="button" onclick="window.claimCrowdProduceItem(${c.id}, '${String(c.content).replace(/'/g, '')}')" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[10px] shrink-0">
-              🙋 我要认领
-            </button>
-          </div>`
-        )
-        .join('')}
-    `;
-    container.parentNode?.insertBefore(crowdBox, container);
-  }
-
-  window.claimCrowdProduceItem = async function (noticeId, contentText) {
-    const qtyStr = prompt(`请输入您本店要认领的数量：\n（${contentText}）`, '10');
-    const qty = parseInt(qtyStr || '0', 10);
-    if (!qty || qty <= 0) return;
-
-    const storeTitle = document.getElementById('store-title')?.innerText || '合作门店';
-    const { error } = await supabase.from('platform_suggestion_board').insert([{
-      proposer_type: 'c2b_demand',
-      proposer_name: storeTitle,
-      category: `[凑单认领 · ${activeAgent}]`,
-      content: `🙋【凑单认领】${storeTitle} 认领 ${qty} 件（响应：${contentText.slice(0, 40)}...）`
-    }]);
-    if (error) return alert('认领提交失败：' + error.message);
-    alert(`✅ 认领成功！已向源头供货方登记您认领 ${qty} 件，凑满开产后将优先为您配发！`);
-  };
 }
 
 /**
