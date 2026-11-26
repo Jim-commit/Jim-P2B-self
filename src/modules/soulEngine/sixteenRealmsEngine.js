@@ -53,6 +53,51 @@ function findLastDealPriceForPartner(storeName, itemName) {
 }
 
 /**
+ * 多品项微信要货消息解析器（如："厚德便利店明早送5箱菜籽油、3袋大米，挂账"）
+ */
+function parseWeChatMultiItemMessage(rawMsg, stores = [], products = []) {
+  const text = String(rawMsg || '').trim();
+  const matchedStore =
+    stores.find((s) => s.name && text.includes(s.name)) ||
+    stores.find((s) => s.contact && s.contact !== '掌柜' && text.includes(s.contact)) ||
+    null;
+
+  const storeName = matchedStore
+    ? matchedStore.name
+    : (text.match(/^([^\d,，。：:\n要送发来订]+?)(?:明早|明天|今天|要|送|发|订|：|:|\d)/)?.[1]?.trim() || '微信要货客户');
+
+  const settlementType = text.includes('现结') || text.includes('现金') || text.includes('已转') ? 'cash' : 'credit';
+  const items = [];
+  const pattern = /(\d+(?:\.\d+)?)\s*(箱|件|斤|套|桶|袋|瓶|个|台|批|份)\s*([^\d,，。；;\n和与及再带送发要订挂现]+)/g;
+  let match;
+
+  while ((match = pattern.exec(text)) !== null) {
+    const qty = parseFloat(match[1]);
+    const unit = match[2];
+    const rawProdName = match[3].trim();
+    if (!rawProdName || qty <= 0) continue;
+
+    const matchedProd =
+      products.find((p) => p.status !== 'inactive' && p.name && (rawProdName.includes(p.name) || p.name.includes(rawProdName))) ||
+      null;
+    const finalName = matchedProd ? matchedProd.name : rawProdName;
+    const lastPrice = findLastDealPriceForPartner(storeName, finalName);
+    const price = lastPrice || (matchedProd ? parseFloat(matchedProd.tier_1_price || 0) : 0);
+
+    items.push({
+      id: matchedProd?.id || 0,
+      name: finalName,
+      spec: matchedProd?.spec || unit,
+      measure_unit: matchedProd?.measure_unit || unit,
+      price,
+      qty
+    });
+  }
+
+  return { store: matchedStore, storeName, items, settlementType };
+}
+
+/**
  * 1. 一句话/语音全能自然语言记账解析器（支持：开单出库、采购入库、收款平账）
  */
 export function parseNaturalBusinessCommand(rawText, stores = [], products = []) {
@@ -267,6 +312,9 @@ export function mountSixteenRealmsQuickBar() {
         <span class="text-[10px] text-stone-400 hidden sm:inline">支持直接开单、散客随手记、进货入库、收款平账</span>
       </div>
       <div class="flex flex-wrap gap-1.5">
+        <button type="button" onclick="window.openWeChatPasteOrderModal()" class="bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-2.5 py-1 rounded-xl text-[11px]">
+          📋 粘贴微信要货消息
+        </button>
         <button type="button" onclick="window.openZeroBarrierWalkInOrderModal()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2.5 py-1 rounded-xl text-[11px]">
           ⚡ 记一笔散客账
         </button>
@@ -309,6 +357,123 @@ export function initSixteenRealmsBindings() {
       }
     };
     rec.start();
+  };
+
+  /**
+   * 粘贴微信要货消息一键转单弹窗
+   */
+  window.openWeChatPasteOrderModal = async function () {
+    document.getElementById('modal-wechat-paste-order')?.remove();
+    let clipText = '';
+    try {
+      if (navigator.clipboard?.readText) {
+        clipText = await navigator.clipboard.readText();
+      }
+    } catch {
+      // 浏览器未授予剪贴板权限时由用户手动粘贴
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'modal-wechat-paste-order';
+    modal.className = 'fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-4';
+    modal.innerHTML = `
+      <div class="bg-white border border-stone-200 rounded-3xl max-w-md w-full p-5 space-y-3 shadow-2xl text-xs">
+        <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+          <div>
+            <b class="text-sm text-stone-900">📋 粘贴微信要货消息 · 一键转配货单</b>
+            <p class="text-[10px] text-stone-500">自动识别客户名、多行商品数量及上次成交价</p>
+          </div>
+          <button type="button" onclick="document.getElementById('modal-wechat-paste-order')?.remove()" class="text-stone-400 font-bold text-base">✕</button>
+        </div>
+        <textarea id="wc-paste-textarea" rows="4" oninput="window.previewWeChatPasteOrder()" placeholder="把微信里客户发的要货消息粘进来，例如：
+厚德便利店明早送5箱菜籽油、3袋大米，老规矩挂账" class="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3 outline-none focus:border-emerald-700">${clipText}</textarea>
+        <div id="wc-paste-preview-box" class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-3 space-y-1 text-[11px] text-emerald-950">
+          等待粘贴微信要货文本...
+        </div>
+        <button type="button" onclick="window.confirmWeChatPasteOrder()" class="w-full py-2.5 rounded-2xl bg-[#1b4332] hover:bg-[#143628] text-white font-bold shadow">
+          ✅ 确认生成配货单并扣减库存
+        </button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    window.previewWeChatPasteOrder = function () {
+      const raw = document.getElementById('wc-paste-textarea')?.value || '';
+      const box = document.getElementById('wc-paste-preview-box');
+      if (!box) return;
+      const res = parseWeChatMultiItemMessage(raw, getVisibleStoresForCurrentRole(), hqState.allProducts || []);
+      if (res.items.length === 0) {
+        box.innerHTML = '<span class="text-stone-500">请包含“数量+单位+品名”，如：<b>5箱菜籽油、3袋大米</b></span>';
+        return;
+      }
+      const total = res.items.reduce((s, it) => s + it.qty * it.price, 0);
+      box.innerHTML = `
+        <div><b>识别客户：</b>${res.storeName} ${res.store ? '✅(已建档)' : '(临时散客)'} · <b>${res.settlementType === 'cash' ? '现结' : '挂账'}</b></div>
+        <div class="pt-1 space-y-0.5">${res.items
+          .map((it) => `<div>• ${it.name} × <b>${it.qty}${it.measure_unit}</b>（单价 ¥${it.price}）</div>`)
+          .join('')}</div>
+        <div class="pt-1 border-t border-emerald-200 font-bold">预估合计：¥${total.toFixed(2)}</div>
+      `;
+    };
+    if (clipText) window.previewWeChatPasteOrder();
+
+    window.confirmWeChatPasteOrder = async function () {
+      if (isAuditorReadOnly()) return alert('只读账号不可开单。');
+      const raw = document.getElementById('wc-paste-textarea')?.value.trim() || '';
+      const res = parseWeChatMultiItemMessage(raw, getVisibleStoresForCurrentRole(), hqState.allProducts || []);
+      if (res.items.length === 0) return alert('未能识别出有效商品明细，请检查文本格式（如：5箱菜籽油）。');
+
+      const totalAmt = Number(res.items.reduce((s, it) => s + it.qty * it.price, 0).toFixed(2));
+      const ckNo = generateUnifiedVoucherNo('CK');
+      const orderRow = {
+        order_no: ckNo,
+        tenant_id: hqState.currentAgent,
+        store_id: res.store?.id || 0,
+        store_name: res.storeName,
+        driver_name: res.store?.driver_name || hqState.currentOperatorName,
+        order_source: 'vendor_push',
+        settlement_type: res.settlementType,
+        settlement_note: `[微信粘贴转单] ${raw.slice(0, 60)}`,
+        items: res.items,
+        items_return: [],
+        items_exchange: [],
+        total_amount: totalAmt,
+        return_amount: 0,
+        net_settle_amount: totalAmt,
+        order_status: 'confirmed',
+        delivery_status: 'ordered',
+        note: `[微信粘贴转单] ${raw.slice(0, 60)}`,
+        driver_action_instruction: '【微信要货单】现场签收核验'
+      };
+
+      const { data: insertedRows, error } = await supabase.from('store_order').insert([orderRow]).select('id');
+      if (error) return alert('转单失败：' + error.message);
+
+      const stockedItems = res.items.filter((it) => it.id > 0);
+      if (stockedItems.length > 0) {
+        await HQService.deductStockForItems(
+          hqState.currentAgent,
+          hqState.allProducts || [],
+          stockedItems,
+          ckNo,
+          hqState.currentOperatorName
+        );
+      }
+
+      document.getElementById('modal-wechat-paste-order')?.remove();
+      if (typeof window.loadHQData === 'function') await window.loadHQData();
+
+      showQuickUndoToast(`✅ 微信消息已转为配货单【${ckNo}】(¥${totalAmt.toFixed(2)})`, async () => {
+        if (insertedRows?.[0]?.id) {
+          await supabase.from('store_order').update({
+            order_status: 'cancelled',
+            note: `${orderRow.note} [8秒快捷撤回作废]`
+          }).eq('id', insertedRows[0].id);
+        }
+        alert(`↩️ 已撤回单据【${ckNo}】。`);
+        if (typeof window.loadHQData === 'function') await window.loadHQData();
+      });
+    };
   };
 
   window.executeNaturalBusinessCommand = async function () {
@@ -398,7 +563,6 @@ export function initSixteenRealmsBindings() {
       return;
     }
 
-    // 默认：极速出库开单
     const totalAmt = Number((parsed.qty * parsed.unitPrice).toFixed(2));
     const termTag = parsed.naturalTerm ? ` · 约定:${parsed.naturalTerm}` : '';
     const priceHint = parsed.usedLastDealPrice ? ' [自动带出上次成交价]' : '';
@@ -467,7 +631,7 @@ export function initSixteenRealmsBindings() {
   };
 
   /**
-   * 记一笔散客账弹窗（支持：上次成交价自动带出、一键抹零、开单即自动建档、纯记往来账不扣库存）
+   * 记一笔散客账弹窗（支持：计算器大按键模式、上次成交价自动带出、一键抹零、开单即自动建档、纯记往来账）
    */
   window.openZeroBarrierWalkInOrderModal = function () {
     document.getElementById('modal-zero-barrier-order')?.remove();
@@ -476,22 +640,36 @@ export function initSixteenRealmsBindings() {
 
     const storeDataList = stores.map((s) => `<option value="${s.name}">`).join('');
     const prodDataList = products.map((p) => `<option value="${p.name}">`).join('');
+    const quickProdChips = products
+      .slice(0, 8)
+      .map(
+        (p) =>
+          `<button type="button" onclick="window.pickZeroBarrierQuickProd('${String(p.name).replace(/'/g, '')}', ${parseFloat(p.tier_1_price || 0)})" class="bg-stone-100 hover:bg-emerald-100 text-stone-800 border border-stone-200 px-2.5 py-1 rounded-xl font-bold text-[11px]">${p.name}</button>`
+      )
+      .join('');
 
     const modal = document.createElement('div');
     modal.id = 'modal-zero-barrier-order';
-    modal.className = 'fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-4';
+    modal.className = 'fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto';
     modal.innerHTML = `
-      <div class="bg-white border border-stone-200 rounded-3xl max-w-md w-full p-5 space-y-3 shadow-2xl text-xs">
+      <div class="bg-white border border-stone-200 rounded-3xl max-w-md w-full p-5 space-y-3 shadow-2xl text-xs my-auto">
         <div class="flex justify-between items-center border-b border-stone-100 pb-2">
           <div>
             <b class="text-sm text-stone-900">⚡ 记一笔散客账（边开单边自动建档）</b>
             <p class="text-[10px] text-stone-500">直接填名字和品名即可出单，新客户和新品名自动存进档案库</p>
           </div>
-          <button type="button" onclick="document.getElementById('modal-zero-barrier-order')?.remove()" class="text-stone-400 font-bold text-base">✕</button>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="document.getElementById('zb-abacus-keypad')?.classList.toggle('hidden')" class="bg-amber-100 text-amber-950 border border-amber-300 font-bold px-2 py-1 rounded-xl text-[10px]">
+              🧮 计算器按键
+            </button>
+            <button type="button" onclick="document.getElementById('modal-zero-barrier-order')?.remove()" class="text-stone-400 font-bold text-base">✕</button>
+          </div>
         </div>
 
         <datalist id="zb-store-datalist">${storeDataList}</datalist>
         <datalist id="zb-prod-datalist">${prodDataList}</datalist>
+
+        ${quickProdChips ? `<div class="flex flex-wrap gap-1">${quickProdChips}</div>` : ''}
 
         <div class="space-y-2.5">
           <div>
@@ -505,7 +683,7 @@ export function initSixteenRealmsBindings() {
             </div>
             <div>
               <label class="block font-bold text-stone-700 mb-1">数量 *：</label>
-              <input type="number" step="0.01" id="zb-item-qty" value="1" oninput="window.recalcZeroBarrierHelper(false)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold outline-none">
+              <input type="number" step="0.01" id="zb-item-qty" value="1" onfocus="window._zbActiveField='zb-item-qty'" oninput="window.recalcZeroBarrierHelper(false)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold outline-none">
             </div>
           </div>
           <div class="grid grid-cols-2 gap-2">
@@ -514,7 +692,7 @@ export function initSixteenRealmsBindings() {
                 <label class="font-bold text-stone-700">成交单价 (元) *：</label>
                 <span id="zb-last-price-badge" class="hidden text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1.5 rounded">上次价</span>
               </div>
-              <input type="number" step="0.01" id="zb-item-price" oninput="window.recalcZeroBarrierHelper(false)" placeholder="0.00" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold outline-none">
+              <input type="number" step="0.01" id="zb-item-price" onfocus="window._zbActiveField='zb-item-price'" oninput="window.recalcZeroBarrierHelper(false)" placeholder="0.00" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold outline-none">
             </div>
             <div>
               <label class="block font-bold text-stone-700 mb-1">自然结算约定：</label>
@@ -527,6 +705,20 @@ export function initSixteenRealmsBindings() {
                 <option value="以物/劳务抵扣">🤝 以物/劳务抵扣</option>
               </select>
             </div>
+          </div>
+
+          <!-- 算盘级大按键计算器键盘（点击顶部按钮展开） -->
+          <div id="zb-abacus-keypad" class="hidden bg-stone-100 p-2 rounded-2xl grid grid-cols-4 gap-1.5 font-mono text-sm font-bold">
+            ${['7', '8', '9', '清空', '4', '5', '6', '退格', '1', '2', '3', '切单价', '0', '00', '.', '切数量']
+              .map(
+                (k) =>
+                  `<button type="button" onclick="window.pressAbacusKey('${k}')" class="py-2 rounded-xl ${
+                    ['清空', '退格', '切单价', '切数量'].includes(k)
+                      ? 'bg-amber-200 text-amber-950 text-xs'
+                      : 'bg-white text-stone-900 shadow-2xs active:bg-emerald-100'
+                  }">${k}</button>`
+              )
+              .join('')}
           </div>
 
           <!-- 合计与一键抹零 -->
@@ -559,6 +751,34 @@ export function initSixteenRealmsBindings() {
       </div>
     `;
     document.body.appendChild(modal);
+
+    window._zbActiveField = 'zb-item-price';
+    window.pickZeroBarrierQuickProd = function (pName, defaultPrice) {
+      const iInp = document.getElementById('zb-item-name');
+      const pInp = document.getElementById('zb-item-price');
+      if (iInp) iInp.value = pName;
+      if (pInp && !pInp.value) pInp.value = defaultPrice || '';
+      window.recalcZeroBarrierHelper(true);
+    };
+
+    window.pressAbacusKey = function (key) {
+      if (key === '切单价') {
+        window._zbActiveField = 'zb-item-price';
+        document.getElementById('zb-item-price')?.focus();
+        return;
+      }
+      if (key === '切数量') {
+        window._zbActiveField = 'zb-item-qty';
+        document.getElementById('zb-item-qty')?.focus();
+        return;
+      }
+      const target = document.getElementById(window._zbActiveField || 'zb-item-price');
+      if (!target) return;
+      if (key === '清空') target.value = '';
+      else if (key === '退格') target.value = String(target.value || '').slice(0, -1);
+      else target.value = String(target.value || '') + key;
+      window.recalcZeroBarrierHelper(false);
+    };
 
     window.recalcZeroBarrierHelper = function (tryAutoPrice = false) {
       const sName = document.getElementById('zb-store-name')?.value.trim() || '';
@@ -628,7 +848,6 @@ export function initSixteenRealmsBindings() {
     let matchedStore = (hqState.allStores || []).find((s) => s.name === storeName);
     let matchedProd = (hqState.allProducts || []).find((p) => p.name === itemName);
 
-    // 开单即建档：若勾选自动建档且库里不存在该客户/商品，后台静默建档
     if (autoCreateMaster && !matchedStore && storeName !== '路过散客' && storeName !== '临时散客') {
       const { data: newStoreRows } = await supabase.from('store').insert([{
         tenant_id: hqState.currentAgent,
@@ -718,7 +937,7 @@ export function initSixteenRealmsBindings() {
   };
 
   /**
-   * 实用工具箱总弹窗
+   * 实用工具箱总弹窗（新增：微信体面发对账话术、今日收摊小结、58mm/A4通用打印）
    */
   window.openSixteenRealmsHubModal = function () {
     document.getElementById('modal-sixteen-realms-hub')?.remove();
@@ -761,7 +980,7 @@ export function initSixteenRealmsBindings() {
         <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
           <div>
             <b class="text-sm text-stone-900">🧰 实用工具箱 · 改错对账与基层协作快捷舱</b>
-            <p class="text-[11px] text-stone-500 mt-0.5">作废重开 · 两家互抵账 · 凑单开产 · 一户一码贴纸 · 客户交接 · 离线独立HTML账本</p>
+            <p class="text-[11px] text-stone-500 mt-0.5">作废重开 · 两家互抵账 · 体面微信对账 · 收摊日结小票 · 58mm/A4通用贴纸 · 离线独立HTML账本</p>
           </div>
           <button type="button" onclick="document.getElementById('modal-sixteen-realms-hub')?.remove()" class="text-stone-400 font-bold text-base">✕</button>
         </div>
@@ -790,7 +1009,19 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 3. 凑够才生产预售拼单 -->
+          <!-- 3. 微信体面对账单 & 今日收摊日结小票 -->
+          <div class="p-3 bg-sky-50/70 border border-sky-200 rounded-2xl space-y-2">
+            <b class="text-sky-950 block">💬 微信发对账单 & 今日收摊小结</b>
+            <div class="flex gap-1.5">
+              <select id="wechat-statement-store-id" class="flex-1 min-w-0 bg-white border border-sky-200 rounded-xl px-2 py-1 font-bold truncate">${storeOpts || '<option value="">选择客户</option>'}</select>
+              <button type="button" onclick="window.copyPoliteWeChatStatement()" class="bg-sky-700 hover:bg-sky-800 text-white font-bold px-2.5 py-1 rounded-xl shrink-0">复制对账话术</button>
+            </div>
+            <button type="button" onclick="window.copyDailyClosingSummaryForWeChat()" class="w-full py-1.5 rounded-xl bg-white hover:bg-sky-100 text-sky-950 border border-sky-300 font-bold">
+              🧾 生成「今日收摊小结」发微信群
+            </button>
+          </div>
+
+          <!-- 4. 凑够才生产预售拼单 -->
           <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2">
             <b class="text-emerald-950 block">🌾 凑单开产（先凑需求、满额再生产）</b>
             <div class="grid grid-cols-2 gap-1.5">
@@ -802,17 +1033,17 @@ export function initSixteenRealmsBindings() {
             </button>
           </div>
 
-          <!-- 4. 一户一码 / 货架实体贴纸 -->
+          <!-- 5. 一户一码 / 58mm热敏与A4贴纸 -->
           <div class="p-3 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-2">
-            <b class="text-amber-950 block">🏷️ 一户一码 / 货架补货实体贴纸</b>
-            <p class="text-[10px] text-stone-600">生成专属贴纸打印贴在门店前台或货架，微信扫码直达极速补货。</p>
+            <b class="text-amber-950 block">🏷️ 一户一码补货贴（58mm热敏 / A4 6联）</b>
+            <p class="text-[10px] text-stone-600">普通家用打印机或蓝牙热敏小票机直接出纸，贴货架扫码补货。</p>
             <div class="flex gap-1.5">
               <select id="sticker-store-id" class="flex-1 min-w-0 bg-white border border-amber-200 rounded-xl px-2 py-1 font-bold truncate">${storeOpts || '<option value="">选择客户</option>'}</select>
-              <button type="button" onclick="window.generatePhysicalQrSticker()" class="bg-amber-500 text-stone-950 font-bold px-3 py-1 rounded-xl shrink-0">生成贴纸</button>
+              <button type="button" onclick="window.generatePhysicalQrSticker()" class="bg-amber-500 text-stone-950 font-bold px-3 py-1 rounded-xl shrink-0">打印贴纸</button>
             </div>
           </div>
 
-          <!-- 5. 一键岗位客户交接包 -->
+          <!-- 6. 一键岗位客户交接包 -->
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
             <b class="text-stone-900 block">🤝 员工离职/调岗 · 一键客户交接</b>
             <div class="flex gap-1.5 items-center">
@@ -823,11 +1054,14 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 6. 离线可查独立HTML账本 & 一单微光公益落款 -->
-          <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
-            <b class="text-stone-900 block">💾 离线独立HTML账本 & 邻里微光公益</b>
+          <!-- 7. 离线可查独立HTML账本 & 一单微光公益落款 -->
+          <div class="sm:col-span-2 p-3 bg-stone-50 border border-stone-200 rounded-2xl flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <b class="text-stone-900 block">💾 离线独立HTML账本（可发微信文件传输助手永久存档） & 邻里微光公益</b>
+              <span class="text-[10px] text-stone-500">断网或换新手机时，双击本地账本文件即可秒查全部客户、库存与历史流水</span>
+            </div>
             <div class="flex flex-wrap gap-1.5">
-              <button type="button" onclick="window.downloadOfflineStandaloneLedger()" class="flex-1 py-1.5 rounded-xl bg-emerald-800 text-white font-bold">
+              <button type="button" onclick="window.downloadOfflineStandaloneLedger()" class="py-1.5 px-3 rounded-xl bg-emerald-800 text-white font-bold">
                 📥 下载断网可查HTML账本
               </button>
               <button type="button" onclick="window.toggleCharityMicroLight(${!charityEnabled})" class="px-3 py-1.5 rounded-xl border ${charityEnabled ? 'bg-amber-100 border-amber-400 text-amber-950' : 'bg-white border-stone-300 text-stone-600'} font-bold">
@@ -839,6 +1073,47 @@ export function initSixteenRealmsBindings() {
       </div>
     `;
     document.body.appendChild(modal);
+  };
+
+  window.copyPoliteWeChatStatement = function () {
+    const storeId = parseInt(document.getElementById('wechat-statement-store-id')?.value || '0', 10);
+    const store = (hqState.allStores || []).find((s) => Number(s.id) === storeId);
+    if (!store) return alert('请先选择一位客户！');
+
+    const recentOrders = (hqState.allOrders || [])
+      .filter((o) => Number(o.store_id) === storeId && o.order_status !== 'cancelled')
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+      .slice(0, 5);
+
+    const detailLines =
+      recentOrders.length > 0
+        ? recentOrders
+            .map((o) => {
+              const items = (o.items || []).map((i) => `${i.name}×${i.qty}`).join('、');
+              return `· ${String(o.created_at || '').slice(5, 10)} ${items}：¥${parseFloat(o.net_settle_amount || 0).toFixed(2)}`;
+            })
+            .join('\n')
+        : '· 近期往来明细已同步登记';
+
+    const tenantName = hqState.currentTenantData?.company_name || '我们这边';
+    const msg = `${store.name}（${store.contact || '掌柜'}）您好，最近生意兴隆！\n给您同步一下咱们近期的往来对账单，方便时核对一下：\n${detailLines}\n当前累计余款：¥${parseFloat(store.current_debt || 0).toFixed(2)}。\n您方便时微信转我就行，下趟车继续给您备新鲜好货！—— ${tenantName}`;
+
+    navigator.clipboard?.writeText(msg);
+    alert(`✅ 体面微信对账单已复制到剪贴板，直接去微信粘贴发送即可！\n\n${msg}`);
+  };
+
+  window.copyDailyClosingSummaryForWeChat = function () {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const tenantName = hqState.currentTenantData?.company_name || hqState.currentAgent || '百工商号';
+    const todayOrders = (hqState.allOrders || []).filter(
+      (o) => o.order_status !== 'cancelled' && String(o.created_at || '').startsWith(todayStr)
+    );
+    const totalSales = todayOrders.reduce((s, o) => s + parseFloat(o.net_settle_amount || 0), 0);
+    const totalDebt = (hqState.allStores || []).reduce((s, x) => s + parseFloat(x.current_debt || 0), 0);
+
+    const summaryText = `🧾【${tenantName} · 今日收摊小结】(${todayStr})\n• 今日共开单：${todayOrders.length} 笔\n• 今日出货总额：¥${totalSales.toFixed(2)}\n• 当前累计应收余款：¥${totalDebt.toFixed(2)}\n账目清晰、日清日结，辛苦啦！`;
+    navigator.clipboard?.writeText(summaryText);
+    alert(`✅ 今日收摊小结已复制，可直接发到家人或合伙人微信！\n\n${summaryText}`);
   };
 
   window.executeRedOffsetCorrection = async function () {
@@ -933,19 +1208,47 @@ export function initSixteenRealmsBindings() {
   window.generatePhysicalQrSticker = function () {
     const storeId = document.getElementById('sticker-store-id')?.value || '';
     const store = (hqState.allStores || []).find((s) => String(s.id) === String(storeId));
+    const tenantTitle = hqState.currentTenantData?.company_name || '百工源头直供';
+    const storeLabel = store ? store.name : '合作门店';
     const baseUrl = window.location.origin + window.location.pathname.replace(/hq\.html.*/, 'index.html');
     const link = `${baseUrl}?agent=${encodeURIComponent(hqState.currentAgent)}&store_id=${encodeURIComponent(storeId)}`;
     const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(link)}`;
 
-    const win = window.open('', '_blank', 'width=380,height=520');
+    const win = window.open('', '_blank', 'width=440,height=580');
     if (win) {
+      const cardHtml = `
+        <div class="sticker-card" style="font-family:sans-serif;text-align:center;padding:18px;border:2px dashed #1b4332;border-radius:14px;box-sizing:border-box">
+          <h3 style="margin:0 0 4px;color:#1b4332;font-size:15px">${tenantTitle}</h3>
+          <p style="margin:0 0 10px;font-weight:bold;color:#92400e;font-size:13px">🏷️ ${storeLabel} · 专属快捷补货贴</p>
+          <img src="${qrImg}" style="width:160px;height:160px;margin:0 auto 10px;display:block"/>
+          <p style="font-size:11px;color:#444;margin:0">微信扫一扫，点“+”“-”直接报补货单<br/>无需下载 App · 随车直达</p>
+        </div>
+      `;
       win.document.write(`
-        <div style="font-family:sans-serif;text-align:center;padding:24px;border:3px dashed #1b4332;border-radius:16px;margin:16px">
-          <h2 style="margin:0 0 6px;color:#1b4332">${hqState.currentTenantData?.company_name || '百工源头直供'}</h2>
-          <p style="margin:0 0 12px;font-weight:bold;color:#92400e">🏷️ ${store ? store.name : '合作门店'} · 专属快捷补货贴</p>
-          <img src="${qrImg}" style="width:200px;height:200px;margin:0 auto 12px;display:block"/>
-          <p style="font-size:12px;color:#444">微信扫一扫，点“+”“-”直接报补货单<br/>无需下载 App · 随车直达</p>
-          <button onclick="window.print()" style="margin-top:12px;padding:8px 18px;background:#1b4332;color:#fff;border:none;border-radius:8px;font-weight:bold;cursor:pointer">🖨️ 打印贴纸</button>
+        <div style="font-family:sans-serif;padding:12px">
+          <div class="no-print" style="display:flex;gap:8px;justify-content:center;margin-bottom:12px">
+            <button onclick="setMode('thermal')" style="padding:7px 12px;background:#f59e0b;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer">🧾 58mm热敏小票版</button>
+            <button onclick="setMode('a4')" style="padding:7px 12px;background:#e7e5e4;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer">📄 A4纸6联剪裁版</button>
+            <button onclick="window.print()" style="padding:7px 14px;background:#1b4332;color:#fff;border:none;border-radius:8px;font-weight:bold;cursor:pointer">🖨️ 立即打印</button>
+          </div>
+          <div id="print-area">${cardHtml}</div>
+          <style>@media print{.no-print{display:none!important}}</style>
+          <script>
+            function setMode(m){
+              const area = document.getElementById('print-area');
+              if(m==='a4'){
+                area.style.display='grid';
+                area.style.gridTemplateColumns='repeat(2,1fr)';
+                area.style.gap='12px';
+                area.innerHTML = Array(6).fill(\`${cardHtml}\`).join('');
+              } else {
+                area.style.display='block';
+                area.style.maxWidth='240px';
+                area.style.margin='0 auto';
+                area.innerHTML = \`${cardHtml}\`;
+              }
+            }
+          </script>
         </div>
       `);
     }
