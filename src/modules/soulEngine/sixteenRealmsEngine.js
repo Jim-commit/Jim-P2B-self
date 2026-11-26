@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 十六重境界全景协作引擎 (零改表、插件化叠加、白纸手电筒原则)
+ * 百工百业 · 实用经营工具箱与全景协作引擎 (零改表、插件化叠加、白纸手电筒原则)
  */
 import { supabase } from '../../lib/supabase.js';
 import {
@@ -122,7 +122,7 @@ export function detectSilentChurnPartners(stores = [], orders = []) {
 }
 
 /**
- * 3. 生成可彻底断网离线查询的纯本地单文件 HTML 账本（第十二重：极致本地主权）
+ * 3. 生成可彻底断网离线查询的纯本地单文件 HTML 账本（极致本地主权）
  */
 export function downloadOfflineStandaloneLedgerHtml() {
   const tenantName = hqState.currentTenantData?.company_name || hqState.currentAgent || '百工商号';
@@ -228,7 +228,7 @@ export function mountSixteenRealmsQuickBar() {
           ⚡ 临时散客极速开单
         </button>
         <button type="button" onclick="window.openSixteenRealmsHubModal()" class="bg-stone-900 hover:bg-stone-800 text-amber-300 font-bold px-2.5 py-1 rounded-xl text-[11px]">
-          🧭 十六重协作扩展舱
+          🧰 实用工具箱
         </button>
       </div>
     </div>
@@ -249,7 +249,7 @@ export function mountSixteenRealmsQuickBar() {
 }
 
 /**
- * 5. 绑定全部十六重境界交互逻辑
+ * 5. 绑定全部实用工具箱交互逻辑
  */
 export function initSixteenRealmsBindings() {
   window.startNaturalVoiceCommand = function () {
@@ -511,7 +511,7 @@ export function initSixteenRealmsBindings() {
   };
 
   /**
-   * 十六重协作扩展舱总弹窗（冲红后悔药、三角债对冲、拼单开产、一户一码贴纸、岗位交接、离线HTML账本、公益角）
+   * 实用工具箱总弹窗（冲红后悔药、三角债对冲、拼单开产、一户一码贴纸、岗位交接、离线HTML账本、公益角）
    */
   window.openSixteenRealmsHubModal = function () {
     document.getElementById('modal-sixteen-realms-hub')?.remove();
@@ -554,7 +554,7 @@ export function initSixteenRealmsBindings() {
       <div class="bg-white border border-stone-200 rounded-3xl max-w-3xl w-full p-5 space-y-4 shadow-2xl text-xs my-auto">
         <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
           <div>
-            <b class="text-sm text-stone-900">🧭 十六重境界 · 价值交换与基层协作扩展舱</b>
+            <b class="text-sm text-stone-900">🧰 实用工具箱 · 改错对账与基层协作快捷舱</b>
             <p class="text-[11px] text-stone-500 mt-0.5">冲红后悔药 · 三角债对冲 · 凑单开产 · 一户一码贴纸 · 一键交接 · 离线独立HTML账本</p>
           </div>
           <button type="button" onclick="document.getElementById('modal-sixteen-realms-hub')?.remove()" class="text-stone-400 font-bold text-base">✕</button>
