@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（卡片弹窗 + 自动记忆联系人 + 弱网本地暂存补传）
+ * 百工百业 · 五端统一协同与跨端桥接引擎（卡片弹窗 + 自动记忆联系人 + 弱网本地暂存补传 + 身份切换与送货导航）
  * 覆盖：index.html (门店端) / driver.html (掌中宝) / mall.html (天街端) / suppliers.html (名录端)
  */
 import { supabase } from '../../lib/supabase.js';
@@ -16,9 +16,6 @@ function generateMobileVoucherNo(prefix = 'CK') {
   return `${prefix}-${ymd}-${rnd}`;
 }
 
-/**
- * 本地静默记忆常用联系人信息（称呼 / 电话 / 地址），下次打开自动回填
- */
 function getSavedContactProfile() {
   try {
     return JSON.parse(localStorage.getItem('baigong_saved_contact_profile') || '{}');
@@ -40,9 +37,6 @@ function saveContactProfile(patch = {}) {
   }
 }
 
-/**
- * 微信防丢失常驻入口轻量引导（仅首次出现，可一键关闭）
- */
 function showWeChatPinGuideIfFirstTime() {
   if (localStorage.getItem('baigong_wechat_pin_dismissed') === '1') return;
   if (document.getElementById('baigong-wechat-pin-tip')) return;
@@ -60,9 +54,6 @@ function showWeChatPinGuideIfFirstTime() {
   });
 }
 
-/**
- * 通用温润卡片弹窗构建器
- */
 function openBridgeSheetModal({ id, title, subtitle, bodyHtml, confirmText, onConfirm }) {
   document.getElementById(id)?.remove();
   const wrap = document.createElement('div');
@@ -261,7 +252,7 @@ export async function initStoreTerminalBridge() {
 }
 
 /**
- * 2. 掌中宝 / 一线移动工作台 (driver.html) — 内置弱网本地暂存队列与一键补传
+ * 2. 掌中宝 / 一线移动工作台 (driver.html) — 弱网暂存 + 发车预告 + 地图导航 + 身份切换
  */
 const OFFLINE_QUEUE_KEY = 'baigong_palm_offline_queue';
 
@@ -288,12 +279,18 @@ export function initDriverTerminalBridge() {
   bar.innerHTML = `
     <div class="flex flex-wrap items-center justify-between gap-1">
       <b class="text-emerald-950 text-[11px]">🗣️ 一线极速记账（散客随手记 / 说话记收款）：</b>
-      <div class="flex items-center gap-1.5">
+      <div class="flex flex-wrap items-center gap-1">
         <button type="button" id="btn-palm-sync-offline" onclick="window.flushPalmOfflineQueue()" class="hidden bg-amber-400 text-stone-950 font-bold px-2 py-0.5 rounded-lg text-[10px]">
-          📶 待同步 0 笔
+          📶 待补传 0 笔
+        </button>
+        <button type="button" onclick="window.copyDriverDepartureNotice()" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
+          🚚 发车预告
+        </button>
+        <button type="button" onclick="window.openPalmMapNavigation()" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
+          🗺️ 导航送货
         </button>
         <button type="button" onclick="window.openPalmQuickWalkInModal()" class="bg-[#1b4332] text-white font-bold px-2.5 py-0.5 rounded-lg text-[10px]">
-          ⚡ 散客随手开单
+          ⚡ 散客开单
         </button>
       </div>
     </div>
@@ -304,6 +301,34 @@ export function initDriverTerminalBridge() {
     </div>
   `;
   navHost.insertAdjacentElement('beforebegin', bar);
+
+  window.copyDriverDepartureNotice = function () {
+    const operator = (document.getElementById('driver-name-display')?.innerText || '送货师傅').trim();
+    const notice = `🚚【送货发车预告】各位老板好，${operator}已装车出发，预计 1 小时内陆续抵达沿线各店，请提前留好卸货位置并清点待退周转空筐，到店前会提前电话联系！`;
+    navigator.clipboard?.writeText(notice);
+    alert(`✅ 发车预告已复制，可直接转发到门店微信群！\n\n${notice}`);
+  };
+
+  window.openPalmMapNavigation = function () {
+    openBridgeSheetModal({
+      id: 'modal-palm-map-nav',
+      title: '🗺️ 唤起手机地图一键导航',
+      subtitle: '输入门店名或街道，直接跳转地图规划顺路路线',
+      confirmText: '🧭 立即开始导航',
+      bodyHtml: `
+        <div>
+          <label class="block font-bold text-stone-700 mb-1">目的地门店或街道地址 *：</label>
+          <input type="text" id="palm-nav-dest" placeholder="如：城南兴隆饭庄 / 镇东农资门市" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
+        </div>
+      `,
+      onConfirm: async (close) => {
+        const dest = document.getElementById('palm-nav-dest')?.value.trim();
+        if (!dest) return alert('请输入目的地名称或地址！');
+        close();
+        window.open(`https://uri.amap.com/search?keyword=${encodeURIComponent(dest)}`, '_blank');
+      }
+    });
+  };
 
   function refreshOfflineBadge() {
     const q = readPalmOfflineQueue();
