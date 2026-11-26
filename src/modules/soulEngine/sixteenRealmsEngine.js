@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 实用经营工具箱与全景协作引擎 (零改表、插件化叠加、白纸手电筒原则)
+ * 百工百业 · 实用经营工具箱与全景协作引擎 (零改表、插件化叠加、白纸手电筒原则 · 海纳百川 · 大道至简)
  */
 import { supabase } from '../../lib/supabase.js';
 import {
@@ -114,7 +114,7 @@ function showQuickUndoToast(labelText, onUndoFn) {
 }
 
 /**
- * 查找某客户购买某商品的上次成交单价
+ * 查找某客户购买某商品/服务的上次成交单价
  */
 function findLastDealPriceForPartner(storeName, itemName) {
   if (!storeName || !itemName) return null;
@@ -130,7 +130,7 @@ function findLastDealPriceForPartner(storeName, itemName) {
 }
 
 /**
- * 多品项微信要货消息解析器
+ * 多品项微信需求/要货消息解析器（兼容货品与服务单位）
  */
 function parseWeChatMultiItemMessage(rawMsg, stores = [], products = []) {
   const text = String(rawMsg || '').trim();
@@ -141,11 +141,11 @@ function parseWeChatMultiItemMessage(rawMsg, stores = [], products = []) {
 
   const storeName = matchedStore
     ? matchedStore.name
-    : (text.match(/^([^\d,，。：:\n要送发来订]+?)(?:明早|明天|今天|要|送|发|订|：|:|\d)/)?.[1]?.trim() || '微信要货客户');
+    : (text.match(/^([^\d,，。：:\n要送发来订]+?)(?:明早|明天|今天|要|送|发|订|：|:|\d)/)?.[1]?.trim() || '微信需求客户');
 
   const settlementType = text.includes('现结') || text.includes('现金') || text.includes('已转') ? 'cash' : 'credit';
   const items = [];
-  const pattern = /(\d+(?:\.\d+)?)\s*(箱|件|斤|套|桶|袋|瓶|个|台|批|份)\s*([^\d,，。；;\n和与及再带送发要订挂现]+)/g;
+  const pattern = /(\d+(?:\.\d+)?)\s*(箱|件|斤|套|桶|袋|瓶|个|台|批|份|次|天|小时|亩|趟|项)\s*([^\d,，。；;\n和与及再带送发要订挂现]+)/g;
   let match;
 
   while ((match = pattern.exec(text)) !== null) {
@@ -175,15 +175,16 @@ function parseWeChatMultiItemMessage(rawMsg, stores = [], products = []) {
 }
 
 /**
- * 1. 一句话/语音全能自然语言记账解析器
+ * 1. 一句话/语音全能自然语言记账解析器（百业通用：货品、服务、租赁、劳务、收款）
  */
 export function parseNaturalBusinessCommand(rawText, stores = [], products = []) {
   const text = String(rawText || '').trim();
   if (!text) return { intent: 'unknown', summary: '请输入一句话描述业务' };
 
-  const amountMatch = text.match(/(?:收|转|还|付|共|计|金额|每[箱件斤套袋瓶个台]?)?\s*(\d+(?:\.\d+)?)\s*(?:元|块|¥)/);
-  const numMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:箱|件|斤|套|桶|袋|瓶|个|台|次|批|份)/);
+  const amountMatch = text.match(/(?:收|转|还|付|共|计|金额|每[箱件斤套袋瓶个台次天亩趟项]?)?\s*(\d+(?:\.\d+)?)\s*(?:元|块|¥)/);
+  const numMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:箱|件|斤|套|桶|袋|瓶|个|台|次|批|份|天|小时|亩|趟|项)/);
   const qty = numMatch ? parseFloat(numMatch[1]) : 1;
+  const unitLabel = text.match(/\d+(?:\.\d+)?\s*(箱|件|斤|套|桶|袋|瓶|个|台|次|批|份|天|小时|亩|趟|项)/)?.[1] || '项';
   const moneyVal = amountMatch ? parseFloat(amountMatch[1]) : 0;
 
   const matchedStore =
@@ -204,7 +205,7 @@ export function parseNaturalBusinessCommand(rawText, stores = [], products = [])
     return {
       intent: 'collect',
       store: matchedStore,
-      rawStoreName: matchedStore ? matchedStore.name : (text.match(/^([^\d,，。要给转还收]+?)(?:刚才|今天|微信|转|还|付)/)?.[1] || '散客/客户'),
+      rawStoreName: matchedStore ? matchedStore.name : (text.match(/^([^\d,，。要给转还收]+?)(?:刚才|今天|微信|转|还|付)/)?.[1] || '往来客户'),
       amount: moneyVal || parseFloat(text.match(/(\d+(?:\.\d+)?)/)?.[1] || '0'),
       method: text.includes('现金') ? '现金' : '电子扫码/转账',
       rawText: text
@@ -215,7 +216,7 @@ export function parseNaturalBusinessCommand(rawText, stores = [], products = [])
     const unitPrice = moneyVal > 0 ? moneyVal : parseFloat(matchedProd?.cost_price || matchedProd?.tier_1_price || 0);
     const customProdName = matchedProd
       ? matchedProd.name
-      : (text.match(/(?:进货|入库|采购|拉回|采收)\s*\d*\s*[箱件斤套桶袋瓶个台]?\s*([^\d,，。每元块]+)/)?.[1]?.trim() || '临时入库货品');
+      : (text.match(/(?:进货|入库|采购|拉回|采收)\s*\d*\s*[箱件斤套桶袋瓶个台次天亩趟项]?\s*([^\d,，。每元块]+)/)?.[1]?.trim() || '临时入库品项');
     return {
       intent: 'inbound',
       product: matchedProd,
@@ -228,10 +229,10 @@ export function parseNaturalBusinessCommand(rawText, stores = [], products = [])
 
   const customProdName = matchedProd
     ? matchedProd.name
-    : (text.match(/\d+\s*(?:箱|件|斤|套|桶|袋|瓶|个|台|批|份)\s*([^\d,，。老挂现元块]+)/)?.[1]?.trim() || '临时直供货品');
+    : (text.match(/\d+(?:\.\d+)?\s*(?:箱|件|斤|套|桶|袋|瓶|个|台|批|份|次|天|小时|亩|趟|项)\s*([^\d,，。老挂现元块]+)/)?.[1]?.trim() || '直供货品/服务');
   const rawStoreName = matchedStore
     ? matchedStore.name
-    : (text.match(/(?:给|送|发|卖给)\s*([^\d,，。要来发配订]+?)(?:送|发|要|来|\d)/)?.[1]?.trim() || '临时散客');
+    : (text.match(/(?:给|送|发|卖给|帮)\s*([^\d,，。要来发配订修耕干]+?)(?:送|发|要|来|修|耕|干|\d)/)?.[1]?.trim() || '散客/需方');
 
   const lastDealPrice = findLastDealPriceForPartner(rawStoreName, customProdName);
   const unitPrice =
@@ -246,10 +247,11 @@ export function parseNaturalBusinessCommand(rawText, stores = [], products = [])
     product: matchedProd,
     prodName: customProdName,
     qty,
+    unitLabel,
     unitPrice,
     usedLastDealPrice: !moneyVal && !!lastDealPrice,
     settlementType: text.includes('现结') || text.includes('现金') ? 'cash' : 'credit',
-    naturalTerm: text.match(/(?:麦收后结|卖完结|月底结|验收后结|下趟结)/)?.[0] || '',
+    naturalTerm: text.match(/(?:麦收后结|卖完结|月底结|验收后结|下趟结|完工结)/)?.[0] || '',
     rawText: text
   };
 }
@@ -324,7 +326,7 @@ export function downloadOfflineStandaloneLedgerHtml(labelSuffix = '离线独立�
   <h1>📒 ${tenantName} · ${labelSuffix}</h1>
   <div class="meta">导出时间：${exportTime} · 本文件无需网络、无需登录服务器，建议发至微信【文件传输助手】永久留存</div>
   <div class="grid" id="summary"></div>
-  <input type="text" id="q" placeholder="🔍 输入客户名、单号、货品名实时检索历史账目..." oninput="render()">
+  <input type="text" id="q" placeholder="🔍 输入客户名、单号、品项/服务名实时检索历史账目..." oninput="render()">
   <table><thead><tr><th>单号/日期</th><th>往来方</th><th>明细</th><th>金额</th><th>状态</th></tr></thead><tbody id="tb"></tbody></table>
 </div>
 <script>
@@ -398,7 +400,7 @@ function startPartnerLiveActivityTicker() {
 }
 
 /**
- * 4. 挂载首页“掌柜一句话/语音万能记账栏” + “新商号白纸冷启动引导” + “静默流失温柔提醒” + “淡季休眠条” + “夫妻店实时播报”
+ * 4. 挂载首页“掌柜一句话/语音万能记账栏” + “身份切换（我是供方 ⇄ 我是需方）” + “冷启动引导”
  */
 export function mountSixteenRealmsQuickBar() {
   const prefs = getAccessibilityPrefs();
@@ -429,7 +431,7 @@ export function mountSixteenRealmsQuickBar() {
       ? `<div class="bg-amber-50 border border-amber-300 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-amber-950">
            <div>
              <b>🌱 欢迎新商号开张！两步即可开始营业（无需先填复杂资料）：</b>
-             <span class="block text-[10px] text-amber-800 mt-0.5">第一步：直接点右侧「记一笔散客账」边开单边自动建档；第二步：打开「实用工具箱」打印门店补货贴纸。</span>
+             <span class="block text-[10px] text-amber-800 mt-0.5">第一步：直接点右侧「记一笔业务账」边开单边自动建档（卖货、修机、农机、代办全支持）；第二步：打开「实用工具箱」打印门店/客户快捷码。</span>
            </div>
            <button type="button" onclick="window.openZeroBarrierWalkInOrderModal()" class="bg-[#1b4332] text-amber-300 font-bold px-3 py-1.5 rounded-xl shrink-0">
              ⚡ 记第一笔生意
@@ -448,7 +450,7 @@ export function mountSixteenRealmsQuickBar() {
     churnList.length > 0
       ? `<div class="bg-amber-50/90 border border-amber-200 rounded-xl px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-amber-950">
            <span>💡 <b>老客户节律提醒：</b>${churnList
-             .map((c) => `<b>${c.storeName}</b>（平时约${c.avgIntervalDays}天拿一次，已${c.daysSinceLast}天未动静）`)
+             .map((c) => `<b>${c.storeName}</b>（平时约${c.avgIntervalDays}天往来一次，已${c.daysSinceLast}天未动静）`)
              .join('；')}，顺路可打个招呼。</span>
          </div>`
       : '';
@@ -464,14 +466,17 @@ export function mountSixteenRealmsQuickBar() {
       <div class="flex items-center gap-1.5">
         <span class="text-sm">🗣️</span>
         <b class="text-emerald-950">一句话 / 语音万能记账（说人话直接记）：</b>
-        <span class="text-[10px] text-stone-400 hidden sm:inline">支持直接开单、散客随手记、进货入库、收款平账</span>
+        <span class="text-[10px] text-stone-400 hidden sm:inline">卖货、服务、工时、进货、收款全支持</span>
       </div>
       <div class="flex flex-wrap gap-1.5">
+        <a href="index.html" onclick="window.syncActiveMerchantBeforeSwitch?.()" class="bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 font-bold px-2.5 py-1 rounded-xl text-[11px]" title="切换为需方角色去向源头下单或采购">
+          🛒 切为需方（下单）
+        </a>
         <button type="button" onclick="window.openWeChatPasteOrderModal()" class="bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-2.5 py-1 rounded-xl text-[11px]">
-          📋 粘贴微信要货消息
+          📋 粘贴微信消息转单
         </button>
         <button type="button" onclick="window.openZeroBarrierWalkInOrderModal()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2.5 py-1 rounded-xl text-[11px]">
-          ⚡ 记一笔散客账
+          ⚡ 记一笔业务账
         </button>
         <button type="button" onclick="window.openSixteenRealmsHubModal()" class="bg-stone-900 hover:bg-stone-800 text-amber-300 font-bold px-2.5 py-1 rounded-xl text-[11px]">
           🧰 实用工具箱
@@ -480,7 +485,7 @@ export function mountSixteenRealmsQuickBar() {
     </div>
     <div class="flex gap-1.5">
       <input type="text" id="natural-biz-command-input" onkeydown="if(event.key==='Enter') window.executeNaturalBusinessCommand()"
-        placeholder="像发微信一样输入：给李老板送10箱油，麦收后结 / 进货50箱牛奶每箱45元 / 老张微信转了2000元还账"
+        placeholder="像发微信一样输入：给李老板送10箱油 / 帮王大叔耕地3亩240元 / 进货50箱牛奶每箱45元 / 老张微信转了2000元"
         class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-700">
       <button type="button" onclick="window.startNaturalVoiceCommand()" class="bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 font-bold px-3 rounded-xl shrink-0" title="语音说话记账">
         🎤 说话
@@ -499,6 +504,18 @@ export function mountSixteenRealmsQuickBar() {
  * 5. 绑定全部实用工具箱交互逻辑
  */
 export function initSixteenRealmsBindings() {
+  window.syncActiveMerchantBeforeSwitch = function () {
+    try {
+      const mName = (hqState.currentTenantData?.company_name || document.querySelector('h1,#company-name-display')?.innerText || '').trim();
+      if (mName) {
+        const prev = JSON.parse(localStorage.getItem('baigong_saved_contact_profile') || '{}');
+        localStorage.setItem('baigong_saved_contact_profile', JSON.stringify({ ...prev, storeName: mName }));
+      }
+    } catch {
+      // 忽略存储异常
+    }
+  };
+
   window.startNaturalVoiceCommand = function () {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRec) return alert('当前浏览器暂不支持语音转文字，请直接用手机键盘自带语音输入法说话。');
@@ -533,18 +550,19 @@ export function initSixteenRealmsBindings() {
       <div class="bg-white border border-stone-200 rounded-3xl max-w-md w-full p-5 space-y-3 shadow-2xl text-xs">
         <div class="flex justify-between items-center border-b border-stone-100 pb-2">
           <div>
-            <b class="text-sm text-stone-900">📋 粘贴微信要货消息 · 一键转配货单</b>
-            <p class="text-[10px] text-stone-500">自动识别客户名、多行商品数量及上次成交价</p>
+            <b class="text-sm text-stone-900">📋 粘贴微信需求/要货消息 · 一键转单</b>
+            <p class="text-[10px] text-stone-500">自动识别需方名称、多行货品或服务数量及上次成交价</p>
           </div>
           <button type="button" onclick="document.getElementById('modal-wechat-paste-order')?.remove()" class="text-stone-400 font-bold text-base">✕</button>
         </div>
-        <textarea id="wc-paste-textarea" rows="4" oninput="window.previewWeChatPasteOrder()" placeholder="把微信里客户发的要货消息粘进来，例如：
-厚德便利店明早送5箱菜籽油、3袋大米，老规矩挂账" class="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3 outline-none focus:border-emerald-700">${clipText}</textarea>
+        <textarea id="wc-paste-textarea" rows="4" oninput="window.previewWeChatPasteOrder()" placeholder="把微信里客户发来的消息粘进来，例如：
+厚德便利店明早送5箱菜籽油、3袋大米，老规矩挂账
+或：城南李大叔明天预约2台微耕机耕地5亩" class="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3 outline-none focus:border-emerald-700">${clipText}</textarea>
         <div id="wc-paste-preview-box" class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-3 space-y-1 text-[11px] text-emerald-950">
-          等待粘贴微信要货文本...
+          等待粘贴微信消息文本...
         </div>
         <button type="button" onclick="window.confirmWeChatPasteOrder()" class="w-full py-2.5 rounded-2xl bg-[#1b4332] hover:bg-[#143628] text-white font-bold shadow">
-          ✅ 确认生成配货单并扣减库存
+          ✅ 确认生成业务单据
         </button>
       </div>
     `;
@@ -556,12 +574,12 @@ export function initSixteenRealmsBindings() {
       if (!box) return;
       const res = parseWeChatMultiItemMessage(raw, getVisibleStoresForCurrentRole(), hqState.allProducts || []);
       if (res.items.length === 0) {
-        box.innerHTML = '<span class="text-stone-500">请包含“数量+单位+品名”，如：<b>5箱菜籽油、3袋大米</b></span>';
+        box.innerHTML = '<span class="text-stone-500">请包含“数量+单位+品项/服务”，如：<b>5箱菜籽油、3亩耕地</b></span>';
         return;
       }
       const total = res.items.reduce((s, it) => s + it.qty * it.price, 0);
       box.innerHTML = `
-        <div><b>识别客户：</b>${res.storeName} ${res.store ? '✅(已建档)' : '(临时散客)'} · <b>${res.settlementType === 'cash' ? '现结' : '挂账'}</b></div>
+        <div><b>识别需方：</b>${res.storeName} ${res.store ? '✅(已建档)' : '(临时客户)'} · <b>${res.settlementType === 'cash' ? '现结' : '挂账'}</b></div>
         <div class="pt-1 space-y-0.5">${res.items
           .map((it) => `<div>• ${it.name} × <b>${it.qty}${it.measure_unit}</b>（单价 ¥${it.price}）</div>`)
           .join('')}</div>
@@ -574,7 +592,7 @@ export function initSixteenRealmsBindings() {
       if (isAuditorReadOnly()) return alert('只读账号不可开单。');
       const raw = document.getElementById('wc-paste-textarea')?.value.trim() || '';
       const res = parseWeChatMultiItemMessage(raw, getVisibleStoresForCurrentRole(), hqState.allProducts || []);
-      if (res.items.length === 0) return alert('未能识别出有效商品明细，请检查文本格式（如：5箱菜籽油）。');
+      if (res.items.length === 0) return alert('未能识别出有效明细，请检查文本格式（如：5箱菜籽油）。');
 
       const totalAmt = Number(res.items.reduce((s, it) => s + it.qty * it.price, 0).toFixed(2));
       const ckNo = generateUnifiedVoucherNo('CK');
@@ -596,7 +614,7 @@ export function initSixteenRealmsBindings() {
         order_status: 'confirmed',
         delivery_status: 'ordered',
         note: `[微信粘贴转单] ${raw.slice(0, 60)}`,
-        driver_action_instruction: '【微信要货单】现场签收核验'
+        driver_action_instruction: '【微信需求单】现场签收核验'
       };
 
       const { data: insertedRows, error } = await supabase.from('store_order').insert([orderRow]).select('id');
@@ -614,10 +632,10 @@ export function initSixteenRealmsBindings() {
       }
 
       document.getElementById('modal-wechat-paste-order')?.remove();
-      speakAccountingFeedback(`已转配货单，${res.storeName}，合计${totalAmt}元`);
+      speakAccountingFeedback(`已转业务单，${res.storeName}，合计${totalAmt}元`);
       if (typeof window.loadHQData === 'function') await window.loadHQData();
 
-      showQuickUndoToast(`✅ 微信消息已转为配货单【${ckNo}】(¥${totalAmt.toFixed(2)})`, async () => {
+      showQuickUndoToast(`✅ 微信消息已转为单据【${ckNo}】(¥${totalAmt.toFixed(2)})`, async () => {
         if (insertedRows?.[0]?.id) {
           await supabase.from('store_order').update({
             order_status: 'cancelled',
@@ -680,7 +698,7 @@ export function initSixteenRealmsBindings() {
     }
 
     if (parsed.intent === 'inbound') {
-      if (!confirm(`确认生成入库单 (RK)？\n• 货品：${parsed.prodName}\n• 入库数量：${parsed.qty}\n• 参考单价：¥${parsed.unitPrice}`)) return;
+      if (!confirm(`确认生成入库单 (RK)？\n• 品项：${parsed.prodName}\n• 入库数量：${parsed.qty}\n• 参考单价：¥${parsed.unitPrice}`)) return;
       const rkNo = generateUnifiedVoucherNo('RK');
       if (parsed.product) {
         const beforeStock = parseInt(parsed.product.stock ?? 0, 10);
@@ -722,7 +740,7 @@ export function initSixteenRealmsBindings() {
     const totalAmt = Number((parsed.qty * parsed.unitPrice).toFixed(2));
     const termTag = parsed.naturalTerm ? ` · 约定:${parsed.naturalTerm}` : '';
     const priceHint = parsed.usedLastDealPrice ? ' [自动带出上次成交价]' : '';
-    if (!confirm(`确认极速生成出库配货单？\n• 客户：${parsed.rawStoreName}${parsed.store ? '' : ' (临时散客)'}\n• 明细：${parsed.prodName} × ${parsed.qty} (单价 ¥${parsed.unitPrice}${priceHint})\n• 合计：¥${totalAmt.toFixed(2)}${termTag}`)) return;
+    if (!confirm(`确认极速生成业务凭单？\n• 需方客户：${parsed.rawStoreName}${parsed.store ? '' : ' (临时客户)'}\n• 明细：${parsed.prodName} × ${parsed.qty}${parsed.unitLabel} (单价 ¥${parsed.unitPrice}${priceHint})\n• 合计：¥${totalAmt.toFixed(2)}${termTag}`)) return;
 
     const ckNo = generateUnifiedVoucherNo('CK');
     const orderRow = {
@@ -737,8 +755,8 @@ export function initSixteenRealmsBindings() {
       items: [{
         id: parsed.product?.id || 0,
         name: parsed.prodName,
-        spec: parsed.product?.spec || '随手记',
-        measure_unit: parsed.product?.measure_unit || '件',
+        spec: parsed.product?.spec || parsed.unitLabel,
+        measure_unit: parsed.product?.measure_unit || parsed.unitLabel,
         price: parsed.unitPrice,
         qty: parsed.qty
       }],
@@ -750,7 +768,7 @@ export function initSixteenRealmsBindings() {
       order_status: 'confirmed',
       delivery_status: 'ordered',
       note: `[一句话极速单${termTag}]`,
-      driver_action_instruction: '【极速直配单】现场签收核验'
+      driver_action_instruction: '【极速业务单】现场签收核验'
     };
 
     const { data: insertedOrders, error } = await supabase.from('store_order').insert([orderRow]).select('id');
@@ -788,7 +806,7 @@ export function initSixteenRealmsBindings() {
   };
 
   /**
-   * 记一笔散客账弹窗
+   * 记一笔业务账弹窗（海纳百川：货品批发 + 上门服务 + 农机租赁 + 零星工时全兼容）
    */
   window.openZeroBarrierWalkInOrderModal = function () {
     document.getElementById('modal-zero-barrier-order')?.remove();
@@ -812,8 +830,8 @@ export function initSixteenRealmsBindings() {
       <div class="bg-white border border-stone-200 rounded-3xl max-w-md w-full p-5 space-y-3 shadow-2xl text-xs my-auto">
         <div class="flex justify-between items-center border-b border-stone-100 pb-2">
           <div>
-            <b class="text-sm text-stone-900">⚡ 记一笔散客账（边开单边自动建档）</b>
-            <p class="text-[10px] text-stone-500">支持铺货试卖、搭赠样品、顺带记空筐、过磅毛重去皮</p>
+            <b class="text-sm text-stone-900">⚡ 记一笔业务账（卖货 / 服务 / 劳务全兼容）</b>
+            <p class="text-[10px] text-stone-500">支持按件/箱/斤/次/天/亩计价、待验收后定价、过磅去皮与自动建档</p>
           </div>
           <div class="flex items-center gap-1.5">
             <button type="button" onclick="document.getElementById('zb-abacus-keypad')?.classList.toggle('hidden')" class="bg-amber-100 text-amber-950 border border-amber-300 font-bold px-2 py-1 rounded-xl text-[10px]">
@@ -830,20 +848,32 @@ export function initSixteenRealmsBindings() {
 
         <div class="space-y-2.5">
           <div>
-            <label class="block font-bold text-stone-700 mb-1">买方称呼（可选老客户，也可直接填新客户名）*：</label>
-            <input type="text" id="zb-store-name" list="zb-store-datalist" oninput="window.recalcZeroBarrierHelper(true)" placeholder="如：路过散客 / 城南张工地 / 旺顺饭店" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none">
+            <label class="block font-bold text-stone-700 mb-1">需方 / 客户称呼（可选老客户，也可直接填新客户名）*：</label>
+            <input type="text" id="zb-store-name" list="zb-store-datalist" oninput="window.recalcZeroBarrierHelper(true)" placeholder="如：路过散客 / 城南张工地 / 兴隆合作社" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none">
           </div>
-          <div class="grid grid-cols-3 gap-2">
-            <div class="col-span-2">
-              <label class="block font-bold text-stone-700 mb-1">货品或服务名称 *：</label>
-              <input type="text" id="zb-item-name" list="zb-prod-datalist" oninput="window.recalcZeroBarrierHelper(true)" placeholder="直接手填品名或工项" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+          <div class="grid grid-cols-12 gap-1.5">
+            <div class="col-span-6">
+              <label class="block font-bold text-stone-700 mb-1">货品或服务项目 *：</label>
+              <input type="text" id="zb-item-name" list="zb-prod-datalist" oninput="window.recalcZeroBarrierHelper(true)" placeholder="如：菜籽油 / 水泵维修 / 耕地" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
             </div>
-            <div>
+            <div class="col-span-3">
               <div class="flex justify-between items-center mb-1">
-                <label class="font-bold text-stone-700">净数量 *：</label>
-                <button type="button" onclick="document.getElementById('zb-tare-box')?.classList.toggle('hidden')" class="text-[10px] text-amber-800 font-bold underline">⚖️ 去皮</button>
+                <label class="font-bold text-stone-700">数量 *</label>
+                <button type="button" onclick="document.getElementById('zb-tare-box')?.classList.toggle('hidden')" class="text-[10px] text-amber-800 font-bold underline">⚖️去皮</button>
               </div>
-              <input type="number" step="0.01" id="zb-item-qty" value="1" onfocus="window._zbActiveField='zb-item-qty'" oninput="window.recalcZeroBarrierHelper(false)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold outline-none">
+              <input type="number" step="0.01" id="zb-item-qty" value="1" onfocus="window._zbActiveField='zb-item-qty'" oninput="window.recalcZeroBarrierHelper(false)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2 py-2 font-mono font-bold outline-none">
+            </div>
+            <div class="col-span-3">
+              <label class="block font-bold text-stone-700 mb-1">单位：</label>
+              <select id="zb-item-unit" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-1.5 py-2 font-bold outline-none">
+                <option value="件">件/箱</option>
+                <option value="斤">斤/公斤</option>
+                <option value="次">次/趟</option>
+                <option value="天">天/工日</option>
+                <option value="小时">小时</option>
+                <option value="亩">亩</option>
+                <option value="项">项/批</option>
+              </select>
             </div>
           </div>
 
@@ -858,19 +888,20 @@ export function initSixteenRealmsBindings() {
           <div class="grid grid-cols-2 gap-2">
             <div>
               <div class="flex justify-between items-center mb-1">
-                <label class="font-bold text-stone-700">成交单价 (元) *：</label>
+                <label class="font-bold text-stone-700">单价 (元) *：</label>
                 <span id="zb-last-price-badge" class="hidden text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1.5 rounded">上次价</span>
               </div>
               <input type="number" step="0.01" id="zb-item-price" onfocus="window._zbActiveField='zb-item-price'" oninput="window.recalcZeroBarrierHelper(false)" placeholder="0.00" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold outline-none">
             </div>
             <div>
-              <label class="block font-bold text-stone-700 mb-1">自然结算约定：</label>
+              <label class="block font-bold text-stone-700 mb-1">结算约定：</label>
               <select id="zb-natural-term" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 font-bold outline-none">
                 <option value="现结两清">💵 现结两清</option>
+                <option value="先干活/先送货，验收后再定价">⏳ 验收后再定价</option>
                 <option value="铺货试卖（按实销结算）">📦 铺货试卖（按实销结算）</option>
                 <option value="这批货卖完结">🔄 这批货卖完结</option>
                 <option value="麦收/秋收后结">🌾 麦收/秋收后结</option>
-                <option value="工程验收后结">🏗️ 工程验收后结</option>
+                <option value="完工/验收后结">🏗️ 完工/验收后结</option>
                 <option value="月底统一结">📅 月底统一结</option>
                 <option value="以物/劳务抵扣">🤝 以物/劳务抵扣</option>
               </select>
@@ -906,14 +937,14 @@ export function initSixteenRealmsBindings() {
           </div>
 
           <div class="bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 flex items-center justify-between text-[11px]">
-            <span class="font-bold text-stone-700">🧺 顺带周转筐/桶：</span>
+            <span class="font-bold text-stone-700">🧺 顺带器具/周转筐：</span>
             <div class="flex items-center gap-3">
               <label class="inline-flex items-center gap-1">
-                <span>带去</span>
+                <span>借出</span>
                 <input type="number" min="0" id="zb-basket-out" value="0" class="w-12 bg-white border border-stone-300 rounded-lg px-1.5 py-0.5 text-center font-mono font-bold">
               </label>
               <label class="inline-flex items-center gap-1">
-                <span>拉回</span>
+                <span>收回</span>
                 <input type="number" min="0" id="zb-basket-back" value="0" class="w-12 bg-white border border-stone-300 rounded-lg px-1.5 py-0.5 text-center font-mono font-bold">
               </label>
             </div>
@@ -922,11 +953,11 @@ export function initSixteenRealmsBindings() {
           <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-600 pt-0.5">
             <label class="inline-flex items-center gap-1.5 cursor-pointer font-bold">
               <input type="checkbox" id="zb-pure-ledger-only" class="rounded text-emerald-800">
-              <span>📝 纯记往来账（不扣库存）</span>
+              <span>📝 纯服务/往来账（不扣库存）</span>
             </label>
             <label class="inline-flex items-center gap-1.5 cursor-pointer">
               <input type="checkbox" id="zb-auto-create-master" checked class="rounded text-emerald-800">
-              <span>新客户/新品名自动建档</span>
+              <span>新客户/新品项自动建档</span>
             </label>
           </div>
         </div>
@@ -1042,6 +1073,7 @@ export function initSixteenRealmsBindings() {
     const storeName = document.getElementById('zb-store-name')?.value.trim();
     const itemName = document.getElementById('zb-item-name')?.value.trim();
     const qty = parseFloat(document.getElementById('zb-item-qty')?.value || '0');
+    const unitName = document.getElementById('zb-item-unit')?.value || '件';
     const price = parseFloat(document.getElementById('zb-item-price')?.value || '0');
     const finalTotal = parseFloat(document.getElementById('zb-final-total')?.value || '0');
     const term = document.getElementById('zb-natural-term')?.value || '现结两清';
@@ -1050,7 +1082,7 @@ export function initSixteenRealmsBindings() {
     const pureLedgerOnly = !!document.getElementById('zb-pure-ledger-only')?.checked;
     const autoCreateMaster = !!document.getElementById('zb-auto-create-master')?.checked;
 
-    if (!storeName || !itemName || qty <= 0) return alert('请填写买方称呼、品名和有效数量！');
+    if (!storeName || !itemName || qty <= 0) return alert('请填写需方称呼、货品或服务名称及有效数量！');
 
     let matchedStore = (hqState.allStores || []).find((s) => s.name === storeName);
     let matchedProd = (hqState.allProducts || []).find((p) => p.name === itemName);
@@ -1073,8 +1105,8 @@ export function initSixteenRealmsBindings() {
         tenant_id: hqState.currentAgent,
         name: itemName,
         category: '默认分类',
-        spec: '标准件',
-        measure_unit: '件',
+        spec: unitName,
+        measure_unit: unitName,
         cost_price: price,
         tier_1_price: price,
         stock: 0,
@@ -1092,9 +1124,10 @@ export function initSixteenRealmsBindings() {
 
     const totalAmt = !isNaN(finalTotal) && finalTotal >= 0 ? Number(finalTotal.toFixed(2)) : Number((qty * price).toFixed(2));
     const ckNo = generateUnifiedVoucherNo('CK');
-    const isGift = totalAmt === 0;
-    const modeTag = isGift ? '搭赠/样品' : (pureLedgerOnly ? '纯记往来账' : '随手单');
-    const basketTag = basketOut > 0 || basketBack > 0 ? ` · 带筐+${basketOut}/回筐-${basketBack}` : '';
+    const isPendingPrice = term.includes('验收后再定价');
+    const isGift = totalAmt === 0 && !isPendingPrice;
+    const modeTag = isPendingPrice ? '待验收定价' : (isGift ? '搭赠/样品' : (pureLedgerOnly ? '纯服务/往来账' : '业务随手单'));
+    const basketTag = basketOut > 0 || basketBack > 0 ? ` · 借器具+${basketOut}/收器具-${basketBack}` : '';
 
     const orderPayload = {
       order_no: ckNo,
@@ -1105,7 +1138,7 @@ export function initSixteenRealmsBindings() {
       order_source: 'vendor_push',
       settlement_type: term === '现结两清' || isGift ? 'cash' : 'credit',
       settlement_note: `[${modeTag} · ${term}${basketTag}]`,
-      items: [{ id: matchedProd?.id || 0, name: itemName, spec: matchedProd?.spec || modeTag, measure_unit: matchedProd?.measure_unit || '件', price, qty }],
+      items: [{ id: matchedProd?.id || 0, name: itemName, spec: matchedProd?.spec || unitName, measure_unit: matchedProd?.measure_unit || unitName, price, qty }],
       items_return: [],
       items_exchange: [],
       total_amount: totalAmt,
@@ -1248,10 +1281,10 @@ export function initSixteenRealmsBindings() {
           </div>
 
           <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2">
-            <b class="text-emerald-950 block">🌾 凑单开产（先凑需求、满额再生产）</b>
+            <b class="text-emerald-950 block">🌾 凑单开产（先凑需求、满额再生产/开班）</b>
             <div class="grid grid-cols-2 gap-1.5">
               <select id="crowd-prod-id" class="min-w-0 bg-white border border-emerald-200 rounded-xl px-2 py-1 font-bold truncate">${prodOpts || '<option value="">选择品项</option>'}</select>
-              <input type="number" min="1" id="crowd-target-qty" placeholder="开产起订总量 (如 500)" class="min-w-0 bg-white border border-emerald-200 rounded-xl px-2.5 py-1 font-mono">
+              <input type="number" min="1" id="crowd-target-qty" placeholder="起订总量 (如 500)" class="min-w-0 bg-white border border-emerald-200 rounded-xl px-2.5 py-1 font-mono">
             </div>
             <button type="button" onclick="window.publishCrowdProduceNotice()" class="w-full py-1.5 rounded-xl bg-[#1b4332] text-white font-bold">
               📣 发布“凑单开产牌”到协作圈
@@ -1259,8 +1292,8 @@ export function initSixteenRealmsBindings() {
           </div>
 
           <div class="p-3 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-2">
-            <b class="text-amber-950 block">🏷️ 一户一码补货贴（58mm热敏 / A4 6联）</b>
-            <p class="text-[10px] text-stone-600">普通家用打印机或蓝牙热敏小票机直接出纸，贴货架扫码补货。</p>
+            <b class="text-amber-950 block">🏷️ 一户一码快捷贴（58mm热敏 / A4 6联）</b>
+            <p class="text-[10px] text-stone-600">普通家用打印机或蓝牙热敏小票机直接出纸，贴门市/工位扫码下单。</p>
             <div class="flex gap-1.5">
               <select id="sticker-store-id" class="flex-1 min-w-0 bg-white border border-amber-200 rounded-xl px-2 py-1 font-bold truncate">${storeOpts || '<option value="">选择客户</option>'}</select>
               <button type="button" onclick="window.generatePhysicalQrSticker()" class="bg-amber-500 text-stone-950 font-bold px-3 py-1 rounded-xl shrink-0">打印贴纸</button>
@@ -1269,13 +1302,13 @@ export function initSixteenRealmsBindings() {
 
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
             <div class="flex justify-between items-center">
-              <b class="text-stone-900">🤝 员工离职交接 & 换锁安全口令</b>
+              <b class="text-stone-900">🤝 人员交接 & 换锁安全口令</b>
               <button type="button" onclick="window.rotateTenantCollabPasscode()" class="text-[10px] bg-stone-200 hover:bg-stone-300 text-stone-900 font-bold px-2 py-0.5 rounded-lg">
                 🔐 刷新协同口令
               </button>
             </div>
             <div class="flex gap-1.5 items-center">
-              <select id="handover-from-user" class="flex-1 min-w-0 bg-white border border-stone-200 rounded-xl px-2 py-1 font-bold truncate">${staffOpts || '<option value="">暂无在册员工</option>'}</select>
+              <select id="handover-from-user" class="flex-1 min-w-0 bg-white border border-stone-200 rounded-xl px-2 py-1 font-bold truncate">${staffOpts || '<option value="">暂无在册人员</option>'}</select>
               <span class="shrink-0 text-stone-400 font-bold">➔</span>
               <select id="handover-to-user" class="flex-1 min-w-0 bg-white border border-stone-200 rounded-xl px-2 py-1 font-bold truncate">${staffOptsTo || '<option value="">暂无接任人</option>'}</select>
               <button type="button" onclick="window.executeStaffHandover()" class="bg-stone-800 hover:bg-stone-900 text-white font-bold px-3 py-1 rounded-xl shrink-0">移交</button>
@@ -1286,7 +1319,7 @@ export function initSixteenRealmsBindings() {
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <b class="text-stone-900 block">💾 离线独立HTML账本 / 年度封账归档 & 家人只读查账 & 现场留底照</b>
-                <span class="text-[10px] text-stone-500">可发至微信【文件传输助手】永久存档；随时调看司机在外面拍的签收/破损/空筐照</span>
+                <span class="text-[10px] text-stone-500">可发至微信【文件传输助手】永久存档；随时调看外勤在现场拍的签收/验收/器具照</span>
               </div>
               <button type="button" onclick="window.toggleCharityMicroLight(${!charityEnabled})" class="px-3 py-1 rounded-xl border ${charityEnabled ? 'bg-amber-100 border-amber-400 text-amber-950' : 'bg-white border-stone-300 text-stone-600'} font-bold text-[11px]">
                 ${charityEnabled ? '🕯️ 微光落款已开' : '🕯️ 开启公益落款'}
@@ -1324,7 +1357,7 @@ export function initSixteenRealmsBindings() {
 
     if (error) return alert('加载照片失败：' + error.message);
     const list = data || [];
-    if (list.length === 0) return alert('暂无现场留底照片（送货师傅可在掌中宝顶部点击“📷 拍照留底”上传）。');
+    if (list.length === 0) return alert('暂无现场留底照片（外勤师傅可在“我在执行”端点击“📷 拍照留底”上传）。');
 
     document.getElementById('modal-field-photo-gallery')?.remove();
     const gal = document.createElement('div');
@@ -1333,7 +1366,7 @@ export function initSixteenRealmsBindings() {
     gal.innerHTML = `
       <div class="bg-white rounded-3xl max-w-2xl w-full p-5 space-y-3 shadow-2xl text-xs my-auto">
         <div class="flex justify-between items-center border-b border-stone-100 pb-2">
-          <b class="text-sm text-stone-900">📷 现场交割 / 验退 / 空筐留底照片档案</b>
+          <b class="text-sm text-stone-900">📷 现场交割 / 验收 / 器具留底照片档案</b>
           <button type="button" onclick="document.getElementById('modal-field-photo-gallery')?.remove()" class="text-stone-400 font-bold text-base">✕</button>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[70vh] overflow-y-auto">
@@ -1381,7 +1414,7 @@ export function initSixteenRealmsBindings() {
       hqState.currentTenantData.custom_settings = nextSettings;
       mountSixteenRealmsQuickBar();
       document.getElementById('modal-sixteen-realms-hub')?.remove();
-      alert(nextDormant ? '🍵 已进入淡季休眠模式，补货预警已静默收起。' : '🌱 旺季已唤醒，所有日常提醒恢复正常！');
+      alert(nextDormant ? '🍵 已进入淡季休眠模式，日常提醒已静默收起。' : '🌱 旺季已唤醒，所有日常提醒恢复正常！');
     }
   };
 
@@ -1433,7 +1466,7 @@ export function initSixteenRealmsBindings() {
         : '· 近期往来明细已同步登记';
 
     const tenantName = hqState.currentTenantData?.company_name || '我们这边';
-    const msg = `${store.name}（${store.contact || '掌柜'}）您好，最近生意兴隆！\n给您同步一下咱们近期的往来对账单，方便时核对一下：\n${detailLines}\n当前累计余款：¥${parseFloat(store.current_debt || 0).toFixed(2)}。\n您方便时微信转我就行，下趟车继续给您备新鲜好货！—— ${tenantName}`;
+    const msg = `${store.name}（${store.contact || '掌柜'}）您好，最近生意兴隆！\n给您同步一下咱们近期的往来对账单，方便时核对一下：\n${detailLines}\n当前累计余款：¥${parseFloat(store.current_debt || 0).toFixed(2)}。\n您方便时微信转我就行，随时继续为您服务！—— ${tenantName}`;
 
     navigator.clipboard?.writeText(msg);
     alert(`✅ 体面微信对账单已复制到剪贴板，直接去微信粘贴发送即可！\n\n${msg}`);
@@ -1448,7 +1481,7 @@ export function initSixteenRealmsBindings() {
     const totalSales = todayOrders.reduce((s, o) => s + parseFloat(o.net_settle_amount || 0), 0);
     const totalDebt = (hqState.allStores || []).reduce((s, x) => s + parseFloat(x.current_debt || 0), 0);
 
-    const summaryText = `🧾【${tenantName} · 今日收摊小结】(${todayStr})\n• 今日共开单：${todayOrders.length} 笔\n• 今日出货总额：¥${totalSales.toFixed(2)}\n• 当前累计应收余款：¥${totalDebt.toFixed(2)}\n账目清晰、日清日结，辛苦啦！`;
+    const summaryText = `🧾【${tenantName} · 今日收摊小结】(${todayStr})\n• 今日共开单：${todayOrders.length} 笔\n• 今日业务总额：¥${totalSales.toFixed(2)}\n• 当前累计应收余款：¥${totalDebt.toFixed(2)}\n账目清晰、日清日结，辛苦啦！`;
     navigator.clipboard?.writeText(summaryText);
     alert(`✅ 今日收摊小结已复制，可直接发到家人或合伙人微信！\n\n${summaryText}`);
   };
@@ -1537,7 +1570,7 @@ export function initSixteenRealmsBindings() {
       proposer_type: 'c2b_demand',
       proposer_name: `${hqState.currentTenantData?.company_name || hqState.currentAgent} (凑单开产)`,
       category: `[凑单开产 · ${hqState.currentAgent}]`,
-      content: `🌾【凑单开产牌】${prod.name}（${prod.spec || '源头直供'}），凑够 ${targetQty}${prod.measure_unit || '件'} 立即开炉生产！认领享源头直供价 ¥${prod.tier_1_price}。`
+      content: `🌾【凑单开产牌】${prod.name}（${prod.spec || '源头直供'}），凑够 ${targetQty}${prod.measure_unit || '件'} 立即开炉生产/发班！认领享源头直供价 ¥${prod.tier_1_price}。`
     }]);
     if (error) return alert('发布失败：' + error.message);
     alert(`📣 已将【${prod.name}】凑单开产牌发布至协作圈！`);
@@ -1547,7 +1580,7 @@ export function initSixteenRealmsBindings() {
     const storeId = document.getElementById('sticker-store-id')?.value || '';
     const store = (hqState.allStores || []).find((s) => String(s.id) === String(storeId));
     const tenantTitle = hqState.currentTenantData?.company_name || '百工源头直供';
-    const storeLabel = store ? store.name : '合作门店';
+    const storeLabel = store ? store.name : '合作客户';
     const baseUrl = window.location.origin + window.location.pathname.replace(/hq\.html.*/, 'index.html');
     const link = `${baseUrl}?agent=${encodeURIComponent(hqState.currentAgent)}&store_id=${encodeURIComponent(storeId)}`;
     const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(link)}`;
@@ -1557,9 +1590,9 @@ export function initSixteenRealmsBindings() {
       const cardHtml = `
         <div class="sticker-card" style="font-family:sans-serif;text-align:center;padding:18px;border:2px dashed #1b4332;border-radius:14px;box-sizing:border-box">
           <h3 style="margin:0 0 4px;color:#1b4332;font-size:15px">${tenantTitle}</h3>
-          <p style="margin:0 0 10px;font-weight:bold;color:#92400e;font-size:13px">🏷️ ${storeLabel} · 专属快捷补货贴</p>
+          <p style="margin:0 0 10px;font-weight:bold;color:#92400e;font-size:13px">🏷️ ${storeLabel} · 专属快捷下单贴</p>
           <img src="${qrImg}" style="width:160px;height:160px;margin:0 auto 10px;display:block"/>
-          <p style="font-size:11px;color:#444;margin:0">微信扫一扫，点“+”“-”直接报补货单<br/>无需下载 App · 随车直达</p>
+          <p style="font-size:11px;color:#444;margin:0">微信扫一扫，点“+”“-”直接报补货/预约单<br/>无需下载 App · 随车直达</p>
         </div>
       `;
       win.document.write(`
@@ -1601,7 +1634,7 @@ export function initSixteenRealmsBindings() {
     const toUser = (hqState.allSubUsers || []).find((u) => (u.account_code || u.username || String(u.id)) === toCode);
     const toDisplayName = toUser?.display_name || toUser?.staff_name || toUser?.name || toCode;
     const affected = (hqState.allStores || []).filter((s) => s.sales_owner_code === fromCode || s.driver_name === fromCode);
-    if (affected.length === 0) return alert('该员工名下暂无绑定客户。');
+    if (affected.length === 0) return alert('该人员名下暂无绑定客户。');
 
     if (!confirm(`确认将 ${affected.length} 位客户平滑移交给【${toDisplayName}】？`)) return;
     for (const s of affected) {
