@@ -1,6 +1,6 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（卡片弹窗 + 自动记忆联系人 + 弱网暂存 + 拍照留底 + 身份切换 + 小货车拼单进度 + 移动端快捷底坞）
- * 覆盖：index.html (门店端) / driver.html (掌中宝) / mall.html (天街端) / suppliers.html (名录端)
+ * 百工百业 · 五端统一协同与跨端桥接引擎（海纳百川 · 大道至简 · 全端买卖身份自由切换）
+ * 覆盖：index.html (需方下单端) / driver.html (我在执行端) / mall.html / suppliers.html (逛大集)
  */
 import { supabase } from '../../lib/supabase.js';
 import { getTenantLexicon } from './silentMemoryAndLexicon.js';
@@ -55,23 +55,23 @@ function showWeChatPinGuideIfFirstTime() {
 }
 
 /**
- * 移动端极简四端快捷切换浮标（方便身兼多职的掌柜一秒切身份）
+ * 全端通用快捷身份切换浮标（电脑 + 手机均常驻，百业通吃：供方 / 需方 / 执行 / 大集）
  */
 function mountMobileQuickRoleSwitchDock(currentFile) {
   if (document.getElementById('baigong-mobile-role-dock')) return;
   const items = [
-    { file: 'hq.html', icon: '🏠', label: '总部台' },
-    { file: 'index.html', icon: '🏪', label: '订货端' },
-    { file: 'driver.html', icon: '🚚', label: '掌中宝' },
-    { file: 'mall.html', icon: '🛍️', label: '逛集市' }
+    { file: 'hq.html', icon: '🏠', label: '我是供方（接单）' },
+    { file: 'index.html', icon: '🛒', label: '我是需方（下单）' },
+    { file: 'driver.html', icon: '🚚', label: '我在执行（送货/上门）' },
+    { file: 'mall.html', icon: '🛍️', label: '逛大集（找货/找人）' }
   ];
   const dock = document.createElement('div');
   dock.id = 'baigong-mobile-role-dock';
-  dock.className = 'fixed bottom-3 right-3 z-30 sm:hidden bg-white/95 backdrop-blur-xs border border-stone-300 rounded-2xl shadow-lg px-2 py-1 flex items-center gap-1 text-[10px]';
+  dock.className = 'fixed bottom-3 right-3 z-30 max-w-[95vw] overflow-x-auto bg-white/95 backdrop-blur-xs border border-stone-300 rounded-2xl shadow-lg px-2 py-1.5 flex items-center gap-1 text-[11px]';
   dock.innerHTML = items
     .map((it) => {
-      const isActive = currentFile === it.file;
-      return `<a href="${it.file}" class="px-2 py-1 rounded-xl font-bold ${
+      const isActive = currentFile === it.file || (currentFile === 'suppliers.html' && it.file === 'mall.html');
+      return `<a href="${it.file}" class="px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition ${
         isActive ? 'bg-[#1b4332] text-amber-300' : 'text-stone-700 hover:bg-stone-100'
       }">${it.icon} ${it.label}</a>`;
     })
@@ -117,7 +117,7 @@ let storeBridgeWatcherStarted = false;
 let lastRenderedStoreAgent = '';
 
 /**
- * 1. 门店端 (index.html)
+ * 1. 需方下单端 (index.html)
  */
 export async function initStoreTerminalBridge() {
   showWeChatPinGuideIfFirstTime();
@@ -142,8 +142,36 @@ export async function initStoreTerminalBridge() {
       stickerAgent
     ).trim();
 
+    const container =
+      document.getElementById('product-container') ||
+      document.getElementById('product-list') ||
+      document.getElementById('goods-list') ||
+      document.getElementById('items-container');
+
+    if (container && !document.getElementById('store-sticker-welcome-bar')) {
+      const profile = getSavedContactProfile();
+      const myIdentityHint = profile.storeName ? `（当前需方：${profile.storeName}）` : '';
+      const topBar = document.createElement('div');
+      topBar.id = 'store-sticker-welcome-bar';
+      topBar.className = 'mb-3 bg-amber-50 border border-amber-300 text-amber-950 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-2xs';
+      topBar.innerHTML = `
+        <div>
+          <b class="block">${stickerStoreId ? `🏷️ 已识别专属快捷码（编号 #${stickerStoreId}）` : `🛒 当前身份：我是需方（下单/预约）${myIdentityHint}`}</b>
+          <span class="text-[10px] text-amber-800">点下方“+”号选择货品或服务，底部一键提交；想接单卖货点右侧切为供方</span>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <a href="hq.html" class="bg-white hover:bg-amber-100 border border-amber-300 text-amber-950 font-bold px-2.5 py-1.5 rounded-xl text-[11px]">
+            🏠 切为供方（接单）
+          </a>
+          <button type="button" onclick="window.repeatLastOrder?.()" class="bg-[#1b4332] text-white font-bold px-2.5 py-1.5 rounded-xl text-[11px]">
+            ⚡ 照上次再订
+          </button>
+        </div>
+      `;
+      container.parentNode?.insertBefore(topBar, container);
+    }
+
     if (!activeAgent || activeAgent === '未接入') {
-      document.getElementById('store-sticker-welcome-bar')?.remove();
       document.getElementById('store-crowd-produce-box')?.remove();
       lastRenderedStoreAgent = '';
       return;
@@ -178,36 +206,8 @@ export async function initStoreTerminalBridge() {
       });
     }
 
-    const container =
-      document.getElementById('product-container') ||
-      document.getElementById('product-list') ||
-      document.getElementById('goods-list') ||
-      document.getElementById('items-container');
     if (!container) return;
-
-    document.getElementById('store-sticker-welcome-bar')?.remove();
     document.getElementById('store-crowd-produce-box')?.remove();
-
-    if (stickerStoreId) {
-      const stickerBar = document.createElement('div');
-      stickerBar.id = 'store-sticker-welcome-bar';
-      stickerBar.className = 'mb-3 bg-amber-50 border border-amber-300 text-amber-950 p-3 rounded-2xl flex items-center justify-between gap-2 text-xs shadow-2xs';
-      stickerBar.innerHTML = `
-        <div>
-          <b class="block">🏷️ 已识别门店专属补货贴（编号 #${stickerStoreId}）</b>
-          <span class="text-[10px] text-amber-800">直接点下方商品“+”号选择数量，底部一键生成送货凭单</span>
-        </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <a href="hq.html" class="bg-white border border-amber-300 text-amber-950 font-bold px-2 py-1.5 rounded-xl text-[10px]">
-            🔄 切供货台
-          </a>
-          <button type="button" onclick="window.repeatLastOrder?.()" class="bg-[#1b4332] text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px]">
-            ⚡ 一键复购
-          </button>
-        </div>
-      `;
-      container.parentNode?.insertBefore(stickerBar, container);
-    }
 
     const crowdList = crowdRes?.data || [];
     if (crowdList.length > 0) {
@@ -216,7 +216,7 @@ export async function initStoreTerminalBridge() {
       crowdBox.className = 'mb-3 bg-emerald-50/90 border border-emerald-300 p-3 rounded-2xl space-y-2 text-xs';
       crowdBox.innerHTML = `
         <div class="flex items-center justify-between">
-          <b class="text-emerald-950">🌾 源头「凑单开产」预售接龙（凑满即开炉直供）</b>
+          <b class="text-emerald-950">🌾 源头「凑单开产」预售接龙（凑满即开炉/发班直供）</b>
           <span class="text-[10px] bg-emerald-800 text-white px-2 py-0.5 rounded-full font-bold">零库存优价</span>
         </div>
         ${crowdList
@@ -236,19 +236,19 @@ export async function initStoreTerminalBridge() {
 
     window.claimCrowdProduceItem = function (noticeId, contentText) {
       const profile = getSavedContactProfile();
-      const storeTitle = document.getElementById('store-title')?.innerText || profile.storeName || '合作门店';
+      const storeTitle = document.getElementById('store-title')?.innerText || profile.storeName || '合作需方';
       openBridgeSheetModal({
         id: 'modal-store-crowd-claim',
-        title: '🌾 凑单开产 · 门店认领登记',
+        title: '🌾 凑单开产 · 需方认领登记',
         subtitle: contentText,
         confirmText: '✅ 确认认领排产',
         bodyHtml: `
           <div>
-            <label class="block font-bold text-stone-700 mb-1">认领门店：</label>
+            <label class="block font-bold text-stone-700 mb-1">认领方称呼：</label>
             <input type="text" id="sc-claim-store" value="${storeTitle}" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
           </div>
           <div>
-            <label class="block font-bold text-stone-700 mb-1">本店认领数量（件/箱/斤）*：</label>
+            <label class="block font-bold text-stone-700 mb-1">认领数量（件/箱/斤/份）*：</label>
             <input type="number" min="1" id="sc-claim-qty" value="10" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-base font-mono font-bold text-emerald-950">
           </div>
         `,
@@ -262,11 +262,11 @@ export async function initStoreTerminalBridge() {
             proposer_type: 'c2b_demand',
             proposer_name: sName,
             category: `[凑单认领 · ${activeAgent}]`,
-            content: `🙋【凑单认领】${sName} 认领 ${qty} 件（响应：${contentText.slice(0, 40)}...）`
+            content: `🙋【凑单认领】${sName} 认领 ${qty} 份（响应：${contentText.slice(0, 40)}...）`
           }]);
           if (error) return alert('认领提交失败：' + error.message);
           close();
-          alert(`✅ 认领成功！已向源头供货方登记【${sName}】认领 ${qty} 件，凑满开产后将优先为您配发！`);
+          alert(`✅ 认领成功！已向源头供方登记【${sName}】认领 ${qty} 份，凑满开产后将优先为您配发！`);
         }
       });
     };
@@ -283,7 +283,7 @@ export async function initStoreTerminalBridge() {
 }
 
 /**
- * 2. 掌中宝 / 一线移动工作台 (driver.html)
+ * 2. 我在执行（送货/上门）移动一线工作台 (driver.html)
  */
 const OFFLINE_QUEUE_KEY = 'baigong_palm_offline_queue';
 
@@ -310,7 +310,7 @@ export function initDriverTerminalBridge() {
   bar.className = 'mx-3 mt-2.5 bg-emerald-50/90 border border-emerald-200 p-2.5 rounded-2xl space-y-1.5 text-xs';
   bar.innerHTML = `
     <div class="flex flex-wrap items-center justify-between gap-1">
-      <b class="text-emerald-950 text-[11px]">🗣️ 一线极速记账（散客随手记 / 说话记收款）：</b>
+      <b class="text-emerald-950 text-[11px]">🗣️ 一线现场记账（送货 / 上门服务 / 现场收款）：</b>
       <div class="flex flex-wrap items-center gap-1">
         <button type="button" id="btn-palm-sync-offline" onclick="window.flushPalmOfflineQueue()" class="hidden bg-amber-400 text-stone-950 font-bold px-2 py-0.5 rounded-lg text-[10px]">
           📶 待补传 0 笔
@@ -319,21 +319,21 @@ export function initDriverTerminalBridge() {
           📷 拍照留底
         </button>
         <button type="button" onclick="window.copyDriverDepartureNotice()" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
-          🚚 发车预告
+          🚚 出发预告
         </button>
         <button type="button" onclick="window.openPalmMapNavigation()" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
-          🗺️ 导航送货
+          🗺️ 地图导航
         </button>
         <a href="index.html" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
-          🔄 我要进货
+          🛒 切为需方
         </a>
         <button type="button" onclick="window.openPalmQuickWalkInModal()" class="bg-[#1b4332] text-white font-bold px-2.5 py-0.5 rounded-lg text-[10px]">
-          ⚡ 散客开单
+          ⚡ 现场开单
         </button>
       </div>
     </div>
     <div class="flex gap-1.5">
-      <input type="text" id="palm-quick-note-input" placeholder="如：旺顺饭庄收现金800元 / 散客拿2箱油160元" class="flex-1 bg-white border border-emerald-200 rounded-xl px-2.5 py-1.5 text-[11px] outline-none">
+      <input type="text" id="palm-quick-note-input" placeholder="如：旺顺饭庄收现金800元 / 帮张大爷修好水泵收120元" class="flex-1 bg-white border border-emerald-200 rounded-xl px-2.5 py-1.5 text-[11px] outline-none">
       <button type="button" onclick="window.startVoiceInput?.('palm-quick-note-input')" class="bg-amber-100 text-amber-950 border border-amber-300 font-bold px-2.5 rounded-xl text-[11px] shrink-0">🎤</button>
       <button type="button" onclick="window.submitPalmQuickCommand()" class="bg-emerald-800 text-white font-bold px-3 rounded-xl text-[11px] shrink-0">记一笔</button>
     </div>
@@ -343,13 +343,13 @@ export function initDriverTerminalBridge() {
   window.openPalmPhotoEvidenceModal = function () {
     openBridgeSheetModal({
       id: 'modal-palm-photo-evidence',
-      title: '📷 交割 / 破损 / 空筐随手拍照留底',
+      title: '📷 交割 / 验收 / 器具随手拍照留底',
       subtitle: '自动压缩图片存入云端账本，口说无凭一拍即清',
       confirmText: '✅ 上传留底存证',
       bodyHtml: `
         <div>
           <label class="block font-bold text-stone-700 mb-1">关联客户或事项说明 *：</label>
-          <input type="text" id="pe-note" placeholder="如：兴隆饭庄到货签收 / 第3箱破损验退 / 回收空筐8个" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
+          <input type="text" id="pe-note" placeholder="如：兴隆饭庄到货签收 / 水泵维修完工验收 / 收回空筐8个" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
         </div>
         <div>
           <label class="block font-bold text-stone-700 mb-1">点击调用相机拍照或选图 *：</label>
@@ -405,22 +405,22 @@ export function initDriverTerminalBridge() {
   };
 
   window.copyDriverDepartureNotice = function () {
-    const operator = (document.getElementById('driver-name-display')?.innerText || '送货师傅').trim();
-    const notice = `🚚【送货发车预告】各位老板好，${operator}已装车出发，预计 1 小时内陆续抵达沿线各店，请提前留好卸货位置并清点待退周转空筐，到店前会提前电话联系！`;
+    const operator = (document.getElementById('driver-name-display')?.innerText || '服务师傅').trim();
+    const notice = `🚚【送货/上门出发预告】各位老板好，${operator}已出发前往沿线各点，预计 1 小时内陆续抵达，请提前留好接货或作业位置，到场前会提前电话联系！`;
     navigator.clipboard?.writeText(notice);
-    alert(`✅ 发车预告已复制，可直接转发到门店微信群！\n\n${notice}`);
+    alert(`✅ 出发预告已复制，可直接转发到客户微信或微信群！\n\n${notice}`);
   };
 
   window.openPalmMapNavigation = function () {
     openBridgeSheetModal({
       id: 'modal-palm-map-nav',
       title: '🗺️ 唤起手机地图一键导航',
-      subtitle: '输入门店名或街道，直接跳转地图规划顺路路线',
+      subtitle: '输入客户店名、村镇或街道，直接跳转地图规划路线',
       confirmText: '🧭 立即开始导航',
       bodyHtml: `
         <div>
-          <label class="block font-bold text-stone-700 mb-1">目的地门店或街道地址 *：</label>
-          <input type="text" id="palm-nav-dest" placeholder="如：城南兴隆饭庄 / 镇东农资门市" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
+          <label class="block font-bold text-stone-700 mb-1">目的地名称或地址 *：</label>
+          <input type="text" id="palm-nav-dest" placeholder="如：城南兴隆饭庄 / 镇东李家村合作社" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
         </div>
       `,
       onConfirm: async (close) => {
@@ -516,17 +516,17 @@ export function initDriverTerminalBridge() {
   window.openPalmQuickWalkInModal = function () {
     openBridgeSheetModal({
       id: 'modal-palm-walkin-order',
-      title: '⚡ 掌中宝 · 散客现场随手开单',
+      title: '⚡ 现场随手开单（卖货 / 上门服务通用）',
       subtitle: '无需建档，支持弱网本地暂存，现场成交一秒留痕入账',
       confirmText: '✅ 立即出凭单入账',
       bodyHtml: `
         <div>
-          <label class="block font-bold text-stone-700 mb-1">买方称呼 *：</label>
-          <input type="text" id="pw-buyer" value="路过散客" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
+          <label class="block font-bold text-stone-700 mb-1">需方称呼 *：</label>
+          <input type="text" id="pw-buyer" value="现场散客" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
         </div>
         <div>
-          <label class="block font-bold text-stone-700 mb-1">货品及数量 *：</label>
-          <input type="text" id="pw-item" placeholder="如：菜籽油 2桶 / 五金配件一批" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2">
+          <label class="block font-bold text-stone-700 mb-1">货品或服务明细 *：</label>
+          <input type="text" id="pw-item" placeholder="如：菜籽油 2桶 / 农机耕地 3亩 / 上门检修" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2">
         </div>
         <div>
           <label class="block font-bold text-stone-700 mb-1">实收总金额 (元) *：</label>
@@ -534,10 +534,10 @@ export function initDriverTerminalBridge() {
         </div>
       `,
       onConfirm: async (close) => {
-        const buyer = document.getElementById('pw-buyer')?.value.trim() || '路过散客';
+        const buyer = document.getElementById('pw-buyer')?.value.trim() || '现场散客';
         const itemDesc = document.getElementById('pw-item')?.value.trim();
         const totalAmt = parseFloat(document.getElementById('pw-amount')?.value || '0');
-        if (!itemDesc) return alert('请填写货品及数量！');
+        if (!itemDesc) return alert('请填写货品或服务明细！');
         if (isNaN(totalAmt) || totalAmt < 0) return alert('请输入有效金额！');
 
         const tenantId = (document.getElementById('tenant-display')?.innerText || localStorage.getItem('hq_active_agent') || '').trim();
@@ -552,8 +552,8 @@ export function initDriverTerminalBridge() {
           driver_name: operator,
           order_source: 'vendor_push',
           settlement_type: 'cash',
-          settlement_note: `[掌中宝散客随手单] ${itemDesc}`,
-          items: [{ id: 0, name: itemDesc, spec: '现场直售', measure_unit: '批', price: totalAmt, qty: 1 }],
+          settlement_note: `[一线现场随手单] ${itemDesc}`,
+          items: [{ id: 0, name: itemDesc, spec: '现场直结', measure_unit: '项', price: totalAmt, qty: 1 }],
           items_return: [],
           items_exchange: [],
           total_amount: totalAmt,
@@ -561,7 +561,7 @@ export function initDriverTerminalBridge() {
           net_settle_amount: totalAmt,
           order_status: 'confirmed',
           delivery_status: 'delivered',
-          note: `[掌中宝散客随手单] ${itemDesc}`
+          note: `[一线现场随手单] ${itemDesc}`
         };
 
         const { error } = await supabase.from('store_order').insert([payload]);
@@ -575,7 +575,7 @@ export function initDriverTerminalBridge() {
           return;
         }
 
-        alert(`✅ 散客随手单【${ckNo}】（¥${totalAmt.toFixed(2)}）已入账！`);
+        alert(`✅ 现场随手单【${ckNo}】（¥${totalAmt.toFixed(2)}）已入账！`);
         if (typeof window.loadDriverTasks === 'function') window.loadDriverTasks();
       }
     });
@@ -583,7 +583,7 @@ export function initDriverTerminalBridge() {
 }
 
 /**
- * 3. 百工天街零售端 (mall.html) — 含邻里小货车凑箱进度条
+ * 3. 逛大集 · 零售与邻里拼单端 (mall.html)
  */
 export async function initMallTerminalBridge() {
   showWeChatPinGuideIfFirstTime();
@@ -622,7 +622,7 @@ export async function initMallTerminalBridge() {
     strip.innerHTML = `
       <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 space-y-2 text-xs">
         <div class="flex items-center justify-between">
-          <b class="text-emerald-950 text-sm">🌾 源头「凑单开产」接龙（凑够即开炉直供，比现货更优价）</b>
+          <b class="text-emerald-950 text-sm">🌾 源头「凑单开产」接龙（凑够即开炉/发班直供，比现货更优价）</b>
           <span class="text-[10px] text-emerald-800 font-bold">大家一起拼 · 零中间商</span>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -655,8 +655,8 @@ export async function initMallTerminalBridge() {
                   <div class="bg-emerald-600 h-full transition-all" style="width:${Math.max(8, pct)}%"></div>
                 </div>
                 <div class="text-[10px] text-emerald-900 font-bold flex justify-between">
-                  <span>🚚 小货车已凑 ${claimedSum} / ${targetNum}</span>
-                  <span>${leftNum > 0 ? `再凑 ${leftNum} 立即发车` : '🎉 已满额排产中'}</span>
+                  <span>🚚 已凑 ${claimedSum} / ${targetNum}</span>
+                  <span>${leftNum > 0 ? `再凑 ${leftNum} 立即发车/排产` : '🎉 已满额排产中'}</span>
                 </div>
               </div>`;
             })
@@ -684,16 +684,16 @@ export async function initMallTerminalBridge() {
     const defaultContact = [profile.name, profile.phone].filter(Boolean).join(' ');
     openBridgeSheetModal({
       id: 'modal-mall-crowd-join',
-      title: '🛒 源头「凑单开产」街坊拼单登记',
+      title: '🛒 源头「凑单开产」拼单登记',
       subtitle: contentStr,
       confirmText: '✅ 确认参与拼单',
       bodyHtml: `
         <div>
-          <label class="block font-bold text-stone-700 mb-1">您的称呼及手机号（开产到货通知用）*：</label>
+          <label class="block font-bold text-stone-700 mb-1">您的称呼及手机号（开产/发班通知用）*：</label>
           <input type="text" id="mc-buyer-info" value="${defaultContact}" placeholder="例如：李大姐 13800138000" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
         </div>
         <div>
-          <label class="block font-bold text-stone-700 mb-1">拼单认领数量（件/份）*：</label>
+          <label class="block font-bold text-stone-700 mb-1">拼单认领数量（件/份/亩）*：</label>
           <input type="number" min="1" id="mc-buyer-qty" value="2" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-base font-mono font-bold text-emerald-950">
         </div>
       `,
@@ -711,18 +711,18 @@ export async function initMallTerminalBridge() {
           proposer_type: 'c2b_demand',
           proposer_name: buyerName,
           category: catStr.replace('凑单开产', '天街拼单认领'),
-          content: `🛒【天街街坊拼单】${buyerName} 认领 ${qty} 件（${contentStr.slice(0, 40)}...）`
+          content: `🛒【拼单认领】${buyerName} 认领 ${qty} 份（${contentStr.slice(0, 40)}...）`
         }]);
         if (error) return alert('拼单提交失败：' + error.message);
         close();
-        alert('✅ 拼单认领成功！凑满开产后商号将第一时间为您安排到店自提或配送。');
+        alert('✅ 拼单认领成功！凑满后供方将第一时间与您联系交付。');
       }
     });
   };
 }
 
 /**
- * 4. 百业供需合作名录 (suppliers.html)
+ * 4. 逛大集 · 百业双向供需合作名录 (suppliers.html)
  */
 export async function initSuppliersTerminalBridge() {
   showWeChatPinGuideIfFirstTime();
@@ -745,16 +745,16 @@ export async function initSuppliersTerminalBridge() {
     <div class="bg-white border border-stone-200 rounded-2xl p-4 space-y-2.5 text-xs shadow-2xs">
       <div class="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2">
         <div>
-          <b class="text-sm text-stone-900">🔄 找货源 · 调余货 · 一起拼（百业双向供需榜）</b>
-          <span class="text-[10px] text-stone-500 block">人人既可做卖方供货，也可发求购找源头，实名信义商号直接对接</span>
+          <b class="text-sm text-stone-900">🔄 找好货 · 找人手 · 调余货 · 一起拼（百业双向供需榜）</b>
+          <span class="text-[10px] text-stone-500 block">人人既可做供方接单，也可做需方发求购/找服务，实名信义商号直接对接</span>
         </div>
         <button type="button" onclick="window.publishTwoWayDemandPrompt()" class="bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold px-3 py-1.5 rounded-xl text-[11px] shadow-2xs transition">
-          📢 发布我的采购/合作需求
+          📢 发布我的需求/服务意向
         </button>
       </div>
       ${
         list.length === 0
-          ? `<p class="text-[11px] text-stone-400 py-2">暂无最新挂榜需求，点击右上角可免费发布您的采购或余货调剂意向。</p>`
+          ? `<p class="text-[11px] text-stone-400 py-2">暂无最新挂榜需求，点击右上角可免费发布您的采购、找人手或余货调剂意向。</p>`
           : `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${list
               .map(
                 (d) => `
@@ -776,14 +776,14 @@ export async function initSuppliersTerminalBridge() {
     const profile = getSavedContactProfile();
     openBridgeSheetModal({
       id: 'modal-suppliers-twoway-demand',
-      title: '📢 发布采购 / 余货调剂 / 合作意向',
-      subtitle: '免费挂榜 · 源头合作社与工坊直接联系，零中间抽佣',
+      title: '📢 发布采购 / 找人手服务 / 余货调剂意向',
+      subtitle: '免费挂榜 · 源头供方与手艺人直接联系，零中间抽佣',
       confirmText: '🚀 立即挂榜发布',
       bodyHtml: `
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block font-bold text-stone-700 mb-1">商号 / 门店称呼 *：</label>
-            <input type="text" id="tw-who-name" value="${profile.storeName || profile.name || ''}" placeholder="如：厚德便民门店" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none focus:border-emerald-700">
+            <label class="block font-bold text-stone-700 mb-1">商号 / 个人称呼 *：</label>
+            <input type="text" id="tw-who-name" value="${profile.storeName || profile.name || ''}" placeholder="如：厚德合作社 / 王师傅" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none focus:border-emerald-700">
           </div>
           <div>
             <label class="block font-bold text-stone-700 mb-1">联系电话 / 微信 *：</label>
@@ -794,14 +794,15 @@ export async function initSuppliersTerminalBridge() {
           <label class="block font-bold text-stone-700 mb-1">协作类型：</label>
           <select id="tw-demand-type" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none">
             <option value="源头寻货采购">🛒 寻找源头货源采购</option>
-            <option value="余缺调剂互换">🔄 门店余货调剂 / 以物置换</option>
+            <option value="找人手/专业服务">🛠️ 寻找农机 / 维修 / 劳务服务</option>
+            <option value="余缺调剂互换">🔄 余货/闲置设备调剂与置换</option>
             <option value="顺路运力带货">🚚 顺路带货 / 物流共配协作</option>
             <option value="定制凑单开产">🌾 定制加工 / 凑单开产合作</option>
           </select>
         </div>
         <div>
           <label class="block font-bold text-stone-700 mb-1">具体需求或可提供资源描述 *：</label>
-          <textarea id="tw-demand-desc" rows="3" placeholder="例如：长期需要5L纯压榨菜籽油每月约60桶，支持现结或本地农产置换..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none focus:border-emerald-700"></textarea>
+          <textarea id="tw-demand-desc" rows="3" placeholder="例如：需要2台收割机下周三到李家村作业约40亩；或长期采购纯压榨菜籽油..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none focus:border-emerald-700"></textarea>
         </div>
       `,
       onConfirm: async (close) => {
@@ -810,8 +811,8 @@ export async function initSuppliersTerminalBridge() {
         const dType = document.getElementById('tw-demand-type')?.value || '双向供需';
         const need = document.getElementById('tw-demand-desc')?.value.trim();
 
-        if (!whoName || !whoPhone) return alert('请填写您的商号/门店称呼和联系电话！');
-        if (!need) return alert('请写明您的采购或合作需求描述！');
+        if (!whoName || !whoPhone) return alert('请填写您的称呼和联系电话！');
+        if (!need) return alert('请写明您的需求或服务描述！');
 
         saveContactProfile({ storeName: whoName, phone: whoPhone });
         const proposerLabel = `${whoName} (${whoPhone})`;
@@ -823,7 +824,7 @@ export async function initSuppliersTerminalBridge() {
         }]);
         if (error) return alert('发布失败：' + error.message);
         close();
-        alert('✅ 已成功挂榜，相关源头商号将主动与您对接！');
+        alert('✅ 已成功挂榜，相关源头供方或服务人将主动与您对接！');
         window.location.reload();
       }
     });
