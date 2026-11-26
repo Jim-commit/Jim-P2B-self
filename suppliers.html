@@ -196,10 +196,12 @@
     import { initSuppliersController } from './src/modules/suppliersController.js';
     import { mountPublicSupervisionWidget } from './src/modules/publicSupervisionWidget.js';
     import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
+    import { initSuppliersTerminalBridge } from './src/modules/soulEngine/multiTerminalBridge.js';
 
     enforceGlobalGovernance();
     mountPublicSupervisionWidget('百业供需名录');
     initSuppliersController();
+    initSuppliersTerminalBridge();
   </script>
   <script>
     if ('serviceWorker' in navigator) {
