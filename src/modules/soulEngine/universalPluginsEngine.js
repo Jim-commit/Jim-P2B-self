@@ -1,7 +1,7 @@
 /**
  * 百工百业 · 第2步核心引擎：万能项目卡 + 四个活插件（纯增量兼容，零表结构破坏）
  * 1. 📦 扣库存插件 (stock): 实物买卖、大小包装拆零、库存预警（老商品默认开启）
- * 2. 🎯 进度里程碑插件 (milestone): 工程装修、软件定制、设计法务分阶段收款节点
+ * 2. 🎯 进度里程碑插件 (milestone): 支持完全自定义任意阶段数、阶段名称、比例或固定金额
  * 3. 🔁 周期自动续费插件 (recurring): 代理记账、设备维保、会员托管按月/季/年自动生单
  * 4. 👤 派工与提成插件 (dispatch): 上门安装、维修、项目执行人指定与完工提成核算
  */
@@ -35,7 +35,27 @@ export function getNormalizedItemPlugins(product = {}) {
 }
 
 /**
- * 生成列表页一眼看懂的插件徽章（纯实物默认只显示库存；纯服务不显示库存字样，亮出里程碑/续费/派工徽章）
+ * 智能解析单个里程碑阶段文本（支持如 "签约定金 30%" 或 "上门费 200元"）
+ */
+export function parseMilestoneStage(stageStr, totalAmount = 0) {
+  const raw = String(stageStr || '').trim();
+  const pctMatch = raw.match(/(\d+(?:\.\d+)?)\s*%/);
+  const fixedMatch = raw.match(/(\d+(?:\.\d+)?)\s*(?:元|块|¥)/);
+
+  let amount = 0;
+  let mode = 'text';
+  if (pctMatch) {
+    mode = 'percent';
+    amount = Number(((totalAmount * parseFloat(pctMatch[1])) / 100).toFixed(2));
+  } else if (fixedMatch) {
+    mode = 'fixed';
+    amount = Number(parseFloat(fixedMatch[1]).toFixed(2));
+  }
+  return { label: raw, mode, amount };
+}
+
+/**
+ * 生成列表页一眼看懂的插件徽章
  */
 export function renderItemPluginBadgesHtml(product = {}) {
   const plg = getNormalizedItemPlugins(product);
@@ -64,12 +84,35 @@ export function renderItemPluginBadgesHtml(product = {}) {
   return badges.join('');
 }
 
+function renderSingleMilestoneRowHtml(val = '', idx = 0) {
+  return `
+    <div class="flex items-center gap-1.5 plg-milestone-row">
+      <span class="text-[10px] font-mono text-purple-700 font-bold w-6 text-center">#${idx + 1}</span>
+      <input type="text" value="${String(val).replace(/"/g, '"')}" placeholder="如：签约定金 30% 或 到场费 500元"
+        class="plg-milestone-input flex-1 bg-stone-50 border border-purple-200 rounded-lg px-2 py-1 text-[11px] outline-none">
+      <button type="button" onclick="this.closest('.plg-milestone-row').remove()" title="删除此阶段"
+        class="text-stone-400 hover:text-rose-600 font-bold px-1.5 py-0.5 text-xs">✕</button>
+    </div>
+  `;
+}
+
 /**
- * 渲染商品/项目弹窗里的“手电筒式四个活插件”配置卡片（勾选哪项，哪项输入框立刻亮起）
+ * 渲染商品/项目弹窗里的“手电筒式四个活插件”配置卡片
  */
 export function renderPluginsEditorPanel(product = null) {
   const plg = getNormalizedItemPlugins(product || {});
-  const stagesText = (plg.milestone.stages || []).join('\n');
+  const stages = Array.isArray(plg.milestone.stages) && plg.milestone.stages.length > 0
+    ? plg.milestone.stages
+    : ['定金 30%', '中期验收 40%', '完工尾款 30%'];
+
+  if (typeof window !== 'undefined') {
+    window.addCustomMilestoneStageRow = function (presetText = '') {
+      const box = document.getElementById('plg-milestone-rows-box');
+      if (!box) return;
+      const idx = box.querySelectorAll('.plg-milestone-row').length;
+      box.insertAdjacentHTML('beforeend', renderSingleMilestoneRowHtml(presetText, idx));
+    };
+  }
 
   return `
     <div id="universal-plugins-panel" class="bg-stone-50 border border-stone-200 rounded-2xl p-3 space-y-2.5 text-xs">
@@ -110,10 +153,17 @@ export function renderPluginsEditorPanel(product = null) {
         </div>
       </div>
 
-      <!-- 2. 分阶段里程碑收款区 -->
-      <div id="plg-box-milestone" class="${plg.milestone.enabled ? '' : 'hidden'} bg-white border border-purple-200 rounded-xl p-2.5 space-y-1">
-        <label class="text-[11px] text-purple-950 font-bold block">🎯 验收与收款阶段设置（每行一个阶段，完工点亮即提醒收款）：</label>
-        <textarea id="plg-milestone-stages" rows="3" placeholder="例如：\n定金 30%\n中期验收 40%\n完工交付 30%" class="w-full bg-stone-50 border border-purple-200 rounded-lg p-1.5 text-[11px]">${stagesText}</textarea>
+      <!-- 2. 完全自定义分阶段里程碑收款区 -->
+      <div id="plg-box-milestone" class="${plg.milestone.enabled ? '' : 'hidden'} bg-white border border-purple-200 rounded-xl p-2.5 space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-1">
+          <label class="text-[11px] text-purple-950 font-bold">🎯 自定义验收与收款阶段（支持填百分比如 30%，或固定金额如 500元）：</label>
+          <button type="button" onclick="window.addCustomMilestoneStageRow('')" class="bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
+            + 添加一阶段
+          </button>
+        </div>
+        <div id="plg-milestone-rows-box" class="space-y-1.5">
+          ${stages.map((st, idx) => renderSingleMilestoneRowHtml(st, idx)).join('')}
+        </div>
       </div>
 
       <!-- 3. 周期自动续费区 -->
@@ -167,9 +217,8 @@ export function collectPluginsFromDOM() {
   const recurringEnabled = document.getElementById('plg-chk-recurring')?.checked ?? false;
   const dispatchEnabled = document.getElementById('plg-chk-dispatch')?.checked ?? false;
 
-  const stages = (document.getElementById('plg-milestone-stages')?.value || '')
-    .split(/\r?\n/)
-    .map((s) => s.trim())
+  const stages = Array.from(document.querySelectorAll('#plg-milestone-rows-box .plg-milestone-input'))
+    .map((inp) => inp.value.trim())
     .filter(Boolean);
 
   return {
