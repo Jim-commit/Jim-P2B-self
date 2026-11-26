@@ -521,9 +521,31 @@ export function initSixteenRealmsBindings() {
     const rawSettings = hqState.currentTenantData?.custom_settings || {};
     const charityEnabled = !!rawSettings.charity_micro_light_enabled;
 
-    const storeOpts = stores.map((s) => `<option value="${s.id}">${s.name} (欠¥${parseFloat(s.current_debt || 0).toFixed(2)})</option>`).join('');
+    const storeOpts = stores
+      .map((s) => `<option value="${s.id}">${s.name} (欠¥${parseFloat(s.current_debt || 0).toFixed(2)})</option>`)
+      .join('');
+    const storeOptsB = stores
+      .map((s, idx) => `<option value="${s.id}" ${idx === 1 ? 'selected' : ''}>${s.name} (欠¥${parseFloat(s.current_debt || 0).toFixed(2)})</option>`)
+      .join('');
     const prodOpts = products.map((p) => `<option value="${p.id}">${p.name} (¥${p.tier_1_price})</option>`).join('');
-    const staffOpts = subUsers.map((u) => `<option value="${u.account_code}">${u.display_name} (${u.account_code})</option>`).join('');
+
+    // 全字段兼容：彻底消除 undefined (undefined)
+    const staffOpts = subUsers
+      .map((u, idx) => {
+        const sCode = u.account_code || u.username || u.phone || String(u.id || idx);
+        const sName = u.display_name || u.staff_name || u.name || u.username || sCode || '协同执事';
+        const sRole = u.role_name || u.role || u.account_code || '岗位执事';
+        return `<option value="${sCode}">${sName} (${sRole})</option>`;
+      })
+      .join('');
+    const staffOptsTo = subUsers
+      .map((u, idx) => {
+        const sCode = u.account_code || u.username || u.phone || String(u.id || idx);
+        const sName = u.display_name || u.staff_name || u.name || u.username || sCode || '协同执事';
+        const sRole = u.role_name || u.role || u.account_code || '岗位执事';
+        return `<option value="${sCode}" ${idx === 1 ? 'selected' : ''}>${sName} (${sRole})</option>`;
+      })
+      .join('');
 
     const modal = document.createElement('div');
     modal.id = 'modal-sixteen-realms-hub';
@@ -544,7 +566,7 @@ export function initSixteenRealmsBindings() {
             <b class="text-rose-950 block">↩️ 填错单据“冲红更正”后悔药</b>
             <p class="text-[10px] text-stone-600">输入填错的单据号，系统自动生成红字冲销单并回补库存，审计留痕不怕点错。</p>
             <div class="flex gap-1.5">
-              <input type="text" id="red-offset-order-no" placeholder="输入原单号 (如 CK-261126-1024)" class="flex-1 bg-white border border-rose-200 rounded-xl px-2.5 py-1.5 font-mono uppercase">
+              <input type="text" id="red-offset-order-no" placeholder="输入原单号 (如 CK-261126-1024)" class="flex-1 min-w-0 bg-white border border-rose-200 rounded-xl px-2.5 py-1.5 font-mono uppercase">
               <button type="button" onclick="window.executeRedOffsetCorrection()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-xl shrink-0">红字冲销</button>
             </div>
           </div>
@@ -553,11 +575,11 @@ export function initSixteenRealmsBindings() {
           <div class="p-3 bg-indigo-50/60 border border-indigo-200 rounded-2xl space-y-2">
             <b class="text-indigo-950 block">🔄 双向供需 / 三角债对称平账</b>
             <div class="grid grid-cols-2 gap-1.5">
-              <select id="tri-store-a" class="bg-white border border-indigo-200 rounded-xl px-2 py-1 font-bold">${storeOpts || '<option value="">客户A</option>'}</select>
-              <select id="tri-store-b" class="bg-white border border-indigo-200 rounded-xl px-2 py-1 font-bold">${storeOpts || '<option value="">客户B</option>'}</select>
+              <select id="tri-store-a" class="min-w-0 bg-white border border-indigo-200 rounded-xl px-2 py-1 font-bold truncate">${storeOpts || '<option value="">客户A</option>'}</select>
+              <select id="tri-store-b" class="min-w-0 bg-white border border-indigo-200 rounded-xl px-2 py-1 font-bold truncate">${storeOptsB || '<option value="">客户B</option>'}</select>
             </div>
             <div class="flex gap-1.5">
-              <input type="number" step="0.01" id="tri-offset-amt" placeholder="互相冲抵金额(元)" class="flex-1 bg-white border border-indigo-200 rounded-xl px-2.5 py-1 font-mono font-bold">
+              <input type="number" step="0.01" id="tri-offset-amt" placeholder="互相冲抵金额(元)" class="flex-1 min-w-0 bg-white border border-indigo-200 rounded-xl px-2.5 py-1 font-mono font-bold">
               <button type="button" onclick="window.executeTriangularDebtOffset()" class="bg-indigo-700 text-white font-bold px-3 py-1 rounded-xl shrink-0">一键对冲</button>
             </div>
           </div>
@@ -566,8 +588,8 @@ export function initSixteenRealmsBindings() {
           <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2">
             <b class="text-emerald-950 block">🌾 凑单开产（先凑需求、满额再生产）</b>
             <div class="grid grid-cols-2 gap-1.5">
-              <select id="crowd-prod-id" class="bg-white border border-emerald-200 rounded-xl px-2 py-1 font-bold">${prodOpts || '<option value="">选择品项</option>'}</select>
-              <input type="number" min="1" id="crowd-target-qty" placeholder="开产起订总量 (如 500)" class="bg-white border border-emerald-200 rounded-xl px-2.5 py-1 font-mono">
+              <select id="crowd-prod-id" class="min-w-0 bg-white border border-emerald-200 rounded-xl px-2 py-1 font-bold truncate">${prodOpts || '<option value="">选择品项</option>'}</select>
+              <input type="number" min="1" id="crowd-target-qty" placeholder="开产起订总量 (如 500)" class="min-w-0 bg-white border border-emerald-200 rounded-xl px-2.5 py-1 font-mono">
             </div>
             <button type="button" onclick="window.publishCrowdProduceNotice()" class="w-full py-1.5 rounded-xl bg-[#1b4332] text-white font-bold">
               📣 发布“凑单开产牌”到协作圈
@@ -579,7 +601,7 @@ export function initSixteenRealmsBindings() {
             <b class="text-amber-950 block">🏷️ 一户一码 / 货架补货实体贴纸</b>
             <p class="text-[10px] text-stone-600">生成专属贴纸打印贴在门店前台或货架，微信扫码直达极速补货。</p>
             <div class="flex gap-1.5">
-              <select id="sticker-store-id" class="flex-1 bg-white border border-amber-200 rounded-xl px-2 py-1 font-bold">${storeOpts || '<option value="">选择客户</option>'}</select>
+              <select id="sticker-store-id" class="flex-1 min-w-0 bg-white border border-amber-200 rounded-xl px-2 py-1 font-bold truncate">${storeOpts || '<option value="">选择客户</option>'}</select>
               <button type="button" onclick="window.generatePhysicalQrSticker()" class="bg-amber-500 text-stone-950 font-bold px-3 py-1 rounded-xl shrink-0">生成贴纸</button>
             </div>
           </div>
@@ -588,10 +610,10 @@ export function initSixteenRealmsBindings() {
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
             <b class="text-stone-900 block">🤝 员工离职/调岗 · 一键客户交接</b>
             <div class="flex gap-1.5 items-center">
-              <select id="handover-from-user" class="flex-1 bg-white border border-stone-200 rounded-xl px-2 py-1">${staffOpts || '<option value="">原跟单人</option>'}</select>
-              <span>➔</span>
-              <select id="handover-to-user" class="flex-1 bg-white border border-stone-200 rounded-xl px-2 py-1">${staffOpts || '<option value="">接任人</option>'}</select>
-              <button type="button" onclick="window.executeStaffHandover()" class="bg-stone-800 text-white font-bold px-2.5 py-1 rounded-xl shrink-0">移交</button>
+              <select id="handover-from-user" class="flex-1 min-w-0 bg-white border border-stone-200 rounded-xl px-2 py-1 font-bold truncate">${staffOpts || '<option value="">暂无在册员工</option>'}</select>
+              <span class="shrink-0 text-stone-400 font-bold">➔</span>
+              <select id="handover-to-user" class="flex-1 min-w-0 bg-white border border-stone-200 rounded-xl px-2 py-1 font-bold truncate">${staffOptsTo || '<option value="">暂无接任人</option>'}</select>
+              <button type="button" onclick="window.executeStaffHandover()" class="bg-stone-800 hover:bg-stone-900 text-white font-bold px-3 py-1 rounded-xl shrink-0">移交</button>
             </div>
           </div>
 
@@ -730,18 +752,19 @@ export function initSixteenRealmsBindings() {
     const toCode = document.getElementById('handover-to-user')?.value;
     if (!fromCode || !toCode || fromCode === toCode) return alert('请选择不同的原跟单人与接任人！');
 
-    const toUser = (hqState.allSubUsers || []).find((u) => u.account_code === toCode);
+    const toUser = (hqState.allSubUsers || []).find((u) => (u.account_code || u.username || String(u.id)) === toCode);
+    const toDisplayName = toUser?.display_name || toUser?.staff_name || toUser?.name || toCode;
     const affected = (hqState.allStores || []).filter((s) => s.sales_owner_code === fromCode || s.driver_name === fromCode);
     if (affected.length === 0) return alert('该员工名下暂无绑定客户。');
 
-    if (!confirm(`确认将 ${affected.length} 位客户平滑移交给【${toUser?.display_name || toCode}】？`)) return;
+    if (!confirm(`确认将 ${affected.length} 位客户平滑移交给【${toDisplayName}】？`)) return;
     for (const s of affected) {
       await supabase.from('store').update({
         sales_owner_code: toCode,
-        sales_owner_name: toUser?.display_name || toCode
+        sales_owner_name: toDisplayName
       }).eq('id', s.id);
     }
-    alert(`✅ 已将 ${affected.length} 位客户完整移交给【${toUser?.display_name || toCode}】！`);
+    alert(`✅ 已将 ${affected.length} 位客户完整移交给【${toDisplayName}】！`);
     if (typeof window.loadHQData === 'function') await window.loadHQData();
   };
 
