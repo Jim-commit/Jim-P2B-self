@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 五端统一协同与十六重境界跨端桥接引擎（全面升级高颜值内嵌卡片弹窗，彻底告别生硬 prompt）
+ * 百工百业 · 五端统一协同与跨端桥接引擎（卡片弹窗 + 自动记忆上次联系人，第二次使用零打字）
  * 覆盖：index.html (门店端) / driver.html (掌中宝) / mall.html (天街端) / suppliers.html (名录端)
  */
 import { supabase } from '../../lib/supabase.js';
@@ -17,7 +17,31 @@ function generateMobileVoucherNo(prefix = 'CK') {
 }
 
 /**
- * 通用温润卡片弹窗构建器（替代浏览器生硬 prompt，适配微信与大字号阅读）
+ * 本地静默记忆常用联系人信息（称呼 / 电话 / 地址），下次打开自动回填
+ */
+function getSavedContactProfile() {
+  try {
+    return JSON.parse(localStorage.getItem('baigong_saved_contact_profile') || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveContactProfile(patch = {}) {
+  try {
+    const prev = getSavedContactProfile();
+    const next = { ...prev };
+    Object.keys(patch).forEach((k) => {
+      if (patch[k] && String(patch[k]).trim()) next[k] = String(patch[k]).trim();
+    });
+    localStorage.setItem('baigong_saved_contact_profile', JSON.stringify(next));
+  } catch {
+    // 忽略隐私模式存储限制
+  }
+}
+
+/**
+ * 通用温润卡片弹窗构建器
  */
 function openBridgeSheetModal({ id, title, subtitle, bodyHtml, confirmText, onConfirm }) {
   document.getElementById(id)?.remove();
@@ -28,8 +52,7 @@ function openBridgeSheetModal({ id, title, subtitle, bodyHtml, confirmText, onCo
     <div class="bg-white border border-stone-200 rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 space-y-3.5 shadow-2xl text-xs animate-fade-in">
       <div class="flex justify-between items-start border-b border-stone-100 pb-2.5">
         <div>
-          <b class="text-base text-stone-900 block">${title}</b>
-          ${subtitle ? `<span class="text-[11px] text-stone-500 mt-0.5 block">${subtitle}</span>` : ''}
+          <b class="text-base text-stone-900 block">${title}</b>${subtitle ? `<span class="text-[11px] text-stone-500 mt-0.5 block">${subtitle}</span>` : ''}
         </div>
         <button type="button" id="${id}-close" class="w-7 h-7 rounded-full bg-stone-100 text-stone-500 hover:text-stone-900 font-bold flex items-center justify-center">✕</button>
       </div>
@@ -57,9 +80,7 @@ let storeBridgeWatcherStarted = false;
 let lastRenderedStoreAgent = '';
 
 /**
- * 1. 门店端 (index.html)：
- *    - 识别总部打印的「一户一码快捷补货贴」(?agent=...&store_id=...) 自动锁定商号并亮出极速补货条
- *    - 展示当前供货商发布的「🌾 凑单开产牌」，门店掌柜点击卡片弹窗一键认领数量
+ * 1. 门店端 (index.html)
  */
 export async function initStoreTerminalBridge() {
   const params = getUrlParams();
@@ -170,7 +191,8 @@ export async function initStoreTerminalBridge() {
     }
 
     window.claimCrowdProduceItem = function (noticeId, contentText) {
-      const storeTitle = document.getElementById('store-title')?.innerText || '合作门店';
+      const profile = getSavedContactProfile();
+      const storeTitle = document.getElementById('store-title')?.innerText || profile.storeName || '合作门店';
       openBridgeSheetModal({
         id: 'modal-store-crowd-claim',
         title: '🌾 凑单开产 · 门店认领登记',
@@ -191,6 +213,7 @@ export async function initStoreTerminalBridge() {
           const qty = parseInt(document.getElementById('sc-claim-qty')?.value || '0', 10);
           if (!qty || qty <= 0) return alert('请输入有效的认领数量！');
 
+          saveContactProfile({ storeName: sName });
           const { error } = await supabase.from('platform_suggestion_board').insert([{
             proposer_type: 'c2b_demand',
             proposer_name: sName,
@@ -216,8 +239,7 @@ export async function initStoreTerminalBridge() {
 }
 
 /**
- * 2. 掌中宝 / 一线移动工作台 (driver.html)：
- *    - 顶部挂载「🗣️ 一线说话/随手极速记账条」，送货师傅/仓管跑车或仓库里说句话就能记收款或卡片开散客单
+ * 2. 掌中宝 / 一线移动工作台 (driver.html)
  */
 export function initDriverTerminalBridge() {
   const navHost = document.getElementById('palm-role-nav');
@@ -332,9 +354,7 @@ export function initDriverTerminalBridge() {
 }
 
 /**
- * 3. 百工天街零售端 (mall.html)：
- *    - 展示全网源头商号的「🌾 凑单开产接龙」（支持卡片弹窗一键拼单）
- *    - 若商号开启了「🕯️ 一单微光公益角」，在页面底部展示邻里善意公示牌
+ * 3. 百工天街零售端 (mall.html)
  */
 export async function initMallTerminalBridge() {
   const [crowdRes, charityTenantsRes] = await Promise.all([
@@ -364,7 +384,7 @@ export async function initMallTerminalBridge() {
       <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 space-y-2 text-xs">
         <div class="flex items-center justify-between">
           <b class="text-emerald-950 text-sm">🌾 源头「凑单开产」接龙（凑够即开炉直供，比现货更优价）</b>
-          <span class="text-[10px] text-emerald-800 font-bold">以销定产 · 零中间商</span>
+          <span class="text-[10px] text-emerald-800 font-bold">大家一起拼 · 零中间商</span>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
           ${crowdList
@@ -400,6 +420,8 @@ export async function initMallTerminalBridge() {
   }
 
   window.mallJoinCrowdProduce = function (catStr, contentStr) {
+    const profile = getSavedContactProfile();
+    const defaultContact = [profile.name, profile.phone].filter(Boolean).join(' ');
     openBridgeSheetModal({
       id: 'modal-mall-crowd-join',
       title: '🛒 源头「凑单开产」街坊拼单登记',
@@ -408,7 +430,7 @@ export async function initMallTerminalBridge() {
       bodyHtml: `
         <div>
           <label class="block font-bold text-stone-700 mb-1">您的称呼及手机号（开产到货通知用）*：</label>
-          <input type="text" id="mc-buyer-info" placeholder="例如：李大姐 13800138000" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
+          <input type="text" id="mc-buyer-info" value="${defaultContact}" placeholder="例如：李大姐 13800138000" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold">
         </div>
         <div>
           <label class="block font-bold text-stone-700 mb-1">拼单认领数量（件/份）*：</label>
@@ -420,6 +442,10 @@ export async function initMallTerminalBridge() {
         const qty = parseInt(document.getElementById('mc-buyer-qty')?.value || '0', 10);
         if (!buyerName) return alert('请填写您的称呼及手机号！');
         if (!qty || qty <= 0) return alert('请输入有效的拼单数量！');
+
+        const phoneMatch = buyerName.match(/1[3-9]\d{9}/);
+        const pureName = buyerName.replace(/1[3-9]\d{9}/, '').trim();
+        saveContactProfile({ name: pureName, phone: phoneMatch ? phoneMatch[0] : '' });
 
         const { error } = await supabase.from('platform_suggestion_board').insert([{
           proposer_type: 'c2b_demand',
@@ -436,8 +462,7 @@ export async function initMallTerminalBridge() {
 }
 
 /**
- * 4. 百业供需合作名录 (suppliers.html)：
- *    - 展示跨商号「🔄 百业双向供需池」，点击右上角按钮弹出温润一屏卡片表单（彻底取代生硬 prompt）
+ * 4. 百业供需合作名录 (suppliers.html)
  */
 export async function initSuppliersTerminalBridge() {
   const mainHost = document.querySelector('main') || document.body;
@@ -458,7 +483,7 @@ export async function initSuppliersTerminalBridge() {
     <div class="bg-white border border-stone-200 rounded-2xl p-4 space-y-2.5 text-xs shadow-2xs">
       <div class="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2">
         <div>
-          <b class="text-sm text-stone-900">🔄 百业双向供需池 · 求购榜 / 凑单开产 / 余缺互调</b>
+          <b class="text-sm text-stone-900">🔄 找货源 · 调余货 · 一起拼（百业双向供需榜）</b>
           <span class="text-[10px] text-stone-500 block">人人既可做卖方供货，也可发求购找源头，实名信义商号直接对接</span>
         </div>
         <button type="button" onclick="window.publishTwoWayDemandPrompt()" class="bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold px-3 py-1.5 rounded-xl text-[11px] shadow-2xs transition">
@@ -467,7 +492,7 @@ export async function initSuppliersTerminalBridge() {
       </div>
       ${
         list.length === 0
-          ? `<p class="text-[11px] text-stone-400 py-2">暂无最新挂榜需求，点击右上角可免费发布您的采购或余缺调剂意向。</p>`
+          ? `<p class="text-[11px] text-stone-400 py-2">暂无最新挂榜需求，点击右上角可免费发布您的采购或余货调剂意向。</p>`
           : `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${list
               .map(
                 (d) => `
@@ -486,20 +511,21 @@ export async function initSuppliersTerminalBridge() {
   mainHost.insertAdjacentElement('afterbegin', board);
 
   window.publishTwoWayDemandPrompt = function () {
+    const profile = getSavedContactProfile();
     openBridgeSheetModal({
       id: 'modal-suppliers-twoway-demand',
-      title: '📢 发布百业双向供需 / 合作意向',
+      title: '📢 发布采购 / 余货调剂 / 合作意向',
       subtitle: '免费挂榜 · 源头合作社与工坊直接联系，零中间抽佣',
       confirmText: '🚀 立即挂榜发布',
       bodyHtml: `
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block font-bold text-stone-700 mb-1">商号 / 门店称呼 *：</label>
-            <input type="text" id="tw-who-name" placeholder="如：厚德便民门店" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none focus:border-emerald-700">
+            <input type="text" id="tw-who-name" value="${profile.storeName || profile.name || ''}" placeholder="如：厚德便民门店" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none focus:border-emerald-700">
           </div>
           <div>
             <label class="block font-bold text-stone-700 mb-1">联系电话 / 微信 *：</label>
-            <input type="tel" id="tw-who-phone" placeholder="11位手机号" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono outline-none focus:border-emerald-700">
+            <input type="tel" id="tw-who-phone" value="${profile.phone || ''}" placeholder="11位手机号" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono outline-none focus:border-emerald-700">
           </div>
         </div>
         <div>
@@ -525,6 +551,7 @@ export async function initSuppliersTerminalBridge() {
         if (!whoName || !whoPhone) return alert('请填写您的商号/门店称呼和联系电话！');
         if (!need) return alert('请写明您的采购或合作需求描述！');
 
+        saveContactProfile({ storeName: whoName, phone: whoPhone });
         const proposerLabel = `${whoName} (${whoPhone})`;
         const { error } = await supabase.from('platform_suggestion_board').insert([{
           proposer_type: 'c2b_demand',
@@ -534,7 +561,7 @@ export async function initSuppliersTerminalBridge() {
         }]);
         if (error) return alert('发布失败：' + error.message);
         close();
-        alert('✅ 已成功挂榜至百业双向供需池，相关源头商号将主动与您对接！');
+        alert('✅ 已成功挂榜，相关源头商号将主动与您对接！');
         window.location.reload();
       }
     });
