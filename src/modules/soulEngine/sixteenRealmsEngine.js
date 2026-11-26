@@ -13,6 +13,46 @@ import { HQService } from '../../services/hqService.js';
 import { getTenantLexicon } from './silentMemoryAndLexicon.js';
 
 /**
+ * 底部 8 秒后悔撤回浮动条（刚记完账点错可一秒撤回）
+ */
+function showQuickUndoToast(labelText, onUndoFn) {
+  document.getElementById('quick-undo-floating-bar')?.remove();
+  const toast = document.createElement('div');
+  toast.id = 'quick-undo-floating-bar';
+  toast.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-3 text-xs border border-stone-700';
+  toast.innerHTML = `
+    <span>${labelText}</span>
+    <button type="button" id="btn-trigger-quick-undo" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl shrink-0">
+      ↩️ 撤回刚才这笔
+    </button>
+  `;
+  document.body.appendChild(toast);
+
+  const timer = setTimeout(() => toast.remove(), 8500);
+  document.getElementById('btn-trigger-quick-undo')?.addEventListener('click', async () => {
+    clearTimeout(timer);
+    toast.remove();
+    await onUndoFn();
+  });
+}
+
+/**
+ * 查找某客户购买某商品的上次成交单价
+ */
+function findLastDealPriceForPartner(storeName, itemName) {
+  if (!storeName || !itemName) return null;
+  const orders = (hqState.allOrders || [])
+    .filter((o) => o.order_status !== 'cancelled' && String(o.store_name || '').trim() === storeName.trim())
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+  for (const o of orders) {
+    const hit = (o.items || []).find((it) => String(it.name || '').trim() === itemName.trim() && parseFloat(it.price) > 0);
+    if (hit) return parseFloat(hit.price);
+  }
+  return null;
+}
+
+/**
  * 1. 一句话/语音全能自然语言记账解析器（支持：开单出库、采购入库、收款平账）
  */
 export function parseNaturalBusinessCommand(rawText, stores = [], products = []) {
@@ -38,7 +78,6 @@ export function parseNaturalBusinessCommand(rawText, stores = [], products = [])
     }) ||
     null;
 
-  // 意图判定：收款/还账
   if (/(?:转了|还账|还款|收款|收到|微信转|支付宝转|结清|付了)/.test(text) && !/(?:进货|入库|采购)/.test(text)) {
     return {
       intent: 'collect',
@@ -50,7 +89,6 @@ export function parseNaturalBusinessCommand(rawText, stores = [], products = [])
     };
   }
 
-  // 意图判定：采购/生产入库
   if (/(?:进货|入库|采购|拉回|采收|入仓|到货)/.test(text)) {
     const unitPrice = moneyVal > 0 ? moneyVal : parseFloat(matchedProd?.cost_price || matchedProd?.tier_1_price || 0);
     const customProdName = matchedProd
@@ -66,14 +104,18 @@ export function parseNaturalBusinessCommand(rawText, stores = [], products = [])
     };
   }
 
-  // 默认意图：销售/送货开单
-  const unitPrice = matchedProd ? parseFloat(matchedProd.tier_1_price || 0) : (qty > 0 && moneyVal > 0 ? Number((moneyVal / qty).toFixed(2)) : moneyVal);
   const customProdName = matchedProd
     ? matchedProd.name
     : (text.match(/\d+\s*(?:箱|件|斤|套|桶|袋|瓶|个|台|批|份)\s*([^\d,，。老挂现元块]+)/)?.[1]?.trim() || '临时直供货品');
   const rawStoreName = matchedStore
     ? matchedStore.name
     : (text.match(/(?:给|送|发|卖给)\s*([^\d,，。要来发配订]+?)(?:送|发|要|来|\d)/)?.[1]?.trim() || '临时散客');
+
+  const lastDealPrice = findLastDealPriceForPartner(rawStoreName, customProdName);
+  const unitPrice =
+    moneyVal > 0 && qty > 0
+      ? Number((moneyVal / qty).toFixed(2))
+      : lastDealPrice || (matchedProd ? parseFloat(matchedProd.tier_1_price || 0) : 0);
 
   return {
     intent: 'outbound',
@@ -83,6 +125,7 @@ export function parseNaturalBusinessCommand(rawText, stores = [], products = [])
     prodName: customProdName,
     qty,
     unitPrice,
+    usedLastDealPrice: !moneyVal && !!lastDealPrice,
     settlementType: text.includes('现结') || text.includes('现金') ? 'cash' : 'credit',
     naturalTerm: text.match(/(?:麦收后结|卖完结|月底结|验收后结|下趟结)/)?.[0] || '',
     rawText: text
@@ -90,7 +133,7 @@ export function parseNaturalBusinessCommand(rawText, stores = [], products = [])
 }
 
 /**
- * 2. 扫描老客户静默流失预警（超过平时平均下单间隔 2 倍未下单）
+ * 2. 扫描老客户静默流失预警
  */
 export function detectSilentChurnPartners(stores = [], orders = []) {
   const now = Date.now();
@@ -122,7 +165,7 @@ export function detectSilentChurnPartners(stores = [], orders = []) {
 }
 
 /**
- * 3. 生成可彻底断网离线查询的纯本地单文件 HTML 账本（极致本地主权）
+ * 3. 生成可彻底断网离线查询的纯本地单文件 HTML 账本
  */
 export function downloadOfflineStandaloneLedgerHtml() {
   const tenantName = hqState.currentTenantData?.company_name || hqState.currentAgent || '百工商号';
@@ -221,11 +264,11 @@ export function mountSixteenRealmsQuickBar() {
       <div class="flex items-center gap-1.5">
         <span class="text-sm">🗣️</span>
         <b class="text-emerald-950">一句话 / 语音万能记账（说人话直接记）：</b>
-        <span class="text-[10px] text-stone-400 hidden sm:inline">支持直接开单、临时散客极速记、进货入库、收款平账</span>
+        <span class="text-[10px] text-stone-400 hidden sm:inline">支持直接开单、散客随手记、进货入库、收款平账</span>
       </div>
       <div class="flex flex-wrap gap-1.5">
         <button type="button" onclick="window.openZeroBarrierWalkInOrderModal()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2.5 py-1 rounded-xl text-[11px]">
-          ⚡ 临时散客极速开单
+          ⚡ 记一笔散客账
         </button>
         <button type="button" onclick="window.openSixteenRealmsHubModal()" class="bg-stone-900 hover:bg-stone-800 text-amber-300 font-bold px-2.5 py-1 rounded-xl text-[11px]">
           🧰 实用工具箱
@@ -240,7 +283,7 @@ export function mountSixteenRealmsQuickBar() {
         🎤 说话
       </button>
       <button type="button" onclick="window.executeNaturalBusinessCommand()" class="bg-[#1b4332] hover:bg-[#143628] text-white font-bold px-4 rounded-xl shrink-0">
-        ⚡ 执行记账
+        记下来
       </button>
     </div>
     ${churnHtml}
@@ -287,9 +330,10 @@ export function initSixteenRealmsBindings() {
       if (parsed.amount <= 0) return alert('未能识别出收款金额，请写明金额（如：2000元）。');
       if (!confirm(`确认记录收款平账？\n• 客户：${parsed.store.name}\n• 实收金额：¥${parsed.amount.toFixed(2)} (${parsed.method})`)) return;
 
-      const nextDebt = Math.max(0, Number((parseFloat(parsed.store.current_debt || 0) - parsed.amount).toFixed(2)));
+      const prevDebt = parseFloat(parsed.store.current_debt || 0);
+      const nextDebt = Math.max(0, Number((prevDebt - parsed.amount).toFixed(2)));
       await supabase.from('store').update({ current_debt: nextDebt }).eq('id', parsed.store.id);
-      await supabase.from('driver_collection_log').insert([{
+      const { data: logRows } = await supabase.from('driver_collection_log').insert([{
         tenant_id: hqState.currentAgent,
         store_id: parsed.store.id,
         store_name: `${parsed.store.name} (一句话快捷平账)`,
@@ -301,10 +345,17 @@ export function initSixteenRealmsBindings() {
         basket_deduct_amount: 0,
         pay_method: parsed.method,
         settled_to_hq: true
-      }]);
+      }]).select('id');
+
       inp.value = '';
-      alert(`✅ 已记账！【${parsed.store.name}】实收 ¥${parsed.amount.toFixed(2)}，当前余欠 ¥${nextDebt.toFixed(2)}。`);
       if (typeof window.loadHQData === 'function') await window.loadHQData();
+
+      showQuickUndoToast(`✅ 已记【${parsed.store.name}】收款 ¥${parsed.amount.toFixed(2)}`, async () => {
+        await supabase.from('store').update({ current_debt: prevDebt }).eq('id', parsed.store.id);
+        if (logRows?.[0]?.id) await supabase.from('driver_collection_log').delete().eq('id', logRows[0].id);
+        alert('↩️ 已撤回刚才这笔收款记录，客户欠款已恢复。');
+        if (typeof window.loadHQData === 'function') await window.loadHQData();
+      });
       return;
     }
 
@@ -347,10 +398,11 @@ export function initSixteenRealmsBindings() {
       return;
     }
 
-    // 默认：极速出库开单（支持未建档散客与未上架临时货品）
+    // 默认：极速出库开单
     const totalAmt = Number((parsed.qty * parsed.unitPrice).toFixed(2));
     const termTag = parsed.naturalTerm ? ` · 约定:${parsed.naturalTerm}` : '';
-    if (!confirm(`确认极速生成出库配货单？\n• 客户：${parsed.rawStoreName}${parsed.store ? '' : ' (临时散客免建档)'}\n• 明细：${parsed.prodName} × ${parsed.qty} (单价 ¥${parsed.unitPrice})\n• 合计：¥${totalAmt.toFixed(2)}${termTag}`)) return;
+    const priceHint = parsed.usedLastDealPrice ? ' [自动带出上次成交价]' : '';
+    if (!confirm(`确认极速生成出库配货单？\n• 客户：${parsed.rawStoreName}${parsed.store ? '' : ' (临时散客)'}\n• 明细：${parsed.prodName} × ${parsed.qty} (单价 ¥${parsed.unitPrice}${priceHint})\n• 合计：¥${totalAmt.toFixed(2)}${termTag}`)) return;
 
     const ckNo = generateUnifiedVoucherNo('CK');
     const orderRow = {
@@ -381,7 +433,7 @@ export function initSixteenRealmsBindings() {
       driver_action_instruction: '【极速直配单】现场签收核验'
     };
 
-    const { error } = await supabase.from('store_order').insert([orderRow]);
+    const { data: insertedOrders, error } = await supabase.from('store_order').insert([orderRow]).select('id');
     if (error) return alert('生成单据失败：' + error.message);
 
     if (parsed.product) {
@@ -394,15 +446,37 @@ export function initSixteenRealmsBindings() {
       );
     }
     inp.value = '';
-    alert(`✅ 单据【${ckNo}】已极速生成并同步库存！`);
     if (typeof window.loadHQData === 'function') await window.loadHQData();
+
+    showQuickUndoToast(`✅ 单据【${ckNo}】已记账 (¥${totalAmt.toFixed(2)})`, async () => {
+      if (insertedOrders?.[0]?.id) {
+        await supabase.from('store_order').update({
+          order_status: 'cancelled',
+          note: `${orderRow.note} [8秒快捷撤回作废]`
+        }).eq('id', insertedOrders[0].id);
+      }
+      if (parsed.product) {
+        const curProd = (hqState.allProducts || []).find((p) => Number(p.id) === Number(parsed.product.id));
+        if (curProd) {
+          await supabase.from('product').update({ stock: parseInt(curProd.stock ?? 0, 10) + parsed.qty }).eq('id', curProd.id);
+        }
+      }
+      alert(`↩️ 已撤回单据【${ckNo}】，对应库存已恢复。`);
+      if (typeof window.loadHQData === 'function') await window.loadHQData();
+    });
   };
 
   /**
-   * 零门槛散客 / 临时品名极速开单弹窗（先成交、后留痕）
+   * 记一笔散客账弹窗（支持：上次成交价自动带出、一键抹零、开单即自动建档、纯记往来账不扣库存）
    */
   window.openZeroBarrierWalkInOrderModal = function () {
     document.getElementById('modal-zero-barrier-order')?.remove();
+    const stores = getVisibleStoresForCurrentRole();
+    const products = (hqState.allProducts || []).filter((p) => p.status !== 'inactive');
+
+    const storeDataList = stores.map((s) => `<option value="${s.name}">`).join('');
+    const prodDataList = products.map((p) => `<option value="${p.name}">`).join('');
+
     const modal = document.createElement('div');
     modal.id = 'modal-zero-barrier-order';
     modal.className = 'fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-4';
@@ -410,31 +484,37 @@ export function initSixteenRealmsBindings() {
       <div class="bg-white border border-stone-200 rounded-3xl max-w-md w-full p-5 space-y-3 shadow-2xl text-xs">
         <div class="flex justify-between items-center border-b border-stone-100 pb-2">
           <div>
-            <b class="text-sm text-stone-900">⚡ 零门槛散客 / 临时品名极速开单</b>
-            <p class="text-[10px] text-stone-500">无需先建客户档案、无需先上架商品，像写白纸一样直接出单</p>
+            <b class="text-sm text-stone-900">⚡ 记一笔散客账（边开单边自动建档）</b>
+            <p class="text-[10px] text-stone-500">直接填名字和品名即可出单，新客户和新品名自动存进档案库</p>
           </div>
           <button type="button" onclick="document.getElementById('modal-zero-barrier-order')?.remove()" class="text-stone-400 font-bold text-base">✕</button>
         </div>
 
+        <datalist id="zb-store-datalist">${storeDataList}</datalist>
+        <datalist id="zb-prod-datalist">${prodDataList}</datalist>
+
         <div class="space-y-2.5">
           <div>
-            <label class="block font-bold text-stone-700 mb-1">买方称呼（可填临时散客或老客户名）*：</label>
-            <input type="text" id="zb-store-name" placeholder="如：路过散客 / 城南张工地 / 旺顺饭店" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none">
+            <label class="block font-bold text-stone-700 mb-1">买方称呼（可选老客户，也可直接填新客户名）*：</label>
+            <input type="text" id="zb-store-name" list="zb-store-datalist" oninput="window.recalcZeroBarrierHelper(true)" placeholder="如：路过散客 / 城南张工地 / 旺顺饭店" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-bold outline-none">
           </div>
           <div class="grid grid-cols-3 gap-2">
             <div class="col-span-2">
               <label class="block font-bold text-stone-700 mb-1">货品或服务名称 *：</label>
-              <input type="text" id="zb-item-name" placeholder="直接手填品名或工项" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+              <input type="text" id="zb-item-name" list="zb-prod-datalist" oninput="window.recalcZeroBarrierHelper(true)" placeholder="直接手填品名或工项" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
             </div>
             <div>
               <label class="block font-bold text-stone-700 mb-1">数量 *：</label>
-              <input type="number" step="0.01" id="zb-item-qty" value="1" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold outline-none">
+              <input type="number" step="0.01" id="zb-item-qty" value="1" oninput="window.recalcZeroBarrierHelper(false)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold outline-none">
             </div>
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block font-bold text-stone-700 mb-1">成交单价 (元) *：</label>
-              <input type="number" step="0.01" id="zb-item-price" placeholder="0.00" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold outline-none">
+              <div class="flex justify-between items-center mb-1">
+                <label class="font-bold text-stone-700">成交单价 (元) *：</label>
+                <span id="zb-last-price-badge" class="hidden text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1.5 rounded">上次价</span>
+              </div>
+              <input type="number" step="0.01" id="zb-item-price" oninput="window.recalcZeroBarrierHelper(false)" placeholder="0.00" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold outline-none">
             </div>
             <div>
               <label class="block font-bold text-stone-700 mb-1">自然结算约定：</label>
@@ -448,6 +528,29 @@ export function initSixteenRealmsBindings() {
               </select>
             </div>
           </div>
+
+          <!-- 合计与一键抹零 -->
+          <div class="bg-amber-50/70 border border-amber-200 rounded-2xl px-3 py-2 flex items-center justify-between">
+            <div>
+              <span class="text-[10px] text-stone-500 block">本笔实收合计 (元)</span>
+              <input type="number" step="0.01" id="zb-final-total" value="0.00" class="bg-transparent font-mono font-bold text-base text-emerald-950 w-28 outline-none">
+            </div>
+            <button type="button" id="btn-zb-round-down" onclick="window.applyZeroBarrierRoundDown()" class="hidden bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1.5 rounded-xl text-[11px] shadow-2xs">
+              ✂️ 抹零
+            </button>
+          </div>
+
+          <!-- 选项：纯记往来账 & 自动建档 -->
+          <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-600 pt-0.5">
+            <label class="inline-flex items-center gap-1.5 cursor-pointer font-bold">
+              <input type="checkbox" id="zb-pure-ledger-only" class="rounded text-emerald-800">
+              <span>📝 纯记往来账（不扣库存，适合代办/运费/工时）</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" id="zb-auto-create-master" checked class="rounded text-emerald-800">
+              <span>新客户/新品名自动建档</span>
+            </label>
+          </div>
         </div>
 
         <button type="button" onclick="window.submitZeroBarrierOrder()" class="w-full py-2.5 rounded-2xl bg-[#1b4332] hover:bg-[#143628] text-white font-bold shadow">
@@ -456,6 +559,58 @@ export function initSixteenRealmsBindings() {
       </div>
     `;
     document.body.appendChild(modal);
+
+    window.recalcZeroBarrierHelper = function (tryAutoPrice = false) {
+      const sName = document.getElementById('zb-store-name')?.value.trim() || '';
+      const iName = document.getElementById('zb-item-name')?.value.trim() || '';
+      const priceInp = document.getElementById('zb-item-price');
+      const badge = document.getElementById('zb-last-price-badge');
+
+      if (tryAutoPrice && iName && priceInp) {
+        const lastP = findLastDealPriceForPartner(sName, iName);
+        const prod = (hqState.allProducts || []).find((p) => p.name === iName);
+        if (lastP) {
+          priceInp.value = lastP;
+          if (badge) {
+            badge.innerText = `上次价 ¥${lastP}`;
+            badge.classList.remove('hidden');
+          }
+        } else if (prod && prod.tier_1_price) {
+          priceInp.value = prod.tier_1_price;
+          badge?.classList.add('hidden');
+        } else {
+          badge?.classList.add('hidden');
+        }
+      }
+
+      const qty = parseFloat(document.getElementById('zb-item-qty')?.value || '0');
+      const price = parseFloat(priceInp?.value || '0');
+      const rawTotal = Number((qty * price).toFixed(2));
+      const totalInp = document.getElementById('zb-final-total');
+      const roundBtn = document.getElementById('btn-zb-round-down');
+      if (totalInp) totalInp.value = rawTotal.toFixed(2);
+
+      const floored = Math.floor(rawTotal);
+      if (roundBtn) {
+        if (rawTotal > floored && floored > 0) {
+          roundBtn.innerText = `✂️ 抹零收 ¥${floored}`;
+          roundBtn.classList.remove('hidden');
+        } else {
+          roundBtn.classList.add('hidden');
+        }
+      }
+    };
+
+    window.applyZeroBarrierRoundDown = function () {
+      const totalInp = document.getElementById('zb-final-total');
+      if (!totalInp) return;
+      const cur = parseFloat(totalInp.value || '0');
+      const floored = Math.floor(cur);
+      if (floored > 0) {
+        totalInp.value = floored.toFixed(2);
+        document.getElementById('btn-zb-round-down')?.classList.add('hidden');
+      }
+    };
   };
 
   window.submitZeroBarrierOrder = async function () {
@@ -463,16 +618,51 @@ export function initSixteenRealmsBindings() {
     const itemName = document.getElementById('zb-item-name')?.value.trim();
     const qty = parseFloat(document.getElementById('zb-item-qty')?.value || '0');
     const price = parseFloat(document.getElementById('zb-item-price')?.value || '0');
+    const finalTotal = parseFloat(document.getElementById('zb-final-total')?.value || '0');
     const term = document.getElementById('zb-natural-term')?.value || '现结两清';
+    const pureLedgerOnly = !!document.getElementById('zb-pure-ledger-only')?.checked;
+    const autoCreateMaster = !!document.getElementById('zb-auto-create-master')?.checked;
 
     if (!storeName || !itemName || qty <= 0) return alert('请填写买方称呼、品名和有效数量！');
 
-    const matchedStore = (hqState.allStores || []).find((s) => s.name === storeName);
-    const matchedProd = (hqState.allProducts || []).find((p) => p.name === itemName);
-    const totalAmt = Number((qty * price).toFixed(2));
-    const ckNo = generateUnifiedVoucherNo('CK');
+    let matchedStore = (hqState.allStores || []).find((s) => s.name === storeName);
+    let matchedProd = (hqState.allProducts || []).find((p) => p.name === itemName);
 
-    const { error } = await supabase.from('store_order').insert([{
+    // 开单即建档：若勾选自动建档且库里不存在该客户/商品，后台静默建档
+    if (autoCreateMaster && !matchedStore && storeName !== '路过散客' && storeName !== '临时散客') {
+      const { data: newStoreRows } = await supabase.from('store').insert([{
+        tenant_id: hqState.currentAgent,
+        name: storeName,
+        contact: '掌柜',
+        phone: '',
+        address: '随手开单自动建档',
+        current_debt: 0,
+        status: 'active'
+      }]).select('*');
+      if (newStoreRows?.[0]) matchedStore = newStoreRows[0];
+    }
+
+    if (autoCreateMaster && !pureLedgerOnly && !matchedProd) {
+      const { data: newProdRows } = await supabase.from('product').insert([{
+        tenant_id: hqState.currentAgent,
+        name: itemName,
+        category: '默认分类',
+        spec: '标准件',
+        measure_unit: '件',
+        cost_price: price,
+        tier_1_price: price,
+        stock: 0,
+        status: 'active',
+        custom_specs: { min_stock: 0, auto_created_on_order: true }
+      }]).select('*');
+      if (newProdRows?.[0]) matchedProd = newProdRows[0];
+    }
+
+    const totalAmt = !isNaN(finalTotal) && finalTotal >= 0 ? Number(finalTotal.toFixed(2)) : Number((qty * price).toFixed(2));
+    const ckNo = generateUnifiedVoucherNo('CK');
+    const modeTag = pureLedgerOnly ? '纯记往来账' : '随手单';
+
+    const orderPayload = {
       order_no: ckNo,
       tenant_id: hqState.currentAgent,
       store_id: matchedStore?.id || 0,
@@ -480,22 +670,23 @@ export function initSixteenRealmsBindings() {
       driver_name: matchedStore?.driver_name || hqState.currentOperatorName,
       order_source: 'vendor_push',
       settlement_type: term === '现结两清' ? 'cash' : 'credit',
-      settlement_note: `[零门槛随手单 · ${term}]`,
-      items: [{ id: matchedProd?.id || 0, name: itemName, spec: matchedProd?.spec || '随手记', measure_unit: matchedProd?.measure_unit || '件', price, qty }],
+      settlement_note: `[${modeTag} · ${term}]`,
+      items: [{ id: matchedProd?.id || 0, name: itemName, spec: matchedProd?.spec || modeTag, measure_unit: matchedProd?.measure_unit || '件', price, qty }],
       items_return: [],
       items_exchange: [],
       total_amount: totalAmt,
       return_amount: 0,
       net_settle_amount: totalAmt,
       order_status: 'confirmed',
-      delivery_status: 'ordered',
-      note: `[零门槛随手单 · ${term}]`,
+      delivery_status: pureLedgerOnly ? 'delivered' : 'ordered',
+      note: `[${modeTag} · ${term}]`,
       driver_action_instruction: `【${term}】现场核验交割`
-    }]);
+    };
 
+    const { data: insertedRows, error } = await supabase.from('store_order').insert([orderPayload]).select('id');
     if (error) return alert('开单失败：' + error.message);
 
-    if (matchedProd) {
+    if (!pureLedgerOnly && matchedProd) {
       await HQService.deductStockForItems(
         hqState.currentAgent,
         hqState.allProducts || [],
@@ -506,12 +697,28 @@ export function initSixteenRealmsBindings() {
     }
 
     document.getElementById('modal-zero-barrier-order')?.remove();
-    alert(`✅ 已生成凭单【${ckNo}】（合计 ¥${totalAmt.toFixed(2)} · ${term}）！`);
     if (typeof window.loadHQData === 'function') await window.loadHQData();
+
+    showQuickUndoToast(`✅ 已记【${storeName}】¥${totalAmt.toFixed(2)} (${ckNo})`, async () => {
+      if (insertedRows?.[0]?.id) {
+        await supabase.from('store_order').update({
+          order_status: 'cancelled',
+          note: `${orderPayload.note} [8秒快捷撤回作废]`
+        }).eq('id', insertedRows[0].id);
+      }
+      if (!pureLedgerOnly && matchedProd) {
+        const curProd = (hqState.allProducts || []).find((p) => Number(p.id) === Number(matchedProd.id));
+        if (curProd) {
+          await supabase.from('product').update({ stock: parseInt(curProd.stock ?? 0, 10) + qty }).eq('id', curProd.id);
+        }
+      }
+      alert(`↩️ 已撤回单据【${ckNo}】，对应库存已恢复。`);
+      if (typeof window.loadHQData === 'function') await window.loadHQData();
+    });
   };
 
   /**
-   * 实用工具箱总弹窗（冲红后悔药、三角债对冲、拼单开产、一户一码贴纸、岗位交接、离线HTML账本、公益角）
+   * 实用工具箱总弹窗
    */
   window.openSixteenRealmsHubModal = function () {
     document.getElementById('modal-sixteen-realms-hub')?.remove();
@@ -529,7 +736,6 @@ export function initSixteenRealmsBindings() {
       .join('');
     const prodOpts = products.map((p) => `<option value="${p.id}">${p.name} (¥${p.tier_1_price})</option>`).join('');
 
-    // 全字段兼容：彻底消除 undefined (undefined)
     const staffOpts = subUsers
       .map((u, idx) => {
         const sCode = u.account_code || u.username || u.phone || String(u.id || idx);
@@ -555,32 +761,32 @@ export function initSixteenRealmsBindings() {
         <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
           <div>
             <b class="text-sm text-stone-900">🧰 实用工具箱 · 改错对账与基层协作快捷舱</b>
-            <p class="text-[11px] text-stone-500 mt-0.5">冲红后悔药 · 三角债对冲 · 凑单开产 · 一户一码贴纸 · 一键交接 · 离线独立HTML账本</p>
+            <p class="text-[11px] text-stone-500 mt-0.5">作废重开 · 两家互抵账 · 凑单开产 · 一户一码贴纸 · 客户交接 · 离线独立HTML账本</p>
           </div>
           <button type="button" onclick="document.getElementById('modal-sixteen-realms-hub')?.remove()" class="text-stone-400 font-bold text-base">✕</button>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <!-- 1. 全链路冲红更正后悔药 -->
+          <!-- 1. 填错单据作废退库 -->
           <div class="p-3 bg-rose-50/60 border border-rose-200 rounded-2xl space-y-2">
-            <b class="text-rose-950 block">↩️ 填错单据“冲红更正”后悔药</b>
-            <p class="text-[10px] text-stone-600">输入填错的单据号，系统自动生成红字冲销单并回补库存，审计留痕不怕点错。</p>
+            <b class="text-rose-950 block">↩️ 填错单据“作废退库”后悔药</b>
+            <p class="text-[10px] text-stone-600">输入填错的单据号，系统自动作废该单并退回对应库存，留痕更正不怕点错。</p>
             <div class="flex gap-1.5">
               <input type="text" id="red-offset-order-no" placeholder="输入原单号 (如 CK-261126-1024)" class="flex-1 min-w-0 bg-white border border-rose-200 rounded-xl px-2.5 py-1.5 font-mono uppercase">
-              <button type="button" onclick="window.executeRedOffsetCorrection()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-xl shrink-0">红字冲销</button>
+              <button type="button" onclick="window.executeRedOffsetCorrection()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-xl shrink-0">作废这张单</button>
             </div>
           </div>
 
-          <!-- 2. 三角债 / 双向价值对冲平账 -->
+          <!-- 2. 两家账互相抵掉 -->
           <div class="p-3 bg-indigo-50/60 border border-indigo-200 rounded-2xl space-y-2">
-            <b class="text-indigo-950 block">🔄 双向供需 / 三角债对称平账</b>
+            <b class="text-indigo-950 block">🔄 两家账互相抵掉（三角债/以物抵账平账）</b>
             <div class="grid grid-cols-2 gap-1.5">
               <select id="tri-store-a" class="min-w-0 bg-white border border-indigo-200 rounded-xl px-2 py-1 font-bold truncate">${storeOpts || '<option value="">客户A</option>'}</select>
               <select id="tri-store-b" class="min-w-0 bg-white border border-indigo-200 rounded-xl px-2 py-1 font-bold truncate">${storeOptsB || '<option value="">客户B</option>'}</select>
             </div>
             <div class="flex gap-1.5">
-              <input type="number" step="0.01" id="tri-offset-amt" placeholder="互相冲抵金额(元)" class="flex-1 min-w-0 bg-white border border-indigo-200 rounded-xl px-2.5 py-1 font-mono font-bold">
-              <button type="button" onclick="window.executeTriangularDebtOffset()" class="bg-indigo-700 text-white font-bold px-3 py-1 rounded-xl shrink-0">一键对冲</button>
+              <input type="number" step="0.01" id="tri-offset-amt" placeholder="互相抵掉金额(元)" class="flex-1 min-w-0 bg-white border border-indigo-200 rounded-xl px-2.5 py-1 font-mono font-bold">
+              <button type="button" onclick="window.executeTriangularDebtOffset()" class="bg-indigo-700 text-white font-bold px-3 py-1 rounded-xl shrink-0">互相抵掉</button>
             </div>
           </div>
 
@@ -638,19 +844,18 @@ export function initSixteenRealmsBindings() {
   window.executeRedOffsetCorrection = async function () {
     if (isAuditorReadOnly()) return alert('只读账号不可操作。');
     const rawNo = document.getElementById('red-offset-order-no')?.value.trim().toUpperCase();
-    if (!rawNo) return alert('请输入需要红字冲销的单据编号！');
+    if (!rawNo) return alert('请输入需要作废的单据编号！');
     const orig = (hqState.allOrders || []).find((o) => String(o.order_no || o.id).toUpperCase().includes(rawNo));
     if (!orig) return alert('未找到该单据，请核对单号！');
-    if (orig.order_status === 'cancelled') return alert('该单据已经冲红作废，请勿重复操作。');
+    if (orig.order_status === 'cancelled') return alert('该单据已经作废，请勿重复操作。');
 
-    if (!confirm(`确认对单据【${orig.order_no || orig.id}】（${orig.store_name}，金额 ¥${orig.net_settle_amount}）执行红字全额冲销并回补库存？`)) return;
+    if (!confirm(`确认对单据【${orig.order_no || orig.id}】（${orig.store_name}，金额 ¥${orig.net_settle_amount}）执行作废并退回库存？`)) return;
 
     await supabase.from('store_order').update({
       order_status: 'cancelled',
-      note: `${orig.note || ''} [红字冲销已作废 · 操作人:${hqState.currentOperatorName}]`
+      note: `${orig.note || ''} [单据已作废退库 · 操作人:${hqState.currentOperatorName}]`
     }).eq('id', orig.id);
 
-    // 回补对应货品库存
     for (const it of (orig.items || [])) {
       const prod = (hqState.allProducts || []).find((p) => Number(p.id) === Number(it.id) || p.name === it.name);
       if (prod) {
@@ -666,13 +871,13 @@ export function initSixteenRealmsBindings() {
           before_stock: before,
           after_stock: after,
           operator_name: hqState.currentOperatorName,
-          remark: `[单号:${generateUnifiedVoucherNo('RK')}] [红字冲销回库 · 原单${orig.order_no || orig.id}]`,
+          remark: `[单号:${generateUnifiedVoucherNo('RK')}] [作废退回入库 · 原单${orig.order_no || orig.id}]`,
           created_at: new Date().toISOString()
         });
       }
     }
 
-    alert(`✅ 单据【${orig.order_no || orig.id}】已完成红字冲销，对应库存已自动回补！`);
+    alert(`✅ 单据【${orig.order_no || orig.id}】已作废，对应库存已自动退回！`);
     document.getElementById('modal-sixteen-realms-hub')?.remove();
     if (typeof window.loadHQData === 'function') await window.loadHQData();
   };
@@ -681,31 +886,31 @@ export function initSixteenRealmsBindings() {
     const idA = parseInt(document.getElementById('tri-store-a')?.value || '0', 10);
     const idB = parseInt(document.getElementById('tri-store-b')?.value || '0', 10);
     const amt = parseFloat(document.getElementById('tri-offset-amt')?.value || '0');
-    if (!idA || !idB || idA === idB || amt <= 0) return alert('请选择两个不同的往来方并输入有效的对冲金额！');
+    if (!idA || !idB || idA === idB || amt <= 0) return alert('请选择两个不同的往来方并输入有效的互抵金额！');
 
     const storeA = (hqState.allStores || []).find((s) => Number(s.id) === idA);
     const storeB = (hqState.allStores || []).find((s) => Number(s.id) === idB);
     if (!storeA || !storeB) return;
 
-    if (!confirm(`确认生成对称平账凭单？\n• 【${storeA.name}】应收欠款核减 ¥${amt.toFixed(2)}\n• 同步抵扣【${storeB.name}】对应货款/劳务款 ¥${amt.toFixed(2)}`)) return;
+    if (!confirm(`确认将两家账目互相抵掉？\n• 【${storeA.name}】应收欠款核减 ¥${amt.toFixed(2)}\n• 同步抵扣【${storeB.name}】对应货款/劳务款 ¥${amt.toFixed(2)}`)) return;
 
     const nextDebtA = Math.max(0, Number((parseFloat(storeA.current_debt || 0) - amt).toFixed(2)));
     await supabase.from('store').update({ current_debt: nextDebtA }).eq('id', storeA.id);
     await supabase.from('driver_collection_log').insert([{
       tenant_id: hqState.currentAgent,
       store_id: storeA.id,
-      store_name: `${storeA.name} ⇄ ${storeB.name} (双向/三角债对冲平账)`,
+      store_name: `${storeA.name} ⇄ ${storeB.name} (两家账互相抵掉)`,
       driver_name: hqState.currentOperatorName,
       collect_type: 'period_settlement',
       amount: amt,
       discount_amount: 0,
       basket_return: 0,
       basket_deduct_amount: 0,
-      pay_method: '双向价值/三角债对冲',
+      pay_method: '两家账互抵平账',
       settled_to_hq: true
     }]);
 
-    alert(`✅ 双向对冲平账完成！无需现金流转，双方账目已对称核销 ¥${amt.toFixed(2)}。`);
+    alert(`✅ 两家账目已互相抵掉 ¥${amt.toFixed(2)}，无需现金流转！`);
     if (typeof window.loadHQData === 'function') await window.loadHQData();
   };
 
