@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（海纳百川 · 大道至简 · 上部严丝合缝对齐版）
+ * 百工百业 · 五端统一协同与跨端桥接引擎（端庄大气一体门头版 · 海纳百川 · 大道至简）
  * 覆盖：index.html (需方下单端) / driver.html (我在执行端) / mall.html / suppliers.html (逛大集)
  */
 import { supabase } from '../../lib/supabase.js';
@@ -42,7 +42,7 @@ function showWeChatPinGuideIfFirstTime() {
   if (document.getElementById('baigong-wechat-pin-tip')) return;
   const tip = document.createElement('div');
   tip.id = 'baigong-wechat-pin-tip';
-  tip.className = 'fixed top-14 left-1/2 -translate-x-1/2 z-40 max-w-sm w-[92%] bg-stone-900/95 text-white px-3.5 py-2 rounded-2xl shadow-lg flex items-center justify-between gap-2 text-[11px] border border-stone-700';
+  tip.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 z-40 max-w-sm w-[92%] bg-stone-900/95 text-white px-3.5 py-2 rounded-2xl shadow-lg flex items-center justify-between gap-2 text-[11px] border border-stone-700';
   tip.innerHTML = `
     <span>💡 点微信右上角 <b>【···】→【浮窗】</b>，下次像微信一样一点就开</span>
     <button type="button" id="btn-close-wechat-pin-tip" class="text-amber-300 font-bold shrink-0 px-1.5">知道了</button>
@@ -55,37 +55,55 @@ function showWeChatPinGuideIfFirstTime() {
 }
 
 /**
- * 全端通用顶部身份切换栏（自动匹配主容器宽度与对齐方式，不偏不倚）
+ * 端庄大气一体式商号门头身份切换栏（同色墨绿顶冠，与主招牌无缝融为一体，消除拼接感）
  */
 function mountMobileQuickRoleSwitchDock(currentFile) {
   if (document.getElementById('baigong-mobile-role-dock')) return;
   const items = [
-    { file: 'hq.html', icon: '🏠', label: '我是供方' },
-    { file: 'index.html', icon: '🛒', label: '我是需方' },
-    { file: 'driver.html', icon: '🚚', label: '我在执行' },
-    { file: 'mall.html', icon: '🛍️', label: '逛大集' }
+    { file: 'hq.html', label: '我是供方' },
+    { file: 'index.html', label: '我是需方' },
+    { file: 'driver.html', label: '我在执行' },
+    { file: 'mall.html', label: '逛大集' }
   ];
 
-  const mainShell = document.querySelector('body > div, main, #app');
+  // 找到原有的深绿主招牌容器，直接把切换栏融入其顶部，形成完整一块门头匾额
+  const greenHeader =
+    document.querySelector('header') ||
+    Array.from(document.querySelectorAll('div')).find((el) => {
+      const cls = String(el.className || '');
+      return (cls.includes('bg-[#1b4332]') || cls.includes('bg-emerald-9') || cls.includes('bg-green-9')) && el.offsetHeight > 80;
+    });
+
   const barWrap = document.createElement('div');
   barWrap.id = 'baigong-mobile-role-dock';
-  barWrap.className = 'w-full px-2 pt-2 pb-1 z-30';
+  barWrap.className = 'w-full bg-[#143628] border-b border-emerald-800/70 px-3 py-2 rounded-t-3xl';
   barWrap.innerHTML = `
-    <div class="max-w-md mx-auto bg-white border border-stone-200 rounded-2xl shadow-2xs p-1 grid grid-cols-4 gap-1 text-[11px] text-center">
+    <div class="max-w-md mx-auto bg-[#0f291e]/80 p-1 rounded-xl grid grid-cols-4 gap-1 text-xs text-center">
       ${items
         .map((it) => {
           const isActive = currentFile === it.file || (currentFile === 'suppliers.html' && it.file === 'mall.html');
-          return `<a href="${it.file}" class="py-1.5 px-1 rounded-xl font-bold truncate transition ${
-            isActive ? 'bg-[#1b4332] text-amber-300 shadow-2xs' : 'text-stone-700 hover:bg-stone-100'
-          }">${it.icon} ${it.label}</a>`;
+          return `<a href="${it.file}" class="py-1.5 px-1 rounded-lg font-bold tracking-wide truncate transition ${
+            isActive
+              ? 'bg-amber-300 text-emerald-950 shadow-2xs'
+              : 'text-emerald-100/80 hover:text-white hover:bg-emerald-800/40'
+          }">${it.label}</a>`;
         })
         .join('')}
     </div>
   `;
 
-  if (mainShell && mainShell.parentNode === document.body) {
-    mainShell.insertAdjacentElement('afterbegin', barWrap);
+  if (greenHeader) {
+    greenHeader.style.borderTopLeftRadius = '0px';
+    greenHeader.style.borderTopRightRadius = '0px';
+    greenHeader.style.marginTop = '0px';
+    greenHeader.insertAdjacentElement('beforebegin', barWrap);
+    // 让外层包裹宽度与绿招牌完全一致
+    if (greenHeader.parentElement) {
+      barWrap.style.maxWidth = getComputedStyle(greenHeader).maxWidth !== 'none' ? getComputedStyle(greenHeader).maxWidth : '';
+      barWrap.classList.add('mx-auto');
+    }
   } else {
+    barWrap.className = 'w-full bg-[#1b4332] py-2 px-3 shadow-xs';
     document.body.insertAdjacentElement('afterbegin', barWrap);
   }
 }
@@ -153,10 +171,14 @@ export async function initStoreTerminalBridge() {
       stickerAgent
     ).trim();
 
-    // 修复上部供货方长名称被右侧按钮截断的样式问题
+    // 自动规整“供货方”长名称胶囊，防止右侧“全部名册”按钮遮挡截断文字
     document.querySelectorAll('button, span').forEach((el) => {
-      if (el.innerText?.includes('供货方') && el.parentElement) {
-        el.parentElement.style.overflowX = 'auto';
+      const txt = el.innerText || '';
+      if ((txt.includes('有限公司') || txt.includes('供应链') || txt.includes('合作社')) && el.tagName === 'BUTTON') {
+        el.style.maxWidth = '135px';
+        el.style.overflow = 'hidden';
+        el.style.textOverflow = 'ellipsis';
+        el.style.whiteSpace = 'nowrap';
       }
     });
 
@@ -168,10 +190,10 @@ export async function initStoreTerminalBridge() {
 
     if (container && container.innerText?.includes('加载遇到波动')) {
       container.innerHTML = `
-        <div class="py-8 px-4 text-center text-xs text-stone-500 space-y-2">
+        <div class="py-10 px-4 text-center text-xs text-stone-500 space-y-2">
           <div class="text-2xl">🌱</div>
           <b class="text-stone-700 block">当前供货方暂未上架公开品项</b>
-          <span class="block text-[11px]">您可以点击顶部切换其他供货方，或切到【我是供方】先上架第一件货品/服务</span>
+          <span class="block text-[11px]">您可点击上方切换其他供货方，或点顶部【我是供方】先上架第一件货品/服务</span>
         </div>
       `;
     }
@@ -187,10 +209,10 @@ export async function initStoreTerminalBridge() {
       const myIdentityHint = profile.storeName ? ` · ${profile.storeName}` : '';
       const topBar = document.createElement('div');
       topBar.id = 'store-sticker-welcome-bar';
-      topBar.className = 'mb-2.5 bg-amber-50/90 border border-amber-300 text-amber-950 px-3 py-2 rounded-2xl flex items-center justify-between gap-2 text-xs';
+      topBar.className = 'mb-2.5 bg-stone-50 border border-stone-200 text-stone-800 px-3 py-2 rounded-2xl flex items-center justify-between gap-2 text-xs';
       topBar.innerHTML = `
         <span class="font-bold truncate">${stickerStoreId ? `🏷️ 专属快捷码 #${stickerStoreId}` : `🛒 需方下单台${myIdentityHint}`}</span>
-        <button type="button" onclick="window.repeatLastOrder?.()" class="bg-[#1b4332] text-white font-bold px-3 py-1 rounded-xl text-[11px] shrink-0">
+        <button type="button" onclick="window.repeatLastOrder?.()" class="bg-[#1b4332] text-amber-300 font-bold px-3 py-1 rounded-xl text-[11px] shrink-0">
           ⚡ 照上次再订
         </button>
       `;
@@ -333,32 +355,32 @@ export function initDriverTerminalBridge() {
 
   const bar = document.createElement('div');
   bar.id = 'palm-voice-quick-bar';
-  bar.className = 'mx-3 mt-2.5 bg-emerald-50/90 border border-emerald-200 p-2.5 rounded-2xl space-y-1.5 text-xs';
+  bar.className = 'mx-3 mt-2.5 bg-stone-50 border border-stone-200 p-2.5 rounded-2xl space-y-2 text-xs';
   bar.innerHTML = `
-    <div class="flex flex-wrap items-center justify-between gap-1">
-      <b class="text-emerald-950 text-[11px]">🗣️ 一线现场记账（送货 / 上门服务 / 现场收款）：</b>
+    <div class="flex flex-wrap items-center justify-between gap-1.5">
+      <b class="text-stone-800 text-[11px]">一线现场记账与快捷工具</b>
       <div class="flex flex-wrap items-center gap-1">
         <button type="button" id="btn-palm-sync-offline" onclick="window.flushPalmOfflineQueue()" class="hidden bg-amber-400 text-stone-950 font-bold px-2 py-0.5 rounded-lg text-[10px]">
-          📶 待补传 0 笔
+          待补传 0 笔
         </button>
-        <button type="button" onclick="window.openPalmPhotoEvidenceModal()" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
-          📷 拍照留底
+        <button type="button" onclick="window.openPalmPhotoEvidenceModal()" class="bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
+          拍照留底
         </button>
-        <button type="button" onclick="window.copyDriverDepartureNotice()" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
-          🚚 出发预告
+        <button type="button" onclick="window.copyDriverDepartureNotice()" class="bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
+          出发预告
         </button>
-        <button type="button" onclick="window.openPalmMapNavigation()" class="bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
-          🗺️ 地图导航
+        <button type="button" onclick="window.openPalmMapNavigation()" class="bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
+          地图导航
         </button>
-        <button type="button" onclick="window.openPalmQuickWalkInModal()" class="bg-[#1b4332] text-white font-bold px-2.5 py-0.5 rounded-lg text-[10px]">
-          ⚡ 现场开单
+        <button type="button" onclick="window.openPalmQuickWalkInModal()" class="bg-[#1b4332] text-amber-300 font-bold px-2.5 py-0.5 rounded-lg text-[10px]">
+          + 现场开单
         </button>
       </div>
     </div>
     <div class="flex gap-1.5">
-      <input type="text" id="palm-quick-note-input" placeholder="如：旺顺饭庄收现金800元 / 帮张大爷修好水泵收120元" class="flex-1 bg-white border border-emerald-200 rounded-xl px-2.5 py-1.5 text-[11px] outline-none">
-      <button type="button" onclick="window.startVoiceInput?.('palm-quick-note-input')" class="bg-amber-100 text-amber-950 border border-amber-300 font-bold px-2.5 rounded-xl text-[11px] shrink-0">🎤</button>
-      <button type="button" onclick="window.submitPalmQuickCommand()" class="bg-emerald-800 text-white font-bold px-3 rounded-xl text-[11px] shrink-0">记一笔</button>
+      <input type="text" id="palm-quick-note-input" placeholder="如：旺顺饭庄收现金800元 / 帮张大爷修好水泵收120元" class="flex-1 bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 text-[11px] outline-none focus:border-emerald-800">
+      <button type="button" onclick="window.startVoiceInput?.('palm-quick-note-input')" class="bg-stone-200 text-stone-800 font-bold px-2.5 rounded-xl text-[11px] shrink-0">语音</button>
+      <button type="button" onclick="window.submitPalmQuickCommand()" class="bg-[#1b4332] text-white font-bold px-3 rounded-xl text-[11px] shrink-0">记一笔</button>
     </div>
   `;
   navHost.insertAdjacentElement('beforebegin', bar);
@@ -460,7 +482,7 @@ export function initDriverTerminalBridge() {
     const btn = document.getElementById('btn-palm-sync-offline');
     if (!btn) return;
     if (q.length > 0) {
-      btn.innerText = `📶 待补传 ${q.length} 笔`;
+      btn.innerText = `待补传 ${q.length} 笔`;
       btn.classList.remove('hidden');
     } else {
       btn.classList.add('hidden');
