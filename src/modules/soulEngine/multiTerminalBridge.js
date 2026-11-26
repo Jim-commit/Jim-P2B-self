@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（卡片弹窗 + 自动记忆联系人 + 弱网本地暂存补传 + 拍照留底 + 身份切换 + 小货车拼单进度条）
+ * 百工百业 · 五端统一协同与跨端桥接引擎（卡片弹窗 + 自动记忆联系人 + 弱网暂存 + 拍照留底 + 身份切换 + 小货车拼单进度 + 移动端快捷底坞）
  * 覆盖：index.html (门店端) / driver.html (掌中宝) / mall.html (天街端) / suppliers.html (名录端)
  */
 import { supabase } from '../../lib/supabase.js';
@@ -54,6 +54,31 @@ function showWeChatPinGuideIfFirstTime() {
   });
 }
 
+/**
+ * 移动端极简四端快捷切换浮标（方便身兼多职的掌柜一秒切身份）
+ */
+function mountMobileQuickRoleSwitchDock(currentFile) {
+  if (document.getElementById('baigong-mobile-role-dock')) return;
+  const items = [
+    { file: 'hq.html', icon: '🏠', label: '总部台' },
+    { file: 'index.html', icon: '🏪', label: '订货端' },
+    { file: 'driver.html', icon: '🚚', label: '掌中宝' },
+    { file: 'mall.html', icon: '🛍️', label: '逛集市' }
+  ];
+  const dock = document.createElement('div');
+  dock.id = 'baigong-mobile-role-dock';
+  dock.className = 'fixed bottom-3 right-3 z-30 sm:hidden bg-white/95 backdrop-blur-xs border border-stone-300 rounded-2xl shadow-lg px-2 py-1 flex items-center gap-1 text-[10px]';
+  dock.innerHTML = items
+    .map((it) => {
+      const isActive = currentFile === it.file;
+      return `<a href="${it.file}" class="px-2 py-1 rounded-xl font-bold ${
+        isActive ? 'bg-[#1b4332] text-amber-300' : 'text-stone-700 hover:bg-stone-100'
+      }">${it.icon} ${it.label}</a>`;
+    })
+    .join('');
+  document.body.appendChild(dock);
+}
+
 function openBridgeSheetModal({ id, title, subtitle, bodyHtml, confirmText, onConfirm }) {
   document.getElementById(id)?.remove();
   const wrap = document.createElement('div');
@@ -96,6 +121,7 @@ let lastRenderedStoreAgent = '';
  */
 export async function initStoreTerminalBridge() {
   showWeChatPinGuideIfFirstTime();
+  mountMobileQuickRoleSwitchDock('index.html');
   const params = getUrlParams();
   const stickerAgent = (params.get('agent') || params.get('t') || '').trim();
   const stickerStoreId = (params.get('store_id') || '').trim();
@@ -275,6 +301,7 @@ function writePalmOfflineQueue(list) {
 
 export function initDriverTerminalBridge() {
   showWeChatPinGuideIfFirstTime();
+  mountMobileQuickRoleSwitchDock('driver.html');
   const navHost = document.getElementById('palm-role-nav');
   if (!navHost || document.getElementById('palm-voice-quick-bar')) return;
 
@@ -560,6 +587,7 @@ export function initDriverTerminalBridge() {
  */
 export async function initMallTerminalBridge() {
   showWeChatPinGuideIfFirstTime();
+  mountMobileQuickRoleSwitchDock('mall.html');
   const [crowdRes, claimRes, charityTenantsRes] = await Promise.all([
     supabase
       .from('platform_suggestion_board')
@@ -698,6 +726,7 @@ export async function initMallTerminalBridge() {
  */
 export async function initSuppliersTerminalBridge() {
   showWeChatPinGuideIfFirstTime();
+  mountMobileQuickRoleSwitchDock('suppliers.html');
   const mainHost = document.querySelector('main') || document.body;
   if (!mainHost || document.getElementById('suppliers-two-way-board')) return;
 
