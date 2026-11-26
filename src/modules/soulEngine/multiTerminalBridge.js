@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（海纳百川 · 大道至简 · 顶部清爽身份切换 · 零遮挡排版）
+ * 百工百业 · 五端统一协同与跨端桥接引擎（海纳百川 · 大道至简 · 独立顶栏不遮挡 · 温和空态引导）
  * 覆盖：index.html (需方下单端) / driver.html (我在执行端) / mall.html / suppliers.html (逛大集)
  */
 import { supabase } from '../../lib/supabase.js';
@@ -42,7 +42,7 @@ function showWeChatPinGuideIfFirstTime() {
   if (document.getElementById('baigong-wechat-pin-tip')) return;
   const tip = document.createElement('div');
   tip.id = 'baigong-wechat-pin-tip';
-  tip.className = 'fixed top-12 left-1/2 -translate-x-1/2 z-40 max-w-sm w-[92%] bg-stone-900/95 text-white px-3.5 py-2 rounded-2xl shadow-lg flex items-center justify-between gap-2 text-[11px] border border-stone-700';
+  tip.className = 'fixed top-14 left-1/2 -translate-x-1/2 z-40 max-w-sm w-[92%] bg-stone-900/95 text-white px-3.5 py-2 rounded-2xl shadow-lg flex items-center justify-between gap-2 text-[11px] border border-stone-700';
   tip.innerHTML = `
     <span>💡 点微信右上角 <b>【···】→【浮窗】</b>，下次像微信一样一点就开</span>
     <button type="button" id="btn-close-wechat-pin-tip" class="text-amber-300 font-bold shrink-0 px-1.5">知道了</button>
@@ -55,7 +55,7 @@ function showWeChatPinGuideIfFirstTime() {
 }
 
 /**
- * 全端通用顶部居中快捷身份切换栏（彻底让开底部提交/结算按钮，电脑与手机自适应）
+ * 全端通用顶部居中快捷身份切换栏（独立顶栏流式排版，绝不压盖店名招牌，也不遮挡底部提交按钮）
  */
 function mountMobileQuickRoleSwitchDock(currentFile) {
   if (document.getElementById('baigong-mobile-role-dock')) return;
@@ -65,18 +65,22 @@ function mountMobileQuickRoleSwitchDock(currentFile) {
     { file: 'driver.html', icon: '🚚', label: '我在执行（送货/上门）' },
     { file: 'mall.html', icon: '🛍️', label: '逛大集（找货/找人）' }
   ];
-  const dock = document.createElement('div');
-  dock.id = 'baigong-mobile-role-dock';
-  dock.className = 'sticky top-1.5 z-30 mx-auto my-1.5 max-w-[96vw] w-fit overflow-x-auto bg-white/95 backdrop-blur-xs border border-stone-300 rounded-2xl shadow-md px-2 py-1 flex items-center gap-1 text-[11px]';
-  dock.innerHTML = items
-    .map((it) => {
-      const isActive = currentFile === it.file || (currentFile === 'suppliers.html' && it.file === 'mall.html');
-      return `<a href="${it.file}" class="px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition ${
-        isActive ? 'bg-[#1b4332] text-amber-300' : 'text-stone-700 hover:bg-stone-100'
-      }">${it.icon} ${it.label}</a>`;
-    })
-    .join('');
-  document.body.insertAdjacentElement('afterbegin', dock);
+  const barWrap = document.createElement('div');
+  barWrap.id = 'baigong-mobile-role-dock';
+  barWrap.className = 'w-full bg-stone-100/95 border-b border-stone-200 py-1.5 px-2 flex justify-center z-30';
+  barWrap.innerHTML = `
+    <div class="max-w-full overflow-x-auto bg-white border border-stone-300 rounded-2xl shadow-2xs px-1.5 py-1 flex items-center gap-1 text-[11px]">
+      ${items
+        .map((it) => {
+          const isActive = currentFile === it.file || (currentFile === 'suppliers.html' && it.file === 'mall.html');
+          return `<a href="${it.file}" class="px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition ${
+            isActive ? 'bg-[#1b4332] text-amber-300' : 'text-stone-700 hover:bg-stone-100'
+          }">${it.icon} ${it.label}</a>`;
+        })
+        .join('')}
+    </div>
+  `;
+  document.body.insertAdjacentElement('afterbegin', barWrap);
 }
 
 function openBridgeSheetModal({ id, title, subtitle, bodyHtml, confirmText, onConfirm }) {
@@ -148,8 +152,17 @@ export async function initStoreTerminalBridge() {
       document.getElementById('goods-list') ||
       document.getElementById('items-container');
 
+    if (container && container.innerText?.includes('加载遇到波动')) {
+      container.innerHTML = `
+        <div class="py-8 px-4 text-center text-xs text-stone-500 space-y-2">
+          <div class="text-2xl">🌱</div>
+          <b class="text-stone-700 block">当前供货方暂未上架公开品项</b>
+          <span class="block text-[11px]">您可以点击顶部切换其他供货方，或切到【我是供方】先上架第一件货品/服务</span>
+        </div>
+      `;
+    }
+
     if (container && !document.getElementById('store-sticker-welcome-bar')) {
-      // 自动收起首屏重复的“极简大字版”冗余提示条，避免多层卡片挤压货架空间
       document.querySelectorAll('div').forEach((el) => {
         if (el.innerText?.includes('字太小看不清？点此切换') && el.children.length <= 3) {
           el.style.display = 'none';
@@ -282,7 +295,7 @@ export async function initStoreTerminalBridge() {
     storeBridgeWatcherStarted = true;
     setInterval(() => {
       renderCrowdBannerForActiveAgent(false);
-    }, 3000);
+    }, 2000);
   }
 }
 
