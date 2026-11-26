@@ -13,6 +13,57 @@ import { HQService } from '../../services/hqService.js';
 import { getTenantLexicon } from './silentMemoryAndLexicon.js';
 
 /**
+ * 感官无障碍状态读取与语音播报（大字高对比 + 顺耳语音确认）
+ */
+function getAccessibilityPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem('baigong_a11y_prefs') || '{"largeText":false,"voiceSpeak":true}');
+  } catch {
+    return { largeText: false, voiceSpeak: true };
+  }
+}
+
+function saveAccessibilityPrefs(patch) {
+  const next = { ...getAccessibilityPrefs(), ...patch };
+  localStorage.setItem('baigong_a11y_prefs', JSON.stringify(next));
+  applyGlobalLargeTextStyle(next.largeText);
+  return next;
+}
+
+function applyGlobalLargeTextStyle(enabled) {
+  let styleEl = document.getElementById('baigong-global-large-text-style');
+  if (!enabled) {
+    styleEl?.remove();
+    return;
+  }
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'baigong-global-large-text-style';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = `
+    body { font-size: 16px !important; color: #000 !important; }
+    .font-mono { font-size: 1.15em !important; font-weight: 800 !important; }
+    input, select, textarea { font-size: 16px !important; color: #000 !important; border-color: #57534e !important; }
+    button { font-size: 14px !important; }
+  `;
+}
+
+function speakAccountingFeedback(text) {
+  const prefs = getAccessibilityPrefs();
+  if (!prefs.voiceSpeak || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'zh-CN';
+    utter.rate = 1.05;
+    window.speechSynthesis.speak(utter);
+  } catch {
+    // 忽略部分浏览器静默策略限制
+  }
+}
+
+/**
  * 底部 8 秒后悔撤回浮动条（刚记完账点错可一秒撤回）
  */
 function showQuickUndoToast(labelText, onUndoFn) {
@@ -53,7 +104,7 @@ function findLastDealPriceForPartner(storeName, itemName) {
 }
 
 /**
- * 多品项微信要货消息解析器（如："厚德便利店明早送5箱菜籽油、3袋大米，挂账"）
+ * 多品项微信要货消息解析器
  */
 function parseWeChatMultiItemMessage(rawMsg, stores = [], products = []) {
   const text = String(rawMsg || '').trim();
@@ -98,7 +149,7 @@ function parseWeChatMultiItemMessage(rawMsg, stores = [], products = []) {
 }
 
 /**
- * 1. 一句话/语音全能自然语言记账解析器（支持：开单出库、采购入库、收款平账）
+ * 1. 一句话/语音全能自然语言记账解析器
  */
 export function parseNaturalBusinessCommand(rawText, stores = [], products = []) {
   const text = String(rawText || '').trim();
@@ -212,7 +263,7 @@ export function detectSilentChurnPartners(stores = [], orders = []) {
 /**
  * 3. 生成可彻底断网离线查询的纯本地单文件 HTML 账本
  */
-export function downloadOfflineStandaloneLedgerHtml() {
+export function downloadOfflineStandaloneLedgerHtml(labelSuffix = '离线独立账本') {
   const tenantName = hqState.currentTenantData?.company_name || hqState.currentAgent || '百工商号';
   const lex = getTenantLexicon(hqState.currentTenantData?.custom_settings || {});
   const stores = hqState.allStores || [];
@@ -227,7 +278,7 @@ export function downloadOfflineStandaloneLedgerHtml() {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${tenantName} · 离线独立账本档案 (${exportTime})</title>
+<title>${tenantName} · ${labelSuffix} (${exportTime})</title>
 <style>
   body{font-family:system-ui,-apple-system,sans-serif;background:#f7f5f0;color:#1c1917;margin:0;padding:16px}
   .wrap{max-width:960px;margin:0 auto;background:#fff;border-radius:16px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,.06)}
@@ -244,8 +295,8 @@ export function downloadOfflineStandaloneLedgerHtml() {
 </head>
 <body>
 <div class="wrap">
-  <h1>📒 ${tenantName} · 离线永久独立账本</h1>
-  <div class="meta">导出时间：${exportTime} · 本文件无需网络、无需登录服务器，双击即可永久检索核账</div>
+  <h1>📒 ${tenantName} · ${labelSuffix}</h1>
+  <div class="meta">导出时间：${exportTime} · 本文件无需网络、无需登录服务器，建议发至微信【文件传输助手】永久留存</div>
   <div class="grid" id="summary"></div>
   <input type="text" id="q" placeholder="🔍 输入客户名、单号、货品名实时检索历史账目..." oninput="render()">
   <table><thead><tr><th>单号/日期</th><th>往来方</th><th>明细</th><th>金额</th><th>状态</th></tr></thead><tbody id="tb"></tbody></table>
@@ -275,7 +326,7 @@ render();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${tenantName}_离线独立账本_${new Date().toISOString().slice(0, 10)}.html`;
+  a.download = `${tenantName}_${labelSuffix}_${new Date().toISOString().slice(0, 10)}.html`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -284,6 +335,9 @@ render();
  * 4. 挂载首页“掌柜一句话/语音万能记账栏” + “静默流失温柔提醒”
  */
 export function mountSixteenRealmsQuickBar() {
+  const prefs = getAccessibilityPrefs();
+  applyGlobalLargeTextStyle(prefs.largeText);
+
   const host = document.getElementById('ai-advisor-cards');
   if (!host) return;
   document.getElementById('sixteen-realms-quick-bar')?.remove();
@@ -461,6 +515,7 @@ export function initSixteenRealmsBindings() {
       }
 
       document.getElementById('modal-wechat-paste-order')?.remove();
+      speakAccountingFeedback(`已转配货单，${res.storeName}，合计${totalAmt}元`);
       if (typeof window.loadHQData === 'function') await window.loadHQData();
 
       showQuickUndoToast(`✅ 微信消息已转为配货单【${ckNo}】(¥${totalAmt.toFixed(2)})`, async () => {
@@ -513,6 +568,7 @@ export function initSixteenRealmsBindings() {
       }]).select('id');
 
       inp.value = '';
+      speakAccountingFeedback(`已记，${parsed.store.name}收款${parsed.amount}元`);
       if (typeof window.loadHQData === 'function') await window.loadHQData();
 
       showQuickUndoToast(`✅ 已记【${parsed.store.name}】收款 ¥${parsed.amount.toFixed(2)}`, async () => {
@@ -558,6 +614,7 @@ export function initSixteenRealmsBindings() {
         }]);
       }
       inp.value = '';
+      speakAccountingFeedback(`已入库，${parsed.prodName}${parsed.qty}件`);
       alert(`✅ 入库单【${rkNo}】已入账！${parsed.prodName} +${parsed.qty}`);
       if (typeof window.loadHQData === 'function') await window.loadHQData();
       return;
@@ -610,6 +667,7 @@ export function initSixteenRealmsBindings() {
       );
     }
     inp.value = '';
+    speakAccountingFeedback(`已开单，${parsed.rawStoreName}，合计${totalAmt}元`);
     if (typeof window.loadHQData === 'function') await window.loadHQData();
 
     showQuickUndoToast(`✅ 单据【${ckNo}】已记账 (¥${totalAmt.toFixed(2)})`, async () => {
@@ -631,7 +689,7 @@ export function initSixteenRealmsBindings() {
   };
 
   /**
-   * 记一笔散客账弹窗（支持：计算器大按键模式、上次成交价自动带出、一键抹零、开单即自动建档、纯记往来账）
+   * 记一笔散客账弹窗（支持：计算器大按键、生鲜过磅毛重去皮、上次成交价自动带出、一键抹零、开单即自动建档、纯记往来账）
    */
   window.openZeroBarrierWalkInOrderModal = function () {
     document.getElementById('modal-zero-barrier-order')?.remove();
@@ -656,7 +714,7 @@ export function initSixteenRealmsBindings() {
         <div class="flex justify-between items-center border-b border-stone-100 pb-2">
           <div>
             <b class="text-sm text-stone-900">⚡ 记一笔散客账（边开单边自动建档）</b>
-            <p class="text-[10px] text-stone-500">直接填名字和品名即可出单，新客户和新品名自动存进档案库</p>
+            <p class="text-[10px] text-stone-500">支持过磅毛重去皮、计算器按键、自动记忆上次成交价</p>
           </div>
           <div class="flex items-center gap-1.5">
             <button type="button" onclick="document.getElementById('zb-abacus-keypad')?.classList.toggle('hidden')" class="bg-amber-100 text-amber-950 border border-amber-300 font-bold px-2 py-1 rounded-xl text-[10px]">
@@ -682,10 +740,23 @@ export function initSixteenRealmsBindings() {
               <input type="text" id="zb-item-name" list="zb-prod-datalist" oninput="window.recalcZeroBarrierHelper(true)" placeholder="直接手填品名或工项" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
             </div>
             <div>
-              <label class="block font-bold text-stone-700 mb-1">数量 *：</label>
+              <div class="flex justify-between items-center mb-1">
+                <label class="font-bold text-stone-700">净数量 *：</label>
+                <button type="button" onclick="document.getElementById('zb-tare-box')?.classList.toggle('hidden')" class="text-[10px] text-amber-800 font-bold underline">⚖️ 去皮</button>
+              </div>
               <input type="number" step="0.01" id="zb-item-qty" value="1" onfocus="window._zbActiveField='zb-item-qty'" oninput="window.recalcZeroBarrierHelper(false)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 font-mono font-bold outline-none">
             </div>
           </div>
+
+          <!-- 生鲜农产过磅毛重减皮重小算盘 -->
+          <div id="zb-tare-box" class="hidden bg-stone-100 p-2 rounded-xl flex items-center gap-1.5 text-[11px]">
+            <span class="font-bold text-stone-700 shrink-0">过磅去皮：</span>
+            <input type="number" step="0.01" id="zb-gross-wt" oninput="window.calcZeroBarrierTareWeight()" placeholder="毛重" class="w-20 bg-white border border-stone-300 rounded-lg px-2 py-1 font-mono">
+            <span>−</span>
+            <input type="number" step="0.01" id="zb-tare-wt" oninput="window.calcZeroBarrierTareWeight()" placeholder="筐/皮重" class="w-20 bg-white border border-stone-300 rounded-lg px-2 py-1 font-mono">
+            <span class="text-emerald-900 font-bold">= 自动算净重</span>
+          </div>
+
           <div class="grid grid-cols-2 gap-2">
             <div>
               <div class="flex justify-between items-center mb-1">
@@ -707,7 +778,7 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 算盘级大按键计算器键盘（点击顶部按钮展开） -->
+          <!-- 算盘级大按键计算器键盘 -->
           <div id="zb-abacus-keypad" class="hidden bg-stone-100 p-2 rounded-2xl grid grid-cols-4 gap-1.5 font-mono text-sm font-bold">
             ${['7', '8', '9', '清空', '4', '5', '6', '退格', '1', '2', '3', '切单价', '0', '00', '.', '切数量']
               .map(
@@ -751,6 +822,17 @@ export function initSixteenRealmsBindings() {
       </div>
     `;
     document.body.appendChild(modal);
+
+    window.calcZeroBarrierTareWeight = function () {
+      const g = parseFloat(document.getElementById('zb-gross-wt')?.value || '0');
+      const t = parseFloat(document.getElementById('zb-tare-wt')?.value || '0');
+      const net = Math.max(0, Number((g - t).toFixed(2)));
+      const qInp = document.getElementById('zb-item-qty');
+      if (qInp && g > 0) {
+        qInp.value = net;
+        window.recalcZeroBarrierHelper(false);
+      }
+    };
 
     window._zbActiveField = 'zb-item-price';
     window.pickZeroBarrierQuickProd = function (pName, defaultPrice) {
@@ -916,6 +998,7 @@ export function initSixteenRealmsBindings() {
     }
 
     document.getElementById('modal-zero-barrier-order')?.remove();
+    speakAccountingFeedback(`已记，${storeName}，${totalAmt}元`);
     if (typeof window.loadHQData === 'function') await window.loadHQData();
 
     showQuickUndoToast(`✅ 已记【${storeName}】¥${totalAmt.toFixed(2)} (${ckNo})`, async () => {
@@ -937,7 +1020,7 @@ export function initSixteenRealmsBindings() {
   };
 
   /**
-   * 实用工具箱总弹窗（新增：微信体面发对账话术、今日收摊小结、58mm/A4通用打印）
+   * 实用工具箱总弹窗（全套四阶段功能集成）
    */
   window.openSixteenRealmsHubModal = function () {
     document.getElementById('modal-sixteen-realms-hub')?.remove();
@@ -946,6 +1029,7 @@ export function initSixteenRealmsBindings() {
     const subUsers = hqState.allSubUsers || [];
     const rawSettings = hqState.currentTenantData?.custom_settings || {};
     const charityEnabled = !!rawSettings.charity_micro_light_enabled;
+    const prefs = getAccessibilityPrefs();
 
     const storeOpts = stores
       .map((s) => `<option value="${s.id}">${s.name} (欠¥${parseFloat(s.current_debt || 0).toFixed(2)})</option>`)
@@ -976,13 +1060,21 @@ export function initSixteenRealmsBindings() {
     modal.id = 'modal-sixteen-realms-hub';
     modal.className = 'fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto';
     modal.innerHTML = `
-      <div class="bg-white border border-stone-200 rounded-3xl max-w-3xl w-full p-5 space-y-4 shadow-2xl text-xs my-auto">
-        <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
+      <div class="bg-white border border-stone-200 rounded-3xl max-w-3xl w-full p-5 space-y-3.5 shadow-2xl text-xs my-auto">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-2.5">
           <div>
             <b class="text-sm text-stone-900">🧰 实用工具箱 · 改错对账与基层协作快捷舱</b>
-            <p class="text-[11px] text-stone-500 mt-0.5">作废重开 · 两家互抵账 · 体面微信对账 · 收摊日结小票 · 58mm/A4通用贴纸 · 离线独立HTML账本</p>
+            <p class="text-[11px] text-stone-500 mt-0.5">作废重开 · 两家互抵账 · 微信对账 · 收摊日结 · 家人只读链接 · 年度封账</p>
           </div>
-          <button type="button" onclick="document.getElementById('modal-sixteen-realms-hub')?.remove()" class="text-stone-400 font-bold text-base">✕</button>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="window.toggleRealmLargeText()" class="px-2.5 py-1 rounded-xl border ${prefs.largeText ? 'bg-stone-900 text-amber-300 border-stone-900' : 'bg-stone-100 text-stone-700 border-stone-200'} font-bold text-[11px]">
+              ${prefs.largeText ? '🔍 大字护眼已开' : '🔍 大字护眼模式'}
+            </button>
+            <button type="button" onclick="window.toggleRealmVoiceSpeak()" class="px-2.5 py-1 rounded-xl border ${prefs.voiceSpeak ? 'bg-emerald-100 text-emerald-950 border-emerald-300' : 'bg-stone-100 text-stone-600 border-stone-200'} font-bold text-[11px]">
+              ${prefs.voiceSpeak ? '🔊 记账播报已开' : '🔇 记账播报已关'}
+            </button>
+            <button type="button" onclick="document.getElementById('modal-sixteen-realms-hub')?.remove()" class="text-stone-400 font-bold text-base ml-1">✕</button>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1054,18 +1146,26 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 7. 离线可查独立HTML账本 & 一单微光公益落款 -->
-          <div class="sm:col-span-2 p-3 bg-stone-50 border border-stone-200 rounded-2xl flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <b class="text-stone-900 block">💾 离线独立HTML账本（可发微信文件传输助手永久存档） & 邻里微光公益</b>
-              <span class="text-[10px] text-stone-500">断网或换新手机时，双击本地账本文件即可秒查全部客户、库存与历史流水</span>
+          <!-- 7. 离线独立HTML账本、年度封账、家人只读链接 & 公益落款 -->
+          <div class="sm:col-span-2 p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <b class="text-stone-900 block">💾 离线独立HTML账本 / 年度封账归档 & 家人只读查账链接</b>
+                <span class="text-[10px] text-stone-500">可发至微信【文件传输助手】永久存档；家人点开只读链接无需背密码即可看收支与库存</span>
+              </div>
+              <button type="button" onclick="window.toggleCharityMicroLight(${!charityEnabled})" class="px-3 py-1 rounded-xl border ${charityEnabled ? 'bg-amber-100 border-amber-400 text-amber-950' : 'bg-white border-stone-300 text-stone-600'} font-bold text-[11px]">
+                ${charityEnabled ? '🕯️ 微光落款已开' : '🕯️ 开启公益落款'}
+              </button>
             </div>
             <div class="flex flex-wrap gap-1.5">
-              <button type="button" onclick="window.downloadOfflineStandaloneLedger()" class="py-1.5 px-3 rounded-xl bg-emerald-800 text-white font-bold">
+              <button type="button" onclick="window.downloadOfflineStandaloneLedger('离线独立账本')" class="py-1.5 px-3 rounded-xl bg-emerald-800 text-white font-bold">
                 📥 下载断网可查HTML账本
               </button>
-              <button type="button" onclick="window.toggleCharityMicroLight(${!charityEnabled})" class="px-3 py-1.5 rounded-xl border ${charityEnabled ? 'bg-amber-100 border-amber-400 text-amber-950' : 'bg-white border-stone-300 text-stone-600'} font-bold">
-                ${charityEnabled ? '🕯️ 微光落款已开' : '🕯️ 开启公益落款'}
+              <button type="button" onclick="window.executeAnnualArchiveExport()" class="py-1.5 px-3 rounded-xl bg-stone-800 text-amber-300 font-bold">
+                📦 年度结转封账归档
+              </button>
+              <button type="button" onclick="window.copyFamilyReadOnlyViewLink()" class="py-1.5 px-3 rounded-xl bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-bold">
+                👁️ 复制家人只读查账链接
               </button>
             </div>
           </div>
@@ -1073,6 +1173,32 @@ export function initSixteenRealmsBindings() {
       </div>
     `;
     document.body.appendChild(modal);
+  };
+
+  window.toggleRealmLargeText = function () {
+    const cur = getAccessibilityPrefs();
+    saveAccessibilityPrefs({ largeText: !cur.largeText });
+    window.openSixteenRealmsHubModal();
+  };
+
+  window.toggleRealmVoiceSpeak = function () {
+    const cur = getAccessibilityPrefs();
+    const next = saveAccessibilityPrefs({ voiceSpeak: !cur.voiceSpeak });
+    if (next.voiceSpeak) speakAccountingFeedback('已开启记账顺耳语音播报');
+    window.openSixteenRealmsHubModal();
+  };
+
+  window.executeAnnualArchiveExport = function () {
+    const yearStr = new Date().getFullYear();
+    downloadOfflineStandaloneLedgerHtml(`${yearStr}年度结转封账总档案`);
+    alert(`📦 已为您生成并下载【${yearStr}年度结转封账总档案.html】！\n建议立即转发到您个人的微信【文件传输助手】永久留存，断网或换手机随时双击可查。`);
+  };
+
+  window.copyFamilyReadOnlyViewLink = function () {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const roLink = `${baseUrl}?agent=${encodeURIComponent(hqState.currentAgent)}&readonly=1`;
+    navigator.clipboard?.writeText(roLink);
+    alert(`👁️ 家人/合伙人只读查账链接已复制！\n发到微信后对方点开即可查看今日收支与库存明细，且无法误改任何账目：\n\n${roLink}`);
   };
 
   window.copyPoliteWeChatStatement = function () {
@@ -1185,6 +1311,7 @@ export function initSixteenRealmsBindings() {
       settled_to_hq: true
     }]);
 
+    speakAccountingFeedback(`两家账目已互相抵掉${amt}元`);
     alert(`✅ 两家账目已互相抵掉 ¥${amt.toFixed(2)}，无需现金流转！`);
     if (typeof window.loadHQData === 'function') await window.loadHQData();
   };
@@ -1276,7 +1403,7 @@ export function initSixteenRealmsBindings() {
     if (typeof window.loadHQData === 'function') await window.loadHQData();
   };
 
-  window.downloadOfflineStandaloneLedger = downloadOfflineStandaloneLedgerHtml;
+  window.downloadOfflineStandaloneLedger = () => downloadOfflineStandaloneLedgerHtml('离线独立账本');
 
   window.toggleCharityMicroLight = async function (nextState) {
     if (hqState.currentRoleCode !== 'owner') return alert('仅老板主账号可设置。');
