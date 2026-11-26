@@ -7,6 +7,8 @@ import {
   isWarehouseBlindPrice,
   isAuditorReadOnly,
   getVisibleStoresForCurrentRole,
+  getVisibleOrdersForCurrentRole,
+  getOrgRuntimeContext,
   generateUnifiedVoucherNo,
   calcStoreEffectivePrice
 } from './hqState.js';
@@ -17,6 +19,11 @@ import {
   calcRoundOffDiscount,
   checkBelowCostAlert
 } from '../soulEngine/silentMemoryAndLexicon.js';
+import {
+  getNormalizedItemPlugins,
+  parseMilestoneStage
+} from '../soulEngine/universalPluginsEngine.js';
+import { rememberOperatorOrgPreference } from '../soulEngine/multiOrgAndWarehouseEngine.js';
 
 function calcStoreCreditScore(store) {
   const debt = parseFloat(store.current_debt || 0);
@@ -80,6 +87,9 @@ export function renderStoreTable() {
               .map(([k, v]) => `<span class="bg-stone-100 text-stone-700 border border-stone-200 px-1.5 py-0.2 rounded text-[10px]">${k}: <b>${v}</b></span>`)
               .join(' ');
             const salesOwner = pricing.sales_owner || '全员公海';
+            const branchBadge = pricing.branch_name
+              ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-800 border border-indigo-200 font-bold">🏢 ${pricing.branch_name}</span>`
+              : '';
             const creditScore = calcStoreCreditScore(s);
 
             return `
@@ -87,6 +97,7 @@ export function renderStoreTable() {
               <div>
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="font-bold text-stone-900 text-xs">${s.name}</span>
+                  ${branchBadge}
                   <span class="text-[10px] px-1.5 py-0.2 rounded font-mono bg-emerald-100 text-emerald-950 font-bold">🏅 信义分: ${creditScore}</span>
                   <span class="text-[10px] px-1.5 py-0.2 rounded font-mono bg-stone-100 text-stone-600 border border-stone-200">📱 ${s.phone}</span>
                   <span class="text-[10px] px-1.5 py-0.2 rounded font-medium ${
@@ -132,6 +143,59 @@ function parseDemandPayload(rawContent) {
     if (parsed && parsed.title) return parsed;
   } catch (e) {}
   return { title: rawContent, qty: '若干', budget: '面议', delivery: '灵活协商', coBuyers: 1 };
+}
+
+/**
+ * 提取订单里包含的“分阶段收款（里程碑）”配置及当前点亮进度（存入 note 的 [里程碑已收:0,1] 标记，零改表）
+ */
+function buildOrderMilestoneBarHtml(order, netTotal, blindPrice, readOnly) {
+  const orderItems = Array.isArray(order.items) ? order.items : [];
+  let milestoneStages = null;
+  for (const it of orderItems) {
+    const prod = (hqState.allProducts || []).find((p) => Number(p.id) === Number(it.id) || p.name === it.name);
+    if (!prod) continue;
+    const plg = getNormalizedItemPlugins(prod);
+    if (plg.milestone.enabled && Array.isArray(plg.milestone.stages) && plg.milestone.stages.length > 0) {
+      milestoneStages = plg.milestone.stages;
+      break;
+    }
+  }
+  if (!milestoneStages) return '';
+
+  const doneMatch = String(order.note || '').match(/\[里程碑已收:([0-9,]*)\]/);
+  const doneSet = new Set(
+    doneMatch && doneMatch[1]
+      ? doneMatch[1]
+          .split(',')
+          .map((n) => parseInt(n, 10))
+          .filter((n) => !isNaN(n))
+      : []
+  );
+
+  const pillsHtml = milestoneStages
+    .map((stStr, idx) => {
+      const parsed = parseMilestoneStage(stStr, netTotal);
+      const isDone = doneSet.has(idx);
+      const amtHint = !blindPrice && parsed.amount > 0 ? ` · ¥${parsed.amount.toFixed(2)}` : '';
+      return `
+        <button type="button" ${readOnly ? 'disabled' : `onclick="window.toggleOrderMilestoneStage(${order.id}, ${idx})"`}
+          class="px-2 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+            isDone
+              ? 'bg-purple-700 text-white border-purple-700'
+              : 'bg-white hover:bg-purple-50 text-purple-900 border-purple-300'
+          }" title="${isDone ? '点击取消该阶段收款标记' : '点击点亮并确认本阶段已验收收款'}">
+          ${isDone ? '✓' : '○'} 第${idx + 1}段: ${parsed.label}${amtHint}
+        </button>
+      `;
+    })
+    .join('');
+
+  return `
+    <div class="bg-purple-50/70 border border-purple-200 rounded-2xl p-2 flex flex-wrap items-center gap-1.5">
+      <span class="text-[10px] font-bold text-purple-950">🎯 分阶段收款进度（点亮确认）：</span>
+      ${pillsHtml}
+    </div>
+  `;
 }
 
 export function renderOrderFulfillmentList() {
@@ -280,12 +344,13 @@ export function renderOrderFulfillmentList() {
     return;
   }
 
-  let filtered = hqState.allOrders;
-  if (hqState.activeOrderFilter === 'pending_confirm') filtered = hqState.allOrders.filter((o) => (o.order_status === 'pending_confirm' || o.order_status === 'counter_proposal') && !isDirectoryLead(o));
-  else if (hqState.activeOrderFilter === 'directory_leads') filtered = hqState.allOrders.filter((o) => isDirectoryLead(o));
-  else if (hqState.activeOrderFilter === 'over_credit_pending') filtered = hqState.allOrders.filter((o) => o.order_status === 'over_credit_pending');
-  else if (hqState.activeOrderFilter === 'confirmed') filtered = hqState.allOrders.filter((o) => o.order_status === 'confirmed' && o.delivery_status !== 'delivered');
-  else if (hqState.activeOrderFilter === 'delivered') filtered = hqState.allOrders.filter((o) => o.delivery_status === 'delivered');
+  const scopedOrders = getVisibleOrdersForCurrentRole();
+  let filtered = scopedOrders;
+  if (hqState.activeOrderFilter === 'pending_confirm') filtered = scopedOrders.filter((o) => (o.order_status === 'pending_confirm' || o.order_status === 'counter_proposal') && !isDirectoryLead(o));
+  else if (hqState.activeOrderFilter === 'directory_leads') filtered = scopedOrders.filter((o) => isDirectoryLead(o));
+  else if (hqState.activeOrderFilter === 'over_credit_pending') filtered = scopedOrders.filter((o) => o.order_status === 'over_credit_pending');
+  else if (hqState.activeOrderFilter === 'confirmed') filtered = scopedOrders.filter((o) => o.order_status === 'confirmed' && o.delivery_status !== 'delivered');
+  else if (hqState.activeOrderFilter === 'delivered') filtered = scopedOrders.filter((o) => o.delivery_status === 'delivered');
 
   if (filtered.length === 0) {
     container.innerHTML = '<div class="p-8 text-center text-stone-400 text-xs">当前分类下暂无单据。</div>';
@@ -323,6 +388,7 @@ export function renderOrderFulfillmentList() {
       const proofs = Array.isArray(o.proof_images) ? o.proof_images : [];
       const netTotal = parseFloat(o.net_settle_amount || o.total_amount || 0);
       const canRestockReturn = isDelivered && returnItems.length > 0 && !String(o.note || '').includes('[退货已质检入账]');
+      const milestoneBarHtml = buildOrderMilestoneBarHtml(o, netTotal, blindPrice, readOnly);
 
       const step1Cls = 'bg-emerald-700 text-white';
       const step2Cls = !isPending && !isOverCredit ? 'bg-emerald-700 text-white' : 'bg-stone-200 text-stone-500';
@@ -347,6 +413,7 @@ export function renderOrderFulfillmentList() {
             <span class="text-stone-300">➔</span>
             <span class="px-2 py-0.5 rounded-full ${step3Cls}">③ 送达签收平账</span>
           </div>
+          ${milestoneBarHtml}
           <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-white p-2.5 rounded-2xl border border-stone-100 text-[11px]">
             <div>新配: ${orderItems.map((i) => `${i.name}x${i.qty}`).join('、') || '无'}</div>
             <div class="text-rose-700">退验: ${returnItems.map((i) => `${i.name}x${i.qty}`).join('、') || '无'}</div>
@@ -417,6 +484,36 @@ export function renderDriverSettleList(logs) {
 }
 
 export function initOrderStoreBindings() {
+  window.toggleOrderMilestoneStage = async function (orderId, stageIdx) {
+    if (isAuditorReadOnly()) return alert('🔍 独立稽核账号仅限只读查验。');
+    const order = (hqState.allOrders || []).find((o) => Number(o.id) === Number(orderId));
+    if (!order) return;
+
+    const rawNote = String(order.note || '');
+    const doneMatch = rawNote.match(/\[里程碑已收:([0-9,]*)\]/);
+    const doneSet = new Set(
+      doneMatch && doneMatch[1]
+        ? doneMatch[1]
+            .split(',')
+            .map((n) => parseInt(n, 10))
+            .filter((n) => !isNaN(n))
+        : []
+    );
+
+    if (doneSet.has(stageIdx)) doneSet.delete(stageIdx);
+    else doneSet.add(stageIdx);
+
+    const sortedArr = Array.from(doneSet).sort((a, b) => a - b);
+    const cleanNote = rawNote.replace(/\[里程碑已收:[0-9,]*\]/g, '').trim();
+    const nextNote = sortedArr.length > 0 ? `${cleanNote} [里程碑已收:${sortedArr.join(',')}]`.trim() : cleanNote;
+
+    const { error } = await supabase.from('store_order').update({ note: nextNote }).eq('id', order.id);
+    if (error) return alert('更新阶段进度失败：' + error.message);
+
+    order.note = nextNote;
+    renderOrderFulfillmentList();
+  };
+
   window.filterStoreByTag = function (tag) {
     hqState.sortStoresDebtDesc = false;
     hqState.activeStoreFilter = tag;
@@ -543,6 +640,22 @@ export function initOrderStoreBindings() {
           .join('');
     }
 
+    // 手电筒渐进式显隐：开启多分支时自动在“协议与归属”弹窗挂出所属分公司选择器
+    const { orgCfg } = getOrgRuntimeContext();
+    document.getElementById('policy-branch-assign-box')?.remove();
+    if (orgCfg.isMultiBranch && salesSelect?.parentElement) {
+      const branchHtml = `
+        <div id="policy-branch-assign-box" class="mt-2 bg-indigo-50/70 border border-indigo-200 rounded-xl p-2">
+          <label class="text-[11px] font-bold text-indigo-950 block mb-1">🏢 归属${orgCfg.branchLabel}（用于分部独立核算与防串号）：</label>
+          <select id="policy-branch-name-select" class="w-full bg-white border border-indigo-200 rounded-lg px-2 py-1 text-xs font-bold">
+            <option value="">🌐 集团共有客户（各分部均可见）</option>
+            ${orgCfg.branches.map((b) => `<option value="${b}" ${pricing.branch_name === b ? 'selected' : ''}>📍 ${b}</option>`).join('')}
+          </select>
+        </div>
+      `;
+      salesSelect.parentElement.insertAdjacentHTML('afterend', branchHtml);
+    }
+
     document.getElementById('policy-store-id').value = s.id;
     document.getElementById('policy-store-name').innerText = `${s.name} (联系人: ${s.contact || '掌柜'})`;
     document.getElementById('policy-credit-limit').value = s.credit_limit || 2000;
@@ -601,6 +714,7 @@ export function initOrderStoreBindings() {
     const settle_workflow = document.getElementById('policy-workflow-select').value;
     const custom_settlement_terms = document.getElementById('policy-custom-terms').value.trim();
     const sales_owner = document.getElementById('policy-sales-owner-select')?.value || '';
+    const branch_name = document.getElementById('policy-branch-name-select')?.value ?? (prevPricing.branch_name || '');
     const price_tier = document.getElementById('policy-price-tier').value;
     const discount_rate = parseFloat(document.getElementById('policy-discount-rate').value) || 1.0;
 
@@ -631,7 +745,7 @@ export function initOrderStoreBindings() {
       allowed_settlements,
       settle_workflow,
       custom_settlement_terms,
-      custom_pricing: { ...prevPricing, sales_owner, price_tier, discount_rate, item_prices, ext_profile }
+      custom_pricing: { ...prevPricing, sales_owner, branch_name, price_tier, discount_rate, item_prices, ext_profile }
     };
 
     const chosenTierIdx = document.getElementById('policy-tier-preset-select')?.value;
@@ -754,6 +868,8 @@ export function initOrderStoreBindings() {
     const phone = prompt('输入联系人 11 位手机号：');
     if (!phone || phone.trim().length < 11) return alert('请输入有效 11 位手机号！');
 
+    const { orgCfg, effectiveBranch } = getOrgRuntimeContext();
+    const branchName = orgCfg.isMultiBranch && effectiveBranch !== 'ALL' ? effectiveBranch : '';
     const defaultTier = hqState.globalPolicy.storeTiers[hqState.globalPolicy.storeTiers.length - 1] || { name: '普通门店', creditLimit: 2000, returnQuota: 500, discountRate: 1.0 };
     await supabase.from('store').insert([
       {
@@ -766,7 +882,11 @@ export function initOrderStoreBindings() {
         monthly_return_quota: defaultTier.returnQuota,
         current_debt: 0,
         driver_name: '张师傅',
-        custom_pricing: { discount_rate: defaultTier.discountRate, sales_owner: hqState.currentRoleCode === 'sales' ? hqState.currentAccountCode : '' }
+        custom_pricing: {
+          discount_rate: defaultTier.discountRate,
+          branch_name: branchName,
+          sales_owner: hqState.currentRoleCode === 'sales' ? hqState.currentAccountCode : ''
+        }
       }
     ]);
     window.loadHQData();
@@ -827,7 +947,12 @@ export function initOrderStoreBindings() {
     const driverCmd = `【发运指令】配发货品 ${order?.items?.length || 0}项；${order?.settlement_type === 'cash' ? '当面点收现款；' : `按${order?.settlement_type}签收！`}`;
     await supabase.from('store_order').update({ order_status: 'confirmed', driver_action_instruction: driverCmd }).eq('id', orderId);
     if (order?.items) {
-      await HQService.deductStockForItems(hqState.currentAgent, hqState.allProducts, order.items, order.order_no || order.id, hqState.currentOperatorName);
+      const { orgCfg } = getOrgRuntimeContext();
+      const preferredWh = orgCfg.warehouses.includes(hqState.activeWarehouse) ? hqState.activeWarehouse : orgCfg.warehouses[0];
+      await HQService.deductStockForItems(hqState.currentAgent, hqState.allProducts, order.items, order.order_no || order.id, hqState.currentOperatorName, {
+        warehouse: preferredWh,
+        warehouses: orgCfg.warehouses
+      });
       recordOrderHabit(hqState.currentAgent, { partnerId: order.store_id, items: order.items });
     }
     alert('✅ 已确认接单并自动扣减对应库存，已汇入「本车装车总拣货单」！');
@@ -1376,7 +1501,7 @@ export function initOrderStoreBindings() {
   };
 
   // ============================================================================
-  // 主动开单 / 配货：静默历史拿价 + 常拿货 Top6 + 亏本红字提醒 + 一键抹零头
+  // 主动开单 / 配货：静默历史拿价 + 常拿货 Top6 + 亏本红字提醒 + 一键抹零头 + 多仓选仓
   // ============================================================================
   let pushRoundMode = 'none'; // 'none' | 'fen' | 'jiao' | 'yuan' | 'custom'
 
@@ -1495,6 +1620,17 @@ export function initOrderStoreBindings() {
     }
 
     const blindPrice = isWarehouseBlindPrice();
+    const { orgCfg } = getOrgRuntimeContext();
+    const preferredWh = orgCfg.warehouses.includes(hqState.activeWarehouse) ? hqState.activeWarehouse : orgCfg.warehouses[0];
+    const whSelectorHtml = orgCfg.isMultiWarehouse
+      ? `<div class="bg-blue-50/70 border border-blue-200 rounded-xl p-2 mb-2 flex items-center justify-between gap-2 text-xs">
+           <span class="font-bold text-blue-950">🏠 本单出货${orgCfg.warehouseLabel}（自动扣对应分仓）：</span>
+           <select id="push-warehouse-select" class="bg-white border border-blue-200 rounded-lg px-2 py-1 font-bold text-stone-800 outline-none">
+             ${orgCfg.warehouses.map((w) => `<option value="${w}" ${w === preferredWh ? 'selected' : ''}>${w}</option>`).join('')}
+           </select>
+         </div>`
+      : '';
+
     const activeProducts = hqState.allProducts.filter((p) => p.status !== 'inactive' && p.status !== 'draft');
     const top6 = getPartnerTop6Items(hqState.currentAgent, storeId, activeProducts, hqState.allOrders || []);
 
@@ -1521,6 +1657,8 @@ export function initOrderStoreBindings() {
           const { price } = calcStoreEffectivePrice(s, p);
           const lastDeal = !blindPrice ? getLastDealPrice(hqState.currentAgent, storeId, p.id, hqState.allOrders || []) : null;
           const unitLabel = p.measure_unit || '件';
+          const plg = getNormalizedItemPlugins(p);
+          const stockHint = plg.stock.enabled ? `(存${p.stock ?? 0}${unitLabel})` : `(按次/项目)`;
 
           const lastPriceBadge =
             lastDeal && Number(lastDeal.price) !== Number(price)
@@ -1537,7 +1675,7 @@ export function initOrderStoreBindings() {
               <div class="flex justify-between items-center gap-2">
                 <div class="min-w-0 flex-1">
                   <span class="text-stone-800 font-bold text-xs">${p.name}</span>
-                  <span class="text-[10px] text-stone-400 font-mono ml-1">(存${p.stock ?? 0}${unitLabel})</span>
+                  <span class="text-[10px] text-stone-400 font-mono ml-1">${stockHint}</span>
                   ${lastPriceBadge}
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
@@ -1563,7 +1701,7 @@ export function initOrderStoreBindings() {
         })
         .join('');
 
-      prodBox.innerHTML = `${top6Html}${rowsHtml}<div id="push-smart-summary-bar" class="mt-2.5"></div>`;
+      prodBox.innerHTML = `${whSelectorHtml}${top6Html}${rowsHtml}<div id="push-smart-summary-bar" class="mt-2.5"></div>`;
       window.recalcPushOrderSummary();
     }
   };
@@ -1574,6 +1712,15 @@ export function initOrderStoreBindings() {
     const settlement = document.getElementById('push-settlement-select').value;
     const driver = document.getElementById('push-driver-name').value.trim() || '张师傅';
     const note = document.getElementById('push-note-input').value.trim();
+
+    const { orgCfg, effectiveBranch } = getOrgRuntimeContext();
+    const chosenWh = document.getElementById('push-warehouse-select')?.value || orgCfg.warehouses[0];
+    if (orgCfg.isMultiWarehouse) {
+      hqState.activeWarehouse = chosenWh;
+      rememberOperatorOrgPreference(hqState.currentAgent, hqState.currentAccountCode || 'owner', { lastWarehouse: chosenWh });
+    }
+    const branchTag = orgCfg.isMultiBranch && effectiveBranch !== 'ALL' ? ` [分部:${effectiveBranch}]` : '';
+    const whTag = orgCfg.isMultiWarehouse ? ` [仓库:${chosenWh}]` : '';
 
     const items = [];
     let rawTotalAmount = 0;
@@ -1588,7 +1735,6 @@ export function initOrderStoreBindings() {
     }
     if (items.length === 0) return alert('请至少挑选 1 样货品！');
 
-    // 计算抹零/一口价老板让利
     const customValStr = document.getElementById('push-custom-final-input')?.value;
     const customFinal = customValStr !== undefined && customValStr !== '' ? parseFloat(customValStr) : null;
     const roundRes =
@@ -1613,7 +1759,7 @@ export function initOrderStoreBindings() {
         driver_name: driver,
         order_source: 'vendor_push',
         settlement_type: settlement,
-        settlement_note: `${note}${discountNote}`.trim(),
+        settlement_note: `${note}${discountNote}${branchTag}${whTag}`.trim(),
         items,
         items_return: [],
         items_exchange: [],
@@ -1622,17 +1768,23 @@ export function initOrderStoreBindings() {
         net_settle_amount: roundRes.finalAmount,
         order_status: 'confirmed',
         delivery_status: 'ordered',
-        note: `[主动铺底配发] ${note}${discountNote}`.trim(),
+        note: `[主动铺底配发] ${note}${discountNote}${branchTag}${whTag}`.trim(),
         driver_action_instruction: `【主动配货】核验交付 ${items.length}项`
       }
     ]);
     if (error) return alert('配发失败: ' + error.message);
 
-    // 静默自学习：记住本单客户拿价与常拿货频次
     recordOrderHabit(hqState.currentAgent, { partnerId: storeId, items });
 
-    await HQService.deductStockForItems(hqState.currentAgent, hqState.allProducts, items, orderNo, hqState.currentOperatorName);
-    alert(`✅ 统一出库配货单 (${orderNo}) 已生成并自动扣库！${roundRes.bossDiscount > 0 ? `\n已应用老板抹零让利 ¥${roundRes.bossDiscount.toFixed(2)}，实收 ¥${roundRes.finalAmount.toFixed(2)}` : ''}`);
+    await HQService.deductStockForItems(hqState.currentAgent, hqState.allProducts, items, orderNo, hqState.currentOperatorName, {
+      warehouse: chosenWh,
+      warehouses: orgCfg.warehouses
+    });
+    alert(
+      `✅ 统一出库配货单 (${orderNo}) 已生成并自动扣库！` +
+        (orgCfg.isMultiWarehouse ? `\n出货仓库：【${chosenWh}】` : '') +
+        (roundRes.bossDiscount > 0 ? `\n已应用老板抹零让利 ¥${roundRes.bossDiscount.toFixed(2)}，实收 ¥${roundRes.finalAmount.toFixed(2)}` : '')
+    );
     window.closeModal('push-modal');
     window.loadHQData();
   };
