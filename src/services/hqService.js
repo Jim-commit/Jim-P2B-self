@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase.js';
+import { getNormalizedItemPlugins } from '../modules/soulEngine/universalPluginsEngine.js';
+import { calcWarehouseStockDelta } from '../modules/soulEngine/multiOrgAndWarehouseEngine.js';
 
 export const HQService = {
   async fetchTenant(tenantId) {
@@ -65,19 +67,41 @@ export const HQService = {
     }
   },
 
-  async deductStockForItems(tenantId, allProducts, items, orderNo, operatorLabel) {
+  async deductStockForItems(tenantId, allProducts, items, orderNo, operatorLabel, options = {}) {
     if (!Array.isArray(items) || items.length === 0) return;
+    const warehouses = Array.isArray(options?.warehouses) && options.warehouses.length > 0 ? options.warehouses : ['主仓库'];
+    const isMultiWh = warehouses.length > 1;
+    const targetWh = options?.warehouse && warehouses.includes(options.warehouse) ? options.warehouse : warehouses[0];
+
     for (const it of items) {
       const prod = allProducts.find((p) => String(p.id) === String(it.id) || p.name === it.name);
       if (!prod) continue;
+
+      // 智能识别活插件：纯服务/无库存项自动跳过扣库，不产生虚假负库存
+      const plg = getNormalizedItemPlugins(prod);
+      if (!plg.stock.enabled) continue;
+
       const qty = parseInt(it.qty || 0);
       if (qty <= 0) continue;
 
       const beforeStock = parseInt(prod.stock ?? 0);
-      const afterStock = Math.max(0, beforeStock - qty);
+      const whDelta = calcWarehouseStockDelta(prod, warehouses, targetWh, -qty);
+      const afterStock = isMultiWh ? whDelta.nextTotalStock : Math.max(0, beforeStock - qty);
       prod.stock = afterStock;
 
-      await supabase.from('product').update({ stock: afterStock }).eq('id', prod.id);
+      const updatePayload = { stock: afterStock };
+      if (isMultiWh) {
+        const nextSpecs = {
+          ...(prod.custom_specs && typeof prod.custom_specs === 'object' ? prod.custom_specs : {}),
+          warehouse_stocks: whDelta.nextWarehouseStocks
+        };
+        prod.custom_specs = nextSpecs;
+        updatePayload.custom_specs = nextSpecs;
+      }
+
+      await supabase.from('product').update(updatePayload).eq('id', prod.id);
+
+      const whTag = isMultiWh ? ` [仓库:${targetWh}]` : '';
       await this.recordInventoryChange(tenantId, {
         tenant_id: tenantId,
         product_id: prod.id,
@@ -87,7 +111,7 @@ export const HQService = {
         before_stock: beforeStock,
         after_stock: afterStock,
         operator_name: operatorLabel,
-        remark: `配货发运自动扣库 (单号 #${orderNo})`,
+        remark: `[单号:${orderNo}] [门店受单配发]${whTag} 配货发运自动扣库`,
         created_at: new Date().toISOString()
       });
     }
