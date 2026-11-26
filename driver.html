@@ -856,6 +856,8 @@
         navigator.serviceWorker.register('/sw.js').catch(() => {});
       });
     }
+    import { initDriverTerminalBridge } from './src/modules/soulEngine/multiTerminalBridge.js';
+    initDriverTerminalBridge();
   </script>
 </body>
 </html>
