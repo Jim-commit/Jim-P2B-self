@@ -81,6 +81,8 @@
               <option value="dealer" selected>🏢 区域平准仓 / 集散商行</option>
               <option value="service">🛠️ 工料配套 / 专业服务机构</option>
             </select>
+            <!-- 手电筒渐进式显隐：多分支/分公司时自动亮出顶栏分部徽章 -->
+            <span id="hq-header-branch-pill" class="hidden bg-indigo-500/25 text-indigo-100 text-[10px] px-2.5 py-0.5 rounded-full border border-indigo-400/40 font-bold"></span>
             <span id="tenant-membership-badge" class="bg-emerald-500/15 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 font-mono">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 商家独立专属账本
             </span>
@@ -120,7 +122,7 @@
             <span>📋</span> 用度备货总单
           </button>
           <button id="btn-top-statement" onclick="window.openStoreStatementModal()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-100 text-xs px-3.5 py-1.5 rounded-xl font-bold border border-emerald-400/40 active:scale-95 transition flex items-center gap-1">
-            <span>🧾</span> 门店账期对账
+            <span>🧾</span> <span data-lex="partnerLabel">门店</span>账期对账
           </button>
           <button onclick="window.openPromoQrModal()" class="bg-emerald-700/60 hover:bg-emerald-600/70 text-white text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-400/30 active:scale-95 transition flex items-center gap-1">
             <span>📲</span> 合作名片码
@@ -223,6 +225,42 @@
       </button>
     </div>
 
+    <!-- 灵魂看板 · 老板一眼看懂的「三盏红绿灯」经营信号条 -->
+    <section id="soul-traffic-lights-bar" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+      <div onclick="window.switchTab('settle'); window.filterOrderStatus('delivered');" class="cursor-pointer bg-emerald-50/90 hover:bg-emerald-100/80 border border-emerald-200 px-3.5 py-2.5 rounded-2xl flex items-center justify-between transition">
+        <div class="flex items-center gap-2">
+          <span class="text-base">🟢</span>
+          <div>
+            <b class="text-emerald-950 block">放心干 · 账实健康</b>
+            <span id="tl-green-desc" class="text-[11px] text-emerald-800">账目与交付正常流转中</span>
+          </div>
+        </div>
+        <span class="text-[10px] text-emerald-700 font-bold">查交割 ➔</span>
+      </div>
+
+      <div onclick="window.switchTab('settle'); window.filterOrderStatus('pending_confirm');" class="cursor-pointer bg-amber-50/90 hover:bg-amber-100/80 border border-amber-300 px-3.5 py-2.5 rounded-2xl flex items-center justify-between transition">
+        <div class="flex items-center gap-2">
+          <span class="text-base">🟡</span>
+          <div>
+            <b class="text-amber-950 block">留个神 · 待处理事项</b>
+            <span id="tl-yellow-desc" class="text-[11px] text-amber-800">正在盘点新单与待核回款...</span>
+          </div>
+        </div>
+        <span class="text-[10px] text-amber-800 font-bold">去处理 ➔</span>
+      </div>
+
+      <div onclick="window.switchTab('products'); window.filterLowStockOnly(true);" class="cursor-pointer bg-rose-50/90 hover:bg-rose-100/80 border border-rose-200 px-3.5 py-2.5 rounded-2xl flex items-center justify-between transition">
+        <div class="flex items-center gap-2">
+          <span class="text-base">🔴</span>
+          <div>
+            <b class="text-rose-950 block">赶紧管 · 缺货与超信预警</b>
+            <span id="tl-red-desc" class="text-[11px] text-rose-700">正在扫描低库存与超授信...</span>
+          </div>
+        </div>
+        <span class="text-[10px] text-rose-700 font-bold">去处理 ➔</span>
+      </div>
+    </section>
+
     <!-- 第一层：三流合一晴雨表 -->
     <section class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
       <div class="bg-white p-4 rounded-3xl shadow-sm border border-stone-200/80 hover:border-emerald-500 transition">
@@ -257,7 +295,7 @@
             <b id="flow-money-pending" class="font-mono text-sm font-bold text-amber-700 underline decoration-dotted">¥0.00</b>
           </div>
           <div onclick="window.switchTab('stores'); window.sortStoresByDebt();" class="cursor-pointer hover:bg-rose-50 rounded-xl py-1 transition">
-            <span class="text-[10px] text-stone-400 block">门店在账欠款</span>
+            <span class="text-[10px] text-stone-400 block"><span data-lex="partnerLabel">门店</span>在账欠款</span>
             <b id="flow-money-receivable" class="font-mono text-sm font-bold text-rose-700 underline decoration-dotted">¥0.00</b>
           </div>
           <div onclick="window.switchTab('settle'); window.filterOrderStatus('delivered');" class="cursor-pointer hover:bg-emerald-50 rounded-xl py-1 transition">
@@ -289,17 +327,17 @@
       </div>
     </section>
 
-    <!-- 第二层：五大固定工作台导航 -->
+    <!-- 第二层：五大固定工作台导航（支持动态词典自动贴合行业行话） -->
     <nav id="hq-main-nav" class="grid grid-cols-2 sm:grid-cols-5 bg-white rounded-2xl shadow-sm border border-stone-200/80 p-1.5 gap-1.5 text-xs font-bold">
       <button id="tab-btn-advisor" onclick="window.switchTab('advisor')" class="py-2.5 px-2 text-center rounded-xl bg-[#1b4332] text-white transition flex items-center justify-center gap-1">
         <span>📊 经营参谋 & 极简单据</span>
       </button>
       <button id="tab-btn-products" onclick="window.switchTab('products')" class="py-2.5 px-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition flex items-center justify-center gap-1">
-        <span>📦 货品上架 & 出入库制单</span>
+        <span>📦 <span data-lex="itemLabel">货品</span>上架 & 出入库制单</span>
         <span id="draft-prod-badge" class="bg-amber-500 text-stone-950 text-[9px] px-1.5 py-0.2 rounded-full hidden">待定价</span>
       </button>
       <button id="tab-btn-stores" onclick="window.switchTab('stores')" class="py-2.5 px-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition flex items-center justify-center gap-1">
-        <span>🏪 合作门店 & 信义催收</span>
+        <span>🏪 <span data-lex="partnerLabel">合作门店</span> & 信义催收</span>
       </button>
       <button id="tab-btn-settle" onclick="window.switchTab('settle')" class="py-2.5 px-2 text-center rounded-xl text-stone-600 hover:text-emerald-950 hover:bg-stone-50 transition flex items-center justify-center gap-1">
         <span>🚚 配货发运 & 岗位授权</span>
@@ -319,7 +357,7 @@
             <p class="text-[11px] text-stone-400">看着真实需求安排备货与生产，减少积压浪费；点击右侧按钮一键处理</p>
           </div>
           <span class="text-[11px] bg-emerald-50 text-emerald-900 border border-emerald-200 px-3 py-1 rounded-xl font-bold">
-            合作门店: <b id="stat-active-stores">0 家</b> · 在外载具: <b id="stat-baskets">0 件</b>
+            <span data-lex="partnerLabel">合作门店</span>: <b id="stat-active-stores">0 家</b> · 在外<span data-lex="carrierLabel">载具</span>: <b id="stat-baskets">0 件</b>
           </span>
         </div>
 
@@ -357,18 +395,18 @@
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">📦 实名保真 · 货品分段上架与统一出入库制单</h2>
+            <h2 class="text-sm font-bold text-stone-800">📦 实名保真 · <span data-lex="itemLabel">货品</span>分段上架与统一出入库制单</h2>
             <p class="text-[11px] text-stone-400">仓管录实物暂存草稿 ➔ 掌柜定价并经合规自检上架；<b>点击「当前库存」开具 RK/CK 单据</b></p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <button id="btn-bulk-import" onclick="window.openModal('modal-bulk-import')" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold px-3 py-1.5 rounded-xl transition active:scale-95">
-              📥 批量导入货品 (CSV)
+              📥 批量导入<span data-lex="itemLabel">货品</span> (CSV)
             </button>
             <button onclick="window.exportInventorySheetCSV()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-3 py-1.5 rounded-xl transition active:scale-95">
               📋 导出盘点表 (CSV)
             </button>
             <button id="btn-add-product" onclick="window.openAddProductModal()" class="text-xs bg-[#1b4332] text-white font-bold px-3.5 py-1.5 rounded-xl shadow active:scale-95 transition">
-              + 发布 / 暂存新货品
+              + 发布 / 暂存新<span data-lex="itemLabel">货品</span>
             </button>
           </div>
         </div>
@@ -397,7 +435,7 @@
                 <th class="p-2.5">实拍照</th>
                 <th class="p-2.5">状态与投放渠道</th>
                 <th class="p-2.5">品类与自定义属性</th>
-                <th class="p-2.5">货品全称 & 溯源卡</th>
+                <th class="p-2.5"><span data-lex="itemLabel">货品</span>全称 & 溯源卡</th>
                 <th class="p-2.5">特色标签</th>
                 <th class="p-2.5">包装规格 / 效期</th>
                 <th class="p-2.5 price-col-guard" id="th-tier1-label">批发平准基准价</th>
@@ -417,7 +455,7 @@
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3">
         <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">🏪 合作门店 / 社区驿站、动态信义分与拜访催收</h2>
+            <h2 class="text-sm font-bold text-stone-800">🏪 <span data-lex="partnerLabel">合作门店</span> / 社区驿站、动态信义分与拜访催收</h2>
             <p class="text-[11px] text-stone-400">按时平账与归还周转载具自动累加「信义分」；业务员仅见名下私海与公海门店，催收留痕直推财务核销</p>
           </div>
           <div class="flex flex-wrap gap-2">
@@ -447,7 +485,7 @@
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200/80 space-y-3.5">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-3">
           <div>
-            <h2 class="text-sm font-bold text-stone-800">🚚 货畅其流 · 配货制单与城乡共配装车</h2>
+            <h2 class="text-sm font-bold text-stone-800">🚚 货畅其流 · <span data-lex="orderLabel">配货制单</span>与城乡共配装车</h2>
             <p class="text-[11px] text-stone-400">支持门店受单配发、主动铺底、产销对冲与余缺互调顺路捎带</p>
           </div>
           <div class="flex flex-wrap gap-1.5">
@@ -878,7 +916,6 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-          <!-- 1. 实体店多档进货返利 -->
           <div class="bg-emerald-50/70 p-3 rounded-2xl border border-emerald-200 space-y-2">
             <div class="flex justify-between items-center">
               <b class="text-emerald-950">🎁 实体店进货返利</b>
@@ -893,7 +930,6 @@
             <div id="gp-rebate-tiers-container" class="space-y-1.5 max-h-24 overflow-y-auto no-scrollbar"></div>
           </div>
 
-          <!-- 2. 外部推客与拉新分润（纯销售引流佣金） -->
           <div class="bg-amber-50/70 p-3 rounded-2xl border border-amber-200 space-y-2">
             <div class="flex justify-between items-center">
               <b class="text-amber-950">📣 外部推客与拉新分润</b>
@@ -914,7 +950,6 @@
             <p class="text-[10px] text-amber-900/80 leading-tight">推广成交或引荐签约入驻立户时触发，与提货地点无关。</p>
           </div>
 
-          <!-- 3. 门店/自提点代收履约费（纯末端暂存核销服务费） -->
           <div class="bg-cyan-50/70 p-3 rounded-2xl border border-cyan-200 space-y-2">
             <div class="flex justify-between items-center">
               <b class="text-cyan-950">📍 自提点代收履约费</b>
@@ -1876,11 +1911,11 @@
           </select>
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">送货师傅：</label>
+          <label class="block text-stone-600 font-bold mb-1">送货师傅 / 执行人：</label>
           <input type="text" id="push-driver-name" value="张师傅" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 outline-none font-bold">
         </div>
         <div>
-          <label class="block text-stone-600 font-bold mb-1">挑选配发货品数量：</label>
+          <label class="block text-stone-600 font-bold mb-1">挑选配发货品或服务数量：</label>
           <div id="push-products-list" class="space-y-1.5 max-h-40 overflow-y-auto border border-stone-100 p-2 rounded-xl"></div>
         </div>
         <div>
@@ -2100,11 +2135,84 @@
     } from './src/modules/hq/hqGovernanceExtension.js';
     import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
     import { initWechatBrowserGuide } from './src/lib/wechatBrowserGuard.js';
+    import { hqState, getOrgRuntimeContext, getVisibleOrdersForCurrentRole } from './src/modules/hq/hqState.js';
+    import { getTenantLexicon } from './src/modules/soulEngine/silentMemoryAndLexicon.js';
+
+    function syncSoulStaticLexiconAndTrafficLights() {
+      const customSettings = hqState.currentTenantData?.custom_settings || {};
+      const lex = getTenantLexicon(customSettings);
+
+      // 1. 动态词典静默刷新全站带有 data-lex 的静态标签
+      document.querySelectorAll('[data-lex]').forEach((el) => {
+        const key = el.getAttribute('data-lex');
+        if (key && lex[key]) el.textContent = lex[key];
+      });
+
+      // 2. 手电筒显隐：多分支时顶栏自动亮出分部徽章
+      const { orgCfg, effectiveBranch } = getOrgRuntimeContext();
+      const branchPill = document.getElementById('hq-header-branch-pill');
+      if (branchPill) {
+        if (orgCfg.isMultiBranch) {
+          branchPill.classList.remove('hidden');
+          branchPill.textContent =
+            effectiveBranch === 'ALL'
+              ? `🏢 全集团总览 (${orgCfg.branches.length}个${orgCfg.branchLabel})`
+              : `📍 当前${orgCfg.branchLabel}：${effectiveBranch}`;
+        } else {
+          branchPill.classList.add('hidden');
+        }
+      }
+
+      // 3. 刷新老板三盏生意红绿灯
+      const orders = getVisibleOrdersForCurrentRole();
+      const deliveredCount = orders.filter((o) => o.delivery_status === 'delivered').length;
+      const pendingOrdersCount = orders.filter((o) => o.order_status === 'pending_confirm').length;
+      const overCreditCount = orders.filter((o) => o.order_status === 'over_credit_pending').length;
+      const pendingCashCount = (hqState.pendingCashLogsCache || []).length;
+      const defaultMin = parseInt(hqState.globalPolicy?.defaultMinStock ?? 10, 10);
+      const lowStockCount = (hqState.allProducts || []).filter(
+        (p) => p.status !== 'inactive' && parseInt(p.stock ?? 0, 10) <= parseInt(p.custom_specs?.min_stock ?? defaultMin, 10)
+      ).length;
+
+      const greenEl = document.getElementById('tl-green-desc');
+      const yellowEl = document.getElementById('tl-yellow-desc');
+      const redEl = document.getElementById('tl-red-desc');
+
+      if (greenEl) {
+        greenEl.textContent = `已核销交割 ${deliveredCount} 笔 · 账实严丝合缝`;
+      }
+      if (yellowEl) {
+        const yellowTotal = pendingOrdersCount + pendingCashCount;
+        yellowEl.textContent =
+          yellowTotal > 0
+            ? `${pendingOrdersCount} 笔新单待接 · ${pendingCashCount} 笔回款待点清`
+            : '当前无积压新单与未点清回款';
+      }
+      if (redEl) {
+        const redTotal = lowStockCount + overCreditCount;
+        redEl.textContent =
+          redTotal > 0
+            ? `${lowStockCount} 款${lex.itemLabel}缺货预警 · ${overCreditCount} 笔超信待特批`
+            : '库存充足，无超授信异常单据';
+      }
+    }
 
     enforceGlobalGovernance();
     initHqGovernanceExtensionBindings();
     await initHQController();
     await loadAndRenderHqGovernanceExtension();
+    syncSoulStaticLexiconAndTrafficLights();
+
+    // 每次刷新数据后自动同步红绿灯与静态词典
+    if (typeof window.loadHQData === 'function') {
+      const origLoad = window.loadHQData;
+      window.loadHQData = async function (...args) {
+        const res = await origLoad.apply(this, args);
+        syncSoulStaticLexiconAndTrafficLights();
+        return res;
+      };
+    }
+
     initWechatBrowserGuide({ appName: '百工源头直供调度台' });
   </script>
 </body>
