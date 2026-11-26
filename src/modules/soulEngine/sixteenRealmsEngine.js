@@ -332,7 +332,7 @@ render();
 }
 
 /**
- * 4. 挂载首页“掌柜一句话/语音万能记账栏” + “静默流失温柔提醒”
+ * 4. 挂载首页“掌柜一句话/语音万能记账栏” + “静默流失温柔提醒” + “淡季休眠条”
  */
 export function mountSixteenRealmsQuickBar() {
   const prefs = getAccessibilityPrefs();
@@ -342,9 +342,19 @@ export function mountSixteenRealmsQuickBar() {
   if (!host) return;
   document.getElementById('sixteen-realms-quick-bar')?.remove();
 
+  const rawSettings = hqState.currentTenantData?.custom_settings || {};
+  const isSeasonalDormant = !!rawSettings.seasonalPause?.isPaused;
+
   const visibleStores = getVisibleStoresForCurrentRole();
   const visibleOrders = getVisibleOrdersForCurrentRole();
-  const churnList = detectSilentChurnPartners(visibleStores, visibleOrders);
+  const churnList = isSeasonalDormant ? [] : detectSilentChurnPartners(visibleStores, visibleOrders);
+
+  const dormantHtml = isSeasonalDormant
+    ? `<div class="bg-stone-900 text-amber-300 rounded-xl px-3 py-1.5 flex items-center justify-between gap-2 text-[11px]">
+         <span>🍵 <b>当前处于淡季休眠状态：</b>日常补货预警已静默收起，不打扰休息。</span>
+         <button type="button" onclick="window.toggleRealmSeasonalDormant(false)" class="bg-amber-400 text-stone-950 font-bold px-2.5 py-0.5 rounded-lg shrink-0">🌱 旺季唤醒</button>
+       </div>`
+    : '';
 
   const churnHtml =
     churnList.length > 0
@@ -359,6 +369,7 @@ export function mountSixteenRealmsQuickBar() {
   bar.id = 'sixteen-realms-quick-bar';
   bar.className = 'col-span-full bg-white border border-emerald-200 p-3 rounded-2xl space-y-2 text-xs shadow-2xs';
   bar.innerHTML = `
+    ${dormantHtml}
     <div class="flex flex-wrap items-center justify-between gap-1.5">
       <div class="flex items-center gap-1.5">
         <span class="text-sm">🗣️</span>
@@ -689,7 +700,7 @@ export function initSixteenRealmsBindings() {
   };
 
   /**
-   * 记一笔散客账弹窗（支持：计算器大按键、生鲜过磅毛重去皮、上次成交价自动带出、一键抹零、开单即自动建档、纯记往来账）
+   * 记一笔散客账弹窗（集成：计算器大按键、毛重去皮、铺货试卖、搭赠样品、顺带记空筐、上次价带出、一键抹零、自动建档）
    */
   window.openZeroBarrierWalkInOrderModal = function () {
     document.getElementById('modal-zero-barrier-order')?.remove();
@@ -714,7 +725,7 @@ export function initSixteenRealmsBindings() {
         <div class="flex justify-between items-center border-b border-stone-100 pb-2">
           <div>
             <b class="text-sm text-stone-900">⚡ 记一笔散客账（边开单边自动建档）</b>
-            <p class="text-[10px] text-stone-500">支持过磅毛重去皮、计算器按键、自动记忆上次成交价</p>
+            <p class="text-[10px] text-stone-500">支持铺货试卖、搭赠样品、顺带记空筐、过磅毛重去皮</p>
           </div>
           <div class="flex items-center gap-1.5">
             <button type="button" onclick="document.getElementById('zb-abacus-keypad')?.classList.toggle('hidden')" class="bg-amber-100 text-amber-950 border border-amber-300 font-bold px-2 py-1 rounded-xl text-[10px]">
@@ -769,6 +780,7 @@ export function initSixteenRealmsBindings() {
               <label class="block font-bold text-stone-700 mb-1">自然结算约定：</label>
               <select id="zb-natural-term" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 font-bold outline-none">
                 <option value="现结两清">💵 现结两清</option>
+                <option value="铺货试卖（按实销结算）">📦 铺货试卖（按实销结算）</option>
                 <option value="这批货卖完结">🔄 这批货卖完结</option>
                 <option value="麦收/秋收后结">🌾 麦收/秋收后结</option>
                 <option value="工程验收后结">🏗️ 工程验收后结</option>
@@ -792,22 +804,42 @@ export function initSixteenRealmsBindings() {
               .join('')}
           </div>
 
-          <!-- 合计与一键抹零 -->
-          <div class="bg-amber-50/70 border border-amber-200 rounded-2xl px-3 py-2 flex items-center justify-between">
+          <!-- 合计、搭赠样品与一键抹零 -->
+          <div class="bg-amber-50/70 border border-amber-200 rounded-2xl px-3 py-2 flex items-center justify-between gap-2">
             <div>
               <span class="text-[10px] text-stone-500 block">本笔实收合计 (元)</span>
-              <input type="number" step="0.01" id="zb-final-total" value="0.00" class="bg-transparent font-mono font-bold text-base text-emerald-950 w-28 outline-none">
+              <input type="number" step="0.01" id="zb-final-total" value="0.00" class="bg-transparent font-mono font-bold text-base text-emerald-950 w-24 outline-none">
             </div>
-            <button type="button" id="btn-zb-round-down" onclick="window.applyZeroBarrierRoundDown()" class="hidden bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1.5 rounded-xl text-[11px] shadow-2xs">
-              ✂️ 抹零
-            </button>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="window.setZeroBarrierGiftSample()" class="bg-white hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-2 py-1.5 rounded-xl text-[11px]">
+                🎁 搭赠/样品(¥0)
+              </button>
+              <button type="button" id="btn-zb-round-down" onclick="window.applyZeroBarrierRoundDown()" class="hidden bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1.5 rounded-xl text-[11px] shadow-2xs">
+                ✂️ 抹零
+              </button>
+            </div>
+          </div>
+
+          <!-- 随手顺带记周转筐/押金桶 -->
+          <div class="bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 flex items-center justify-between text-[11px]">
+            <span class="font-bold text-stone-700">🧺 顺带周转筐/桶：</span>
+            <div class="flex items-center gap-3">
+              <label class="inline-flex items-center gap-1">
+                <span>带去</span>
+                <input type="number" min="0" id="zb-basket-out" value="0" class="w-12 bg-white border border-stone-300 rounded-lg px-1.5 py-0.5 text-center font-mono font-bold">
+              </label>
+              <label class="inline-flex items-center gap-1">
+                <span>拉回</span>
+                <input type="number" min="0" id="zb-basket-back" value="0" class="w-12 bg-white border border-stone-300 rounded-lg px-1.5 py-0.5 text-center font-mono font-bold">
+              </label>
+            </div>
           </div>
 
           <!-- 选项：纯记往来账 & 自动建档 -->
           <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-600 pt-0.5">
             <label class="inline-flex items-center gap-1.5 cursor-pointer font-bold">
               <input type="checkbox" id="zb-pure-ledger-only" class="rounded text-emerald-800">
-              <span>📝 纯记往来账（不扣库存，适合代办/运费/工时）</span>
+              <span>📝 纯记往来账（不扣库存）</span>
             </label>
             <label class="inline-flex items-center gap-1.5 cursor-pointer">
               <input type="checkbox" id="zb-auto-create-master" checked class="rounded text-emerald-800">
@@ -822,6 +854,14 @@ export function initSixteenRealmsBindings() {
       </div>
     `;
     document.body.appendChild(modal);
+
+    window.setZeroBarrierGiftSample = function () {
+      const pInp = document.getElementById('zb-item-price');
+      const tInp = document.getElementById('zb-final-total');
+      if (pInp) pInp.value = '0';
+      if (tInp) tInp.value = '0.00';
+      document.getElementById('btn-zb-round-down')?.classList.add('hidden');
+    };
 
     window.calcZeroBarrierTareWeight = function () {
       const g = parseFloat(document.getElementById('zb-gross-wt')?.value || '0');
@@ -922,6 +962,8 @@ export function initSixteenRealmsBindings() {
     const price = parseFloat(document.getElementById('zb-item-price')?.value || '0');
     const finalTotal = parseFloat(document.getElementById('zb-final-total')?.value || '0');
     const term = document.getElementById('zb-natural-term')?.value || '现结两清';
+    const basketOut = parseInt(document.getElementById('zb-basket-out')?.value || '0', 10);
+    const basketBack = parseInt(document.getElementById('zb-basket-back')?.value || '0', 10);
     const pureLedgerOnly = !!document.getElementById('zb-pure-ledger-only')?.checked;
     const autoCreateMaster = !!document.getElementById('zb-auto-create-master')?.checked;
 
@@ -959,9 +1001,18 @@ export function initSixteenRealmsBindings() {
       if (newProdRows?.[0]) matchedProd = newProdRows[0];
     }
 
+    // 同步更新客户欠筐/周转桶净变动
+    if (matchedStore && (basketOut > 0 || basketBack > 0)) {
+      const prevBaskets = parseInt(matchedStore.pending_baskets || 0, 10);
+      const nextBaskets = Math.max(0, prevBaskets + basketOut - basketBack);
+      await supabase.from('store').update({ pending_baskets: nextBaskets }).eq('id', matchedStore.id);
+    }
+
     const totalAmt = !isNaN(finalTotal) && finalTotal >= 0 ? Number(finalTotal.toFixed(2)) : Number((qty * price).toFixed(2));
     const ckNo = generateUnifiedVoucherNo('CK');
-    const modeTag = pureLedgerOnly ? '纯记往来账' : '随手单';
+    const isGift = totalAmt === 0;
+    const modeTag = isGift ? '搭赠/样品' : (pureLedgerOnly ? '纯记往来账' : '随手单');
+    const basketTag = basketOut > 0 || basketBack > 0 ? ` · 带筐+${basketOut}/回筐-${basketBack}` : '';
 
     const orderPayload = {
       order_no: ckNo,
@@ -970,8 +1021,8 @@ export function initSixteenRealmsBindings() {
       store_name: storeName,
       driver_name: matchedStore?.driver_name || hqState.currentOperatorName,
       order_source: 'vendor_push',
-      settlement_type: term === '现结两清' ? 'cash' : 'credit',
-      settlement_note: `[${modeTag} · ${term}]`,
+      settlement_type: term === '现结两清' || isGift ? 'cash' : 'credit',
+      settlement_note: `[${modeTag} · ${term}${basketTag}]`,
       items: [{ id: matchedProd?.id || 0, name: itemName, spec: matchedProd?.spec || modeTag, measure_unit: matchedProd?.measure_unit || '件', price, qty }],
       items_return: [],
       items_exchange: [],
@@ -979,8 +1030,8 @@ export function initSixteenRealmsBindings() {
       return_amount: 0,
       net_settle_amount: totalAmt,
       order_status: 'confirmed',
-      delivery_status: pureLedgerOnly ? 'delivered' : 'ordered',
-      note: `[${modeTag} · ${term}]`,
+      delivery_status: pureLedgerOnly || isGift ? 'delivered' : 'ordered',
+      note: `[${modeTag} · ${term}${basketTag}]`,
       driver_action_instruction: `【${term}】现场核验交割`
     };
 
@@ -998,7 +1049,7 @@ export function initSixteenRealmsBindings() {
     }
 
     document.getElementById('modal-zero-barrier-order')?.remove();
-    speakAccountingFeedback(`已记，${storeName}，${totalAmt}元`);
+    speakAccountingFeedback(isGift ? `已登记搭赠样品，${storeName}` : `已记，${storeName}，${totalAmt}元`);
     if (typeof window.loadHQData === 'function') await window.loadHQData();
 
     showQuickUndoToast(`✅ 已记【${storeName}】¥${totalAmt.toFixed(2)} (${ckNo})`, async () => {
@@ -1020,7 +1071,7 @@ export function initSixteenRealmsBindings() {
   };
 
   /**
-   * 实用工具箱总弹窗（全套四阶段功能集成）
+   * 实用工具箱总弹窗（全套五阶段功能集成）
    */
   window.openSixteenRealmsHubModal = function () {
     document.getElementById('modal-sixteen-realms-hub')?.remove();
@@ -1029,6 +1080,7 @@ export function initSixteenRealmsBindings() {
     const subUsers = hqState.allSubUsers || [];
     const rawSettings = hqState.currentTenantData?.custom_settings || {};
     const charityEnabled = !!rawSettings.charity_micro_light_enabled;
+    const isSeasonalDormant = !!rawSettings.seasonalPause?.isPaused;
     const prefs = getAccessibilityPrefs();
 
     const storeOpts = stores
@@ -1064,14 +1116,17 @@ export function initSixteenRealmsBindings() {
         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-stone-100 pb-2.5">
           <div>
             <b class="text-sm text-stone-900">🧰 实用工具箱 · 改错对账与基层协作快捷舱</b>
-            <p class="text-[11px] text-stone-500 mt-0.5">作废重开 · 两家互抵账 · 微信对账 · 收摊日结 · 家人只读链接 · 年度封账</p>
+            <p class="text-[11px] text-stone-500 mt-0.5">作废重开 · 两家互抵账 · 微信对账 · 收摊日结 · 家人只读链接 · 换锁口令 · 年度封账</p>
           </div>
-          <div class="flex items-center gap-1.5">
+          <div class="flex flex-wrap items-center gap-1.5">
             <button type="button" onclick="window.toggleRealmLargeText()" class="px-2.5 py-1 rounded-xl border ${prefs.largeText ? 'bg-stone-900 text-amber-300 border-stone-900' : 'bg-stone-100 text-stone-700 border-stone-200'} font-bold text-[11px]">
               ${prefs.largeText ? '🔍 大字护眼已开' : '🔍 大字护眼模式'}
             </button>
             <button type="button" onclick="window.toggleRealmVoiceSpeak()" class="px-2.5 py-1 rounded-xl border ${prefs.voiceSpeak ? 'bg-emerald-100 text-emerald-950 border-emerald-300' : 'bg-stone-100 text-stone-600 border-stone-200'} font-bold text-[11px]">
               ${prefs.voiceSpeak ? '🔊 记账播报已开' : '🔇 记账播报已关'}
+            </button>
+            <button type="button" onclick="window.toggleRealmSeasonalDormant(${!isSeasonalDormant})" class="px-2.5 py-1 rounded-xl border ${isSeasonalDormant ? 'bg-amber-400 text-stone-950 border-amber-500' : 'bg-stone-100 text-stone-700 border-stone-200'} font-bold text-[11px]">
+              ${isSeasonalDormant ? '🌱 唤醒旺季' : '🍵 淡季休眠'}
             </button>
             <button type="button" onclick="document.getElementById('modal-sixteen-realms-hub')?.remove()" class="text-stone-400 font-bold text-base ml-1">✕</button>
           </div>
@@ -1135,9 +1190,14 @@ export function initSixteenRealmsBindings() {
             </div>
           </div>
 
-          <!-- 6. 一键岗位客户交接包 -->
+          <!-- 6. 一键岗位客户交接包 & 换锁协同口令 -->
           <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
-            <b class="text-stone-900 block">🤝 员工离职/调岗 · 一键客户交接</b>
+            <div class="flex justify-between items-center">
+              <b class="text-stone-900">🤝 员工离职交接 & 换锁安全口令</b>
+              <button type="button" onclick="window.rotateTenantCollabPasscode()" class="text-[10px] bg-stone-200 hover:bg-stone-300 text-stone-900 font-bold px-2 py-0.5 rounded-lg">
+                🔐 刷新协同口令
+              </button>
+            </div>
             <div class="flex gap-1.5 items-center">
               <select id="handover-from-user" class="flex-1 min-w-0 bg-white border border-stone-200 rounded-xl px-2 py-1 font-bold truncate">${staffOpts || '<option value="">暂无在册员工</option>'}</select>
               <span class="shrink-0 text-stone-400 font-bold">➔</span>
@@ -1188,6 +1248,38 @@ export function initSixteenRealmsBindings() {
     window.openSixteenRealmsHubModal();
   };
 
+  window.toggleRealmSeasonalDormant = async function (nextDormant) {
+    if (hqState.currentRoleCode !== 'owner') return alert('仅老板主账号可切换淡旺季状态。');
+    const prev = hqState.currentTenantData?.custom_settings || {};
+    const nextSettings = {
+      ...prev,
+      seasonalPause: {
+        isPaused: nextDormant,
+        reason: nextDormant ? '淡季休整盘点中' : ''
+      }
+    };
+    const { error } = await supabase.from('platform_tenant').update({ custom_settings: nextSettings }).eq('tenant_id', hqState.currentAgent);
+    if (!error && hqState.currentTenantData) {
+      hqState.currentTenantData.custom_settings = nextSettings;
+      mountSixteenRealmsQuickBar();
+      document.getElementById('modal-sixteen-realms-hub')?.remove();
+      alert(nextDormant ? '🍵 已进入淡季休眠模式，补货预警已静默收起。' : '🌱 旺季已唤醒，所有日常提醒恢复正常！');
+    }
+  };
+
+  window.rotateTenantCollabPasscode = async function () {
+    if (hqState.currentRoleCode !== 'owner') return alert('仅老板主账号可执行换锁操作。');
+    if (!confirm('确认刷新商号协同口令？刷新后，之前发给临时工或离职人员的旧快捷查账链接将立即失效。')) return;
+    const prev = hqState.currentTenantData?.custom_settings || {};
+    const newToken = String(Math.floor(100000 + Math.random() * 900000));
+    const nextSettings = { ...prev, collab_passcode_token: newToken };
+    const { error } = await supabase.from('platform_tenant').update({ custom_settings: nextSettings }).eq('tenant_id', hqState.currentAgent);
+    if (!error && hqState.currentTenantData) {
+      hqState.currentTenantData.custom_settings = nextSettings;
+      alert(`🔐 协同安全口令已刷新为【${newToken}】，旧分享链接已全部失效！`);
+    }
+  };
+
   window.executeAnnualArchiveExport = function () {
     const yearStr = new Date().getFullYear();
     downloadOfflineStandaloneLedgerHtml(`${yearStr}年度结转封账总档案`);
@@ -1195,8 +1287,9 @@ export function initSixteenRealmsBindings() {
   };
 
   window.copyFamilyReadOnlyViewLink = function () {
+    const token = hqState.currentTenantData?.custom_settings?.collab_passcode_token || '';
     const baseUrl = window.location.origin + window.location.pathname;
-    const roLink = `${baseUrl}?agent=${encodeURIComponent(hqState.currentAgent)}&readonly=1`;
+    const roLink = `${baseUrl}?agent=${encodeURIComponent(hqState.currentAgent)}&readonly=1${token ? `&k=${token}` : ''}`;
     navigator.clipboard?.writeText(roLink);
     alert(`👁️ 家人/合伙人只读查账链接已复制！\n发到微信后对方点开即可查看今日收支与库存明细，且无法误改任何账目：\n\n${roLink}`);
   };
