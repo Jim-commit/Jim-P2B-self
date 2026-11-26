@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（端庄大气一体门头版 · 全端自适应不裁切 · 大道至简）
+ * 百工百业 · 五端统一协同与跨端桥接引擎（端庄大气一体门头 · 宽屏紧凑单行 · 窄屏一体顶冠 · 大道至简）
  * 覆盖：index.html (需方下单端) / driver.html (我在执行端) / mall.html / suppliers.html (逛大集)
  */
 import { supabase } from '../../lib/supabase.js';
@@ -55,7 +55,7 @@ function showWeChatPinGuideIfFirstTime() {
 }
 
 /**
- * 端庄大气一体式商号门头身份切换栏（自动适配窄屏卡片与宽屏通栏 header，完整露出绝不裁切）
+ * 端庄大气一体式商号门头身份切换栏（宽屏自动嵌入品牌栏正中央压缩高度；窄屏自动贴合门头顶部无缝成一体）
  */
 function mountMobileQuickRoleSwitchDock(currentFile) {
   if (document.getElementById('baigong-mobile-role-dock')) return;
@@ -75,17 +75,14 @@ function mountMobileQuickRoleSwitchDock(currentFile) {
 
   const barWrap = document.createElement('div');
   barWrap.id = 'baigong-mobile-role-dock';
-  const isWideHeader = greenHeader && greenHeader.offsetWidth > 640;
-  barWrap.className = isWideHeader
-    ? 'w-full bg-[#143628] border-b border-emerald-800/70 px-3 py-1.5'
-    : 'w-full bg-[#143628] border-b border-emerald-800/70 px-3 py-2 rounded-t-3xl mx-auto';
+  const isWideHeader = greenHeader && greenHeader.offsetWidth > 768;
 
   barWrap.innerHTML = `
-    <div class="max-w-md mx-auto bg-[#0f291e]/85 p-1 rounded-xl grid grid-cols-4 gap-1 text-xs text-center">
+    <div class="bg-[#0f291e]/85 p-1 rounded-xl grid grid-cols-4 gap-1 text-xs text-center min-w-[260px]">
       ${items
         .map((it) => {
           const isActive = currentFile === it.file || (currentFile === 'suppliers.html' && it.file === 'mall.html');
-          return `<a href="${it.file}" class="py-1.5 px-1 rounded-lg font-bold tracking-wide truncate transition ${
+          return `<a href="${it.file}" class="py-1 px-2.5 rounded-lg font-bold tracking-wide whitespace-nowrap transition ${
             isActive
               ? 'bg-amber-300 text-emerald-950 shadow-2xs'
               : 'text-emerald-100/80 hover:text-white hover:bg-emerald-800/40'
@@ -96,21 +93,26 @@ function mountMobileQuickRoleSwitchDock(currentFile) {
   `;
 
   if (greenHeader) {
-    if (!isWideHeader) {
-      greenHeader.style.borderTopLeftRadius = '0px';
-      greenHeader.style.borderTopRightRadius = '0px';
-      greenHeader.style.marginTop = '0px';
-      if (greenHeader.parentElement) {
-        const mw = getComputedStyle(greenHeader).maxWidth;
-        if (mw && mw !== 'none') barWrap.style.maxWidth = mw;
+    if (isWideHeader) {
+      // 宽屏下直接嵌入品牌栏正中间，与品牌名、右侧按钮同行并排，省去整整一层高度
+      const topFlexRow = greenHeader.querySelector('.flex.items-center.justify-between, .flex.justify-between');
+      if (topFlexRow && topFlexRow.children.length >= 2) {
+        barWrap.className = 'mx-auto';
+        topFlexRow.insertBefore(barWrap, topFlexRow.children[1]);
+        return;
       }
-      greenHeader.insertAdjacentElement('beforebegin', barWrap);
-    } else {
-      // 宽屏通栏 header（如 mall.html / suppliers.html）直接插入 header 内部最顶部，避免被 sticky 裁切
-      greenHeader.style.paddingTop = '0px';
-      greenHeader.insertAdjacentElement('afterbegin', barWrap);
     }
+    greenHeader.style.borderTopLeftRadius = '0px';
+    greenHeader.style.borderTopRightRadius = '0px';
+    greenHeader.style.marginTop = '0px';
+    barWrap.className = 'w-full bg-[#143628] border-b border-emerald-800/70 px-3 py-1.5 rounded-t-3xl mx-auto';
+    if (greenHeader.parentElement) {
+      const mw = getComputedStyle(greenHeader).maxWidth;
+      if (mw && mw !== 'none') barWrap.style.maxWidth = mw;
+    }
+    greenHeader.insertAdjacentElement('beforebegin', barWrap);
   } else {
+    barWrap.className = 'w-full bg-[#1b4332] py-1.5 px-3 flex justify-center';
     document.body.insertAdjacentElement('afterbegin', barWrap);
   }
 }
