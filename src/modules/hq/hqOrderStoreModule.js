@@ -403,6 +403,7 @@ export function renderOrderFulfillmentList() {
               <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ml-1 ${
                 isDelivered ? 'bg-emerald-100 text-emerald-800' : isOverCredit ? 'bg-rose-600 text-white' : isPending ? 'bg-amber-100 text-amber-900' : 'bg-blue-100 text-blue-900'
               }">${isDelivered ? '已核销交割' : isOverCredit ? '🚨 授信超额待特批' : isPending ? '待确认接单' : '已排单发运'}</span>
+              ${o.driver_name ? `<span class="text-[10px] bg-amber-50 text-amber-900 border border-amber-200 px-1.5 py-0.5 rounded ml-1">👤 执行/送货: ${o.driver_name}</span>` : ''}
             </div>
             <span class="font-bold text-xs bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-lg">${o.settlement_type}</span>
           </div>
@@ -426,7 +427,8 @@ export function renderOrderFulfillmentList() {
           }
           <div class="flex flex-wrap justify-between items-center gap-2 pt-2 border-t border-stone-200/60 text-xs">
             <span class="font-mono text-stone-800 font-bold">净结: ${blindPrice ? '***' : `¥${netTotal.toFixed(2)}`}</span>
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="flex flex-wrap items-center gap-1.5">
+              ${!readOnly && !blindPrice && !isDelivered ? `<button onclick="window.openPostWeighRepriceModal(${o.id})" class="bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 px-2.5 py-1.5 rounded-xl font-bold text-[11px]" title="生鲜过磅实重或施工完工后再核定最终数量与单价">⚖️ 过磅/完工核价</button>` : ''}
               ${canRestockReturn && !readOnly ? `<button onclick="window.restockReturnedItems(${o.id})" class="bg-rose-50 text-rose-800 border border-rose-300 px-3 py-1.5 rounded-xl font-bold">📥 退货质检回库</button>` : ''}
               <button onclick="window.openSingleDeliverySlipPrint(${o.id})" class="bg-white text-stone-800 border border-stone-300 px-3 py-1.5 rounded-xl font-bold">🖨️ 打印交割单</button>
               ${
@@ -484,6 +486,107 @@ export function renderDriverSettleList(logs) {
 }
 
 export function initOrderStoreBindings() {
+  // 【第 4 步核心闭环】先出货/先派工，后过磅或完工再补录实数与最终定价
+  window.openPostWeighRepriceModal = function (orderId) {
+    if (isAuditorReadOnly() || isWarehouseBlindPrice()) return;
+    const order = (hqState.allOrders || []).find((o) => Number(o.id) === Number(orderId));
+    if (!order) return;
+
+    document.getElementById('modal-post-weigh-reprice')?.remove();
+    const items = Array.isArray(order.items) ? order.items : [];
+    const rowsHtml = items
+      .map(
+        (it, idx) => `
+        <div class="grid grid-cols-12 gap-2 items-center py-2 border-b border-stone-100 text-xs">
+          <div class="col-span-5 font-bold text-stone-800 truncate">${it.name}</div>
+          <div class="col-span-3 flex items-center gap-1">
+            <input type="number" step="0.01" min="0" value="${it.qty}" id="pwr-qty-${idx}" class="w-full bg-stone-50 border border-stone-300 rounded-lg px-2 py-1 font-mono font-bold text-center">
+            <span class="text-[10px] text-stone-400">${it.measure_unit || '件'}</span>
+          </div>
+          <div class="col-span-4 flex items-center gap-1">
+            <span class="text-[10px] text-stone-400">¥</span>
+            <input type="number" step="0.01" min="0" value="${Number(it.price || 0).toFixed(2)}" id="pwr-price-${idx}" class="w-full bg-stone-50 border border-stone-300 rounded-lg px-2 py-1 font-mono font-bold text-right">
+          </div>
+        </div>
+      `
+      )
+      .join('');
+
+    const modal = document.createElement('div');
+    modal.id = 'modal-post-weigh-reprice';
+    modal.className = 'fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-4';
+    modal.innerHTML = `
+      <div class="bg-white border border-stone-200 rounded-3xl max-w-lg w-full p-5 space-y-3 shadow-2xl text-xs">
+        <div class="flex justify-between items-center border-b border-stone-100 pb-2">
+          <div>
+            <b class="text-sm text-stone-900">⚖️ 先出货后定价 · 过磅实重与完工核价</b>
+            <p class="text-[11px] text-stone-500">单号 #${order.order_no || order.id} · ${order.store_name || '合作客户'}</p>
+          </div>
+          <button type="button" onclick="document.getElementById('modal-post-weigh-reprice')?.remove()" class="text-stone-400 hover:text-stone-800 font-bold text-base">✕</button>
+        </div>
+        <div class="bg-blue-50/60 border border-blue-200 rounded-xl p-2 text-[11px] text-blue-950">
+          支持填入小数实重（如 <b>18.65</b> 斤）或完工后的最终协商单价，保存后自动重算本单应收净额。
+        </div>
+        <div class="max-h-60 overflow-y-auto px-1">${rowsHtml}</div>
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">执行师傅/负责人（用于提成核算）：</label>
+            <input type="text" id="pwr-driver-input" value="${order.driver_name || ''}" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">核价说明备注：</label>
+            <input type="text" id="pwr-note-input" placeholder="如：到店过磅实重确认" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5">
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-stone-100">
+          <button type="button" onclick="document.getElementById('modal-post-weigh-reprice')?.remove()" class="px-4 py-2 rounded-xl bg-stone-100 text-stone-700 font-bold">取消</button>
+          <button type="button" onclick="window.savePostWeighReprice(${order.id})" class="px-5 py-2 rounded-xl bg-[#1b4332] text-white font-bold shadow">✅ 确认实数并重算账单</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  };
+
+  window.savePostWeighReprice = async function (orderId) {
+    const order = (hqState.allOrders || []).find((o) => Number(o.id) === Number(orderId));
+    if (!order) return;
+    const oldItems = Array.isArray(order.items) ? order.items : [];
+    const nextItems = [];
+    let newTotal = 0;
+
+    oldItems.forEach((it, idx) => {
+      const q = parseFloat(document.getElementById(`pwr-qty-${idx}`)?.value || it.qty || 0);
+      const p = parseFloat(document.getElementById(`pwr-price-${idx}`)?.value || it.price || 0);
+      if (q > 0) {
+        nextItems.push({ ...it, qty: q, price: p });
+        newTotal += q * p;
+      }
+    });
+
+    const returnAmt = parseFloat(order.return_amount || 0);
+    const nextTotal = Number(newTotal.toFixed(2));
+    const nextNet = Math.max(0, Number((nextTotal - returnAmt).toFixed(2)));
+    const nextDriver = document.getElementById('pwr-driver-input')?.value.trim() || order.driver_name || '';
+    const extraNote = document.getElementById('pwr-note-input')?.value.trim() || '';
+    const nextNote = `${order.note || ''} [过磅/完工核价 ¥${nextNet.toFixed(2)}${extraNote ? '·' + extraNote : ''}]`.trim();
+
+    const { error } = await supabase
+      .from('store_order')
+      .update({
+        items: nextItems,
+        total_amount: nextTotal,
+        net_settle_amount: nextNet,
+        driver_name: nextDriver,
+        note: nextNote
+      })
+      .eq('id', order.id);
+
+    if (error) return alert('更新核价账单失败：' + error.message);
+    document.getElementById('modal-post-weigh-reprice')?.remove();
+    alert(`✅ 过磅/完工核价已生效！本单最新应结净额为 ¥${nextNet.toFixed(2)}。`);
+    window.loadHQData();
+  };
+
   window.toggleOrderMilestoneStage = async function (orderId, stageIdx) {
     if (isAuditorReadOnly()) return alert('🔍 独立稽核账号仅限只读查验。');
     const order = (hqState.allOrders || []).find((o) => Number(o.id) === Number(orderId));
@@ -640,7 +743,6 @@ export function initOrderStoreBindings() {
           .join('');
     }
 
-    // 手电筒渐进式显隐：开启多分支时自动在“协议与归属”弹窗挂出所属分公司选择器
     const { orgCfg } = getOrgRuntimeContext();
     document.getElementById('policy-branch-assign-box')?.remove();
     if (orgCfg.isMultiBranch && salesSelect?.parentElement) {
@@ -1057,7 +1159,7 @@ export function initOrderStoreBindings() {
         : items
             .map((it, idx) => {
               const price = parseFloat(it.price || 0);
-              const qty = parseInt(it.qty || 0);
+              const qty = parseFloat(it.qty || 0);
               return `<tr><td class="border border-stone-400 p-1.5 text-center font-mono">${idx + 1}</td><td class="border border-stone-400 p-1.5 font-bold">${it.name}</td><td class="border border-stone-400 p-1.5">${it.spec || '整装'}</td><td class="border border-stone-400 p-1.5 text-center font-mono">${qty} ${it.measure_unit || '件'}</td><td class="border border-stone-400 p-1.5 text-right font-mono">${isWarehouseBlindPrice() ? '***' : `¥${price.toFixed(2)}`}</td><td class="border border-stone-400 p-1.5 text-right font-mono font-bold">${isWarehouseBlindPrice() ? '***' : `¥${(price * qty).toFixed(2)}`}</td></tr>`;
             })
             .join('');
@@ -1500,10 +1602,7 @@ export function initOrderStoreBindings() {
     }
   };
 
-  // ============================================================================
-  // 主动开单 / 配货：静默历史拿价 + 常拿货 Top6 + 亏本红字提醒 + 一键抹零头 + 多仓选仓
-  // ============================================================================
-  let pushRoundMode = 'none'; // 'none' | 'fen' | 'jiao' | 'yuan' | 'custom'
+  let pushRoundMode = 'none';
 
   window.setPushRoundMode = function (mode) {
     pushRoundMode = pushRoundMode === mode && mode !== 'custom' ? 'none' : mode;
@@ -1517,7 +1616,7 @@ export function initOrderStoreBindings() {
     hqState.allProducts
       .filter((p) => p.status !== 'inactive' && p.status !== 'draft')
       .forEach((p) => {
-        const qty = parseInt(document.getElementById(`push-qty-${p.id}`)?.value || '0', 10);
+        const qty = parseFloat(document.getElementById(`push-qty-${p.id}`)?.value || '0');
         const priceEl = document.getElementById(`push-price-${p.id}`);
         const price = priceEl ? parseFloat(priceEl.value || '0') : parseFloat(p.tier_1_price || '0');
         if (qty > 0 && !isNaN(price)) {
@@ -1588,7 +1687,7 @@ export function initOrderStoreBindings() {
   window.quickAddPushTopItem = function (prodId) {
     const qtyEl = document.getElementById(`push-qty-${prodId}`);
     if (qtyEl) {
-      qtyEl.value = (parseInt(qtyEl.value || '0', 10) || 0) + 1;
+      qtyEl.value = (parseFloat(qtyEl.value || '0') || 0) + 1;
       qtyEl.classList.add('ring-2', 'ring-amber-400');
       setTimeout(() => qtyEl.classList.remove('ring-2', 'ring-amber-400'), 400);
       window.recalcPushOrderSummary();
@@ -1690,7 +1789,7 @@ export function initOrderStoreBindings() {
                            <span class="text-[10px] text-stone-400 ml-0.5">/${unitLabel}</span>
                          </div>`
                   }
-                  <input type="number" min="0" value="0" id="push-qty-${p.id}"
+                  <input type="number" step="any" min="0" value="0" id="push-qty-${p.id}"
                     oninput="window.recalcPushOrderSummary()"
                     class="w-14 bg-stone-50 border border-stone-200 rounded px-1.5 py-0.5 text-center font-bold font-mono">
                 </div>
@@ -1725,7 +1824,7 @@ export function initOrderStoreBindings() {
     const items = [];
     let rawTotalAmount = 0;
     for (const p of hqState.allProducts) {
-      const qty = parseInt(document.getElementById(`push-qty-${p.id}`)?.value || '0');
+      const qty = parseFloat(document.getElementById(`push-qty-${p.id}`)?.value || '0');
       if (qty > 0) {
         const customPriceEl = document.getElementById(`push-price-${p.id}`);
         const price = customPriceEl ? parseFloat(customPriceEl.value || '0') : calcStoreEffectivePrice(store, p).price;
@@ -1733,7 +1832,7 @@ export function initOrderStoreBindings() {
         rawTotalAmount += price * qty;
       }
     }
-    if (items.length === 0) return alert('请至少挑选 1 样货品！');
+    if (items.length === 0) return alert('请至少挑选 1 样货品或项目！');
 
     const customValStr = document.getElementById('push-custom-final-input')?.value;
     const customFinal = customValStr !== undefined && customValStr !== '' ? parseFloat(customValStr) : null;
