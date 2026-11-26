@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（卡片弹窗 + 自动记忆上次联系人，第二次使用零打字）
+ * 百工百业 · 五端统一协同与跨端桥接引擎（卡片弹窗 + 自动记忆联系人 + 弱网本地暂存补传）
  * 覆盖：index.html (门店端) / driver.html (掌中宝) / mall.html (天街端) / suppliers.html (名录端)
  */
 import { supabase } from '../../lib/supabase.js';
@@ -41,6 +41,26 @@ function saveContactProfile(patch = {}) {
 }
 
 /**
+ * 微信防丢失常驻入口轻量引导（仅首次出现，可一键关闭）
+ */
+function showWeChatPinGuideIfFirstTime() {
+  if (localStorage.getItem('baigong_wechat_pin_dismissed') === '1') return;
+  if (document.getElementById('baigong-wechat-pin-tip')) return;
+  const tip = document.createElement('div');
+  tip.id = 'baigong-wechat-pin-tip';
+  tip.className = 'fixed bottom-16 left-1/2 -translate-x-1/2 z-40 max-w-sm w-[92%] bg-stone-900/95 text-white px-3.5 py-2 rounded-2xl shadow-lg flex items-center justify-between gap-2 text-[11px] border border-stone-700';
+  tip.innerHTML = `
+    <span>💡 点微信右上角 <b>【···】→【浮窗】</b>，下次像微信一样一点就开</span>
+    <button type="button" id="btn-close-wechat-pin-tip" class="text-amber-300 font-bold shrink-0 px-1.5">知道了</button>
+  `;
+  document.body.appendChild(tip);
+  document.getElementById('btn-close-wechat-pin-tip')?.addEventListener('click', () => {
+    localStorage.setItem('baigong_wechat_pin_dismissed', '1');
+    tip.remove();
+  });
+}
+
+/**
  * 通用温润卡片弹窗构建器
  */
 function openBridgeSheetModal({ id, title, subtitle, bodyHtml, confirmText, onConfirm }) {
@@ -52,7 +72,8 @@ function openBridgeSheetModal({ id, title, subtitle, bodyHtml, confirmText, onCo
     <div class="bg-white border border-stone-200 rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 space-y-3.5 shadow-2xl text-xs animate-fade-in">
       <div class="flex justify-between items-start border-b border-stone-100 pb-2.5">
         <div>
-          <b class="text-base text-stone-900 block">${title}</b>${subtitle ? `<span class="text-[11px] text-stone-500 mt-0.5 block">${subtitle}</span>` : ''}
+          <b class="text-base text-stone-900 block">${title}</b>
+          ${subtitle ? `<span class="text-[11px] text-stone-500 mt-0.5 block">${subtitle}</span>` : ''}
         </div>
         <button type="button" id="${id}-close" class="w-7 h-7 rounded-full bg-stone-100 text-stone-500 hover:text-stone-900 font-bold flex items-center justify-center">✕</button>
       </div>
@@ -83,6 +104,7 @@ let lastRenderedStoreAgent = '';
  * 1. 门店端 (index.html)
  */
 export async function initStoreTerminalBridge() {
+  showWeChatPinGuideIfFirstTime();
   const params = getUrlParams();
   const stickerAgent = (params.get('agent') || params.get('t') || '').trim();
   const stickerStoreId = (params.get('store_id') || '').trim();
@@ -239,9 +261,24 @@ export async function initStoreTerminalBridge() {
 }
 
 /**
- * 2. 掌中宝 / 一线移动工作台 (driver.html)
+ * 2. 掌中宝 / 一线移动工作台 (driver.html) — 内置弱网本地暂存队列与一键补传
  */
+const OFFLINE_QUEUE_KEY = 'baigong_palm_offline_queue';
+
+function readPalmOfflineQueue() {
+  try {
+    return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function writePalmOfflineQueue(list) {
+  localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(list));
+}
+
 export function initDriverTerminalBridge() {
+  showWeChatPinGuideIfFirstTime();
   const navHost = document.getElementById('palm-role-nav');
   if (!navHost || document.getElementById('palm-voice-quick-bar')) return;
 
@@ -249,11 +286,16 @@ export function initDriverTerminalBridge() {
   bar.id = 'palm-voice-quick-bar';
   bar.className = 'mx-3 mt-2.5 bg-emerald-50/90 border border-emerald-200 p-2.5 rounded-2xl space-y-1.5 text-xs';
   bar.innerHTML = `
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-1">
       <b class="text-emerald-950 text-[11px]">🗣️ 一线极速记账（散客随手记 / 说话记收款）：</b>
-      <button type="button" onclick="window.openPalmQuickWalkInModal()" class="bg-[#1b4332] text-white font-bold px-2.5 py-0.5 rounded-lg text-[10px]">
-        ⚡ 散客随手开单
-      </button>
+      <div class="flex items-center gap-1.5">
+        <button type="button" id="btn-palm-sync-offline" onclick="window.flushPalmOfflineQueue()" class="hidden bg-amber-400 text-stone-950 font-bold px-2 py-0.5 rounded-lg text-[10px]">
+          📶 待同步 0 笔
+        </button>
+        <button type="button" onclick="window.openPalmQuickWalkInModal()" class="bg-[#1b4332] text-white font-bold px-2.5 py-0.5 rounded-lg text-[10px]">
+          ⚡ 散客随手开单
+        </button>
+      </div>
     </div>
     <div class="flex gap-1.5">
       <input type="text" id="palm-quick-note-input" placeholder="如：旺顺饭庄收现金800元 / 散客拿2箱油160元" class="flex-1 bg-white border border-emerald-200 rounded-xl px-2.5 py-1.5 text-[11px] outline-none">
@@ -262,6 +304,46 @@ export function initDriverTerminalBridge() {
     </div>
   `;
   navHost.insertAdjacentElement('beforebegin', bar);
+
+  function refreshOfflineBadge() {
+    const q = readPalmOfflineQueue();
+    const btn = document.getElementById('btn-palm-sync-offline');
+    if (!btn) return;
+    if (q.length > 0) {
+      btn.innerText = `📶 待补传 ${q.length} 笔`;
+      btn.classList.remove('hidden');
+    } else {
+      btn.classList.add('hidden');
+    }
+  }
+  refreshOfflineBadge();
+
+  window.flushPalmOfflineQueue = async function (silent = false) {
+    const q = readPalmOfflineQueue();
+    if (q.length === 0) return;
+    if (!navigator.onLine) {
+      if (!silent) alert('当前仍处于无信号状态，等有网络时再点此按钮即可自动补传。');
+      return;
+    }
+
+    const remaining = [];
+    let syncedCount = 0;
+    for (const item of q) {
+      const { error } = await supabase.from(item.table).insert([item.payload]);
+      if (error) remaining.push(item);
+      else syncedCount += 1;
+    }
+    writePalmOfflineQueue(remaining);
+    refreshOfflineBadge();
+    if (syncedCount > 0 && !silent) {
+      alert(`✅ 信号已恢复！已自动将本地暂存的 ${syncedCount} 笔账目全部上传同步到云端！`);
+      if (typeof window.loadDriverTasks === 'function') window.loadDriverTasks();
+    }
+  };
+
+  window.addEventListener('online', () => {
+    window.flushPalmOfflineQueue(false);
+  });
 
   window.submitPalmQuickCommand = async function () {
     const inp = document.getElementById('palm-quick-note-input');
@@ -275,7 +357,7 @@ export function initDriverTerminalBridge() {
 
     if (!confirm(`确认将以下记录写入商号账本？\n• 内容：${txt}\n• 识别金额：¥${amt.toFixed(2)}\n• 经手人：${operator}`)) return;
 
-    await supabase.from('driver_collection_log').insert([{
+    const payload = {
       tenant_id: tenantId,
       store_id: 0,
       store_name: `一线随手记 (${txt.slice(0, 18)})`,
@@ -287,9 +369,19 @@ export function initDriverTerminalBridge() {
       basket_deduct_amount: 0,
       pay_method: txt.includes('现金') ? '现金' : '随手记/扫码',
       settled_to_hq: false
-    }]);
+    };
 
+    const { error } = await supabase.from('driver_collection_log').insert([payload]);
     inp.value = '';
+    if (error || !navigator.onLine) {
+      const q = readPalmOfflineQueue();
+      q.push({ table: 'driver_collection_log', payload, savedAt: Date.now() });
+      writePalmOfflineQueue(q);
+      refreshOfflineBadge();
+      alert('📶 当前无网络信号，已先为您稳妥记在手机本地，恢复信号后自动上传云端！');
+      return;
+    }
+
     alert('✅ 已写入随车/一线账本，回库后财务可直接点清核对！');
     if (typeof window.loadDriverTasks === 'function') window.loadDriverTasks();
   };
@@ -298,7 +390,7 @@ export function initDriverTerminalBridge() {
     openBridgeSheetModal({
       id: 'modal-palm-walkin-order',
       title: '⚡ 掌中宝 · 散客现场随手开单',
-      subtitle: '无需建档，现场成交一秒留痕入账',
+      subtitle: '无需建档，支持弱网本地暂存，现场成交一秒留痕入账',
       confirmText: '✅ 立即出凭单入账',
       bodyHtml: `
         <div>
@@ -325,7 +417,7 @@ export function initDriverTerminalBridge() {
         const operator = (document.getElementById('driver-name-display')?.innerText || '一线执事').trim();
         const ckNo = generateMobileVoucherNo('CK');
 
-        const { error } = await supabase.from('store_order').insert([{
+        const payload = {
           order_no: ckNo,
           tenant_id: tenantId,
           store_id: 0,
@@ -343,9 +435,19 @@ export function initDriverTerminalBridge() {
           order_status: 'confirmed',
           delivery_status: 'delivered',
           note: `[掌中宝散客随手单] ${itemDesc}`
-        }]);
-        if (error) return alert('记账失败：' + error.message);
+        };
+
+        const { error } = await supabase.from('store_order').insert([payload]);
         close();
+        if (error || !navigator.onLine) {
+          const q = readPalmOfflineQueue();
+          q.push({ table: 'store_order', payload, savedAt: Date.now() });
+          writePalmOfflineQueue(q);
+          refreshOfflineBadge();
+          alert(`📶 当前网络不通，凭单【${ckNo}】已先存进手机本地缓存，联网后自动补传！`);
+          return;
+        }
+
         alert(`✅ 散客随手单【${ckNo}】（¥${totalAmt.toFixed(2)}）已入账！`);
         if (typeof window.loadDriverTasks === 'function') window.loadDriverTasks();
       }
@@ -357,6 +459,7 @@ export function initDriverTerminalBridge() {
  * 3. 百工天街零售端 (mall.html)
  */
 export async function initMallTerminalBridge() {
+  showWeChatPinGuideIfFirstTime();
   const [crowdRes, charityTenantsRes] = await Promise.all([
     supabase
       .from('platform_suggestion_board')
@@ -465,6 +568,7 @@ export async function initMallTerminalBridge() {
  * 4. 百业供需合作名录 (suppliers.html)
  */
 export async function initSuppliersTerminalBridge() {
+  showWeChatPinGuideIfFirstTime();
   const mainHost = document.querySelector('main') || document.body;
   if (!mainHost || document.getElementById('suppliers-two-way-board')) return;
 
