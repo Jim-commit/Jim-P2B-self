@@ -1,6 +1,6 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（精准不串台命名 · 门店安全收银双扫码 · 端庄一体门头）
- * 覆盖：index.html (门店工作台) / driver.html (送货与上门) / mall.html / suppliers.html (逛大集)
+ * 百工百业 · 五端统一协同与跨端桥接引擎（零重复注入收口版 · 门店安全收银双扫码绑定）
+ * 覆盖：index.html (绑定原生收银弹窗与凑单开产) / driver.html / mall.html / suppliers.html
  */
 import { supabase } from '../../lib/supabase.js';
 import { getTenantLexicon } from './silentMemoryAndLexicon.js';
@@ -55,9 +55,10 @@ function showWeChatPinGuideIfFirstTime() {
 }
 
 /**
- * 端庄大气一体式商号门头身份切换栏（精准角色命名，避免门店老板误入批发后台）
+ * 其余三端（driver / mall / suppliers）一体式商号门头身份切换栏（不再对 index.html 重复注入）
  */
 function mountMobileQuickRoleSwitchDock(currentFile) {
+  if (currentFile === 'index.html') return;
   if (document.getElementById('baigong-mobile-role-dock')) return;
   const items = [
     { file: 'hq.html', label: '批发与调度' },
@@ -157,7 +158,7 @@ function openBridgeSheetModal({ id, title, subtitle, bodyHtml, confirmText, onCo
 }
 
 /**
- * 门店柜台轻量收银与收款码安全管理存储（零二清直达老板账户 + 4位掌柜安全锁 + 条码记忆库）
+ * 门店柜台轻量收银与收款码安全管理存储（绑定 index.html 原生弹窗 #modal-store-counter-pos）
  */
 const POS_PAYCODE_KEY = 'baigong_store_pos_paycode_v1';
 const POS_LEDGER_KEY = 'baigong_store_pos_ledger_v1';
@@ -199,217 +200,11 @@ function writeBarcodeMemoryDb(db) {
   localStorage.setItem(POS_BARCODE_DB_KEY, JSON.stringify(db));
 }
 
-/**
- * 门店柜台收银 + 关联/上传收款码（带4位安全锁）+ 手机摄像头扫条形码弹窗
- */
-function openStoreCounterPosModal() {
-  document.getElementById('modal-store-counter-pos')?.remove();
-  const storeName = (document.getElementById('store-title')?.innerText || getSavedContactProfile().storeName || '本店柜台').trim();
-  const payCfg = readPosPaycodeConfig();
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const allRows = readPosLedgerList();
-  const todayValid = allRows.filter((r) => !r.voided && String(r.createdAt || '').startsWith(todayStr));
-  const todayCash = todayValid.filter((r) => r.method === '现金').reduce((s, r) => s + r.amount, 0);
-  const todayDigital = todayValid.filter((r) => r.method !== '现金').reduce((s, r) => s + r.amount, 0);
-  const todayTotal = todayCash + todayDigital;
-
-  const hasWx = !!payCfg.wxQr;
-  const hasAli = !!payCfg.aliQr;
-  const hasLinkedUrl = !!payCfg.linkedCodeText;
-  const hasAnyCode = hasWx || hasAli || hasLinkedUrl;
-
-  const modal = document.createElement('div');
-  modal.id = 'modal-store-counter-pos';
-  modal.className = 'fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto';
-  modal.innerHTML = `
-    <div class="bg-white border border-stone-200 rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 space-y-3 shadow-2xl text-xs my-auto">
-      <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
-        <div>
-          <b class="text-base text-stone-900 block">💰 柜台随手收银 · 亮码收款</b>
-          <span class="text-[11px] text-emerald-800 font-bold">🛡️ 资金直达掌柜本人账户 · 零抽佣 · 4位安全锁防替换</span>
-        </div>
-        <button type="button" id="btn-close-store-pos" class="w-7 h-7 rounded-full bg-stone-100 text-stone-500 font-bold">✕</button>
-      </div>
-
-      <!-- 顶部三模式切换胶囊 -->
-      <div class="bg-stone-100 p-1 rounded-2xl grid grid-cols-3 gap-1 font-bold text-center text-[11px]">
-        <button type="button" id="pos-tab-collect" class="py-1.5 rounded-xl bg-[#1b4332] text-amber-300 shadow-2xs">💵 收银记账</button>
-        <button type="button" id="pos-tab-qr" class="py-1.5 rounded-xl text-stone-700">📱 本店收款码</button>
-        <button type="button" id="pos-tab-summary" class="py-1.5 rounded-xl text-stone-700">📒 今日流水(${todayValid.length})</button>
-      </div>
-
-      <!-- 面板1：收银记账 + 手机扫商品条码 -->
-      <div id="pos-panel-collect" class="space-y-2.5">
-        <div class="flex gap-1.5">
-          <input type="text" id="pos-item-desc" placeholder="商品/服务名（可选，默认：柜台零售）" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none focus:border-emerald-700">
-          <button type="button" id="btn-pos-scan-barcode" class="bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 font-bold px-3 rounded-xl shrink-0">
-            📷 扫条码
-          </button>
-        </div>
-
-        <div id="pos-barcode-scanner-box" class="hidden bg-stone-900 text-white p-3 rounded-2xl space-y-2">
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-amber-300 font-bold">📷 对准商品 69 开头条形码自动识别</span>
-            <button type="button" id="btn-stop-barcode-cam" class="text-stone-300 underline">关闭相机</button>
-          </div>
-          <video id="pos-barcode-video" autoplay playsinline muted class="w-full h-36 object-cover rounded-xl bg-black"></video>
-          <div class="flex gap-1.5">
-            <input type="text" id="pos-manual-barcode" placeholder="或手动输入条码数字快速检索/建档" class="flex-1 bg-stone-800 border border-stone-700 rounded-xl px-2.5 py-1.5 text-white font-mono text-xs">
-            <button type="button" id="btn-lookup-manual-barcode" class="bg-amber-400 text-stone-950 font-bold px-3 rounded-xl shrink-0">检索</button>
-          </div>
-        </div>
-
-        <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-3 flex items-center justify-between gap-2">
-          <div>
-            <span class="text-[10px] text-stone-500 block">本次实收金额 (元)</span>
-            <input type="number" step="0.01" id="pos-collect-amt" placeholder="0.00" class="bg-transparent font-mono font-bold text-2xl text-emerald-950 w-36 outline-none">
-          </div>
-          <div class="flex flex-col items-end gap-1">
-            <button type="button" id="btn-pos-round-down" class="hidden bg-amber-400 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[11px]">✂️ 抹零</button>
-            <button type="button" id="btn-pos-quick-show-qr" class="bg-white border border-emerald-300 text-emerald-950 font-bold px-2.5 py-1 rounded-xl text-[11px]">📱 亮码收款</button>
-          </div>
-        </div>
-
-        <!-- 快捷大按键计算器 -->
-        <div class="bg-stone-100 p-2 rounded-2xl grid grid-cols-4 gap-1.5 font-mono text-sm font-bold">
-          ${['7', '8', '9', '清空', '4', '5', '6', '退格', '1', '2', '3', '+10', '0', '00', '.', '+50']
-            .map(
-              (k) =>
-                `<button type="button" data-pos-key="${k}" class="py-2 rounded-xl ${
-                  ['清空', '退格', '+10', '+50'].includes(k) ? 'bg-amber-200/80 text-amber-950 text-xs' : 'bg-white text-stone-900 shadow-2xs active:bg-emerald-100'
-                }">${k}</button>`
-            )
-            .join('')}
-        </div>
-
-        <div class="grid grid-cols-3 gap-1.5 text-[11px] font-bold">
-          <label class="cursor-pointer border border-emerald-600 bg-emerald-50 text-emerald-950 rounded-xl py-2 text-center">
-            <input type="radio" name="pos-pay-method" value="微信/支付宝" checked class="hidden"> 📱 扫码/转账
-          </label>
-          <label class="cursor-pointer border border-stone-200 bg-stone-50 text-stone-700 rounded-xl py-2 text-center">
-            <input type="radio" name="pos-pay-method" value="现金" class="hidden"> 💵 现金收讫
-          </label>
-          <label class="cursor-pointer border border-stone-200 bg-stone-50 text-stone-700 rounded-xl py-2 text-center">
-            <input type="radio" name="pos-pay-method" value="熟客记账" class="hidden"> 📝 熟客先记账
-          </label>
-        </div>
-
-        <button type="button" id="btn-pos-confirm-save" class="w-full py-3 rounded-2xl bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold text-sm shadow">
-          ✅ 确认收款并记入今日营收
-        </button>
-      </div>
-
-      <!-- 面板2：关联或上传自己的收款码（带安全校验水印与4位掌柜锁） -->
-      <div id="pos-panel-qr" class="hidden space-y-3">
-        ${
-          hasAnyCode
-            ? `<div class="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-3 text-center space-y-2">
-                 <div class="flex items-center justify-center gap-1.5 text-[11px] text-emerald-900 font-bold">
-                   <span>🔒 已核验归属：${storeName}</span>
-                   <span class="text-[10px] bg-emerald-800 text-white px-2 py-0.5 rounded-full">防掉包已锁</span>
-                 </div>
-                 <div class="flex justify-center gap-1.5">
-                   ${hasWx ? '<button type="button" id="btn-show-wx-qr" class="bg-emerald-700 text-white font-bold px-3 py-1 rounded-xl text-[11px]">💚 微信收款码</button>' : ''}
-                   ${hasAli ? '<button type="button" id="btn-show-ali-qr" class="bg-sky-600 text-white font-bold px-3 py-1 rounded-xl text-[11px]">💙 支付宝收款码</button>' : ''}
-                   ${hasLinkedUrl ? '<button type="button" id="btn-show-linked-qr" class="bg-amber-500 text-stone-950 font-bold px-3 py-1 rounded-xl text-[11px]">🔗 关联收款码</button>' : ''}
-                 </div>
-                 <div id="pos-qr-display-stage" class="py-1 flex flex-col items-center">
-                   ${
-                     hasWx
-                       ? `<img src="${payCfg.wxQr}" class="w-52 h-52 object-contain rounded-2xl border border-stone-200 bg-white p-1.5 shadow-xs"/>`
-                       : hasAli
-                         ? `<img src="${payCfg.aliQr}" class="w-52 h-52 object-contain rounded-2xl border border-stone-200 bg-white p-1.5 shadow-xs"/>`
-                         : `<img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(payCfg.linkedCodeText)}" class="w-52 h-52 object-contain rounded-2xl border border-stone-200 bg-white p-1.5 shadow-xs"/>`
-                   }
-                   <span class="text-[10px] text-stone-500 mt-1.5">绑定时间：${payCfg.updatedAt || '已锁定'} · 扫码直达掌柜账户</span>
-                 </div>
-                 <button type="button" id="btn-unlock-edit-paycode" class="text-[11px] text-stone-500 underline">🔑 掌柜凭安全码更换/关联收款码</button>
-               </div>`
-            : `<div class="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-[11px] text-amber-950">
-                 <b>👋 尚未绑定本店收款码：</b>您可从相册上传自己的微信/支付宝收款码，或直接关联已有收款码链接；设置 4 位安全码后，店内帮工无法私自替换。
-               </div>`
-        }
-
-        <div id="pos-paycode-editor" class="${hasAnyCode ? 'hidden' : ''} bg-stone-50 border border-stone-200 rounded-2xl p-3 space-y-2.5">
-          <div>
-            <label class="block font-bold text-stone-700 mb-1">方式一：上传本地微信 / 支付宝收款码图片</label>
-            <div class="grid grid-cols-2 gap-2">
-              <label class="bg-white border border-stone-300 rounded-xl p-2 text-center cursor-pointer hover:bg-emerald-50 font-bold text-emerald-900">
-                💚 选微信收款码
-                <input type="file" id="pos-upload-wx-qr" accept="image/*" class="hidden">
-              </label>
-              <label class="bg-white border border-stone-300 rounded-xl p-2 text-center cursor-pointer hover:bg-sky-50 font-bold text-sky-900">
-                💙 选支付宝收款码
-                <input type="file" id="pos-upload-ali-qr" accept="image/*" class="hidden">
-              </label>
-            </div>
-          </div>
-          <div>
-            <label class="block font-bold text-stone-700 mb-1">方式二：关联已有收款码内容 / 商户收款链接（可选）</label>
-            <input type="text" id="pos-link-qr-input" value="${payCfg.linkedCodeText || ''}" placeholder="粘贴您的商户收款链接或收款牌网址" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 outline-none">
-          </div>
-          <div>
-            <label class="block font-bold text-stone-700 mb-1">🔒 设置 4 位掌柜安全码（防他人替换收款码）*：</label>
-            <input type="password" maxlength="4" id="pos-owner-pin" placeholder="输入4位数字安全码（如 8888）" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 font-mono font-bold outline-none">
-          </div>
-          <button type="button" id="btn-save-pos-paycode" class="w-full py-2 rounded-xl bg-[#1b4332] text-amber-300 font-bold">
-            🔒 锁定并保存本店收款码
-          </button>
-        </div>
-      </div>
-
-      <!-- 面板3：今日流水与打烊收摊小结 -->
-      <div id="pos-panel-summary" class="hidden space-y-2.5">
-        <div class="bg-emerald-950 text-white rounded-2xl p-3.5 grid grid-cols-3 gap-2 text-center">
-          <div>
-            <span class="text-[10px] text-emerald-200/80 block">今日柜台共收</span>
-            <b class="text-sm font-mono text-amber-300">¥${todayTotal.toFixed(2)}</b>
-          </div>
-          <div>
-            <span class="text-[10px] text-emerald-200/80 block">扫码/电子收款</span>
-            <b class="text-sm font-mono">¥${todayDigital.toFixed(2)}</b>
-          </div>
-          <div>
-            <span class="text-[10px] text-emerald-200/80 block">现金收款</span>
-            <b class="text-sm font-mono">¥${todayCash.toFixed(2)}</b>
-          </div>
-        </div>
-        <button type="button" id="btn-copy-pos-closing-wechat" class="w-full py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 font-bold">
-          📋 复制「今日打烊收摊小结」发微信留存
-        </button>
-        <div class="max-h-48 overflow-y-auto space-y-1.5">
-          ${
-            allRows.slice(0, 15).length === 0
-              ? '<p class="text-center text-stone-400 py-4">今日暂无柜台零售流水</p>'
-              : allRows
-                  .slice(0, 15)
-                  .map(
-                    (r) => `
-                  <div class="flex items-center justify-between bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 ${r.voided ? 'opacity-50 line-through' : ''}">
-                    <div>
-                      <b class="text-stone-800">${r.itemDesc}</b>
-                      <span class="text-[10px] text-stone-500 block">${String(r.createdAt || '').slice(11, 16)} · ${r.method}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <b class="font-mono text-emerald-950">¥${Number(r.amount || 0).toFixed(2)}</b>
-                      ${
-                        r.voided
-                          ? '<span class="text-[10px] text-rose-600 font-bold">已作废</span>'
-                          : `<button type="button" data-void-pos-id="${r.id}" class="text-[10px] text-rose-600 underline">作废</button>`
-                      }
-                    </div>
-                  </div>`
-                  )
-                  .join('')
-          }
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-
+function bindNativeStoreCounterPosBindings() {
   let cameraStream = null;
-  const stopCamera = () => {
+  let selectedPayMethod = '微信/支付宝';
+
+  window.stopStorePosCamera = function () {
     if (cameraStream) {
       cameraStream.getTracks().forEach((t) => t.stop());
       cameraStream = null;
@@ -417,13 +212,13 @@ function openStoreCounterPosModal() {
     document.getElementById('pos-barcode-scanner-box')?.classList.add('hidden');
   };
 
-  document.getElementById('btn-close-store-pos')?.addEventListener('click', () => {
-    stopCamera();
-    modal.remove();
-  });
+  window.closeStoreCounterPosModal = function () {
+    window.stopStorePosCamera();
+    document.getElementById('modal-store-counter-pos')?.classList.add('hidden');
+  };
 
-  const switchPosTab = (tabName) => {
-    stopCamera();
+  window.switchStorePosTab = function (tabName) {
+    window.stopStorePosCamera();
     ['collect', 'qr', 'summary'].forEach((k) => {
       const btn = document.getElementById(`pos-tab-${k}`);
       const panel = document.getElementById(`pos-panel-${k}`);
@@ -436,27 +231,10 @@ function openStoreCounterPosModal() {
       if (panel) panel.classList.toggle('hidden', k !== tabName);
     });
   };
-  document.getElementById('pos-tab-collect')?.addEventListener('click', () => switchPosTab('collect'));
-  document.getElementById('pos-tab-qr')?.addEventListener('click', () => switchPosTab('qr'));
-  document.getElementById('pos-tab-summary')?.addEventListener('click', () => switchPosTab('summary'));
-  document.getElementById('btn-pos-quick-show-qr')?.addEventListener('click', () => switchPosTab('qr'));
 
-  modal.querySelectorAll('input[name="pos-pay-method"]').forEach((radio) => {
-    radio.addEventListener('change', () => {
-      modal.querySelectorAll('input[name="pos-pay-method"]').forEach((r) => {
-        const lbl = r.parentElement;
-        if (lbl) {
-          lbl.className = r.checked
-            ? 'cursor-pointer border border-emerald-600 bg-emerald-50 text-emerald-950 rounded-xl py-2 text-center'
-            : 'cursor-pointer border border-stone-200 bg-stone-50 text-stone-700 rounded-xl py-2 text-center';
-        }
-      });
-    });
-  });
-
-  const amtInput = document.getElementById('pos-collect-amt');
-  const roundBtn = document.getElementById('btn-pos-round-down');
-  const refreshRoundBtn = () => {
+  window.refreshStorePosRoundBtn = function () {
+    const amtInput = document.getElementById('pos-collect-amt');
+    const roundBtn = document.getElementById('btn-pos-round-down');
     const val = parseFloat(amtInput?.value || '0');
     const fl = Math.floor(val);
     if (roundBtn) {
@@ -468,66 +246,73 @@ function openStoreCounterPosModal() {
       }
     }
   };
-  amtInput?.addEventListener('input', refreshRoundBtn);
-  roundBtn?.addEventListener('click', () => {
+
+  window.applyStorePosRoundDown = function () {
+    const amtInput = document.getElementById('pos-collect-amt');
     const fl = Math.floor(parseFloat(amtInput?.value || '0'));
     if (fl > 0 && amtInput) {
       amtInput.value = fl.toFixed(2);
-      roundBtn.classList.add('hidden');
+      document.getElementById('btn-pos-round-down')?.classList.add('hidden');
     }
-  });
+  };
 
-  modal.querySelectorAll('[data-pos-key]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const k = btn.getAttribute('data-pos-key');
-      if (!amtInput || !k) return;
-      if (k === '清空') amtInput.value = '';
-      else if (k === '退格') amtInput.value = String(amtInput.value || '').slice(0, -1);
-      else if (k === '+10') amtInput.value = (parseFloat(amtInput.value || '0') + 10).toFixed(2);
-      else if (k === '+50') amtInput.value = (parseFloat(amtInput.value || '0') + 50).toFixed(2);
-      else amtInput.value = String(amtInput.value || '') + k;
-      refreshRoundBtn();
+  window.pressStorePosKey = function (k) {
+    const amtInput = document.getElementById('pos-collect-amt');
+    if (!amtInput) return;
+    if (k === '清空') amtInput.value = '';
+    else if (k === '退格') amtInput.value = String(amtInput.value || '').slice(0, -1);
+    else if (k === '+10') amtInput.value = (parseFloat(amtInput.value || '0') + 10).toFixed(2);
+    else if (k === '+50') amtInput.value = (parseFloat(amtInput.value || '0') + 50).toFixed(2);
+    else amtInput.value = String(amtInput.value || '') + k;
+    window.refreshStorePosRoundBtn();
+  };
+
+  window.selectStorePosMethod = function (btnEl, methodName) {
+    selectedPayMethod = methodName;
+    document.querySelectorAll('.pos-method-btn').forEach((b) => {
+      b.className = 'pos-method-btn border border-stone-200 bg-stone-50 text-stone-700 rounded-xl py-2 text-center';
     });
-  });
+    if (btnEl) {
+      btnEl.className = 'pos-method-btn border border-emerald-600 bg-emerald-50 text-emerald-950 rounded-xl py-2 text-center';
+    }
+  };
 
   const handleRecognizedBarcode = (code) => {
     const cleanCode = String(code || '').trim();
     if (!cleanCode) return;
     const db = readBarcodeMemoryDb();
+    const descInp = document.getElementById('pos-item-desc');
+    const amtInput = document.getElementById('pos-collect-amt');
     if (db[cleanCode]) {
       const hit = db[cleanCode];
-      const descInp = document.getElementById('pos-item-desc');
       if (descInp) descInp.value = hit.name;
       if (amtInput && hit.price > 0) {
         amtInput.value = Number(hit.price).toFixed(2);
-        refreshRoundBtn();
+        window.refreshStorePosRoundBtn();
       }
-      stopCamera();
+      window.stopStorePosCamera();
       alert(`✅ 条码识别成功：${hit.name}（零售价 ¥${Number(hit.price).toFixed(2)}）`);
       return;
     }
-    stopCamera();
+    window.stopStorePosCamera();
     const newName = prompt(`首次扫到条码【${cleanCode}】，请输入商品名称（下次再扫自动识别）：`);
     if (!newName || !newName.trim()) return;
     const newPrice = parseFloat(prompt(`请输入【${newName.trim()}】的零售单价（元）：`, '0') || '0');
     db[cleanCode] = { name: newName.trim(), price: isNaN(newPrice) ? 0 : newPrice };
     writeBarcodeMemoryDb(db);
-    const descInp = document.getElementById('pos-item-desc');
     if (descInp) descInp.value = newName.trim();
     if (amtInput && newPrice > 0) {
       amtInput.value = newPrice.toFixed(2);
-      refreshRoundBtn();
+      window.refreshStorePosRoundBtn();
     }
   };
 
-  document.getElementById('btn-lookup-manual-barcode')?.addEventListener('click', () => {
+  window.lookupManualStoreBarcode = function () {
     const code = document.getElementById('pos-manual-barcode')?.value.trim();
     if (code) handleRecognizedBarcode(code);
-  });
+  };
 
-  document.getElementById('btn-stop-barcode-cam')?.addEventListener('click', stopCamera);
-
-  document.getElementById('btn-pos-scan-barcode')?.addEventListener('click', async () => {
+  window.startStorePosBarcodeScanner = async function () {
     const box = document.getElementById('pos-barcode-scanner-box');
     const video = document.getElementById('pos-barcode-video');
     box?.classList.remove('hidden');
@@ -552,56 +337,115 @@ function openStoreCounterPosModal() {
         }, 500);
       }
     } catch {
-      // 摄像头未授权时保留下方手动输入条码框兜底
+      // 未授权摄像头时保留下方手动条码输入兜底
     }
-  });
+  };
 
-  document.getElementById('btn-pos-confirm-save')?.addEventListener('click', () => {
-    const amt = parseFloat(amtInput?.value || '0');
-    if (isNaN(amt) || amt <= 0) return alert('请输入有效的实收金额！');
-    const itemDesc = document.getElementById('pos-item-desc')?.value.trim() || '柜台零售';
-    const method = modal.querySelector('input[name="pos-pay-method"]:checked')?.value || '微信/支付宝';
+  function renderStorePosModalState() {
+    const storeName = (document.getElementById('store-title')?.innerText || getSavedContactProfile().storeName || '本店柜台').trim();
+    const payCfg = readPosPaycodeConfig();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const allRows = readPosLedgerList();
+    const todayValid = allRows.filter((r) => !r.voided && String(r.createdAt || '').startsWith(todayStr));
+    const todayCash = todayValid.filter((r) => r.method === '现金').reduce((s, r) => s + r.amount, 0);
+    const todayDigital = todayValid.filter((r) => r.method !== '现金').reduce((s, r) => s + r.amount, 0);
+    const todayTotal = todayCash + todayDigital;
 
-    const list = readPosLedgerList();
-    list.unshift({
-      id: Date.now(),
-      itemDesc,
-      amount: Number(amt.toFixed(2)),
-      method,
-      voided: false,
-      createdAt: new Date().toISOString()
-    });
-    writePosLedgerList(list);
-    stopCamera();
-    modal.remove();
-    alert(`✅ 已记入今日营收：${itemDesc} ¥${amt.toFixed(2)}（${method}）`);
-  });
+    const countBadge = document.getElementById('pos-today-count-badge');
+    if (countBadge) countBadge.innerText = String(todayValid.length);
+    const sumTotalEl = document.getElementById('pos-sum-total');
+    if (sumTotalEl) sumTotalEl.innerText = `¥${todayTotal.toFixed(2)}`;
+    const sumDigEl = document.getElementById('pos-sum-digital');
+    if (sumDigEl) sumDigEl.innerText = `¥${todayDigital.toFixed(2)}`;
+    const sumCashEl = document.getElementById('pos-sum-cash');
+    if (sumCashEl) sumCashEl.innerText = `¥${todayCash.toFixed(2)}`;
 
-  const stage = document.getElementById('pos-qr-display-stage');
-  document.getElementById('btn-show-wx-qr')?.addEventListener('click', () => {
-    if (stage && payCfg.wxQr) {
-      stage.innerHTML = `<img src="${payCfg.wxQr}" class="w-52 h-52 object-contain rounded-2xl border border-stone-200 bg-white p-1.5 shadow-xs"/><span class="text-[10px] text-emerald-800 font-bold mt-1.5">💚 微信收款码 · 资金直达掌柜本人</span>`;
+    const rowsHost = document.getElementById('pos-ledger-rows-container');
+    if (rowsHost) {
+      rowsHost.innerHTML =
+        allRows.slice(0, 15).length === 0
+          ? '<p class="text-center text-stone-400 py-4">今日暂无柜台零售流水</p>'
+          : allRows
+              .slice(0, 15)
+              .map(
+                (r) => `
+              <div class="flex items-center justify-between bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 ${r.voided ? 'opacity-50 line-through' : ''}">
+                <div>
+                  <b class="text-stone-800">${r.itemDesc}</b>
+                  <span class="text-[10px] text-stone-500 block">${String(r.createdAt || '').slice(11, 16)} · ${r.method}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <b class="font-mono text-emerald-950">¥${Number(r.amount || 0).toFixed(2)}</b>
+                  ${
+                    r.voided
+                      ? '<span class="text-[10px] text-rose-600 font-bold">已作废</span>'
+                      : `<button type="button" onclick="window.voidStorePosEntry(${r.id})" class="text-[10px] text-rose-600 underline">作废</button>`
+                  }
+                </div>
+              </div>`
+              )
+              .join('');
     }
-  });
-  document.getElementById('btn-show-ali-qr')?.addEventListener('click', () => {
-    if (stage && payCfg.aliQr) {
-      stage.innerHTML = `<img src="${payCfg.aliQr}" class="w-52 h-52 object-contain rounded-2xl border border-stone-200 bg-white p-1.5 shadow-xs"/><span class="text-[10px] text-sky-800 font-bold mt-1.5">💙 支付宝收款码 · 资金直达掌柜本人</span>`;
-    }
-  });
-  document.getElementById('btn-show-linked-qr')?.addEventListener('click', () => {
-    if (stage && payCfg.linkedCodeText) {
-      stage.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(payCfg.linkedCodeText)}" class="w-52 h-52 object-contain rounded-2xl border border-stone-200 bg-white p-1.5 shadow-xs"/><span class="text-[10px] text-amber-900 font-bold mt-1.5">🔗 已关联商户收款码</span>`;
-    }
-  });
 
-  document.getElementById('btn-unlock-edit-paycode')?.addEventListener('click', () => {
-    const inputPin = prompt('🔒 请输入 4 位掌柜安全码以解锁修改收款码：');
+    const hasWx = !!payCfg.wxQr;
+    const hasAli = !!payCfg.aliQr;
+    const hasLinkedUrl = !!payCfg.linkedCodeText;
+    const hasAnyCode = hasWx || hasAli || hasLinkedUrl;
+
+    const verifiedCard = document.getElementById('pos-qr-verified-card');
+    const emptyTip = document.getElementById('pos-qr-empty-tip');
+    const editor = document.getElementById('pos-paycode-editor');
+    const ownerLbl = document.getElementById('pos-qr-owner-label');
+    const switchBtns = document.getElementById('pos-qr-switch-btns');
+    const stage = document.getElementById('pos-qr-display-stage');
+    const linkInput = document.getElementById('pos-link-qr-input');
+    if (linkInput && payCfg.linkedCodeText) linkInput.value = payCfg.linkedCodeText;
+
+    if (hasAnyCode) {
+      verifiedCard?.classList.remove('hidden');
+      emptyTip?.classList.add('hidden');
+      editor?.classList.add('hidden');
+      if (ownerLbl) ownerLbl.innerText = `🔒 已核验归属：${storeName}`;
+      if (switchBtns) {
+        switchBtns.innerHTML = [
+          hasWx ? '<button type="button" onclick="window.showStoreQrStage(\'wx\')" class="bg-emerald-700 text-white font-bold px-3 py-1 rounded-xl text-[11px]">💚 微信收款码</button>' : '',
+          hasAli ? '<button type="button" onclick="window.showStoreQrStage(\'ali\')" class="bg-sky-600 text-white font-bold px-3 py-1 rounded-xl text-[11px]">💙 支付宝收款码</button>' : '',
+          hasLinkedUrl ? '<button type="button" onclick="window.showStoreQrStage(\'link\')" class="bg-amber-500 text-stone-950 font-bold px-3 py-1 rounded-xl text-[11px]">🔗 关联收款码</button>' : ''
+        ].join('');
+      }
+      if (stage) {
+        const defaultType = hasWx ? 'wx' : hasAli ? 'ali' : 'link';
+        window.showStoreQrStage(defaultType);
+      }
+    } else {
+      verifiedCard?.classList.add('hidden');
+      emptyTip?.classList.remove('hidden');
+      editor?.classList.remove('hidden');
+    }
+  }
+
+  window.showStoreQrStage = function (kind) {
+    const payCfg = readPosPaycodeConfig();
+    const stage = document.getElementById('pos-qr-display-stage');
+    if (!stage) return;
+    if (kind === 'wx' && payCfg.wxQr) {
+      stage.innerHTML = `<img src="${payCfg.wxQr}" class="w-52 h-52 object-contain rounded-2xl border border-stone-200 bg-white p-1.5 shadow-xs"/><span class="text-[10px] text-emerald-800 font-bold mt-1.5">💚 微信收款码 · 资金直达掌柜本人 (${payCfg.updatedAt || '已锁定'})</span>`;
+    } else if (kind === 'ali' && payCfg.aliQr) {
+      stage.innerHTML = `<img src="${payCfg.aliQr}" class="w-52 h-52 object-contain rounded-2xl border border-stone-200 bg-white p-1.5 shadow-xs"/><span class="text-[10px] text-sky-800 font-bold mt-1.5">💙 支付宝收款码 · 资金直达掌柜本人 (${payCfg.updatedAt || '已锁定'})</span>`;
+    } else if (kind === 'link' && payCfg.linkedCodeText) {
+      stage.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(payCfg.linkedCodeText)}" class="w-52 h-52 object-contain rounded-2xl border border-stone-200 bg-white p-1.5 shadow-xs"/><span class="text-[10px] text-amber-900 font-bold mt-1.5">🔗 已关联商户收款码 (${payCfg.updatedAt || '已锁定'})</span>`;
+    }
+  };
+
+  window.unlockEditStorePaycode = function () {
+    const payCfg = readPosPaycodeConfig();
+    const inputPin = prompt('🔒 请输入 4 位掌柜安全码以解锁更换收款码：');
     if (inputPin === null) return;
     if (payCfg.pin && inputPin.trim() !== String(payCfg.pin)) {
       return alert('❌ 安全码不正确，非掌柜本人不可更换本店收款码！');
     }
     document.getElementById('pos-paycode-editor')?.classList.remove('hidden');
-  });
+  };
 
   const compressQrFileToDataUrl = (file) =>
     new Promise((resolve) => {
@@ -623,7 +467,8 @@ function openStoreCounterPosModal() {
       reader.readAsDataURL(file);
     });
 
-  document.getElementById('btn-save-pos-paycode')?.addEventListener('click', async () => {
+  window.saveStorePaycodeConfig = async function () {
+    const payCfg = readPosPaycodeConfig();
     const pin = document.getElementById('pos-owner-pin')?.value.trim();
     if (!pin || pin.length !== 4) return alert('请设置 4 位掌柜安全码（如 8888），防止他人私自替换收款码！');
 
@@ -646,35 +491,68 @@ function openStoreCounterPosModal() {
       updatedAt: new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
     });
     alert('🔒 本店收款码已安全锁定保存！');
-    openStoreCounterPosModal();
-  });
+    renderStorePosModalState();
+  };
 
-  document.getElementById('btn-copy-pos-closing-wechat')?.addEventListener('click', () => {
+  window.saveStorePosEntry = function () {
+    const amtInput = document.getElementById('pos-collect-amt');
+    const amt = parseFloat(amtInput?.value || '0');
+    if (isNaN(amt) || amt <= 0) return alert('请输入有效的实收金额！');
+    const descInp = document.getElementById('pos-item-desc');
+    const itemDesc = descInp?.value.trim() || '柜台零售';
+
+    const list = readPosLedgerList();
+    list.unshift({
+      id: Date.now(),
+      itemDesc,
+      amount: Number(amt.toFixed(2)),
+      method: selectedPayMethod,
+      voided: false,
+      createdAt: new Date().toISOString()
+    });
+    writePosLedgerList(list);
+    if (amtInput) amtInput.value = '';
+    if (descInp) descInp.value = '';
+    window.closeStoreCounterPosModal();
+    alert(`✅ 已记入今日营收：${itemDesc} ¥${amt.toFixed(2)}（${selectedPayMethod}）`);
+  };
+
+  window.voidStorePosEntry = function (targetId) {
+    if (!confirm('确认作废该笔流水？（作废后将保留划除痕迹，不静默删账）')) return;
+    const list = readPosLedgerList().map((r) => (Number(r.id) === Number(targetId) ? { ...r, voided: true } : r));
+    writePosLedgerList(list);
+    renderStorePosModalState();
+  };
+
+  window.copyStorePosClosingWechat = function () {
+    const storeName = (document.getElementById('store-title')?.innerText || getSavedContactProfile().storeName || '本店柜台').trim();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayValid = readPosLedgerList().filter((r) => !r.voided && String(r.createdAt || '').startsWith(todayStr));
+    const todayCash = todayValid.filter((r) => r.method === '现金').reduce((s, r) => s + r.amount, 0);
+    const todayDigital = todayValid.filter((r) => r.method !== '现金').reduce((s, r) => s + r.amount, 0);
+    const todayTotal = todayCash + todayDigital;
+
     const msg = `🧾【${storeName} · 今日柜台收摊小结】(${todayStr})\n• 今日零售共收：¥${todayTotal.toFixed(2)}（共 ${todayValid.length} 笔）\n• 其中扫码/转账：¥${todayDigital.toFixed(2)}\n• 其中现金收款：¥${todayCash.toFixed(2)}\n账目清晰、日清日结！`;
     navigator.clipboard?.writeText(msg);
     alert(`✅ 今日收摊小结已复制，可直接发微信留存！\n\n${msg}`);
-  });
+  };
 
-  modal.querySelectorAll('[data-void-pos-id]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const targetId = Number(btn.getAttribute('data-void-pos-id'));
-      if (!confirm('确认作废该笔流水？（作废后将保留划除痕迹，不静默删账）')) return;
-      const list = readPosLedgerList().map((r) => (Number(r.id) === targetId ? { ...r, voided: true } : r));
-      writePosLedgerList(list);
-      openStoreCounterPosModal();
-    });
-  });
+  window.openStoreCounterPosModal = function () {
+    renderStorePosModalState();
+    window.switchStorePosTab('collect');
+    document.getElementById('modal-store-counter-pos')?.classList.remove('hidden');
+  };
 }
 
 let storeBridgeWatcherStarted = false;
 let lastRenderedStoreAgent = '';
 
 /**
- * 1. 门店工作台 (index.html)
+ * 1. 门店工作台 (index.html)：仅同步词典、温润空品项提示、源头“凑单开产”接龙与收银绑定（绝不重复注入导航或按钮条）
  */
 export async function initStoreTerminalBridge() {
   showWeChatPinGuideIfFirstTime();
-  mountMobileQuickRoleSwitchDock('index.html');
+  bindNativeStoreCounterPosBindings();
   const params = getUrlParams();
   const stickerAgent = (params.get('agent') || params.get('t') || '').trim();
   const stickerStoreId = (params.get('store_id') || '').trim();
@@ -705,20 +583,6 @@ export async function initStoreTerminalBridge() {
       }
     });
 
-    document.querySelectorAll('button, a, div').forEach((el) => {
-      if (el.children.length <= 2) {
-        const t = el.innerText || '';
-        if (t.includes('接入新供货方（商号绑定）') || t.includes('解绑当前供货方')) {
-          el.style.display = 'none';
-        }
-      }
-      if (el.children.length === 0) {
-        if (el.innerText?.trim() === '回填常备良品') el.innerText = '照上次再来一单';
-        if (el.innerText?.trim() === '清空待配篮') el.innerText = '清空重选';
-        if (el.innerText?.trim() === '历次交接契单与自提单') el.innerText = '历史订单与凭证';
-      }
-    });
-
     const container =
       document.getElementById('product-container') ||
       document.getElementById('product-list') ||
@@ -730,36 +594,9 @@ export async function initStoreTerminalBridge() {
         <div class="py-10 px-4 text-center text-xs text-stone-500 space-y-2">
           <div class="text-2xl">🌱</div>
           <b class="text-stone-700 block">当前供货方暂未上架公开品项</b>
-          <span class="block text-[11px]">您可点击上方切换其他供货方，或切到【批发与调度】先上架第一件货品/服务</span>
+          <span class="block text-[11px]">您可点击上方切换其他供货方，或点左上角菜单【逛大集】发掘更多源头供货方</span>
         </div>
       `;
-    }
-
-    if (container && !document.getElementById('store-sticker-welcome-bar')) {
-      document.querySelectorAll('div').forEach((el) => {
-        if (el.innerText?.includes('字太小看不清？点此切换') && el.children.length <= 3) {
-          el.style.display = 'none';
-        }
-      });
-
-      const profile = getSavedContactProfile();
-      const myIdentityHint = profile.storeName ? ` · ${profile.storeName}` : '';
-      const topBar = document.createElement('div');
-      topBar.id = 'store-sticker-welcome-bar';
-      topBar.className = 'mb-2.5 bg-stone-50 border border-stone-200 text-stone-800 px-3 py-2 rounded-2xl flex items-center justify-between gap-1.5 text-xs';
-      topBar.innerHTML = `
-        <span class="font-bold truncate">${stickerStoreId ? `🏷️ 快捷码 #${stickerStoreId}` : `🏪 门店工作台${myIdentityHint}`}</span>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" id="btn-open-store-counter-pos" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[11px] shadow-2xs">
-            💰 柜台收银/亮码
-          </button>
-          <button type="button" onclick="window.repeatLastOrder?.()" class="bg-[#1b4332] text-amber-300 font-bold px-2.5 py-1 rounded-xl text-[11px]">
-            ⚡ 照上次订
-          </button>
-        </div>
-      `;
-      container.parentNode?.insertBefore(topBar, container);
-      document.getElementById('btn-open-store-counter-pos')?.addEventListener('click', openStoreCounterPosModal);
     }
 
     if (!activeAgent || activeAgent === '未接入') {
