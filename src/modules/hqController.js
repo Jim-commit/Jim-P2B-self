@@ -53,6 +53,10 @@ import {
   mountHqUltimateToolsButton,
   initHqUltimateToolsBindings
 } from './hq/hqUltimateToolsModule.js';
+import {
+  mountSixteenRealmsQuickBar,
+  initSixteenRealmsBindings
+} from './soulEngine/sixteenRealmsEngine.js';
 
 window.openModal = (id) => document.getElementById(id)?.classList.remove('hidden');
 window.closeModal = (id) => document.getElementById(id)?.classList.add('hidden');
@@ -467,6 +471,7 @@ window.loadHQData = async function () {
     try { renderPerformanceAndCommissions(); } catch (e) {}
     try { await renderHqDailyReconcileAndDualQueue(); } catch (e) { console.warn('日结快照栏跳过:', e); }
     try { mountHqUltimateToolsButton(); } catch (e) {}
+    try { mountSixteenRealmsQuickBar(); } catch (e) {}
     try { await loadAndRenderHqGovernanceExtension(); } catch (e) { console.warn('治理扩展跳过:', e); }
   } catch (err) {
     console.error('loadHQData 顶层异常:', err);
@@ -492,6 +497,7 @@ export async function initHQController() {
   initHqBusinessRulesBindings();
   initHqDailyReconcileBindings();
   initHqUltimateToolsBindings();
+  initSixteenRealmsBindings();
 
   window.openContextualHelpModal = function () {
     const roleNames = {
