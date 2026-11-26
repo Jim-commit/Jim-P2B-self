@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 五端统一协同与跨端桥接引擎（卡片弹窗 + 自动记忆联系人 + 弱网本地暂存补传 + 拍照留底 + 买卖身份切换）
+ * 百工百业 · 五端统一协同与跨端桥接引擎（卡片弹窗 + 自动记忆联系人 + 弱网本地暂存补传 + 拍照留底 + 身份切换 + 小货车拼单进度条）
  * 覆盖：index.html (门店端) / driver.html (掌中宝) / mall.html (天街端) / suppliers.html (名录端)
  */
 import { supabase } from '../../lib/supabase.js';
@@ -257,7 +257,7 @@ export async function initStoreTerminalBridge() {
 }
 
 /**
- * 2. 掌中宝 / 一线移动工作台 (driver.html) — 弱网暂存 + 发车预告 + 地图导航 + 随手拍照留底 + 身份切换
+ * 2. 掌中宝 / 一线移动工作台 (driver.html)
  */
 const OFFLINE_QUEUE_KEY = 'baigong_palm_offline_queue';
 
@@ -556,11 +556,11 @@ export function initDriverTerminalBridge() {
 }
 
 /**
- * 3. 百工天街零售端 (mall.html)
+ * 3. 百工天街零售端 (mall.html) — 含邻里小货车凑箱进度条
  */
 export async function initMallTerminalBridge() {
   showWeChatPinGuideIfFirstTime();
-  const [crowdRes, charityTenantsRes] = await Promise.all([
+  const [crowdRes, claimRes, charityTenantsRes] = await Promise.all([
     supabase
       .from('platform_suggestion_board')
       .select('*')
@@ -569,6 +569,13 @@ export async function initMallTerminalBridge() {
       .order('id', { ascending: false })
       .limit(6),
     supabase
+      .from('platform_suggestion_board')
+      .select('*')
+      .eq('proposer_type', 'c2b_demand')
+      .ilike('category', '%拼单认领%')
+      .order('id', { ascending: false })
+      .limit(40),
+    supabase
       .from('platform_tenant')
       .select('tenant_id, company_name, custom_settings')
       .eq('is_active', true)
@@ -576,6 +583,7 @@ export async function initMallTerminalBridge() {
   ]);
 
   const crowdList = crowdRes?.data || [];
+  const claimList = claimRes?.data || [];
   const charityTenants = (charityTenantsRes?.data || []).filter((t) => t.custom_settings?.charity_micro_light_enabled);
 
   const mainHost = document.querySelector('main') || document.body;
@@ -591,18 +599,39 @@ export async function initMallTerminalBridge() {
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
           ${crowdList
-            .map(
-              (c) => `
-              <div class="bg-white p-2.5 rounded-xl border border-emerald-200 flex items-center justify-between gap-2">
-                <div>
-                  <span class="text-[10px] font-bold text-emerald-800 block">${c.proposer_name || '源头直供商号'}</span>
-                  <span class="text-[11px] text-stone-800">${c.content}</span>
+            .map((c) => {
+              const targetMatch = String(c.content || '').match(/凑够\s*(\d+)/);
+              const targetNum = targetMatch ? parseInt(targetMatch[1], 10) : 100;
+              const shortKey = String(c.content || '').slice(0, 18);
+              const claimedSum = claimList
+                .filter((cl) => String(cl.content || '').includes(shortKey))
+                .reduce((acc, cl) => {
+                  const m = String(cl.content || '').match(/认领\s*(\d+)/);
+                  return acc + (m ? parseInt(m[1], 10) : 0);
+                }, 0);
+              const pct = Math.min(100, Math.round((claimedSum / Math.max(1, targetNum)) * 100));
+              const leftNum = Math.max(0, targetNum - claimedSum);
+
+              return `
+              <div class="bg-white p-2.5 rounded-xl border border-emerald-200 space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                  <div>
+                    <span class="text-[10px] font-bold text-emerald-800 block">${c.proposer_name || '源头直供商号'}</span>
+                    <span class="text-[11px] text-stone-800">${c.content}</span>
+                  </div>
+                  <button type="button" onclick="window.mallJoinCrowdProduce('${String(c.category || '').replace(/'/g, '')}', '${String(c.content || '').replace(/'/g, '')}')" class="bg-[#1b4332] text-amber-300 font-bold px-2.5 py-1.5 rounded-xl text-[10px] shrink-0">
+                    参与拼单
+                  </button>
                 </div>
-                <button type="button" onclick="window.mallJoinCrowdProduce('${String(c.category || '').replace(/'/g, '')}', '${String(c.content || '').replace(/'/g, '')}')" class="bg-[#1b4332] text-amber-300 font-bold px-2.5 py-1.5 rounded-xl text-[10px] shrink-0">
-                  参与拼单
-                </button>
-              </div>`
-            )
+                <div class="bg-stone-100 rounded-full h-2 overflow-hidden">
+                  <div class="bg-emerald-600 h-full transition-all" style="width:${Math.max(8, pct)}%"></div>
+                </div>
+                <div class="text-[10px] text-emerald-900 font-bold flex justify-between">
+                  <span>🚚 小货车已凑 ${claimedSum} / ${targetNum}</span>
+                  <span>${leftNum > 0 ? `再凑 ${leftNum} 立即发车` : '🎉 已满额排产中'}</span>
+                </div>
+              </div>`;
+            })
             .join('')}
         </div>
       </div>
