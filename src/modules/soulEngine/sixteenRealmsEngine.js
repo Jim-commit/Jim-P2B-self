@@ -1,5 +1,5 @@
 /**
- * 百工百业 · 实用经营工具箱与全景协作引擎 (零改表、插件化叠加、白纸手电筒原则 · 海纳百川 · 大道至简)
+- 百工百业 · 实用经营工具箱与全景协作引擎 (零改表、插件化叠加、白纸手电筒原则 · 海纳百川 · 大道至简)
  */
 import { supabase } from '../../lib/supabase.js';
 import {
@@ -13,7 +13,7 @@ import { HQService } from '../../services/hqService.js';
 import { getTenantLexicon } from './silentMemoryAndLexicon.js';
 
 /**
- * 感官无障碍状态读取与语音播报（大字高对比 + 顺耳语音确认）
+- 感官无障碍状态读取与语音播报（大字高对比 + 顺耳语音确认）
  */
 function getAccessibilityPrefs() {
   try {
@@ -50,7 +50,7 @@ function applyGlobalLargeTextStyle(enabled) {
 }
 
 /**
- * 子账号与临时工“只增不删”安全锁（非老板主账号自动隐藏危险删除按钮，误录只能走作废留痕）
+- 子账号与临时工“只增不删”安全锁（非老板主账号自动隐藏危险删除按钮，误录只能走作废留痕）
  */
 function applyNonOwnerDeleteSafetyLock() {
   const isOwner = hqState.currentRoleCode === 'owner';
@@ -90,7 +90,7 @@ function speakAccountingFeedback(text) {
 }
 
 /**
- * 底部 8 秒后悔撤回浮动条（刚记完账点错可一秒撤回）
+- 底部 8 秒后悔撤回浮动条（刚记完账点错可一秒撤回）
  */
 function showQuickUndoToast(labelText, onUndoFn) {
   document.getElementById('quick-undo-floating-bar')?.remove();
@@ -114,7 +114,7 @@ function showQuickUndoToast(labelText, onUndoFn) {
 }
 
 /**
- * 查找某客户购买某商品/服务的上次成交单价
+- 查找某客户购买某商品/服务的上次成交单价
  */
 function findLastDealPriceForPartner(storeName, itemName) {
   if (!storeName || !itemName) return null;
@@ -130,7 +130,7 @@ function findLastDealPriceForPartner(storeName, itemName) {
 }
 
 /**
- * 多品项微信需求/要货消息解析器（兼容货品与服务单位）
+- 多品项微信需求/要货消息解析器（兼容货品与服务单位）
  */
 function parseWeChatMultiItemMessage(rawMsg, stores = [], products = []) {
   const text = String(rawMsg || '').trim();
@@ -175,7 +175,7 @@ function parseWeChatMultiItemMessage(rawMsg, stores = [], products = []) {
 }
 
 /**
- * 1. 一句话/语音全能自然语言记账解析器（百业通用：货品、服务、租赁、劳务、收款）
+- 1. 一句话/语音全能自然语言记账解析器（百业通用：货品、服务、租赁、劳务、收款）
  */
 export function parseNaturalBusinessCommand(rawText, stores = [], products = []) {
   const text = String(rawText || '').trim();
@@ -257,7 +257,7 @@ export function parseNaturalBusinessCommand(rawText, stores = [], products = [])
 }
 
 /**
- * 2. 扫描老客户静默流失预警
+- 2. 扫描老客户静默流失预警
  */
 export function detectSilentChurnPartners(stores = [], orders = []) {
   const now = Date.now();
@@ -289,7 +289,7 @@ export function detectSilentChurnPartners(stores = [], orders = []) {
 }
 
 /**
- * 3. 生成可彻底断网离线查询的纯本地单文件 HTML 账本
+- 3. 生成可彻底断网离线查询的纯本地单文件 HTML 账本
  */
 export function downloadOfflineStandaloneLedgerHtml(labelSuffix = '离线独立账本') {
   const tenantName = hqState.currentTenantData?.company_name || hqState.currentAgent || '百工商号';
@@ -363,7 +363,7 @@ let partnerLiveTickerStarted = false;
 let lastKnownCollectionLogId = 0;
 
 /**
- * 夫妻店 / 合伙人异地同账实时动态播报监听
+- 夫妻店 / 合伙人异地同账实时动态播报监听
  */
 function startPartnerLiveActivityTicker() {
   if (partnerLiveTickerStarted) return;
@@ -400,7 +400,7 @@ function startPartnerLiveActivityTicker() {
 }
 
 /**
- * 4. 挂载首页“掌柜一句话/语音万能记账栏” + “身份切换（我是供方 ⇄ 我是需方）” + “冷启动引导”
+- 4. 挂载首页“掌柜一句话/语音万能记账栏” + “身份切换（批发与调度 ⇄ 门店工作台）” + “冷启动引导”
  */
 export function mountSixteenRealmsQuickBar() {
   const prefs = getAccessibilityPrefs();
@@ -469,8 +469,8 @@ export function mountSixteenRealmsQuickBar() {
         <span class="text-[10px] text-stone-400 hidden sm:inline">卖货、服务、工时、进货、收款全支持</span>
       </div>
       <div class="flex flex-wrap gap-1.5">
-        <a href="index.html" onclick="window.syncActiveMerchantBeforeSwitch?.()" class="bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 font-bold px-2.5 py-1 rounded-xl text-[11px]" title="切换为需方角色去向源头下单或采购">
-          🛒 切为需方（下单）
+        <a href="index.html" onclick="window.syncActiveMerchantBeforeSwitch?.()" class="bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 font-bold px-2.5 py-1 rounded-xl text-[11px]" title="切换至门店工作台进行进货补货或柜台零售收银">
+          🏪 切到门店工作台
         </a>
         <button type="button" onclick="window.openWeChatPasteOrderModal()" class="bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-2.5 py-1 rounded-xl text-[11px]">
           📋 粘贴微信消息转单
@@ -501,7 +501,7 @@ export function mountSixteenRealmsQuickBar() {
 }
 
 /**
- * 5. 绑定全部实用工具箱交互逻辑
+- 5. 绑定全部实用工具箱交互逻辑
  */
 export function initSixteenRealmsBindings() {
   window.syncActiveMerchantBeforeSwitch = function () {
@@ -806,7 +806,7 @@ export function initSixteenRealmsBindings() {
   };
 
   /**
-   * 记一笔业务账弹窗（海纳百川：货品批发 + 上门服务 + 农机租赁 + 零星工时全兼容）
+- 记一笔业务账弹窗（海纳百川：货品批发 + 上门服务 + 农机租赁 + 零星工时全兼容）
    */
   window.openZeroBarrierWalkInOrderModal = function () {
     document.getElementById('modal-zero-barrier-order')?.remove();
@@ -1186,7 +1186,7 @@ export function initSixteenRealmsBindings() {
   };
 
   /**
-   * 实用工具箱总弹窗
+- 实用工具箱总弹窗
    */
   window.openSixteenRealmsHubModal = function () {
     document.getElementById('modal-sixteen-realms-hub')?.remove();
@@ -1357,7 +1357,7 @@ export function initSixteenRealmsBindings() {
 
     if (error) return alert('加载照片失败：' + error.message);
     const list = data || [];
-    if (list.length === 0) return alert('暂无现场留底照片（外勤师傅可在“我在执行”端点击“📷 拍照留底”上传）。');
+    if (list.length === 0) return alert('暂无现场留底照片（外勤师傅可在“送货与上门”端点击“📷 拍照留底”上传）。');
 
     document.getElementById('modal-field-photo-gallery')?.remove();
     const gal = document.createElement('div');
@@ -1580,7 +1580,7 @@ export function initSixteenRealmsBindings() {
     const storeId = document.getElementById('sticker-store-id')?.value || '';
     const store = (hqState.allStores || []).find((s) => String(s.id) === String(storeId));
     const tenantTitle = hqState.currentTenantData?.company_name || '百工源头直供';
-    const storeLabel = store ? store.name : '合作客户';
+    const storeLabel = store ? store.name : '合作门店';
     const baseUrl = window.location.origin + window.location.pathname.replace(/hq\.html.*/, 'index.html');
     const link = `${baseUrl}?agent=${encodeURIComponent(hqState.currentAgent)}&store_id=${encodeURIComponent(storeId)}`;
     const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(link)}`;
