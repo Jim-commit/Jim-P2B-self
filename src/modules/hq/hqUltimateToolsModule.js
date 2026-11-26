@@ -15,6 +15,7 @@ import {
   getVisibleOrdersForCurrentRole
 } from './hqState.js';
 import { getTenantLexicon } from '../soulEngine/silentMemoryAndLexicon.js';
+import { getNormalizedItemPlugins } from '../soulEngine/universalPluginsEngine.js';
 import {
   getProductWarehouseStocks,
   calcWarehouseTransfer,
@@ -27,9 +28,6 @@ function isAgriEntity() {
   return entityVal === 'coop' || /coop|农|合作社|生鲜|果蔬|粮油|种植|养殖/.test(bizType);
 }
 
-/**
- * 智能拆解微信聊天记录/语音转文字（提取客户名 + 货品/项目名 + 数量）
- */
 function parseWechatOrderText(rawText, stores = [], products = []) {
   const text = String(rawText || '').trim();
   if (!text) return { matchedStore: null, matchedItems: [], unmatchedLines: [] };
@@ -62,8 +60,8 @@ function parseWechatOrderText(rawText, stores = [], products = []) {
       }
     }
 
-    const qtyMatch = seg.match(/(?:要|来|发|配|订|x|X|\*|×)?\s*(\d+)\s*(?:箱|件|斤|套|桶|袋|瓶|个|台|次|小时|趟|批|份)?/);
-    const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+    const qtyMatch = seg.match(/(?:要|来|发|配|订|x|X|\*|×)?\s*(\d+(?:\.\d+)?)\s*(?:箱|件|斤|套|桶|袋|瓶|个|台|次|小时|趟|批|份)?/);
+    const qty = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
 
     if (hitProd && qty > 0) {
       const existing = matchedItems.find((m) => m.product.id === hitProd.id);
@@ -84,7 +82,6 @@ export function mountHqUltimateToolsButton() {
 
   const { orgCfg, isOwner, effectiveBranch } = getOrgRuntimeContext();
 
-  // 手电筒原则：只有开启多分公司/多仓库时才亮出组织视角切换器，单店单仓保持极简
   const branchSwitcherHtml = orgCfg.isMultiBranch
     ? `<div class="flex items-center gap-1.5 bg-white border border-amber-300 px-2.5 py-1 rounded-xl">
          <span class="text-[11px] font-bold text-stone-700">🏢 ${orgCfg.branchLabel}视角：</span>
@@ -105,7 +102,7 @@ export function mountHqUltimateToolsButton() {
   bar.innerHTML = `
     <div class="flex flex-wrap items-center gap-2 text-amber-950">
       <span>🧰</span>
-      <span><b>实战神器与经营百宝箱：</b>微信聊天拆单 · 一把清冲账 · 多仓多分支管控 · 睡前语音播报 · 阳光集采与证据卷宗</span>
+      <span><b>实战神器与经营百宝箱：</b>微信聊天拆单 · 一把清冲账 · 派工提成与周期续费 · 多仓多分支 · 睡前语音播报</span>
       ${branchSwitcherHtml}
     </div>
     <button type="button" onclick="window.openHqUltimateToolboxModal()" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-3 py-1 rounded-xl text-[11px] shadow-2xs">
@@ -123,6 +120,198 @@ export function initHqUltimateToolsBindings() {
     });
     mountHqUltimateToolsButton();
     if (typeof window.loadHQData === 'function') window.loadHQData();
+  };
+
+  // 【第 3 步核心闭环】员工/师傅完工提成汇总 + 周期自动续费生单台
+  window.openCommissionAndRecurringModal = function () {
+    document.getElementById('modal-commission-recurring')?.remove();
+
+    const visibleOrders = getVisibleOrdersForCurrentRole();
+    const monthPrefix = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const monthOrders = visibleOrders.filter(
+      (o) => String(o.created_at || '').startsWith(monthPrefix) && o.order_status !== 'cancelled'
+    );
+
+    const staffCommMap = {};
+    monthOrders.forEach((o) => {
+      const items = Array.isArray(o.items) ? o.items : [];
+      items.forEach((it) => {
+        const prod = (hqState.allProducts || []).find((p) => Number(p.id) === Number(it.id) || p.name === it.name);
+        if (!prod) return;
+        const plg = getNormalizedItemPlugins(prod);
+        if (!plg.dispatch.enabled) return;
+
+        const worker = o.driver_name || plg.dispatch.assigneeName || '默认执行人';
+        const lineAmt = parseFloat(it.price || 0) * parseFloat(it.qty || 0);
+        const comm =
+          plg.dispatch.commissionType === 'percent'
+            ? Number(((lineAmt * parseFloat(plg.dispatch.commissionValue || 0)) / 100).toFixed(2))
+            : Number((parseFloat(plg.dispatch.commissionValue || 0) * parseFloat(it.qty || 1)).toFixed(2));
+
+        if (!staffCommMap[worker]) {
+          staffCommMap[worker] = { worker, orderCount: 0, salesTotal: 0, commTotal: 0, details: [] };
+        }
+        staffCommMap[worker].orderCount += 1;
+        staffCommMap[worker].salesTotal += lineAmt;
+        staffCommMap[worker].commTotal += comm;
+        staffCommMap[worker].details.push(`#${o.order_no || o.id} ${it.name}×${it.qty} (提¥${comm.toFixed(2)})`);
+      });
+    });
+
+    const commRows = Object.values(staffCommMap);
+    const recurringProds = (hqState.allProducts || []).filter((p) => {
+      const plg = getNormalizedItemPlugins(p);
+      return p.status !== 'inactive' && plg.recurring.enabled;
+    });
+
+    const modal = document.createElement('div');
+    modal.id = 'modal-commission-recurring';
+    modal.className = 'fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto';
+    modal.innerHTML = `
+      <div class="bg-white border border-stone-200 rounded-3xl max-w-2xl w-full p-5 space-y-4 shadow-2xl text-xs my-auto">
+        <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
+          <div>
+            <b class="text-sm text-stone-900">👤 员工派工提成月报 & 🔁 周期自动续费生单台</b>
+            <p class="text-[11px] text-stone-500 mt-0.5">统计周期：${monthPrefix} · 自动根据项目插件规则算清提成与包月续费</p>
+          </div>
+          <button type="button" onclick="document.getElementById('modal-commission-recurring')?.remove()" class="text-stone-400 hover:text-stone-800 text-base font-bold">✕</button>
+        </div>
+
+        <!-- 1. 本月派工提成核算 -->
+        <div class="p-3.5 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-2">
+          <div class="flex justify-between items-center">
+            <b class="text-amber-950">💰 本月（${monthPrefix}）派工与完工提成汇总</b>
+            ${
+              commRows.length > 0
+                ? `<button type="button" onclick="window.copyStaffCommissionText()" class="bg-stone-900 text-amber-300 font-bold px-2.5 py-1 rounded-xl text-[10px]">📋 复制发给财务发薪</button>`
+                : ''
+            }
+          </div>
+          ${
+            commRows.length === 0
+              ? `<p class="text-[11px] text-stone-500 py-2">本月暂无触发“派工与提成”插件的已接单记录（在货品/项目编辑里勾选「👤 派工与提成」并开单后自动汇总于此）。</p>`
+              : `<div class="space-y-1.5">${commRows
+                  .map(
+                    (r) => `
+                    <div class="bg-white p-2.5 rounded-xl border border-amber-200/80 flex justify-between items-start gap-2">
+                      <div>
+                        <b class="text-stone-900">${r.worker}</b>
+                        <span class="text-[10px] text-stone-500 ml-1">完工 ${r.orderCount} 项 · 关联业绩 ¥${r.salesTotal.toFixed(2)}</span>
+                        <div class="text-[10px] text-stone-400 mt-0.5">${r.details.join('；')}</div>
+                      </div>
+                      <b class="text-sm font-mono text-emerald-900 shrink-0">提成: ¥${r.commTotal.toFixed(2)}</b>
+                    </div>`
+                  )
+                  .join('')}</div>`
+          }
+        </div>
+
+        <!-- 2. 周期自动续费生单 -->
+        <div class="p-3.5 bg-cyan-50/60 border border-cyan-200 rounded-2xl space-y-2">
+          <b class="text-cyan-950 block">🔁 周期续费项目一键批量生单（包月维保 / 代理记账 / 会员托管）</b>
+          ${
+            recurringProds.length === 0
+              ? `<p class="text-[11px] text-stone-500">暂无开启“周期自动续费”的项目（在项目卡片勾选「🔁 周期自动续费」后可在此一键批量生成本期账单）。</p>`
+              : `<div class="space-y-2">${recurringProds
+                  .map((p) => {
+                    const plg = getNormalizedItemPlugins(p);
+                    const cycleLabel = { monthly: '每月', quarterly: '每季', yearly: '每年' }[plg.recurring.cycle] || '定期';
+                    return `
+                      <div class="bg-white p-2.5 rounded-xl border border-cyan-200 flex flex-wrap justify-between items-center gap-2">
+                        <div>
+                          <b class="text-stone-900">${p.name}</b>
+                          <span class="text-[10px] bg-cyan-100 text-cyan-900 px-1.5 py-0.2 rounded font-bold ml-1">${cycleLabel} · 每月${plg.recurring.billDay}号生单 · ¥${p.tier_1_price}</span>
+                        </div>
+                        <button type="button" onclick="window.triggerRecurringBillForProduct(${p.id})" class="bg-[#1b4332] text-white font-bold px-3 py-1 rounded-xl text-[11px]">
+                          ⚡ 为续费客户生成本期账单
+                        </button>
+                      </div>`;
+                  })
+                  .join('')}</div>`
+          }
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  };
+
+  window.copyStaffCommissionText = function () {
+    const visibleOrders = getVisibleOrdersForCurrentRole();
+    const monthPrefix = new Date().toISOString().slice(0, 7);
+    const monthOrders = visibleOrders.filter(
+      (o) => String(o.created_at || '').startsWith(monthPrefix) && o.order_status !== 'cancelled'
+    );
+    const map = {};
+    monthOrders.forEach((o) => {
+      (Array.isArray(o.items) ? o.items : []).forEach((it) => {
+        const prod = (hqState.allProducts || []).find((p) => Number(p.id) === Number(it.id) || p.name === it.name);
+        if (!prod) return;
+        const plg = getNormalizedItemPlugins(prod);
+        if (!plg.dispatch.enabled) return;
+        const worker = o.driver_name || plg.dispatch.assigneeName || '默认执行人';
+        const lineAmt = parseFloat(it.price || 0) * parseFloat(it.qty || 0);
+        const comm =
+          plg.dispatch.commissionType === 'percent'
+            ? (lineAmt * parseFloat(plg.dispatch.commissionValue || 0)) / 100
+            : parseFloat(plg.dispatch.commissionValue || 0) * parseFloat(it.qty || 1);
+        map[worker] = (map[worker] || 0) + comm;
+      });
+    });
+    const lines = [
+      `【${hqState.currentTenantData?.company_name || hqState.currentAgent} · ${monthPrefix} 员工完工提成汇总】`,
+      ...Object.entries(map).map(([w, c], idx) => `${idx + 1}. ${w}：应发提成 ¥${c.toFixed(2)}`)
+    ];
+    navigator.clipboard.writeText(lines.join('\n')).then(() => alert('✅ 本月员工提成汇总表已复制到剪贴板！'));
+  };
+
+  window.triggerRecurringBillForProduct = async function (prodId) {
+    if (isAuditorReadOnly()) return alert('只读账号不可生单。');
+    const prod = (hqState.allProducts || []).find((p) => Number(p.id) === Number(prodId));
+    if (!prod) return;
+    const visibleStores = getVisibleStoresForCurrentRole();
+    if (visibleStores.length === 0) return alert('暂无客户可生成续费账单！');
+
+    // 自动找出历史上订购过该周期项目的客户，或提示选择
+    const subscribedStores = visibleStores.filter((s) =>
+      (hqState.allOrders || []).some(
+        (o) =>
+          Number(o.store_id) === Number(s.id) &&
+          Array.isArray(o.items) &&
+          o.items.some((it) => Number(it.id) === Number(prod.id) || it.name === prod.name)
+      )
+    );
+    const targets = subscribedStores.length > 0 ? subscribedStores : [visibleStores[0]];
+    const names = targets.map((s) => s.name).join('、');
+    if (!confirm(`确认为以下 ${targets.length} 位续费客户生成【${prod.name}】（¥${prod.tier_1_price}）本期续费账单？\n客户名单：${names}`)) return;
+
+    const monthTag = new Date().toISOString().slice(0, 7);
+    const rows = targets.map((s) => ({
+      order_no: generateUnifiedVoucherNo('CK'),
+      tenant_id: hqState.currentAgent,
+      store_id: s.id,
+      store_name: s.name,
+      driver_name: s.driver_name || '系统续费',
+      order_source: 'vendor_push',
+      settlement_type: s.default_settlement || 'credit',
+      settlement_note: `[周期自动续费 · ${monthTag}] ${prod.name}`,
+      items: [{ id: prod.id, name: prod.name, spec: prod.spec || '周期服务', measure_unit: prod.measure_unit || '期', price: parseFloat(prod.tier_1_price || 0), qty: 1 }],
+      items_return: [],
+      items_exchange: [],
+      total_amount: parseFloat(prod.tier_1_price || 0),
+      return_amount: 0,
+      net_settle_amount: parseFloat(prod.tier_1_price || 0),
+      order_status: 'confirmed',
+      delivery_status: 'ordered',
+      note: `[周期自动续费 · ${monthTag}]`,
+      driver_action_instruction: '【周期续费账单】核验入账'
+    }));
+
+    const { error } = await supabase.from('store_order').insert(rows);
+    if (error) return alert('批量生成续费账单失败：' + error.message);
+
+    document.getElementById('modal-commission-recurring')?.remove();
+    alert(`✅ 已成功生成 ${rows.length} 笔本期续费账单！`);
+    if (typeof window.loadHQData === 'function') await window.loadHQData();
   };
 
   window.openHqUltimateToolboxModal = function () {
@@ -186,11 +375,14 @@ export function initHqUltimateToolsBindings() {
           <button type="button" onclick="document.getElementById('modal-hq-ultimate-toolbox')?.remove()" class="text-stone-400 hover:text-stone-800 text-base font-bold">✕</button>
         </div>
 
-        <!-- 1. 掌柜经营晴雨周报 + 睡前30秒语音播报 -->
+        <!-- 1. 掌柜经营晴雨周报 + 睡前30秒语音播报 + 派工提成与周期续费 -->
         <div class="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2">
           <div class="flex flex-wrap justify-between items-center gap-1.5">
             <b class="text-emerald-950">📊 ${effectiveBranch !== 'ALL' && orgCfg.isMultiBranch ? `【${effectiveBranch}】` : '全店'}经营晴雨周报（${report.periodLabel}）</b>
             <div class="flex flex-wrap gap-1.5">
+              <button type="button" onclick="window.openCommissionAndRecurringModal()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[10px]">
+                👤 派工提成与周期续费
+              </button>
               <button type="button" onclick="window.speakDailyBusinessBroadcast()" class="bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold px-2.5 py-1 rounded-xl text-[10px]">
                 📻 睡前30秒语音播报
               </button>
@@ -384,7 +576,6 @@ export function initHqUltimateToolsBindings() {
     }
   };
 
-  // 【神器 1】粘贴微信聊天智能拆单
   window.runWechatSmartParseToOrder = function () {
     const raw = document.getElementById('wx-smart-order-text')?.value || '';
     if (!raw.trim()) return alert('请先粘贴客户发来的微信消息内容！');
@@ -423,7 +614,6 @@ export function initHqUltimateToolsBindings() {
     }
   };
 
-  // 【神器 2】一把清（多笔旧账混结自动冲账）
   window.executeOneClickBatchSettle = async function () {
     if (isAuditorReadOnly() || hqState.currentRoleCode === 'sales') {
       return alert('当前账号无财务总账核销权限。');
@@ -467,7 +657,6 @@ export function initHqUltimateToolsBindings() {
     if (typeof window.loadHQData === 'function') await window.loadHQData();
   };
 
-  // 【神器 3】新增存放点与同城多仓真实分仓余量「货品搬家」
   window.addTenantWarehousePrompt = async function () {
     if (hqState.currentRoleCode !== 'owner') return alert('仅老板主账号可新增存放点！');
     const name = prompt('请输入新增存放点名称（例如：城西分仓、二号工程车、门店前置仓）：');
@@ -504,7 +693,6 @@ export function initHqUltimateToolsBindings() {
       return alert(`⚠️ 【${fromWh}】当前可用库存为 0，无法搬出！`);
     }
 
-    // 1. 真实改写产品 custom_specs.warehouse_stocks 各仓独立余量（总库存守恒不变）
     const nextSpecs = {
       ...(prod.custom_specs && typeof prod.custom_specs === 'object' ? prod.custom_specs : {}),
       warehouse_stocks: xfer.nextWarehouseStocks
@@ -516,7 +704,6 @@ export function initHqUltimateToolsBindings() {
     if (uErr) return alert('更新分仓库存余量失败：' + uErr.message);
     prod.custom_specs = nextSpecs;
 
-    // 2. 记一出一入对称调拨凭单（含跨分部内部结算金额留痕）
     const ckNo = generateUnifiedVoucherNo('CK');
     const rkNo = generateUnifiedVoucherNo('RK');
     const settleTag =
@@ -557,7 +744,6 @@ export function initHqUltimateToolsBindings() {
     if (typeof window.loadHQData === 'function') await window.loadHQData();
   };
 
-  // 【神器 4】睡前 30 秒生意语音播报
   window.speakDailyBusinessBroadcast = function () {
     const rawSettings = hqState.currentTenantData?.custom_settings || {};
     const lex = getTenantLexicon(rawSettings);
