@@ -320,7 +320,7 @@
             <b id="credit-avail" class="text-amber-300 font-mono text-sm font-bold">¥2000.00</b>
           </div>
           <div class="text-center">
-            <span class="text-emerald-200 text-[9px] block">周转筐 / 载具</span>
+            <span class="text-emerald-200 text-[9px] block">周转<span data-lex="carrierLabel">载具</span></span>
             <b id="store-basket-count" class="text-amber-200 font-mono text-xs font-bold">0 件</b>
           </div>
           <div class="text-right">
@@ -716,7 +716,7 @@
 
       <div class="space-y-2 text-xs">
         <div id="box-order-items">
-          <b class="text-[10px] text-stone-500 block mb-1">📦 补货商品明细</b>
+          <b class="text-[10px] text-stone-500 block mb-1">📦 补货<span data-lex="itemLabel">商品</span>明细</b>
           <div id="slip-order-items-list" class="divide-y divide-stone-100 max-h-36 overflow-y-auto no-scrollbar"></div>
         </div>
 
@@ -945,16 +945,35 @@
   <script type="module" src="./src/utils/circuitGuardListener.js"></script>
   <script type="module" src="./src/main.js"></script>
   <script type="module">
+    import { supabase } from './src/lib/supabase.js';
     import { initStoreCommunityExtension } from './src/modules/store/storeCommunityExtension.js';
     import { mountStoreElderModeWidget } from './src/modules/store/storeElderModeWidget.js';
     import { enforceGlobalGovernance } from './src/modules/globalGovernanceEnforcer.js';
     import { initWechatBrowserGuide } from './src/lib/wechatBrowserGuard.js';
     import { initStorePolicyEnforcer } from './src/modules/store/storePolicyEnforcer.js';
+    import { getTenantLexicon } from './src/modules/soulEngine/silentMemoryAndLexicon.js';
+
+    let lastSyncedAgent = '';
+    async function syncStoreDynamicLexicon() {
+      const agentId = (document.getElementById('menu-current-agent-tag')?.innerText || localStorage.getItem('active_agent_id') || '').trim();
+      if (!agentId || agentId === lastSyncedAgent) return;
+      const { data } = await supabase.from('platform_tenant').select('custom_settings').eq('tenant_id', agentId).maybeSingle();
+      if (!data) return;
+      lastSyncedAgent = agentId;
+      const lex = getTenantLexicon(data.custom_settings || {});
+      document.querySelectorAll('[data-lex]').forEach((el) => {
+        const key = el.getAttribute('data-lex');
+        if (key && lex[key]) el.textContent = lex[key];
+      });
+    }
+
     enforceGlobalGovernance();
     initStoreCommunityExtension();
     mountStoreElderModeWidget();
     initStorePolicyEnforcer();
     initWechatBrowserGuide({ appName: '百工协作工作台' });
+    setTimeout(syncStoreDynamicLexicon, 800);
+    setInterval(syncStoreDynamicLexicon, 4000);
   </script>
 </body>
 </html>
