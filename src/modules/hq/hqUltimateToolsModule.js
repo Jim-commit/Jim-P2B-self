@@ -28,6 +28,23 @@ function isAgriEntity() {
   return entityVal === 'coop' || /coop|农|合作社|生鲜|果蔬|粮油|种植|养殖/.test(bizType);
 }
 
+/**
+ * 手电筒扫描：当前商号是否实际启用了“派工提成”或“周期续费”活插件
+ */
+function getActiveAdvancedPluginFlags() {
+  const prods = Array.isArray(hqState.allProducts) ? hqState.allProducts : [];
+  let hasDispatch = false;
+  let hasRecurring = false;
+  for (const p of prods) {
+    if (p.status === 'inactive') continue;
+    const plg = getNormalizedItemPlugins(p);
+    if (plg.dispatch.enabled) hasDispatch = true;
+    if (plg.recurring.enabled) hasRecurring = true;
+    if (hasDispatch && hasRecurring) break;
+  }
+  return { hasDispatch, hasRecurring, hasAny: hasDispatch || hasRecurring };
+}
+
 function parseWechatOrderText(rawText, stores = [], products = []) {
   const text = String(rawText || '').trim();
   if (!text) return { matchedStore: null, matchedItems: [], unmatchedLines: [] };
@@ -81,6 +98,7 @@ export function mountHqUltimateToolsButton() {
   document.getElementById('hq-ultimate-toolbox-bar')?.remove();
 
   const { orgCfg, isOwner, effectiveBranch } = getOrgRuntimeContext();
+  const { hasDispatch, hasRecurring } = getActiveAdvancedPluginFlags();
 
   const branchSwitcherHtml = orgCfg.isMultiBranch
     ? `<div class="flex items-center gap-1.5 bg-white border border-amber-300 px-2.5 py-1 rounded-xl">
@@ -96,13 +114,19 @@ export function mountHqUltimateToolsButton() {
        </div>`
     : '';
 
+  const extraBannerTags = [
+    hasDispatch ? '派工提成' : '',
+    hasRecurring ? '周期续费' : ''
+  ].filter(Boolean);
+  const extraBannerStr = extraBannerTags.length > 0 ? ` · ${extraBannerTags.join('与')}` : '';
+
   const bar = document.createElement('div');
   bar.id = 'hq-ultimate-toolbox-bar';
   bar.className = 'col-span-full bg-amber-50/70 border border-amber-300 px-3.5 py-2.5 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs';
   bar.innerHTML = `
     <div class="flex flex-wrap items-center gap-2 text-amber-950">
       <span>🧰</span>
-      <span><b>实战神器与经营百宝箱：</b>微信聊天拆单 · 一把清冲账 · 派工提成与周期续费 · 多仓多分支 · 睡前语音播报</span>
+      <span><b>实战神器与经营百宝箱：</b>微信聊天拆单 · 一把清冲账${extraBannerStr} · 多仓多分支 · 睡前语音播报</span>
       ${branchSwitcherHtml}
     </div>
     <button type="button" onclick="window.openHqUltimateToolboxModal()" class="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-3 py-1 rounded-xl text-[11px] shadow-2xs">
@@ -122,47 +146,53 @@ export function initHqUltimateToolsBindings() {
     if (typeof window.loadHQData === 'function') window.loadHQData();
   };
 
-  // 【第 3 步核心闭环】员工/师傅完工提成汇总 + 周期自动续费生单台
   window.openCommissionAndRecurringModal = function () {
     document.getElementById('modal-commission-recurring')?.remove();
 
+    const { hasDispatch, hasRecurring } = getActiveAdvancedPluginFlags();
     const visibleOrders = getVisibleOrdersForCurrentRole();
-    const monthPrefix = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const monthPrefix = new Date().toISOString().slice(0, 7);
     const monthOrders = visibleOrders.filter(
       (o) => String(o.created_at || '').startsWith(monthPrefix) && o.order_status !== 'cancelled'
     );
 
     const staffCommMap = {};
-    monthOrders.forEach((o) => {
-      const items = Array.isArray(o.items) ? o.items : [];
-      items.forEach((it) => {
-        const prod = (hqState.allProducts || []).find((p) => Number(p.id) === Number(it.id) || p.name === it.name);
-        if (!prod) return;
-        const plg = getNormalizedItemPlugins(prod);
-        if (!plg.dispatch.enabled) return;
+    if (hasDispatch) {
+      monthOrders.forEach((o) => {
+        const items = Array.isArray(o.items) ? o.items : [];
+        items.forEach((it) => {
+          const prod = (hqState.allProducts || []).find((p) => Number(p.id) === Number(it.id) || p.name === it.name);
+          if (!prod) return;
+          const plg = getNormalizedItemPlugins(prod);
+          if (!plg.dispatch.enabled) return;
 
-        const worker = o.driver_name || plg.dispatch.assigneeName || '默认执行人';
-        const lineAmt = parseFloat(it.price || 0) * parseFloat(it.qty || 0);
-        const comm =
-          plg.dispatch.commissionType === 'percent'
-            ? Number(((lineAmt * parseFloat(plg.dispatch.commissionValue || 0)) / 100).toFixed(2))
-            : Number((parseFloat(plg.dispatch.commissionValue || 0) * parseFloat(it.qty || 1)).toFixed(2));
+          const worker = o.driver_name || plg.dispatch.assigneeName || '默认执行人';
+          const lineAmt = parseFloat(it.price || 0) * parseFloat(it.qty || 0);
+          const comm =
+            plg.dispatch.commissionType === 'percent'
+              ? Number(((lineAmt * parseFloat(plg.dispatch.commissionValue || 0)) / 100).toFixed(2))
+              : Number((parseFloat(plg.dispatch.commissionValue || 0) * parseFloat(it.qty || 1)).toFixed(2));
 
-        if (!staffCommMap[worker]) {
-          staffCommMap[worker] = { worker, orderCount: 0, salesTotal: 0, commTotal: 0, details: [] };
-        }
-        staffCommMap[worker].orderCount += 1;
-        staffCommMap[worker].salesTotal += lineAmt;
-        staffCommMap[worker].commTotal += comm;
-        staffCommMap[worker].details.push(`#${o.order_no || o.id} ${it.name}×${it.qty} (提¥${comm.toFixed(2)})`);
+          if (!staffCommMap[worker]) {
+            staffCommMap[worker] = { worker, orderCount: 0, salesTotal: 0, commTotal: 0, details: [] };
+          }
+          staffCommMap[worker].orderCount += 1;
+          staffCommMap[worker].salesTotal += lineAmt;
+          staffCommMap[worker].commTotal += comm;
+          staffCommMap[worker].details.push(`#${o.order_no || o.id} ${it.name}×${it.qty} (提¥${comm.toFixed(2)})`);
+        });
       });
-    });
+    }
 
     const commRows = Object.values(staffCommMap);
-    const recurringProds = (hqState.allProducts || []).filter((p) => {
-      const plg = getNormalizedItemPlugins(p);
-      return p.status !== 'inactive' && plg.recurring.enabled;
-    });
+    const recurringProds = hasRecurring
+      ? (hqState.allProducts || []).filter((p) => p.status !== 'inactive' && getNormalizedItemPlugins(p).recurring.enabled)
+      : [];
+
+    const modalTitleParts = [
+      hasDispatch ? '👤 员工派工提成月报' : '',
+      hasRecurring ? '🔁 周期自动续费生单台' : ''
+    ].filter(Boolean);
 
     const modal = document.createElement('div');
     modal.id = 'modal-commission-recurring';
@@ -171,65 +201,67 @@ export function initHqUltimateToolsBindings() {
       <div class="bg-white border border-stone-200 rounded-3xl max-w-2xl w-full p-5 space-y-4 shadow-2xl text-xs my-auto">
         <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
           <div>
-            <b class="text-sm text-stone-900">👤 员工派工提成月报 & 🔁 周期自动续费生单台</b>
-            <p class="text-[11px] text-stone-500 mt-0.5">统计周期：${monthPrefix} · 自动根据项目插件规则算清提成与包月续费</p>
+            <b class="text-sm text-stone-900">${modalTitleParts.join(' & ') || '专项业务核算台'}</b>
+            <p class="text-[11px] text-stone-500 mt-0.5">统计周期：${monthPrefix} · 仅展示本店已启用的专项能力</p>
           </div>
           <button type="button" onclick="document.getElementById('modal-commission-recurring')?.remove()" class="text-stone-400 hover:text-stone-800 text-base font-bold">✕</button>
         </div>
 
-        <!-- 1. 本月派工提成核算 -->
-        <div class="p-3.5 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-2">
-          <div class="flex justify-between items-center">
-            <b class="text-amber-950">💰 本月（${monthPrefix}）派工与完工提成汇总</b>
-            ${
-              commRows.length > 0
-                ? `<button type="button" onclick="window.copyStaffCommissionText()" class="bg-stone-900 text-amber-300 font-bold px-2.5 py-1 rounded-xl text-[10px]">📋 复制发给财务发薪</button>`
-                : ''
-            }
-          </div>
-          ${
-            commRows.length === 0
-              ? `<p class="text-[11px] text-stone-500 py-2">本月暂无触发“派工与提成”插件的已接单记录（在货品/项目编辑里勾选「👤 派工与提成」并开单后自动汇总于此）。</p>`
-              : `<div class="space-y-1.5">${commRows
-                  .map(
-                    (r) => `
-                    <div class="bg-white p-2.5 rounded-xl border border-amber-200/80 flex justify-between items-start gap-2">
-                      <div>
-                        <b class="text-stone-900">${r.worker}</b>
-                        <span class="text-[10px] text-stone-500 ml-1">完工 ${r.orderCount} 项 · 关联业绩 ¥${r.salesTotal.toFixed(2)}</span>
-                        <div class="text-[10px] text-stone-400 mt-0.5">${r.details.join('；')}</div>
-                      </div>
-                      <b class="text-sm font-mono text-emerald-900 shrink-0">提成: ¥${r.commTotal.toFixed(2)}</b>
-                    </div>`
-                  )
-                  .join('')}</div>`
-          }
-        </div>
+        ${
+          hasDispatch
+            ? `<div class="p-3.5 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-2">
+                 <div class="flex justify-between items-center">
+                   <b class="text-amber-950">💰 本月（${monthPrefix}）派工与完工提成汇总</b>
+                   ${
+                     commRows.length > 0
+                       ? `<button type="button" onclick="window.copyStaffCommissionText()" class="bg-stone-900 text-amber-300 font-bold px-2.5 py-1 rounded-xl text-[10px]">📋 复制发给财务发薪</button>`
+                       : ''
+                   }
+                 </div>
+                 ${
+                   commRows.length === 0
+                     ? `<p class="text-[11px] text-stone-500 py-2">本月暂无已接单的派工提成记录。</p>`
+                     : `<div class="space-y-1.5">${commRows
+                         .map(
+                           (r) => `
+                           <div class="bg-white p-2.5 rounded-xl border border-amber-200/80 flex justify-between items-start gap-2">
+                             <div>
+                               <b class="text-stone-900">${r.worker}</b>
+                               <span class="text-[10px] text-stone-500 ml-1">完工 ${r.orderCount} 项 · 关联业绩 ¥${r.salesTotal.toFixed(2)}</span>
+                               <div class="text-[10px] text-stone-400 mt-0.5">${r.details.join('；')}</div>
+                             </div>
+                             <b class="text-sm font-mono text-emerald-900 shrink-0">提成: ¥${r.commTotal.toFixed(2)}</b>
+                           </div>`
+                         )
+                         .join('')}</div>`
+                 }
+               </div>`
+            : ''
+        }
 
-        <!-- 2. 周期自动续费生单 -->
-        <div class="p-3.5 bg-cyan-50/60 border border-cyan-200 rounded-2xl space-y-2">
-          <b class="text-cyan-950 block">🔁 周期续费项目一键批量生单（包月维保 / 代理记账 / 会员托管）</b>
-          ${
-            recurringProds.length === 0
-              ? `<p class="text-[11px] text-stone-500">暂无开启“周期自动续费”的项目（在项目卡片勾选「🔁 周期自动续费」后可在此一键批量生成本期账单）。</p>`
-              : `<div class="space-y-2">${recurringProds
-                  .map((p) => {
-                    const plg = getNormalizedItemPlugins(p);
-                    const cycleLabel = { monthly: '每月', quarterly: '每季', yearly: '每年' }[plg.recurring.cycle] || '定期';
-                    return `
-                      <div class="bg-white p-2.5 rounded-xl border border-cyan-200 flex flex-wrap justify-between items-center gap-2">
-                        <div>
-                          <b class="text-stone-900">${p.name}</b>
-                          <span class="text-[10px] bg-cyan-100 text-cyan-900 px-1.5 py-0.2 rounded font-bold ml-1">${cycleLabel} · 每月${plg.recurring.billDay}号生单 · ¥${p.tier_1_price}</span>
-                        </div>
-                        <button type="button" onclick="window.triggerRecurringBillForProduct(${p.id})" class="bg-[#1b4332] text-white font-bold px-3 py-1 rounded-xl text-[11px]">
-                          ⚡ 为续费客户生成本期账单
-                        </button>
-                      </div>`;
-                  })
-                  .join('')}</div>`
-          }
-        </div>
+        ${
+          hasRecurring
+            ? `<div class="p-3.5 bg-cyan-50/60 border border-cyan-200 rounded-2xl space-y-2">
+                 <b class="text-cyan-950 block">🔁 周期续费项目一键批量生单</b>
+                 <div class="space-y-2">${recurringProds
+                   .map((p) => {
+                     const plg = getNormalizedItemPlugins(p);
+                     const cycleLabel = { monthly: '每月', quarterly: '每季', yearly: '每年' }[plg.recurring.cycle] || '定期';
+                     return `
+                       <div class="bg-white p-2.5 rounded-xl border border-cyan-200 flex flex-wrap justify-between items-center gap-2">
+                         <div>
+                           <b class="text-stone-900">${p.name}</b>
+                           <span class="text-[10px] bg-cyan-100 text-cyan-900 px-1.5 py-0.2 rounded font-bold ml-1">${cycleLabel} · 每月${plg.recurring.billDay}号生单 · ¥${p.tier_1_price}</span>
+                         </div>
+                         <button type="button" onclick="window.triggerRecurringBillForProduct(${p.id})" class="bg-[#1b4332] text-white font-bold px-3 py-1 rounded-xl text-[11px]">
+                           ⚡ 为续费客户生成本期账单
+                         </button>
+                       </div>`;
+                   })
+                   .join('')}</div>
+               </div>`
+            : ''
+        }
       </div>
     `;
     document.body.appendChild(modal);
@@ -271,7 +303,6 @@ export function initHqUltimateToolsBindings() {
     const visibleStores = getVisibleStoresForCurrentRole();
     if (visibleStores.length === 0) return alert('暂无客户可生成续费账单！');
 
-    // 自动找出历史上订购过该周期项目的客户，或提示选择
     const subscribedStores = visibleStores.filter((s) =>
       (hqState.allOrders || []).some(
         (o) =>
@@ -320,6 +351,7 @@ export function initHqUltimateToolsBindings() {
     const rawSettings = hqState.currentTenantData?.custom_settings || {};
     const lex = getTenantLexicon(rawSettings);
     const { orgCfg, isOwner, effectiveBranch } = getOrgRuntimeContext();
+    const { hasDispatch, hasRecurring, hasAny } = getActiveAdvancedPluginFlags();
     const warehouses = orgCfg.warehouses;
     const branches = orgCfg.branches;
 
@@ -362,6 +394,18 @@ export function initHqUltimateToolsBindings() {
       })
       .join('');
 
+    const specializedBtnLabel = hasDispatch && hasRecurring
+      ? '👤 派工提成与周期续费'
+      : hasDispatch
+      ? '👤 员工派工提成月报'
+      : '🔁 周期续费一键生单';
+
+    const specializedBtnHtml = hasAny
+      ? `<button type="button" onclick="window.openCommissionAndRecurringModal()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[10px]">
+           ${specializedBtnLabel}
+         </button>`
+      : '';
+
     const modal = document.createElement('div');
     modal.id = 'modal-hq-ultimate-toolbox';
     modal.className = 'fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto';
@@ -375,14 +419,12 @@ export function initHqUltimateToolsBindings() {
           <button type="button" onclick="document.getElementById('modal-hq-ultimate-toolbox')?.remove()" class="text-stone-400 hover:text-stone-800 text-base font-bold">✕</button>
         </div>
 
-        <!-- 1. 掌柜经营晴雨周报 + 睡前30秒语音播报 + 派工提成与周期续费 -->
+        <!-- 1. 掌柜经营晴雨周报 + 睡前30秒语音播报（派工提成/周期续费仅在启用时亮出） -->
         <div class="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2">
           <div class="flex flex-wrap justify-between items-center gap-1.5">
             <b class="text-emerald-950">📊 ${effectiveBranch !== 'ALL' && orgCfg.isMultiBranch ? `【${effectiveBranch}】` : '全店'}经营晴雨周报（${report.periodLabel}）</b>
             <div class="flex flex-wrap gap-1.5">
-              <button type="button" onclick="window.openCommissionAndRecurringModal()" class="bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-2.5 py-1 rounded-xl text-[10px]">
-                👤 派工提成与周期续费
-              </button>
+              ${specializedBtnHtml}
               <button type="button" onclick="window.speakDailyBusinessBroadcast()" class="bg-[#1b4332] hover:bg-[#143628] text-amber-300 font-bold px-2.5 py-1 rounded-xl text-[10px]">
                 📻 睡前30秒语音播报
               </button>
