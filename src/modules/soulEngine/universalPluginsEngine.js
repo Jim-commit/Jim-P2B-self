@@ -1,42 +1,38 @@
 /**
- * 百工百业 · 第2步核心引擎：万能项目卡 + 四个活插件（纯增量兼容，零表结构破坏）
- * 1. 📦 扣库存插件 (stock): 实物买卖、大小包装拆零、库存预警（老商品默认开启）
+ * 百工百业 · 万能项目卡 + 四个活插件（含简易组合装子料配方，零改表兼容）
+ * 1. 📦 扣库存插件 (stock): 实物买卖、大小包装拆零、库存预警、简易组合装/加工子料配方
  * 2. 🎯 进度里程碑插件 (milestone): 支持完全自定义任意阶段数、阶段名称、比例或固定金额
  * 3. 🔁 周期自动续费插件 (recurring): 代理记账、设备维保、会员托管按月/季/年自动生单
  * 4. 👤 派工与提成插件 (dispatch): 上门安装、维修、项目执行人指定与完工提成核算
  */
 
 export const DEFAULT_ITEM_PLUGINS = {
-  stock: { enabled: true, packRatio: 1, subUnit: '' },
+  stock: { enabled: true, packRatio: 1, subUnit: '', bundleComponents: [] },
   milestone: { enabled: false, stages: ['定金 30%', '中期验收 40%', '完工尾款 30%'] },
   recurring: { enabled: false, cycle: 'monthly', billDay: 1, autoDeductPrepaid: true },
   dispatch: { enabled: false, assigneeName: '', commissionType: 'fixed', commissionValue: 0 }
 };
 
-/**
- * 解析项目插件配置（老数据无 plugins 字段时，自动视同开启“扣库存”并隐藏其余三项，100% 平滑兼容）
- */
 export function getNormalizedItemPlugins(product = {}) {
   const saved = product?.custom_specs?.plugins;
   if (!saved || typeof saved !== 'object') {
     return {
-      stock: { ...DEFAULT_ITEM_PLUGINS.stock, enabled: true },
+      stock: { ...DEFAULT_ITEM_PLUGINS.stock, enabled: true, bundleComponents: [] },
       milestone: { ...DEFAULT_ITEM_PLUGINS.milestone, enabled: false },
       recurring: { ...DEFAULT_ITEM_PLUGINS.recurring, enabled: false },
       dispatch: { ...DEFAULT_ITEM_PLUGINS.dispatch, enabled: false }
     };
   }
+  const stockPart = { ...DEFAULT_ITEM_PLUGINS.stock, ...(saved.stock || {}) };
+  if (!Array.isArray(stockPart.bundleComponents)) stockPart.bundleComponents = [];
   return {
-    stock: { ...DEFAULT_ITEM_PLUGINS.stock, ...(saved.stock || {}) },
+    stock: stockPart,
     milestone: { ...DEFAULT_ITEM_PLUGINS.milestone, ...(saved.milestone || {}) },
     recurring: { ...DEFAULT_ITEM_PLUGINS.recurring, ...(saved.recurring || {}) },
     dispatch: { ...DEFAULT_ITEM_PLUGINS.dispatch, ...(saved.dispatch || {}) }
   };
 }
 
-/**
- * 智能解析单个里程碑阶段文本（支持如 "签约定金 30%" 或 "上门费 200元"）
- */
 export function parseMilestoneStage(stageStr, totalAmount = 0) {
   const raw = String(stageStr || '').trim();
   const pctMatch = raw.match(/(\d+(?:\.\d+)?)\s*%/);
@@ -54,12 +50,14 @@ export function parseMilestoneStage(stageStr, totalAmount = 0) {
   return { label: raw, mode, amount };
 }
 
-/**
- * 生成列表页一眼看懂的插件徽章
- */
 export function renderItemPluginBadgesHtml(product = {}) {
   const plg = getNormalizedItemPlugins(product);
   const badges = [];
+  if (plg.stock.enabled && Array.isArray(plg.stock.bundleComponents) && plg.stock.bundleComponents.length > 0) {
+    badges.push(
+      `<span class="bg-emerald-50 text-emerald-900 border border-emerald-300 px-1.5 py-0.2 rounded text-[10px] font-bold mr-1">🎁 组合装(${plg.stock.bundleComponents.length}料)</span>`
+    );
+  }
   if (plg.milestone.enabled) {
     badges.push(
       `<span class="bg-purple-50 text-purple-800 border border-purple-200 px-1.5 py-0.2 rounded text-[10px] font-bold mr-1">🎯 ${plg.milestone.stages.length}阶段收款</span>`
@@ -96,14 +94,26 @@ function renderSingleMilestoneRowHtml(val = '', idx = 0) {
   `;
 }
 
-/**
- * 渲染商品/项目弹窗里的“手电筒式四个活插件”配置卡片
- */
+function renderSingleBundleComponentRowHtml(comp = { name: '', qty: 1 }) {
+  return `
+    <div class="flex items-center gap-1.5 plg-bundle-row">
+      <input type="text" value="${String(comp.name || '').replace(/"/g, '"')}" placeholder="输入子原料/单品名（如：菜籽油）"
+        class="plg-bundle-name flex-1 bg-stone-50 border border-emerald-200 rounded-lg px-2 py-1 text-[11px] outline-none">
+      <span class="text-[10px] text-stone-500">×</span>
+      <input type="number" step="0.01" min="0.01" value="${comp.qty || 1}"
+        class="plg-bundle-qty w-16 bg-stone-50 border border-emerald-200 rounded-lg px-2 py-1 font-mono text-[11px] text-center outline-none">
+      <button type="button" onclick="this.closest('.plg-bundle-row').remove()" title="移除子料"
+        class="text-stone-400 hover:text-rose-600 font-bold px-1.5 py-0.5 text-xs">✕</button>
+    </div>
+  `;
+}
+
 export function renderPluginsEditorPanel(product = null) {
   const plg = getNormalizedItemPlugins(product || {});
   const stages = Array.isArray(plg.milestone.stages) && plg.milestone.stages.length > 0
     ? plg.milestone.stages
     : ['定金 30%', '中期验收 40%', '完工尾款 30%'];
+  const bundleComps = Array.isArray(plg.stock.bundleComponents) ? plg.stock.bundleComponents : [];
 
   if (typeof window !== 'undefined') {
     window.addCustomMilestoneStageRow = function (presetText = '') {
@@ -112,16 +122,20 @@ export function renderPluginsEditorPanel(product = null) {
       const idx = box.querySelectorAll('.plg-milestone-row').length;
       box.insertAdjacentHTML('beforeend', renderSingleMilestoneRowHtml(presetText, idx));
     };
+    window.addBundleComponentRow = function () {
+      const box = document.getElementById('plg-bundle-rows-box');
+      if (!box) return;
+      box.insertAdjacentHTML('beforeend', renderSingleBundleComponentRowHtml({ name: '', qty: 1 }));
+    };
   }
 
   return `
     <div id="universal-plugins-panel" class="bg-stone-50 border border-stone-200 rounded-2xl p-3 space-y-2.5 text-xs">
       <div class="flex flex-wrap items-center justify-between gap-1">
         <b class="text-stone-900">🧩 业务能力活插件（做啥生意勾哪项，不用的自动隐藏）：</b>
-        <span class="text-[10px] text-stone-500">支持实物、服务、工程混搭</span>
+        <span class="text-[10px] text-stone-500">支持实物、组合套装、服务、工程混搭</span>
       </div>
 
-      <!-- 4个开关胶囊 -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <label class="flex items-center gap-1.5 bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 cursor-pointer font-bold text-stone-800">
           <input type="checkbox" id="plg-chk-stock" ${plg.stock.enabled ? 'checked' : ''} onchange="window.togglePluginSection('stock')" class="rounded text-emerald-700">
@@ -141,19 +155,32 @@ export function renderPluginsEditorPanel(product = null) {
         </label>
       </div>
 
-      <!-- 1. 扣库存与大小包装拆零区 -->
-      <div id="plg-box-stock" class="${plg.stock.enabled ? '' : 'hidden'} bg-white border border-emerald-200 rounded-xl p-2.5 grid grid-cols-2 gap-2">
-        <div>
-          <label class="text-[11px] text-stone-600 font-bold block mb-0.5">整散拆零比例（1整单位等于多少零散单位）</label>
-          <input type="number" min="1" id="plg-stock-ratio" value="${plg.stock.packRatio || 1}" placeholder="1（不拆零填1，如1箱=24瓶填24）" class="w-full bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 font-mono">
+      <!-- 1. 扣库存、整散拆零与简易组合装子料配方 -->
+      <div id="plg-box-stock" class="${plg.stock.enabled ? '' : 'hidden'} bg-white border border-emerald-200 rounded-xl p-2.5 space-y-2">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] text-stone-600 font-bold block mb-0.5">整散拆零比例（1整单位=多少零散单位）</label>
+            <input type="number" min="1" id="plg-stock-ratio" value="${plg.stock.packRatio || 1}" placeholder="1" class="w-full bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 font-mono">
+          </div>
+          <div>
+            <label class="text-[11px] text-stone-600 font-bold block mb-0.5">零散小单位名称（选填）</label>
+            <input type="text" id="plg-stock-subunit" value="${plg.stock.subUnit || ''}" placeholder="如：瓶、个、斤" class="w-full bg-stone-50 border border-stone-200 rounded-lg px-2 py-1">
+          </div>
         </div>
-        <div>
-          <label class="text-[11px] text-stone-600 font-bold block mb-0.5">零散小单位名称（选填）</label>
-          <input type="text" id="plg-stock-subunit" value="${plg.stock.subUnit || ''}" placeholder="如：瓶、个、斤" class="w-full bg-stone-50 border border-stone-200 rounded-lg px-2 py-1">
+        <div class="pt-1.5 border-t border-emerald-100 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-emerald-950">🎁 简易组合装 / 子料扣减配方（选填，出货时自动按比例扣对应原料）：</span>
+            <button type="button" onclick="window.addBundleComponentRow()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg text-[10px]">
+              + 添加子料
+            </button>
+          </div>
+          <div id="plg-bundle-rows-box" class="space-y-1">
+            ${bundleComps.map((c) => renderSingleBundleComponentRowHtml(c)).join('')}
+          </div>
         </div>
       </div>
 
-      <!-- 2. 完全自定义分阶段里程碑收款区 -->
+      <!-- 2. 自定义分阶段里程碑收款区 -->
       <div id="plg-box-milestone" class="${plg.milestone.enabled ? '' : 'hidden'} bg-white border border-purple-200 rounded-xl p-2.5 space-y-2">
         <div class="flex flex-wrap items-center justify-between gap-1">
           <label class="text-[11px] text-purple-950 font-bold">🎯 自定义验收与收款阶段（支持填百分比如 30%，或固定金额如 500元）：</label>
@@ -208,9 +235,6 @@ export function renderPluginsEditorPanel(product = null) {
   `;
 }
 
-/**
- * 从表单收集四个活插件的配置对象
- */
 export function collectPluginsFromDOM() {
   const stockEnabled = document.getElementById('plg-chk-stock')?.checked ?? true;
   const milestoneEnabled = document.getElementById('plg-chk-milestone')?.checked ?? false;
@@ -221,11 +245,20 @@ export function collectPluginsFromDOM() {
     .map((inp) => inp.value.trim())
     .filter(Boolean);
 
+  const bundleComponents = Array.from(document.querySelectorAll('#plg-bundle-rows-box .plg-bundle-row'))
+    .map((row) => {
+      const name = (row.querySelector('.plg-bundle-name')?.value || '').trim();
+      const qty = parseFloat(row.querySelector('.plg-bundle-qty')?.value || '0') || 0;
+      return name && qty > 0 ? { name, qty } : null;
+    })
+    .filter(Boolean);
+
   return {
     stock: {
       enabled: stockEnabled,
       packRatio: Math.max(1, parseInt(document.getElementById('plg-stock-ratio')?.value || '1', 10)),
-      subUnit: (document.getElementById('plg-stock-subunit')?.value || '').trim()
+      subUnit: (document.getElementById('plg-stock-subunit')?.value || '').trim(),
+      bundleComponents
     },
     milestone: {
       enabled: milestoneEnabled,
