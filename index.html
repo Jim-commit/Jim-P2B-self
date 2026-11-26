@@ -952,6 +952,7 @@
     import { initWechatBrowserGuide } from './src/lib/wechatBrowserGuard.js';
     import { initStorePolicyEnforcer } from './src/modules/store/storePolicyEnforcer.js';
     import { getTenantLexicon } from './src/modules/soulEngine/silentMemoryAndLexicon.js';
+    import { initStoreTerminalBridge } from './src/modules/soulEngine/multiTerminalBridge.js';
 
     let lastSyncedAgent = '';
     async function syncStoreDynamicLexicon() {
@@ -974,6 +975,7 @@
     initWechatBrowserGuide({ appName: '百工协作工作台' });
     setTimeout(syncStoreDynamicLexicon, 800);
     setInterval(syncStoreDynamicLexicon, 4000);
+    initStoreTerminalBridge();
   </script>
 </body>
 </html>
