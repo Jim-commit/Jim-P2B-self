@@ -2215,7 +2215,54 @@
         return res;
       };
     }
+    function checkDueRecurringBillsOnLogin() {
+      if (hqState.currentRoleCode === 'auditor' || hqState.currentRoleCode === 'warehouse') return;
+      const today = new Date();
+      const dayOfMonth = today.getDate();
+      const monthTag = today.toISOString().slice(0, 7);
+      const dismissKey = `hq_rec_checked_${hqState.currentAgent}_${monthTag}`;
+      if (localStorage.getItem(dismissKey) === '1') return;
 
+      // 严格手电筒过滤：只有当前商号自己勾选了“周期自动续费”且到扣费日的项目才会触发
+      const dueProds = (hqState.allProducts || []).filter((p) => {
+        if (p.status === 'inactive' || p.status === 'draft') return false;
+        const rec = p?.custom_specs?.plugins?.recurring;
+        if (!rec || rec.enabled !== true) return false;
+        const billDay = parseInt(rec.billDay || 1, 10);
+        if (dayOfMonth < billDay) return false;
+        const alreadyBilled = (hqState.allOrders || []).some((o) =>
+          String(o.note || o.settlement_note || '').includes(`[周期自动续费 · ${monthTag}]`) &&
+          Array.isArray(o.items) &&
+          o.items.some((it) => Number(it.id) === Number(p.id) || it.name === p.name)
+        );
+        return !alreadyBilled;
+      });
+
+      if (dueProds.length === 0) return;
+      const host = document.getElementById('hq-security-banner-host');
+      if (!host || document.getElementById('hq-recurring-due-banner')) return;
+
+      const banner = document.createElement('div');
+      banner.id = 'hq-recurring-due-banner';
+      banner.className = 'bg-cyan-50 border border-cyan-300 text-cyan-950 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-2xs';
+      banner.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span class="text-base">🔁</span>
+          <span><b>周期续费到期提醒：</b>本月（${monthTag}）有 <b>${dueProds.length}</b> 项包月/定期服务（${dueProds.map((x) => x.name).join('、')}）已到收款日，尚未生成本期账单。</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button type="button" onclick="window.openCommissionAndRecurringModal?.()" class="bg-[#1b4332] text-white font-bold px-3 py-1 rounded-xl text-[11px]">
+            ⚡ 立即核对并批量生单
+          </button>
+          <button type="button" onclick="localStorage.setItem('${dismissKey}', '1'); document.getElementById('hq-recurring-due-banner')?.remove();" class="bg-white border border-cyan-200 text-cyan-900 font-bold px-2.5 py-1 rounded-xl text-[11px]">
+            本月忽略
+          </button>
+        </div>
+      `;
+      host.appendChild(banner);
+    }
+
+    checkDueRecurringBillsOnLogin();
     initWechatBrowserGuide({ appName: '百工源头直供调度台' });
   </script>
 </body>
