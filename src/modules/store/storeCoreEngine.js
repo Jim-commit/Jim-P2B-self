@@ -2,43 +2,35 @@
  * ============================================================================
  * 商道相通 · 百工商业全域智慧工作台 —— 共享核心大脑 (storeCoreEngine.js)
  * ============================================================================
- * 遵循原则：
- * 1. 大道至简 · 流水无痕（默认白纸开箱，渐进式呈现，零冗余负担）
- * 2. 工具为人所用 · 唯老板保留最终核决权（AI与规则只出草案与预警，绝不擅自锁死或改账）
- * 3. 四重严格界限 & 绝对数据主权（本地优先、加密主权、主体隔离）
- * 4. 货、钱、账、单四位并立，首尾咬合，只增不删，红字冲销
- * 5. 全局一体相容（统一电子单据信封，无缝对接大集/厂商/司机/总台与老版数据）
+ * 终极无缺版 · 遵循大道与五项核心总纲：
+ * 1. 工具为人所用 · 唯老板保留最终核决权（AI与规则只出草案，绝不擅自卡死或改账）
+ * 2. 流水无痕 · 白纸渐进（新店开箱即用，未启用或未授权模块彻底隐身）
+ * 3. 四重严格界限 & 手电筒隔离（人机界限、权责光圈、主体隔离、货钱账单四位并立）
+ * 4. 不可篡改铁账（只增不删、红字冲销、交班时间锁、AES加密信封、四方重算与隔离裁决）
+ * 5. 全网一体相容（统一单据信封、多店统购调拨、可选生物识别、远程放行码与家业常青备忘）
  */
 
-export const ENGINE_VERSION = '3.0.0-zenith';
+export const ENGINE_VERSION = '4.0.0-complete';
+
 export const STORAGE_KEYS = {
   MAIN_STATE: 'shd_store_workbench_v3',
-  DRAFT_RECOVERY: 'shd_store_draft_autosave',
   SNAPSHOTS: 'shd_store_snapshots_v3',
   ARCHIVE_COLD: 'shd_store_cold_archive_v3',
   QUARANTINE: 'shd_store_quarantine_box',
-  DEVICE_OWNER: 'shd_store_device_owner',
-  // 兼容老版本可能存在的本地键名，用于自动无损平迁
   LEGACY_KEYS: ['store_data', 'my_store_v1', 'my_store_v2', 'shop_ledger', 'pos_state']
 };
 
-/**
- * 8 大标准业务生命线模块定义
- */
 export const MODULE_CATALOG = [
-  { id: 'procurement', code: '01', name: '订货与供货方', stage: '上游供应链线', icon: '📦', desc: '名册、大集拼单、缺货自动拆单、比价与联采' },
-  { id: 'receiving',   code: '02', name: '到货验收与载具', stage: '上游供应链线', icon: '🚚', desc: '随车扫码签收、拆零折算、退验与周转筐押金' },
-  { id: 'catalog',     code: '03', name: '商品库与库存', stage: '店内经营线', icon: '🏷️', desc: '边卖边建、拆箱反推、临期雷达、损耗与应急哨兵' },
-  { id: 'pos',         code: '04', name: '柜台收银与履约', stage: '店内经营线', icon: '🧾', desc: '正负一单清、防掉包收款码、熟客赊账、自提与交班' },
-  { id: 'marketing',   code: '05', name: '拓客与邻里驿站', stage: '店内经营线', icon: '📣', desc: '画报海报、群接龙、预售凑团、云端扩充货架码' },
-  { id: 'finance',     code: '06', name: '经营状况与财务', stage: '资金与总控线', icon: '💰', desc: '三联总账、保本线、家庭支取隔离、AI参谋与铁面稽核' },
-  { id: 'reconcile',   code: '07', name: '往来对账与单据', stage: '资金与总控线', icon: '📑', desc: '周期对账、实物返利冲抵、防篡改凭证与加密备份' },
-  { id: 'governance',  code: '08', name: '策略角色与主权', stage: '资金与总控线', icon: '🛡️', desc: '账号角色权限、百业基因、大字关怀与家业常青备忘' }
+  { id: 'procurement', code: '01', name: '订货与供货方', stage: '上游供应链线', icon: '📦', desc: '供货方名册、缺货拆单、同品比价与邻里联采拼单' },
+  { id: 'receiving',   code: '02', name: '到货验收与载具', stage: '上游供应链线', icon: '🚚', desc: '随车扫码签收、拆零搭赠折算、退验与周转筐押金' },
+  { id: 'catalog',     code: '03', name: '商品库与库存', stage: '店内经营线', icon: '🏷️', desc: '边卖边建、拆箱反推、临期雷达、报损与跨店调拨' },
+  { id: 'pos',         code: '04', name: '柜台收银与履约', stage: '店内经营线', icon: '🧾', desc: '正负一单清、防掉包收款码、熟客赊账、定金工单与驿站核销' },
+  { id: 'marketing',   code: '05', name: '拓客与邻里驿站', stage: '店内经营线', icon: '📣', desc: '群接龙文案、零库存预售凑团、A4传单与16:9大屏轮播' },
+  { id: 'finance',     code: '06', name: '经营状况与财务', stage: '资金与总控线', icon: '💰', desc: '三联总账、保本线、家庭支取隔离、经营信用简报与铁面稽核' },
+  { id: 'reconcile',   code: '07', name: '往来对账与单据', stage: '资金与总控线', icon: '📑', desc: '链式防伪凭证、周期对账、实物返利冲抵与AES加密备份' },
+  { id: 'governance',  code: '08', name: '策略角色与主权', stage: '资金与总控线', icon: '🛡️', desc: '多店档案、动态角色工厂、可选刷脸/远程口令、自定义表单与家业备忘' }
 ];
 
-/**
- * 百业行当基因预设（一键换血，亦支持完全自定义）
- */
 export const INDUSTRY_GENES = {
   convenience: {
     id: 'convenience',
@@ -102,22 +94,27 @@ export const INDUSTRY_GENES = {
   }
 };
 
-/**
- * 预置动态角色参考模板（完全可增删改、复制与手电筒微调）
- */
+export const PERMISSION_CATALOG = [
+  { key: 'viewCostAndProfit',    label: '查看进货底价与真实毛利' },
+  { key: 'editRetailPrice',      label: '修改零售价与特批折扣' },
+  { key: 'approveAuditAndVoid',  label: '红字冲销与铁面稽核最终核决权' },
+  { key: 'managePaymentQr',      label: '更换/锁定店内收款码' },
+  { key: 'manageStaffAndExport', label: '管理多店/角色与导出加密账本' }
+];
+
 export const DEFAULT_ROLES = [
   {
     id: 'role_boss',
     name: '掌柜（最高核决）',
     isSystemBoss: true,
-    desc: '拥有全部业务视野、进货底价知情权、红字冲销与最终核决拍板权',
+    desc: '拥有全部业务视野、底价知情权、红字冲销与最终核决拍板权',
     modules: ['procurement', 'receiving', 'catalog', 'pos', 'marketing', 'finance', 'reconcile', 'governance'],
     permissions: {
-      viewCostAndProfit: true,     // 查看进货底价与真实毛利
-      editRetailPrice: true,       // 修改零售价与特批折扣
-      approveAuditAndVoid: true,   // 红字冲销与铁面稽核核决权
-      managePaymentQr: true,       // 更换/锁定收款码
-      manageStaffAndExport: true   // 管理账号角色与导出加密账本
+      viewCostAndProfit: true,
+      editRetailPrice: true,
+      approveAuditAndVoid: true,
+      managePaymentQr: true,
+      manageStaffAndExport: true
     }
   },
   {
@@ -138,7 +135,7 @@ export const DEFAULT_ROLES = [
     id: 'role_cashier',
     name: '前台收银员',
     isSystemBoss: false,
-    desc: '专注柜台扫码收银、熟客记账、自提核销与交接班，不触碰底价与总账',
+    desc: '专注柜台扫码收银、熟客记账、自提核销与交接班，严守底价与总账隔离',
     modules: ['pos', 'marketing'],
     permissions: {
       viewCostAndProfit: false,
@@ -165,7 +162,7 @@ export const DEFAULT_ROLES = [
 ];
 
 /* ============================================================================
- * 工具函数：加密哈希、金额精度、确定性口令与 Web Crypto 封装
+ * 通用工具函数：精度计算、链式防篡改哈希与 Web Crypto 加密信封
  * ============================================================================ */
 
 export function roundMoney(num) {
@@ -181,9 +178,6 @@ export function generateId(prefix = 'VCH') {
   return `${prefix}-${ymd}-${hms}-${rnd}`;
 }
 
-/**
- * 纯同步轻量确定性指纹（用于同步场景快速生成防篡改链短码，兼容全浏览器）
- */
 export function syncChainHash(payloadStr, prevHash = 'GENESIS_0000', salt = 'SHD_IRON_LEDGER') {
   const raw = `${prevHash}|${salt}|${payloadStr}`;
   let h1 = 0xdeadbeef ^ raw.length;
@@ -199,9 +193,6 @@ export function syncChainHash(payloadStr, prevHash = 'GENESIS_0000', salt = 'SHD
   return `IRON-${hex}`;
 }
 
-/**
- * 标准 SHA-256 异步摘要（用于导出账本总封签与口令加盐存储）
- */
 export async function sha256Hex(text) {
   if (typeof crypto !== 'undefined' && crypto.subtle) {
     const data = new TextEncoder().encode(text);
@@ -211,9 +202,6 @@ export async function sha256Hex(text) {
   return syncChainHash(text, 'FALLBACK', 'SHA256');
 }
 
-/**
- * AES-GCM 加密信封（用于微信传递备份包防误泄）
- */
 export async function encryptEnvelope(plainObj, passphrase) {
   const jsonStr = JSON.stringify(plainObj);
   if (!passphrase || typeof crypto === 'undefined' || !crypto.subtle) {
@@ -269,11 +257,11 @@ export async function decryptEnvelope(envelope, passphrase) {
 export class StoreCoreEngine {
   constructor(options = {}) {
     this.listeners = new Set();
-    this.cloudSyncAdapter = options.cloudSyncAdapter || null; // 对接现有云端联动回调
-    this.peripheralBus = new Map(); // 外设标准插口：printer / scale / customerDisplay / coupon
-    this.sandboxMode = false;       // 🎓 练手模拟舱状态
+    this.cloudSyncAdapter = options.cloudSyncAdapter || null;
+    this.peripheralBus = new Map();
+    this.sandboxMode = false;
     this.sandboxBackupState = null;
-    this.privacyShieldActive = false; // 🕵️ 防窥掩护瞬间脱敏开关
+    this.privacyShieldActive = false;
     this.lastActivityTs = Date.now();
     this.idleTimer = null;
 
@@ -282,7 +270,7 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 1. 状态初始化与老版本数据 100% 无损平迁
+   * 1. 状态树初始化与老版数据无损平迁
    * -------------------------------------------------------------------------- */
   _createDefaultState() {
     const defaultStoreId = 'STORE_MAIN_01';
@@ -296,12 +284,11 @@ export class StoreCoreEngine {
         lastUpdatedAt: Date.now(),
         uiMode: 'simple',          // 'simple' 极简白纸态 | 'full' 全面调度态
         elderLargeMode: false,     // 👓 长辈关怀大字模式
-        voiceFeedback: true,       // 语音口头回执开关
+        voiceFeedback: true,       // 中文语音口头复述开关
         autoIdleLockMinutes: 5,    // 柜台闲置自动锁屏分钟数（0=关闭）
-        independentPosMode: false, // 已有独立收银机简化模式
+        independentPosMode: false,
         cloudSyncEnabled: true
       },
-      // 多门店支持（默认单店开箱）
       stores: [
         {
           id: defaultStoreId,
@@ -309,14 +296,13 @@ export class StoreCoreEngine {
           geneId: 'convenience',
           address: '',
           phone: '',
-          monthlyFixedCost: 0, // 固定月摊（房租/人工/水电，用于计算今日保本毛利线）
-          paymentQrUrl: '',    // 收款码图片 DataURL
-          emergencySkuIds: []  // 🛟 社区应急常备清单商品ID
+          monthlyFixedCost: 0,
+          paymentQrUrl: '',
+          emergencySkuIds: []
         }
       ],
       activeStoreId: defaultStoreId,
 
-      // 全局一体通行证与动态角色权限
       rbac: {
         roles: JSON.parse(JSON.stringify(DEFAULT_ROLES)),
         accounts: [
@@ -326,17 +312,18 @@ export class StoreCoreEngine {
             phoneOrCode: '1001',
             avatar: '👑',
             roleId: 'role_boss',
-            storeIds: ['*'], // '*' 代表管辖全部门店
-            pinHash: '',     // 出厂默认空口令（零门槛白纸开箱），可随时设4位口令
-            webAuthnId: '',  // 可选指纹/面容凭证ID（默认关闭）
+            storeIds: ['*'],
+            pinHash: '',
+            biometricEnabled: false, // 👆 可选指纹/面容秒解（默认关闭，自主开启）
+            webAuthnId: '',
             active: true,
-            extraPermissions: {} // 针对个人的手电筒微调覆盖
+            extraPermissions: {}
           }
         ],
         activeAccountId: 'ACC_BOSS_01',
         locked: false,
-        bossMasterPinHash: '', // 掌柜最高安全码（保护收款码、隔离区接管与家业备忘）
-        successionMemo: {      // 🏮 家业常青 · 副掌柜授权备忘
+        bossMasterPinHash: '',
+        successionMemo: {
           enabled: false,
           successorName: '',
           successorRelation: '',
@@ -345,43 +332,35 @@ export class StoreCoreEngine {
         }
       },
 
-      // 四位并立核心账本 1：【货 · 商品库与实物库存】
-      catalog: [], // { id, storeId, barcode, scaleCode, name, category, unit, packUnit, packSize, costPrice, retailPrice, memberPrice, wholesalePrice, tierPrices, stock, minStock, maxStock, supplierId, expiryDate, location, isBundle, bundleItems, updatedAt }
+      catalog: [],
+      suppliers: [],
+      customers: [],
 
-      // 上游供货方与载具（周转筐/水桶）台账
-      suppliers: [], // { id, name, contact, phone, category, creditNote, payableBalance, carrierBalance, updatedAt }
+      // 售后质保 / 定金取货工单 & 邻里驿站代订自提单
+      serviceTickets: [], // { id, storeId, type: 'WARRANTY'|'DEPOSIT'|'RELAY_PICKUP', customerName, phoneTail, itemDesc, depositPaid, totalFee, serviceProfit, status: 'OPEN'|'DONE', createdAt }
 
-      // 下游熟客与会员台账
-      customers: [], // { id, name, phone, creditLimit, receivableBalance, points, storedValue, note, updatedAt }
-
-      // 四位并立核心账本 2：【钱 · 真实资金流】（严守：赊账不算实收，家庭支取不混经营利润）
       cashBook: {
         openingCash: 0,
         currentCash: 0,
-        digitalReceivedTotal: 0, // 微信/支付宝/卡实收累计
+        digitalReceivedTotal: 0,
         operatingExpenseTotal: 0,
-        familyDrawTotal: 0,      // 🏠 老板私人/家庭支取累计（独立隔离）
-        entries: []              // 每一笔资金变动流水
+        familyDrawTotal: 0,
+        entries: []
       },
 
-      // 四位并立核心账本 3：【账 · 权责往来与驿站分润账】
       ledgers: {
-        relayServiceProfit: 0,   // 云端代订/邻里驿站纯利账
-        shiftRecords: [],        // 交接班封账记录（包含封账时间锁）
-        lockedBeforeTs: 0        // 时间锁：此时间戳之前的单据禁止直接修改，只能红字冲销
+        relayServiceProfit: 0,
+        shiftRecords: [],
+        lockedBeforeTs: 0
       },
 
-      // 四位并立核心账本 4：【单 · 不可篡改链式凭证库】（只增不删、红字冲销）
-      vouchers: [], // 统一电子单据信封：{ id, type, storeId, ts, operatorId, operatorName, items, totalAmount, costAmount, payMethod, counterpartyId, counterpartyName, note, status, refVoucherId, prevHash, hash, updatedAt }
+      vouchers: [],
+      approvalQueue: [],
 
-      // AI 铁面稽核与自动化暗线「待核决草案池」（老板保留最终核决权）
-      approvalQueue: [], // { id, category, severity, title, reason, impactSummary, payload, status: 'PENDING'|'APPROVED'|'DISMISSED', createdAt, decidedBy, decidedNote }
-
-      // 拓客与邻里驿站（群接龙、预售凑团、公器共享）
       community: {
-        groupBuys: [],
+        groupBuys: [],     // { id, storeId, title, targetQty, currentQty, unitPrice, status: 'OPEN'|'CLOSED', createdAt }
         sharedTools: [],
-        customForms: [] // 白纸自定义业务小卡片模板（洗衣/维修/农资地块等）
+        customForms: []    // 白纸自定义业务小卡片：{ id, title, fields: ['客户/地块', '规格/事项', '金额'], records: [] }
       }
     };
   }
@@ -389,25 +368,17 @@ export class StoreCoreEngine {
   _loadOrInitializeState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.MAIN_STATE);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        return this._mergeWithDefaults(parsed);
-      }
-      // 探测并无损迁移老版本数据
+      if (raw) return this._mergeWithDefaults(JSON.parse(raw));
       const base = this._createDefaultState();
       for (const legacyKey of STORAGE_KEYS.LEGACY_KEYS) {
         const legacyRaw = localStorage.getItem(legacyKey);
         if (legacyRaw) {
-          try {
-            const legacyObj = JSON.parse(legacyRaw);
-            this._migrateLegacyData(base, legacyObj);
-          } catch (_) { /* 忽略无法解析的无关旧键 */ }
+          try { this._migrateLegacyData(base, JSON.parse(legacyRaw)); } catch (_) {}
         }
       }
       this._persist(base, false);
       return base;
-    } catch (err) {
-      console.warn('[StoreCoreEngine] 初始化回退白纸状态:', err);
+    } catch (_) {
       return this._createDefaultState();
     }
   }
@@ -432,7 +403,6 @@ export class StoreCoreEngine {
   _migrateLegacyData(targetState, legacy) {
     if (!legacy || typeof legacy !== 'object') return;
     const defaultStoreId = targetState.activeStoreId;
-    // 迁移老商品列表
     const oldItems = legacy.products || legacy.goods || legacy.items || legacy.catalog;
     if (Array.isArray(oldItems)) {
       oldItems.forEach(item => {
@@ -464,7 +434,6 @@ export class StoreCoreEngine {
         });
       });
     }
-    // 迁移老供应商与老客户
     if (Array.isArray(legacy.suppliers)) {
       legacy.suppliers.forEach(s => {
         if (s?.name) {
@@ -502,7 +471,7 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 2. 响应式订阅、持久化与 3 次时光机快照
+   * 2. 响应式通知、持久化、多门店管理与时光机快照
    * -------------------------------------------------------------------------- */
   subscribe(fn) {
     this.listeners.add(fn);
@@ -522,7 +491,6 @@ export class StoreCoreEngine {
       try {
         localStorage.setItem(STORAGE_KEYS.MAIN_STATE, JSON.stringify(targetState));
       } catch (e) {
-        // 存储满时自动触发冷热数据分层瘦身
         this.compactColdData(90);
         localStorage.setItem(STORAGE_KEYS.MAIN_STATE, JSON.stringify(targetState));
       }
@@ -533,16 +501,49 @@ export class StoreCoreEngine {
     if (emit) this._notify(eventType, detail);
   }
 
+  addBranchStore({ name, geneId = 'convenience', monthlyFixedCost = 0, address = '', phone = '' }) {
+    if (!this.hasPermission('manageStaffAndExport')) {
+      return { ok: false, message: '仅掌柜可新增分店' };
+    }
+    const newId = generateId('STORE');
+    const branch = {
+      id: newId,
+      name: String(name).trim(),
+      geneId,
+      address,
+      phone,
+      monthlyFixedCost: roundMoney(monthlyFixedCost),
+      paymentQrUrl: '',
+      emergencySkuIds: []
+    };
+    this.state.stores.push(branch);
+    this.state.activeStoreId = newId;
+    this._persist(this.state, true, 'STORE_ADDED', branch);
+    return { ok: true, store: branch };
+  }
+
+  switchStore(storeId) {
+    const acc = this.getCurrentAccount();
+    if (!acc.storeIds.includes('*') && !acc.storeIds.includes(storeId)) {
+      return { ok: false, message: '当前值班账号未授权访问该分店' };
+    }
+    const found = this.state.stores.find(s => s.id === storeId);
+    if (!found) return { ok: false, message: '未找到目标门店' };
+    this.state.activeStoreId = found.id;
+    this._persist(this.state, true, 'STORE_SWITCHED', found);
+    return { ok: true, store: found };
+  }
+
+  getVisibleStores() {
+    const acc = this.getCurrentAccount();
+    return this.state.stores.filter(s => acc.storeIds.includes('*') || acc.storeIds.includes(s.id));
+  }
+
   createSnapshot(label = '自动备份快照') {
     if (this.sandboxMode) return;
     try {
       const list = JSON.parse(localStorage.getItem(STORAGE_KEYS.SNAPSHOTS) || '[]');
-      list.unshift({
-        id: generateId('SNAP'),
-        label,
-        ts: Date.now(),
-        data: JSON.stringify(this.state)
-      });
+      list.unshift({ id: generateId('SNAP'), label, ts: Date.now(), data: JSON.stringify(this.state) });
       localStorage.setItem(STORAGE_KEYS.SNAPSHOTS, JSON.stringify(list.slice(0, 3)));
     } catch (_) {}
   }
@@ -565,19 +566,13 @@ export class StoreCoreEngine {
     return { ok: true, message: `已恢复至【${found.label}】` };
   }
 
-  /**
-   * 90天冷热数据分层自动瘦身：超过90天的已结清普通流水归档至冷库，保留期初汇总余额，保证十年流畅
-   */
   compactColdData(daysThreshold = 90) {
     const cutoff = Date.now() - daysThreshold * 86400 * 1000;
     const hotVouchers = [];
     const coldVouchers = [];
     for (const v of this.state.vouchers) {
-      if (v.ts < cutoff && v.status === 'POSTED') {
-        coldVouchers.push(v);
-      } else {
-        hotVouchers.push(v);
-      }
+      if (v.ts < cutoff && v.status === 'POSTED') coldVouchers.push(v);
+      else hotVouchers.push(v);
     }
     if (coldVouchers.length === 0) return { archivedCount: 0 };
     try {
@@ -592,7 +587,7 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 3. 账号、动态角色与手电筒权限引擎（账号 × 门店 × 角色 × 手电筒）
+   * 3. 账号、动态角色工坊与手电筒权限模型（含可选生物识别与远程放行码）
    * -------------------------------------------------------------------------- */
   getCurrentAccount() {
     return this.state.rbac.accounts.find(a => a.id === this.state.rbac.activeAccountId) || this.state.rbac.accounts[0];
@@ -612,18 +607,12 @@ export class StoreCoreEngine {
     return INDUSTRY_GENES[store?.geneId] || INDUSTRY_GENES.convenience;
   }
 
-  /**
-   * 手电筒光圈判定：当前账号是否可看某业务板块
-   */
   canAccessModule(moduleId) {
     if (this.state.rbac.locked) return false;
     const role = this.getCurrentRole();
     return Array.isArray(role?.modules) && role.modules.includes(moduleId);
   }
 
-  /**
-   * 手电筒敏感动作锁判定（支持个人微调覆盖）
-   */
   hasPermission(permKey) {
     if (this.state.rbac.locked) return false;
     const acc = this.getCurrentAccount();
@@ -634,13 +623,8 @@ export class StoreCoreEngine {
     return Boolean(role?.permissions?.[permKey]);
   }
 
-  /**
-   * 安全脱敏格式化器：受手电筒与防窥掩护双重保护
-   */
   formatSensitiveMoney(amount, permKey = 'viewCostAndProfit') {
-    if (this.privacyShieldActive || !this.hasPermission(permKey)) {
-      return '***';
-    }
+    if (this.privacyShieldActive || !this.hasPermission(permKey)) return '***';
     return `¥${roundMoney(amount).toFixed(2)}`;
   }
 
@@ -651,23 +635,86 @@ export class StoreCoreEngine {
   }
 
   /**
-   * 三阶无感上岗切换账号（支持免密、4位数字口令或已验证生物识别）
+   * 动态角色工厂：新建或更新自定义角色（自由勾选 8 大板块与 5 项动作级手电筒锁）
    */
+  upsertCustomRole({ id, name, desc = '', modules = [], permissions = {} }) {
+    if (!this.hasPermission('manageStaffAndExport')) {
+      return { ok: false, message: '仅掌柜有权配置角色与手电筒权限' };
+    }
+    const existing = id ? this.state.rbac.roles.find(r => r.id === id) : null;
+    if (existing) {
+      if (existing.isSystemBoss) return { ok: false, message: '系统最高掌柜角色不可削减权限' };
+      existing.name = String(name).trim() || existing.name;
+      existing.desc = desc;
+      existing.modules = modules;
+      existing.permissions = { ...existing.permissions, ...permissions };
+    } else {
+      this.state.rbac.roles.push({
+        id: generateId('ROLE'),
+        name: String(name).trim() || '自定义岗位',
+        isSystemBoss: false,
+        desc,
+        modules,
+        permissions
+      });
+    }
+    this._persist(this.state, true, 'ROLE_UPDATED');
+    return { ok: true, message: '角色与手电筒光圈配置已生效' };
+  }
+
+  /**
+   * 可选启用/关闭本机生物识别秒解（WebAuthn，默认关闭，绝不强迫）
+   */
+  async toggleBiometricForCurrentAccount() {
+    const acc = this.getCurrentAccount();
+    if (acc.biometricEnabled) {
+      acc.biometricEnabled = false;
+      acc.webAuthnId = '';
+      this._persist();
+      return { ok: true, enabled: false, message: '已关闭生物识别秒解，恢复纯数字口令模式' };
+    }
+    if (typeof window === 'undefined' || !window.PublicKeyCredential) {
+      return { ok: false, message: '当前设备或浏览器不支持原生生物识别，已自动保留4位数字口令' };
+    }
+    try {
+      const challenge = crypto.getRandomValues(new Uint8Array(32));
+      const userId = new TextEncoder().encode(acc.id);
+      const cred = await navigator.credentials.create({
+        publicKey: {
+          challenge,
+          rp: { name: '商道相通工作台' },
+          user: { id: userId, name: acc.name, displayName: acc.name },
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+          authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+          timeout: 30000
+        }
+      });
+      if (cred) {
+        acc.biometricEnabled = true;
+        acc.webAuthnId = cred.id;
+        this._persist();
+        return { ok: true, enabled: true, message: '👆 已成功绑定本机指纹/面容秒解（随时可退回数字口令）' };
+      }
+    } catch (_) {
+      return { ok: false, message: '未完成生物识别验证，已保持原有数字口令方式' };
+    }
+    return { ok: false, message: '未启用生物识别' };
+  }
+
   async switchAccount(accountId, pin = '', biometricVerified = false) {
     const target = this.state.rbac.accounts.find(a => a.id === accountId && a.active);
     if (!target) return { ok: false, message: '该账号未启用或不存在' };
 
     if (target.pinHash && !biometricVerified) {
-      if (!pin) return { ok: false, needPin: true, message: `请输入【${target.name}】的4位上岗口令` };
+      if (!pin) return { ok: false, needPin: true, biometricAvailable: Boolean(target.biometricEnabled), message: `请输入【${target.name}】的4位上岗口令` };
       const inputHash = await sha256Hex(`${target.id}:${pin}`);
       if (inputHash !== target.pinHash) {
-        return { ok: false, needPin: true, message: '口令不匹配，请重新输入' };
+        return { ok: false, needPin: true, biometricAvailable: Boolean(target.biometricEnabled), message: '口令不匹配，请重新输入' };
       }
     }
 
     this.state.rbac.activeAccountId = target.id;
     this.state.rbac.locked = false;
-    // 若账号绑定特定门店且当前门店不在其范围内，自动切至其首个管辖门店
     if (!target.storeIds.includes('*') && !target.storeIds.includes(this.state.activeStoreId)) {
       if (target.storeIds.length > 0) this.state.activeStoreId = target.storeIds[0];
     }
@@ -686,7 +733,6 @@ export class StoreCoreEngine {
     this.idleTimer = setInterval(() => {
       const mins = Number(this.state.meta.autoIdleLockMinutes || 0);
       if (mins <= 0 || this.state.rbac.locked || this.sandboxMode) return;
-      // 仅当存在多个账号或当前账号设置了口令时才自动落锁，保持单人白纸零打扰
       const acc = this.getCurrentAccount();
       if ((acc?.pinHash || this.state.rbac.accounts.length > 1) && Date.now() - this.lastActivityTs > mins * 60000) {
         this.lockScreen();
@@ -694,14 +740,10 @@ export class StoreCoreEngine {
     }, 15000);
   }
 
-  /**
-   * 一次性远程放行码（5分钟时间窗口确定性算法，掌柜外出时放行单次特殊业务）
-   */
   generateOneTimePasscode(challengeCode) {
     const windowSlot = Math.floor(Date.now() / (5 * 60000));
     const hash = syncChainHash(`${challengeCode}:${windowSlot}`, 'OTP', this.state.meta.ledgerSalt);
-    const digits = hash.replace(/\D/g, '').padEnd(4, '8').slice(0, 4);
-    return digits;
+    return hash.replace(/\D/g, '').padEnd(4, '8').slice(0, 4);
   }
 
   verifyOneTimePasscode(challengeCode, userCode) {
@@ -714,9 +756,6 @@ export class StoreCoreEngine {
     return false;
   }
 
-  /**
-   * 🎓 练手模拟舱切换（新店员在全真隔离沙盒里练手，绝不污染正式账本）
-   */
   enterSandbox() {
     if (this.sandboxMode) return;
     this.sandboxBackupState = JSON.stringify(this.state);
@@ -737,28 +776,12 @@ export class StoreCoreEngine {
   /* --------------------------------------------------------------------------
    * 4. 铁账核心引擎：货、钱、账、单四位并立 & 只增不删 & 红字冲销 & 老板核决
    * -------------------------------------------------------------------------- */
-
-  /**
-   * 核心单据落账入口（所有业务单据必须经此统一通道，严守四位并立与链式指纹）
-   * 单据类型 type:
-   * - 'SALE'         : 柜台收银（支持正负混合一单清：卖出正数 + 退货/空桶押金负数同单结算）
-   * - 'RECEIVE'      : 随车到货签收（含赠品拆零折算、载具借入归还）
-   * - 'RETURN_SUP'   : 依约退验旧品冲抵上游应付
-   * - 'LOSS_GIFT'    : 报损 / 店内自用 / 试吃赠品人情往来
-   * - 'STOCK_COUNT'  : 盘点盈亏纠偏 / 跨店调拨
-   * - 'EXPENSE'      : 日常杂费支出
-   * - 'FAMILY_DRAW'  : 🏠 老板私人/家庭支取（只扣钱箱现金，绝不污染经营利润）
-   * - 'CREDIT_SETTLE': 熟客还款 / 供货商结账 / 返利实物轧差冲抵
-   * - 'RELAY_ORDER'  : 街坊自提/代订驿站核销（分离货款与服务纯利）
-   * - 'VOID_RED'     : 红字冲销凭证（唯一合法更正历史单据方式）
-   */
   commitVoucher(draft, options = {}) {
     const { bossApproved = false, approvalNote = '' } = options;
     const acc = this.getCurrentAccount();
     const storeId = draft.storeId || this.state.activeStoreId;
     const now = Date.now();
 
-    // 1. 风控与铁面稽核前置检查（只警告或转待核决草案，绝不擅自卡死老板）
     const riskFlags = this._inspectDraftRisks(draft);
     if (riskFlags.length > 0 && !bossApproved && !this.hasPermission('approveAuditAndVoid')) {
       const approvalItem = {
@@ -784,13 +807,12 @@ export class StoreCoreEngine {
       };
     }
 
-    // 2. 构建不可篡改标准化电子单据信封
     const voucherId = generateId(draft.type || 'VCH');
     const items = Array.isArray(draft.items) ? draft.items.map(it => ({
       skuId: it.skuId || '',
       name: String(it.name || '未命名商品'),
-      qty: Number(it.qty) || 0,               // 正数为卖出/入库，负数为同单退货/退桶
-      bonusQty: Number(it.bonusQty) || 0,     // 搭赠数量（入库增加实物，摊薄单位成本）
+      qty: Number(it.qty) || 0,
+      bonusQty: Number(it.bonusQty) || 0,
       packMultiplier: Number(it.packMultiplier) || 1,
       unitPrice: roundMoney(it.unitPrice || 0),
       costPrice: roundMoney(it.costPrice || 0),
@@ -809,6 +831,7 @@ export class StoreCoreEngine {
       id: voucherId,
       type: draft.type,
       storeId,
+      targetStoreId: draft.targetStoreId || '',
       ts: now,
       operatorId: acc.id,
       operatorName: acc.name,
@@ -816,31 +839,28 @@ export class StoreCoreEngine {
       discountAmount: roundMoney(draft.discountAmount || 0),
       totalAmount: computedTotal,
       costAmount: computedCost,
-      payMethod: draft.payMethod || 'CASH', // CASH | DIGITAL | CREDIT | OFFSET | SPLIT
+      payMethod: draft.payMethod || 'CASH',
       cashPaid: roundMoney(draft.cashPaid ?? (draft.payMethod === 'CASH' ? computedTotal : 0)),
       digitalPaid: roundMoney(draft.digitalPaid ?? (draft.payMethod === 'DIGITAL' ? computedTotal : 0)),
       creditAmount: roundMoney(draft.creditAmount ?? (draft.payMethod === 'CREDIT' ? computedTotal : 0)),
-      carrierDelta: Number(draft.carrierDelta || 0), // 周转筐/空桶净增减（+借入 / -归还）
-      serviceFee: roundMoney(draft.serviceFee || 0),  // 驿站代订服务纯利
+      carrierDelta: Number(draft.carrierDelta || 0),
+      serviceFee: roundMoney(draft.serviceFee || 0),
       counterpartyId: draft.counterpartyId || '',
       counterpartyName: draft.counterpartyName || '',
       note: [draft.note, approvalNote ? `[掌柜核准: ${approvalNote}]` : ''].filter(Boolean).join(' '),
-      status: 'POSTED', // POSTED | VOIDED
+      status: 'POSTED',
       refVoucherId: draft.refVoucherId || '',
       prevHash: this.state.meta.lastChainHash,
       hash: '',
       updatedAt: now
     };
 
-    // 计算首尾咬合防篡改链指纹
     const signSeed = `${voucher.id}|${voucher.type}|${voucher.ts}|${voucher.totalAmount}|${voucher.operatorId}|${JSON.stringify(voucher.items)}`;
     voucher.hash = syncChainHash(signSeed, voucher.prevHash, this.state.meta.ledgerSalt);
     this.state.meta.lastChainHash = voucher.hash;
 
-    // 3. 四位并立同步过账：【货】、【钱】、【账】严格各司其职
     this._applyFourPillarsEffect(voucher, 1);
 
-    // 4. 存入【单】凭证库，并触发自动化神经暗线检查
     this.state.vouchers.unshift(voucher);
     this._runNeuralNervesAfterVoucher(voucher);
     this._persist(this.state, true, 'VOUCHER_COMMITTED', voucher);
@@ -848,9 +868,6 @@ export class StoreCoreEngine {
     return { ok: true, voucher, message: '已按铁账规则四方落账' };
   }
 
-  /**
-   * 唯一合法更正历史单据接口：红字冲销（原单永久留痕打钢印，生成相反红字冲抵单）
-   */
   voidVoucherWithRedEntry(targetVoucherId, reason = '录错更正') {
     if (!this.hasPermission('approveAuditAndVoid')) {
       return { ok: false, message: '红字冲销需掌柜核决权限，请切换掌柜或使用远程放行码' };
@@ -864,7 +881,6 @@ export class StoreCoreEngine {
     orig.status = 'VOIDED';
     orig.updatedAt = now;
 
-    // 生成镜像红字冲销凭证
     const redVoucher = {
       ...JSON.parse(JSON.stringify(orig)),
       id: generateId('RED'),
@@ -897,7 +913,6 @@ export class StoreCoreEngine {
     redVoucher.hash = syncChainHash(signSeed, redVoucher.prevHash, this.state.meta.ledgerSalt);
     this.state.meta.lastChainHash = redVoucher.hash;
 
-    // 反向回冲【货】、【钱】、【账】
     this._applyFourPillarsEffect(orig, -1);
 
     this.state.vouchers.unshift(redVoucher);
@@ -905,30 +920,34 @@ export class StoreCoreEngine {
     return { ok: true, redVoucher, message: `已完成红字冲销，原单 [${orig.id}] 已永久留痕` };
   }
 
-  /**
-   * 货、钱、账、单四位并立过账执行器 (dir = 1 正向落账, dir = -1 红字冲销)
-   */
   _applyFourPillarsEffect(v, dir = 1) {
     const type = v.type === 'VOID_RED' ? v.origType : v.type;
 
-    // 【一、货 · 实物库存流】
-    if (['SALE', 'RECEIVE', 'RETURN_SUP', 'LOSS_GIFT', 'STOCK_COUNT', 'RELAY_ORDER'].includes(type)) {
+    if (['SALE', 'RECEIVE', 'RETURN_SUP', 'LOSS_GIFT', 'STOCK_COUNT', 'RELAY_ORDER', 'TRANSFER_STORE'].includes(type)) {
       for (const it of v.items) {
         const sku = this.state.catalog.find(s => s.id === it.skuId);
         if (!sku) continue;
         const unitChange = (it.qty + it.bonusQty) * (it.packMultiplier || 1) * dir;
         if (type === 'RECEIVE' || type === 'STOCK_COUNT') {
           sku.stock = Number((sku.stock + unitChange).toFixed(3));
-          // 到货时若进价变动，按移动加权平均更新进货底价
           if (type === 'RECEIVE' && dir === 1 && it.unitPrice > 0) {
             sku.lastCostPrice = sku.costPrice;
             sku.costPrice = roundMoney(it.unitPrice / (it.packMultiplier || 1));
           }
+        } else if (type === 'TRANSFER_STORE') {
+          sku.stock = Number((sku.stock - unitChange).toFixed(3));
+          if (v.targetStoreId) {
+            let targetSku = this.state.catalog.find(s => s.storeId === v.targetStoreId && s.name === sku.name);
+            if (!targetSku) {
+              targetSku = { ...JSON.parse(JSON.stringify(sku)), id: generateId('SKU'), storeId: v.targetStoreId, stock: 0 };
+              this.state.catalog.push(targetSku);
+            }
+            targetSku.stock = Number((targetSku.stock + unitChange).toFixed(3));
+            targetSku.updatedAt = Date.now();
+          }
         } else {
-          // 销售、退供、报损均扣减库存（若销售单中某行为退货负数 qty<0，则自动增加库存）
           sku.stock = Number((sku.stock - unitChange).toFixed(3));
         }
-        // 若为组合礼盒套装，自动拆解扣减子商品库存
         if (sku.isBundle && Array.isArray(sku.bundleItems) && type === 'SALE') {
           for (const sub of sku.bundleItems) {
             const childSku = this.state.catalog.find(c => c.id === sub.skuId);
@@ -941,7 +960,6 @@ export class StoreCoreEngine {
       }
     }
 
-    // 【二、钱 · 真实资金流】——严格区分实收现金与赊账，家庭支取绝不混入经营利润
     if (type === 'SALE' || type === 'RELAY_ORDER') {
       this.state.cashBook.currentCash = roundMoney(this.state.cashBook.currentCash + v.cashPaid * dir);
       this.state.cashBook.digitalReceivedTotal = roundMoney(this.state.cashBook.digitalReceivedTotal + v.digitalPaid * dir);
@@ -951,16 +969,13 @@ export class StoreCoreEngine {
         this.state.cashBook.operatingExpenseTotal = roundMoney(this.state.cashBook.operatingExpenseTotal + v.totalAmount * dir);
       }
     } else if (type === 'FAMILY_DRAW') {
-      // 🏠 老板私人/家庭支取：仅扣减真实钱箱现金，绝不记入 operatingExpenseTotal 经营成本
       this.state.cashBook.currentCash = roundMoney(this.state.cashBook.currentCash - v.totalAmount * dir);
       this.state.cashBook.familyDrawTotal = roundMoney(this.state.cashBook.familyDrawTotal + v.totalAmount * dir);
     } else if (type === 'CREDIT_SETTLE') {
-      // 正数代表熟客还钱入账，负数代表给供货商结清货款出账
       this.state.cashBook.currentCash = roundMoney(this.state.cashBook.currentCash + v.cashPaid * dir);
       this.state.cashBook.digitalReceivedTotal = roundMoney(this.state.cashBook.digitalReceivedTotal + v.digitalPaid * dir);
     }
 
-    // 【三、账 · 权责往来与载具押金账】
     if (v.counterpartyId) {
       const customer = this.state.customers.find(c => c.id === v.counterpartyId);
       if (customer) {
@@ -978,7 +993,7 @@ export class StoreCoreEngine {
         if (type === 'RECEIVE') {
           supplier.payableBalance = roundMoney(supplier.payableBalance + v.creditAmount * dir);
           supplier.carrierBalance = (supplier.carrierBalance || 0) + v.carrierDelta * dir;
-        } else if (type === 'RETURN_SUP') {
+        } else if (type === 'RETURN_SUP' || type === 'BARTER_OFFSET') {
           supplier.payableBalance = roundMoney(supplier.payableBalance - v.totalAmount * dir);
           supplier.carrierBalance = (supplier.carrierBalance || 0) + v.carrierDelta * dir;
         } else if (type === 'CREDIT_SETTLE') {
@@ -989,15 +1004,11 @@ export class StoreCoreEngine {
       }
     }
 
-    // 驿站代订服务纯利独立入账
     if (type === 'RELAY_ORDER' && v.serviceFee) {
       this.state.ledgers.relayServiceProfit = roundMoney(this.state.ledgers.relayServiceProfit + v.serviceFee * dir);
     }
   }
 
-  /**
-   * 交接班封账清点（生成不可篡改封账单，锁定历史时间窗口，长短款独立记账）
-   */
   closeShiftAndLock(countedCash, note = '') {
     const expectedCash = roundMoney(this.state.cashBook.currentCash);
     const actualCash = roundMoney(countedCash);
@@ -1013,7 +1024,7 @@ export class StoreCoreEngine {
       operatorName: acc.name,
       expectedCash,
       actualCash,
-      cashDiff: diff, // 正数为长款，负数为短款，绝不用杂费掩盖
+      cashDiff: diff,
       note
     };
 
@@ -1026,7 +1037,7 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 5. 外部导入防篡改：铁算盘四方强制重算 + 刚柔并济隔离核决
+   * 5. 外部导入防篡改 & 脱敏经营信用简报凭证
    * -------------------------------------------------------------------------- */
   async exportIronBackup(encryptPassphrase = '') {
     const snapshot = JSON.parse(JSON.stringify(this.state));
@@ -1045,9 +1056,6 @@ export class StoreCoreEngine {
     return encryptEnvelope(rawPackage, encryptPassphrase);
   }
 
-  /**
-   * 铁算盘四方重算引擎：从最底层原始凭证逐笔重算，验证链式指纹与货钱账单是否严丝合缝
-   */
   runIronAbacusAudit(targetState = this.state) {
     const anomalies = [];
     const vouchersAsc = [...(targetState.vouchers || [])].reverse();
@@ -1055,28 +1063,19 @@ export class StoreCoreEngine {
     let brokenLinks = 0;
 
     for (const v of vouchersAsc) {
-      if (v.prevHash && v.prevHash !== expectedPrevHash && expectedPrevHash !== 'GENESIS_0000') {
-        brokenLinks++;
-      }
+      if (v.prevHash && v.prevHash !== expectedPrevHash && expectedPrevHash !== 'GENESIS_0000') brokenLinks++;
       expectedPrevHash = v.hash || expectedPrevHash;
     }
 
-    if (brokenLinks > 0) {
-      anomalies.push(`发现 ${brokenLinks} 处凭证链式指纹断链，可能存在外部手工改动`);
-    }
+    if (brokenLinks > 0) anomalies.push(`发现 ${brokenLinks} 处凭证链式指纹断链，可能存在外部手工改动`);
 
-    // 检查负库存销售与破底价异常
     const negativeSkus = (targetState.catalog || []).filter(s => s.stock < 0);
-    if (negativeSkus.length > 0) {
-      anomalies.push(`${negativeSkus.length} 款商品当前为负库存（${negativeSkus.slice(0, 3).map(s => s.name).join('、')}）`);
-    }
+    if (negativeSkus.length > 0) anomalies.push(`${negativeSkus.length} 款商品当前为负库存（${negativeSkus.slice(0, 3).map(s => s.name).join('、')}）`);
 
     const belowCostVouchers = (targetState.vouchers || []).filter(
       v => v.status === 'POSTED' && v.type === 'SALE' && v.totalAmount < v.costAmount && !v.note.includes('掌柜核准')
     );
-    if (belowCostVouchers.length > 0) {
-      anomalies.push(`${belowCostVouchers.length} 笔销售单成交总额低于进货底价且未经掌柜特批`);
-    }
+    if (belowCostVouchers.length > 0) anomalies.push(`${belowCostVouchers.length} 笔销售单成交总额低于进货底价且未经掌柜特批`);
 
     return {
       passed: anomalies.length === 0,
@@ -1087,17 +1086,12 @@ export class StoreCoreEngine {
     };
   }
 
-  /**
-   * 刚柔并济导入处理：
-   * 1. 验真通过 -> 按增量时间戳无损融合（多端并发防覆盖）
-   * 2. 发现篡改或偏差 -> 拦截进隔离区，给员工留体面话术，交掌柜最终裁决
-   */
   async importWithIronJudge(rawInput, decryptPassphrase = '') {
     let pkg;
     try {
       const parsed = typeof rawInput === 'string' ? JSON.parse(rawInput) : rawInput;
       pkg = parsed.encrypted ? await decryptEnvelope(parsed, decryptPassphrase) : parsed;
-    } catch (err) {
+    } catch (_) {
       return { ok: false, needPassphrase: true, message: '解密失败，请核对微信传递加密信封口令' };
     }
 
@@ -1113,7 +1107,6 @@ export class StoreCoreEngine {
     const sealTampered = pkg.seal && pkg.seal !== expectedSeal;
 
     if (sealTampered || !auditRes.passed) {
-      // 拦截进隔离区，绝不覆盖正式账本
       const quarantineRecord = {
         id: generateId('QRT'),
         receivedAt: Date.now(),
@@ -1127,7 +1120,6 @@ export class StoreCoreEngine {
       return {
         ok: false,
         quarantined: true,
-        // 刚柔并济话术：对普通店员得体留面子，对掌柜直陈铁面差异
         message: isBoss
           ? `铁面稽核拦截：该导入包存在 ${sealTampered ? '总封签被外部改动' : '账实差异'}（${auditRes.anomalies.join('；')}），已暂存隔离区等待您的最终裁决。`
           : '该账本文件校验未通过（可能文件在传输中损坏或版本不一致），已自动保护当前门店数据，请交由掌柜核决处理。',
@@ -1135,28 +1127,20 @@ export class StoreCoreEngine {
       };
     }
 
-    // 验真通过：执行字段级最新时间戳无损增量合并（防夫妻双端同时开单互相覆盖）
     this.createSnapshot('导入合并前自动备份');
     this._mergeStateCRDT(incomingState);
     this._persist(this.state, true, 'BACKUP_MERGED');
     return { ok: true, message: '账本凭证核验无误（货、钱、账、单四方吻合），已为您无损合并数据。' };
   }
 
-  /**
-   * 掌柜最终裁决：强制接管隔离区数据并自动生成差异追责留痕
-   */
   bossResolveQuarantine(action = 'DISCARD', bossNote = '') {
-    if (!this.hasPermission('approveAuditAndVoid')) {
-      return { ok: false, message: '仅掌柜有权裁决隔离区账本' };
-    }
+    if (!this.hasPermission('approveAuditAndVoid')) return { ok: false, message: '仅掌柜有权裁决隔离区账本' };
     const raw = localStorage.getItem(STORAGE_KEYS.QUARANTINE);
     if (!raw) return { ok: false, message: '隔离区当前无待核决文件' };
     const q = JSON.parse(raw);
     localStorage.removeItem(STORAGE_KEYS.QUARANTINE);
 
-    if (action === 'DISCARD') {
-      return { ok: true, message: '已丢弃异常导入包，当前正式账本纯净无损。' };
-    }
+    if (action === 'DISCARD') return { ok: true, message: '已丢弃异常导入包，当前正式账本纯净无损。' };
 
     this.createSnapshot('掌柜核准接管隔离账本前备份');
     this._mergeStateCRDT(q.incomingData);
@@ -1177,28 +1161,40 @@ export class StoreCoreEngine {
   }
 
   _mergeStateCRDT(incoming) {
-    // 1. 商品库按 ID + updatedAt 最新时间戳胜出
     const skuMap = new Map(this.state.catalog.map(s => [s.id, s]));
     for (const incSku of incoming.catalog || []) {
       const cur = skuMap.get(incSku.id);
-      if (!cur || (incSku.updatedAt || 0) > (cur.updatedAt || 0)) {
-        skuMap.set(incSku.id, incSku);
-      }
+      if (!cur || (incSku.updatedAt || 0) > (cur.updatedAt || 0)) skuMap.set(incSku.id, incSku);
     }
     this.state.catalog = Array.from(skuMap.values());
 
-    // 2. 单据库按 ID 严格去重追加，绝不覆盖
     const vMap = new Map(this.state.vouchers.map(v => [v.id, v]));
     for (const incV of incoming.vouchers || []) {
-      if (!vMap.has(incV.id)) {
-        vMap.set(incV.id, incV);
-      }
+      if (!vMap.has(incV.id)) vMap.set(incV.id, incV);
     }
     this.state.vouchers = Array.from(vMap.values()).sort((a, b) => b.ts - a.ts);
   }
 
+  /**
+   * 📜 生成脱敏《门店近90天经营稳健度信用简报》（剔除进货底价与客户隐私，供向大供货商申请月结账期）
+   */
+  generateCreditBrief() {
+    const store = this.getActiveStore();
+    const audit = this.runIronAbacusAudit();
+    const postedVouchers = this.state.vouchers.filter(v => v.status === 'POSTED' && v.storeId === store.id);
+    const activeDays = new Set(postedVouchers.map(v => new Date(v.ts).toDateString())).size;
+    return {
+      storeName: store.name,
+      generatedAt: new Date().toLocaleString('zh-CN'),
+      activeOperatingDays: activeDays,
+      totalVerifiedVouchers: postedVouchers.length,
+      ledgerIntegrityPassed: audit.passed,
+      verifyShortCode: syncChainHash(`${store.id}|${postedVouchers.length}|${this.state.meta.lastChainHash}`, 'CREDIT_BRIEF', this.state.meta.ledgerSalt)
+    };
+  }
+
   /* --------------------------------------------------------------------------
-   * 6. 4 条自动化神经暗线 & 老板核决队列处理
+   * 6. 自动化神经暗线 & 老板核决队列处理
    * -------------------------------------------------------------------------- */
   _inspectDraftRisks(draft) {
     const risks = [];
@@ -1220,14 +1216,11 @@ export class StoreCoreEngine {
   }
 
   _runNeuralNervesAfterVoucher(voucher) {
-    // 暗线 1：销售后触发低库存检查，自动生成补货草案（待掌柜核准）
     if (voucher.type === 'SALE') {
       const lowItems = [];
       for (const it of voucher.items) {
         const sku = this.state.catalog.find(s => s.id === it.skuId);
-        if (sku && sku.stock <= sku.minStock) {
-          lowItems.push(`${sku.name}(余${sku.stock}${sku.unit})`);
-        }
+        if (sku && sku.stock <= sku.minStock) lowItems.push(`${sku.name}(余${sku.stock}${sku.unit})`);
       }
       if (lowItems.length > 0) {
         this.state.approvalQueue.unshift({
@@ -1246,7 +1239,6 @@ export class StoreCoreEngine {
       }
     }
 
-    // 暗线 2：到货签收后若进货底价上涨，主动提醒老板是否同步调整零售价
     if (voucher.type === 'RECEIVE') {
       const priceHikes = [];
       for (const it of voucher.items) {
@@ -1273,9 +1265,6 @@ export class StoreCoreEngine {
     }
   }
 
-  /**
-   * 掌柜拍板核决待办草案（核准执行 或 忽略放行）
-   */
   decideApprovalItem(approvalId, decision = 'APPROVED', note = '') {
     const item = this.state.approvalQueue.find(a => a.id === approvalId);
     if (!item || item.status !== 'PENDING') return { ok: false, message: '该草案已处理' };
@@ -1284,7 +1273,6 @@ export class StoreCoreEngine {
     item.decidedBy = acc.name;
     item.decidedNote = note;
 
-    // 若核准的是被拦截的业务单据，立即以老板特批权限正式落账
     if (decision === 'APPROVED' && item.category === 'RISK_VOUCHER' && item.payload?.draft) {
       const res = this.commitVoucher(item.payload.draft, { bossApproved: true, approvalNote: note || '掌柜核准特批' });
       this._persist(this.state, true, 'APPROVAL_DECIDED', item);
@@ -1296,80 +1284,33 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 7. 双向语音指令解析、AI 本地经营参谋 & 离线算法 工具箱
+   * 7. 双向语音指令解析、AI 本地参谋与经营指标看板
    * -------------------------------------------------------------------------- */
-
-  /**
-   * 无界语音/自然语言指令意图解析（纯离线毫秒级解析）
-   * 支持示例：
-   * - "老王赊账两箱矿泉水48元"
-   * - "进货补货10箱可乐"
-   * - "记一笔杂费买胶带15元"
-   * - "家用拿走200元"
-   * - "报损2瓶牛奶"
-   */
   parseVoiceOrQuickCommand(rawText) {
     const text = String(rawText || '').trim();
     if (!text) return { intent: 'UNKNOWN', raw: text };
 
-    // 提取金额数字
-    const moneyMatch = text.match(/(\d+(?:\.\d{1,2})?)\s*(?:元|块|块钱)/);
+    const moneyMatch = text.match(/(\d+(?:\.\d{1,2})?)\s*(?:元|块|块钱)?/);
     const amount = moneyMatch ? roundMoney(moneyMatch[1]) : 0;
 
     if (/(家用|家里|私人支取|自己拿)/.test(text)) {
-      return {
-        intent: 'FAMILY_DRAW',
-        label: '🏠 老板私人/家庭支取（不计入经营成本）',
-        amount,
-        note: text,
-        needConfirm: true
-      };
+      return { intent: 'FAMILY_DRAW', label: '🏠 老板私人/家庭支取（不计入经营成本）', amount, note: text, needConfirm: true };
     }
-
     if (/(杂费|水电|买胶带|包装袋|运费|吃饭)/.test(text)) {
-      return {
-        intent: 'EXPENSE',
-        label: '💸 日常经营杂费支出',
-        amount,
-        note: text,
-        needConfirm: true
-      };
+      return { intent: 'EXPENSE', label: '💸 日常经营杂费支出', amount, note: text, needConfirm: true };
     }
-
     if (/(报损|破损|过期|自用|试吃|送人)/.test(text)) {
-      return {
-        intent: 'LOSS_GIFT',
-        label: '📉 报损 / 自用 / 人情往来登记',
-        raw: text,
-        needConfirm: true
-      };
+      return { intent: 'LOSS_GIFT', label: '📉 报损 / 自用 / 人情往来登记', raw: text, needConfirm: true };
     }
-
     if (/(赊账|挂账|先记账)/.test(text)) {
       const matchedCustomer = this.state.customers.find(c => text.includes(c.name));
-      return {
-        intent: 'CREDIT_SALE',
-        label: '📒 熟客赊账开单',
-        customer: matchedCustomer || null,
-        amount,
-        raw: text,
-        needConfirm: true
-      };
+      return { intent: 'CREDIT_SALE', label: '📒 熟客赊账开单', customer: matchedCustomer || null, amount, raw: text, needConfirm: true };
     }
-
     if (/(还钱|还款|结账)/.test(text)) {
       const matchedCustomer = this.state.customers.find(c => text.includes(c.name));
-      return {
-        intent: 'CREDIT_SETTLE',
-        label: '🤝 熟客还款入账',
-        customer: matchedCustomer || null,
-        amount,
-        raw: text,
-        needConfirm: true
-      };
+      return { intent: 'CREDIT_SETTLE', label: '🤝 熟客还款入账', customer: matchedCustomer || null, amount, raw: text, needConfirm: true };
     }
 
-    // 默认尝试匹配商品库检索
     const matchedSkus = this.searchCatalog(text);
     return {
       intent: 'SEARCH_OR_ADD',
@@ -1381,9 +1322,6 @@ export class StoreCoreEngine {
     };
   }
 
-  /**
-   * 中文语音口头回执播报（调用系统原生 SpeechSynthesis）
-   */
   speakFeedback(message) {
     if (!this.state.meta.voiceFeedback || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
@@ -1395,23 +1333,17 @@ export class StoreCoreEngine {
     } catch (_) {}
   }
 
-  /**
-   * 极速模糊检索（支持条码、18位称重码、品名、货架位、价格反查）
-   */
   searchCatalog(query) {
     const q = String(query || '').trim().toLowerCase();
     const storeId = this.state.activeStoreId;
     const list = this.state.catalog.filter(s => s.storeId === storeId || !s.storeId);
     if (!q) return list;
 
-    // 18位生鲜称重条码解析（前2位标识+5位货号+5位金额/重量+校验位）
     if (/^\d{18}$/.test(q) && (q.startsWith('20') || q.startsWith('22') || q.startsWith('28'))) {
       const pluCode = q.slice(2, 7);
       const valNum = Number(q.slice(7, 12)) / 100;
       const byPlu = list.filter(s => s.scaleCode === pluCode || s.barcode.includes(pluCode));
-      if (byPlu.length > 0) {
-        return byPlu.map(s => ({ ...s, _parsedScaleValue: valNum }));
-      }
+      if (byPlu.length > 0) return byPlu.map(s => ({ ...s, _parsedScaleValue: valNum }));
     }
 
     return list.filter(s =>
@@ -1424,9 +1356,6 @@ export class StoreCoreEngine {
     );
   }
 
-  /**
-   * 收银台顺口带货提示（根据历史同单共现频次离线推荐，零打扰）
-   */
   getCrossSellHint(currentCartSkuIds = []) {
     if (!currentCartSkuIds.length) return null;
     const targetSet = new Set(currentCartSkuIds);
@@ -1437,9 +1366,7 @@ export class StoreCoreEngine {
       const ids = v.items.map(i => i.skuId);
       if (ids.some(id => targetSet.has(id))) {
         for (const id of ids) {
-          if (!targetSet.has(id)) {
-            pairCount.set(id, (pairCount.get(id) || 0) + 1);
-          }
+          if (!targetSet.has(id)) pairCount.set(id, (pairCount.get(id) || 0) + 1);
         }
       }
     }
@@ -1454,9 +1381,6 @@ export class StoreCoreEngine {
     return sku ? { sku, hits: bestHits, text: `街坊常顺手带一件【${sku.name}】(¥${sku.retailPrice})` } : null;
   }
 
-  /**
-   * 经营全景实时指标看板（三联总账 + 今日保本毛利线 + 保质期/周转雷达）
-   */
   getDashboardMetrics() {
     const store = this.getActiveStore();
     const todayStart = new Date();
@@ -1482,13 +1406,11 @@ export class StoreCoreEngine {
     const totalPayable = roundMoney(this.state.suppliers.reduce((sum, s) => sum + (s.payableBalance || 0), 0));
     const totalCarriersOut = this.state.suppliers.reduce((sum, s) => sum + (s.carrierBalance || 0), 0);
 
-    // 今日保本毛利线 = 月固定开销 / 30
     const dailyBreakevenProfit = roundMoney((store.monthlyFixedCost || 0) / 30);
     const breakevenProgress = dailyBreakevenProfit > 0
       ? Math.min(100, Math.round((todayGrossProfit / dailyBreakevenProfit) * 100))
       : 100;
 
-    // 临期商品雷达（未来30天内到期）
     const soonThreshold = Date.now() + 30 * 86400 * 1000;
     const expiringSkus = storeCatalog.filter(s => s.expiryDate && new Date(s.expiryDate).getTime() <= soonThreshold && s.stock > 0);
     const lowStockSkus = storeCatalog.filter(s => s.stock <= s.minStock);
@@ -1513,9 +1435,6 @@ export class StoreCoreEngine {
     };
   }
 
-  /**
-   * 🖨️ 生成《应急纸质兜底册》与《🏮 家业常青 · 副掌柜授权备忘》
-   */
   generateEmergencyPaperBook() {
     const store = this.getActiveStore();
     const skus = this.state.catalog.filter(s => s.storeId === store.id || !s.storeId);
@@ -1531,32 +1450,15 @@ export class StoreCoreEngine {
         memberPrice: s.memberPrice,
         location: s.location || '-'
       })),
-      receivables: debtors.map(c => ({
-        name: c.name,
-        phone: c.phone || '-',
-        balance: c.receivableBalance
-      })),
-      suppliers: this.state.suppliers.map(sup => ({
-        name: sup.name,
-        phone: sup.phone || '-',
-        payable: sup.payableBalance,
-        carrierBalance: sup.carrierBalance
-      }))
+      receivables: debtors.map(c => ({ name: c.name, phone: c.phone || '-', balance: c.receivableBalance })),
+      suppliers: this.state.suppliers.map(sup => ({ name: sup.name, phone: sup.phone || '-', payable: sup.payableBalance, carrierBalance: sup.carrierBalance }))
     };
   }
 
-  /**
-   * 标准外设总线注册与触发（蓝牙小票机、电子秤、副屏客显）
-   */
-  registerPeripheral(slotName, handler) {
-    this.peripheralBus.set(slotName, handler);
-  }
-
+  registerPeripheral(slotName, handler) { this.peripheralBus.set(slotName, handler); }
   emitPeripheral(slotName, payload) {
     const fn = this.peripheralBus.get(slotName);
-    if (typeof fn === 'function') {
-      try { return fn(payload); } catch (e) { console.warn(`[Peripheral:${slotName}]`, e); }
-    }
+    if (typeof fn === 'function') { try { return fn(payload); } catch (e) { console.warn(`[Peripheral:${slotName}]`, e); } }
     return null;
   }
 }
