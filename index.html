@@ -14,6 +14,84 @@
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
+  <script>
+    // 同步零依赖菜单与弹窗防断链内核（确保第 0 毫秒即可点击，绝不因异步模块延迟而点不动）
+    (function () {
+      var MENU_IDS = [
+        'left-nav-menu',
+        'right-nav-menu',
+        'multi-branch-dropdown',
+        'active-staff-dropdown',
+        'shop-type-dropdown'
+      ];
+
+      window.closeAllMenus = function () {
+        MENU_IDS.forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.classList.add('hidden');
+        });
+      };
+
+      function toggleSingleMenu(targetId, e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        var target = document.getElementById(targetId);
+        if (!target) return;
+        var willOpen = target.classList.contains('hidden');
+        window.closeAllMenus();
+        if (willOpen) {
+          target.classList.remove('hidden');
+        }
+      }
+
+      window.toggleLeftNavMenu = function (e) { toggleSingleMenu('left-nav-menu', e); };
+      window.toggleRightNavMenu = function (e) { toggleSingleMenu('right-nav-menu', e); };
+      window.toggleMultiBranchDropdown = function (e) { toggleSingleMenu('multi-branch-dropdown', e); };
+      window.toggleActiveStaffDropdown = function (e) { toggleSingleMenu('active-staff-dropdown', e); };
+      window.toggleShopTypeDropdown = function (e) { toggleSingleMenu('shop-type-dropdown', e); };
+
+      window.openModal = function (id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('hidden');
+      };
+
+      window.closeModal = function (id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      };
+
+      // 统一捕获页面空白处点击，安全关闭下拉浮层（不干扰弹窗内部点击）
+      document.addEventListener('click', function (e) {
+        if (!e.target || !e.target.closest || !e.target.closest('[data-dropdown-root]')) {
+          window.closeAllMenus();
+        }
+      });
+
+      // 为所有业务菜单按钮预先注册安全兜底映射（待 src/main.js 加载完毕后会自动接管增强）
+      var directModalMap = {
+        openLocalPoolModal: 'local-pool-modal',
+        openCommunityHubModal: 'community-hub-modal',
+        openDemandPlanModal: 'demand-plan-modal',
+        openCloudShelfModal: 'cloud-shelf-modal',
+        openReferralModal: 'referral-modal',
+        openStoreSelfStatementModal: 'store-self-statement-modal',
+        openReceiptsModal: 'receipts-modal',
+        openAllAgentsModal: 'all-agents-modal',
+        openStoreCounterPosModal: 'modal-store-counter-pos',
+        openSettlementModal: 'settlement-slip-modal'
+      };
+
+      Object.keys(directModalMap).forEach(function (fnName) {
+        if (typeof window[fnName] !== 'function') {
+          window[fnName] = function () {
+            var modalId = directModalMap[fnName];
+            if (modalId && document.getElementById(modalId)) {
+              window.openModal(modalId);
+            }
+          };
+        }
+      });
+    })();
+  </script>
 </head>
 <body class="bg-[#f7f5f0] text-stone-800 font-sans min-h-screen">
   
@@ -125,7 +203,6 @@
               </div>
             </button>
 
-            <!-- 诚实得体的上游供货商/外勤账号入口 -->
             <div class="mt-1.5 pt-1.5 border-t border-stone-100 px-2 py-1 space-y-1 text-[10px] text-stone-500">
               <div class="font-bold text-stone-400">合作商号与外勤端（需开通账号）</div>
               <div class="flex flex-col gap-1">
@@ -271,7 +348,7 @@
       </div>
 
       <!-- 供货方胶囊导航 -->
-      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5" data-dropdown-root>
         <span class="text-[10px] text-emerald-200 font-bold whitespace-nowrap shrink-0">供货方:</span>
         <div id="agents-nav-chips" class="flex gap-1.5 overflow-x-auto no-scrollbar items-center max-w-[68%]"></div>
         <button type="button" onclick="window.openAllAgentsModal()" id="btn-all-agents" class="hidden px-2.5 py-0.5 rounded-full text-[10px] bg-amber-400 text-stone-900 font-bold whitespace-nowrap shrink-0 active:scale-95 shadow-sm">
@@ -915,7 +992,7 @@
     </div>
   </div>
 
-  <!-- 门店柜台智能收银弹窗 -->
+  <!-- 门店柜台智能收银弹窗（纯正对外零售视图：只展示零售价，绝不露出任何进货底价或毛利数字） -->
   <div id="modal-store-counter-pos" class="hidden fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto" onclick="if(event.target===this) window.closeStoreCounterPosModal()">
     <div class="bg-white border border-stone-200 rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 space-y-3 shadow-2xl text-xs my-auto">
       <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
