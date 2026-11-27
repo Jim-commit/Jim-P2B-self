@@ -1,11 +1,14 @@
 /**
  * 商道相通 · 跨端轻量桥接器 (multiTerminalBridge.js)
- * 职责：专注多端身份联动、门店凑单开产提醒、供货方胶囊名称精简与外勤端桥接
- * 原则：零硬编码、零厚重UI侵入、完整兼容所有页面的 ES Module 命名导入
+ * 职责：
+ * 1. 门店端(index.html)：供货方胶囊名称自动精简 + 上游「凑单开产」接龙横幅
+ * 2. 外勤端(driver.html)：扫码签收与路况报备快捷工具条
+ * 3. 邻里端(mall.html)：同步门店特惠接龙卡片与社区拼单入口
+ * 4. 供货端(suppliers.html)：百业双向供需榜与「发起凑单开产」联动钩子
  */
 
 const Bridge = {
-  version: '4.0.4-esm',
+  version: '4.1.0-universal',
 
   getPageType() {
     const path = (window.location.pathname || '').toLowerCase();
@@ -17,15 +20,10 @@ const Bridge = {
 
   init() {
     const page = this.getPageType();
-    if (page === 'index') {
-      this.initStore();
-    } else if (page === 'driver') {
-      this.initDriver();
-    } else if (page === 'mall') {
-      this.initMall();
-    } else if (page === 'suppliers') {
-      this.initSuppliers();
-    }
+    if (page === 'index') this.initStore();
+    else if (page === 'driver') this.initDriver();
+    else if (page === 'mall') this.initMall();
+    else if (page === 'suppliers') this.initSuppliers();
   },
 
   initStore() {
@@ -37,15 +35,43 @@ const Bridge = {
     this.mountDriverQuickBar();
   },
 
+  // 邻里拼单端(mall.html)：挂载社区门店实时接龙同步条
   initMall() {
-    window.dispatchEvent(new CustomEvent('sdxt:mall-bridge-ready'));
+    const slot = document.getElementById('mall-store-sync-slot') || document.body;
+    if (document.getElementById('sdxt-mall-bridge-bar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'sdxt-mall-bridge-bar';
+    bar.style.cssText = 'margin:10px 12px;padding:10px 14px;border-radius:12px;background:#fef2f2;border:1px solid #fecaca;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:#991b1b;';
+    bar.innerHTML = `
+      <div><strong>🏘️ 周边合作门店直供接龙</strong><div style="font-size:12px;opacity:.85;">同城拼单免配送费 · 到店自提享会员价</div></div>
+      <button type="button" id="sdxt-mall-sync-btn" style="padding:6px 12px;border:none;border-radius:8px;background:#dc2626;color:#fff;font-weight:700;font-size:12px;cursor:pointer;">查看今日接龙</button>
+    `;
+    if (slot === document.body) slot.insertBefore(bar, slot.firstChild);
+    else slot.appendChild(bar);
+    bar.querySelector('#sdxt-mall-sync-btn')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('sdxt:mall-open-solitaire'));
+    });
   },
 
+  // 供货商端(suppliers.html)：挂载百业双向供需榜与发起凑单开产入口
   initSuppliers() {
-    window.dispatchEvent(new CustomEvent('sdxt:suppliers-bridge-ready'));
+    const slot = document.getElementById('suppliers-bridge-slot') || document.body;
+    if (document.getElementById('sdxt-suppliers-bridge-bar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'sdxt-suppliers-bridge-bar';
+    bar.style.cssText = 'margin:10px 12px;padding:10px 14px;border-radius:12px;background:linear-gradient(90deg,#0f172a,#1e293b);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;';
+    bar.innerHTML = `
+      <div><strong>🏭 百业双向供需榜 · 源头排产直连</strong><div style="font-size:12px;color:#94a3b8;">汇集下游门店真实缺货需求，满单即开产</div></div>
+      <button type="button" id="sdxt-sup-coprod-btn" style="padding:6px 12px;border:none;border-radius:8px;background:#f59e0b;color:#0f172a;font-weight:800;font-size:12px;cursor:pointer;">🔥 发起凑单开产</button>
+    `;
+    if (slot === document.body) slot.insertBefore(bar, slot.firstChild);
+    else slot.appendChild(bar);
+    bar.querySelector('#sdxt-sup-coprod-btn')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('sdxt:suppliers-launch-coprod'));
+    });
   },
 
-  // 自动精简供货方胶囊展示名称，保持门店货架简洁
+  // 自动精简供货方胶囊展示名称
   bindStoreSupplierPills() {
     const cleanPills = () => {
       document.querySelectorAll('[data-supplier-pill], .supplier-pill-name').forEach((el) => {
@@ -94,7 +120,6 @@ const Bridge = {
     }
   },
 
-  // 外勤司机端轻量工具条
   mountDriverQuickBar() {
     if (document.getElementById('sdxt-driver-bridge-bar')) return;
     const bar = document.createElement('div');
@@ -114,26 +139,11 @@ const Bridge = {
   }
 };
 
-export function initStoreTerminalBridge() {
-  Bridge.initStore();
-}
-
-export function initDriverTerminalBridge() {
-  Bridge.initDriver();
-}
-
-export function initMallTerminalBridge() {
-  Bridge.initMall();
-}
-
-export function initSuppliersTerminalBridge() {
-  Bridge.initSuppliers();
-}
-
-export function initSupplierTerminalBridge() {
-  Bridge.initSuppliers();
-}
-
+export function initStoreTerminalBridge() { Bridge.initStore(); }
+export function initDriverTerminalBridge() { Bridge.initDriver(); }
+export function initMallTerminalBridge() { Bridge.initMall(); }
+export function initSuppliersTerminalBridge() { Bridge.initSuppliers(); }
+export function initSupplierTerminalBridge() { Bridge.initSuppliers(); }
 export default Bridge;
 
 if (typeof window !== 'undefined') {
