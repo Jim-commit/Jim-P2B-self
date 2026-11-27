@@ -102,6 +102,7 @@
       font-weight: 700;
       font-size: calc(15px * var(--font-scale));
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
@@ -265,6 +266,7 @@
 
     let activeTab = 'cashier';
     let mCart = [];
+    let mOrderCart = []; // 掌中宝快捷订货清单
     let cameraStream = null;
 
     const $ = (id) => document.getElementById(id);
@@ -285,8 +287,8 @@
 
       if (hour >= 5 && hour < 10) {
         return {
-          text: `🌅 早安！晨间备货时段（低库存 ${metrics.lowStockSkus.length} 款）`,
-          btnText: '去随车签收',
+          text: `🌅 早安！晨间备货时段（低库存 ${metrics.lowStockSkus.length} 款 · 待签收 ${metrics.pendingPurchaseOrders.length} 单）`,
+          btnText: '订货/签收',
           action: () => { activeTab = 'goods'; renderMobile(); }
         };
       }
@@ -322,7 +324,7 @@
       sel.innerHTML = visibleStores.map(s => `<option value="${s.id}" ${s.id === store.id ? 'selected' : ''}>${s.name}</option>`).join('');
       sel.onchange = () => {
         const res = engine.switchStore(sel.value);
-        if (res.ok) mCart = [];
+        if (res.ok) { mCart = []; mOrderCart = []; }
         else alert(res.message);
       };
 
@@ -359,7 +361,7 @@
     function renderBottomNav(metrics) {
       const tabs = [
         { id: 'cashier', icon: '🧾', label: '极速收银', allow: engine.canAccessModule('pos') },
-        { id: 'goods',   icon: '📦', label: '货品签收', allow: engine.canAccessModule('catalog') || engine.canAccessModule('receiving') },
+        { id: 'goods',   icon: '📦', label: metrics.pendingPurchaseOrders.length > 0 ? `订货签收(${metrics.pendingPurchaseOrders.length})` : '订货签收', allow: engine.canAccessModule('catalog') || engine.canAccessModule('receiving') || engine.canAccessModule('procurement') },
         { id: 'ledger',  icon: '💰', label: metrics.pendingApprovals.length > 0 ? `核决(${metrics.pendingApprovals.length})` : '账本核决', allow: engine.canAccessModule('finance') || engine.canAccessModule('reconcile') },
         { id: 'more',    icon: '🧭', label: '百宝箱',   allow: true }
       ].filter(t => t.allow);
@@ -621,40 +623,89 @@
       $('btnMShowQrOnly').onclick = () => openQrSheet();
     }
 
+    /* ------------------------------------------------------------------------
+     * 视图 2：掌中宝订货下单 & 待到货一键签收 & 库存管理
+     * ------------------------------------------------------------------------ */
     function renderGoodsTab(metrics) {
       const canCost = engine.hasPermission('viewCostAndProfit');
       const storeSkus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
+      const pendingOrders = metrics.pendingPurchaseOrders;
+      const storeOrders = (engine.state.purchaseOrders || []).filter(o => o.storeId === engine.state.activeStoreId);
+
       return `
+        <!-- 1. 掌中宝快捷交互式订货下单 -->
         <div class="card">
           <div class="card-hd">
-            <span>🚚 随车到货快速签收</span>
-            <button class="primary sm" id="btnMQuickAddSku">+ 新增商品</button>
+            <span>🛒 掌中宝快捷订货下单（已选 ${mOrderCart.length} 项）</span>
+            <button class="sm warn" id="btnMAutoSplit">⚡ 缺货自动拆单(${metrics.lowStockSkus.length})</button>
           </div>
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <select id="mRcvSku">
-              ${storeSkus.map(s => `<option value="${s.id}">${s.name} (库存:${s.stock}${s.unit})</option>`).join('')}
-            </select>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-              <input type="number" id="mRcvQty" placeholder="实收数量" value="10" />
-              <input type="number" step="0.01" id="mRcvPrice" placeholder="本次进货单价" value="2" />
-            </div>
-            <button class="primary block" id="btnMConfirmRcv">✅ 确认签收入库</button>
-          </div>
+          ${mOrderCart.length === 0 ? `
+            <div style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">点击下方商品列表右侧的“+ 订货”即可加入采购单，也可直接照历史单再来一单：</div>
+          ` : `
+            ${mOrderCart.map((it, idx) => `
+              <div class="cart-row">
+                <div><strong>${it.name}</strong> (${it.unit})</div>
+                <div class="qty-ctrl">
+                  <button data-m-ord-dec="${idx}">-</button>
+                  <strong>${it.qty}</strong>
+                  <button data-m-ord-inc="${idx}">+</button>
+                </div>
+              </div>
+            `).join('')}
+            <button class="primary block" style="margin-top:10px;" id="btnMSubmitOrder">📤 发出正式订货单</button>
+          `}
         </div>
 
+        <!-- 2. 待到货订货单随车一键签收 -->
+        ${pendingOrders.length > 0 ? `
+          <div class="card">
+            <div class="card-hd"><span>🚚 待到货订货单一键签收（${pendingOrders.length}单）</span></div>
+            ${pendingOrders.map(po => `
+              <div class="cart-row">
+                <div>
+                  <strong>${po.id} · ${po.supplierName}</strong>
+                  <div style="font-size:12px; color:var(--text-muted);">${po.items.map(i => `${i.name}×${i.qty}`).join('、')}</div>
+                </div>
+                <button class="sm primary" data-m-rcv-po="${po.id}">✅ 签收入库</button>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+
+        <!-- 3. 历史订货单（支持照上次再来一单 & 复制发微信） -->
+        ${storeOrders.length > 0 ? `
+          <div class="card">
+            <div class="card-hd"><span>📋 最近订货单（照上次再来一单）</span></div>
+            ${storeOrders.slice(0, 5).map(po => `
+              <div class="cart-row">
+                <div>
+                  <strong>${po.id}</strong> <span class="badge ${po.status === 'PENDING_DELIVERY' ? 'warn' : 'ok'}">${po.status === 'PENDING_DELIVERY' ? '待到货' : '已签收'}</span>
+                  <div style="font-size:12px; color:var(--text-muted);">${po.items.map(i => `${i.name}×${i.qty}`).join('、')}</div>
+                </div>
+                <div style="display:flex; gap:4px;">
+                  <button class="sm" data-m-copy-po="${po.id}">发微信</button>
+                  <button class="sm" data-m-clone-po="${po.id}">再来一单</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+
+        <!-- 4. 本店在库商品清单（支持一键加订货） -->
         <div class="card">
           <div class="card-hd">
-            <span>📦 本店在库商品（缺货预警 ${metrics.lowStockSkus.length} 款）</span>
+            <span>📦 本店在库商品（缺货 ${metrics.lowStockSkus.length} 款）</span>
+            <button class="primary sm" id="btnMQuickAddSku">+ 新增商品</button>
           </div>
           ${storeSkus.map(s => `
             <div class="cart-row">
               <div>
                 <strong>${s.name}</strong>
                 <div style="font-size:12px; color:var(--text-muted);">
-                  售价 ¥${s.retailPrice} ${canCost ? `· 底价 ${engine.formatSensitiveMoney(s.costPrice)}` : ''}
+                  库存 <span class="badge ${s.stock <= s.minStock ? 'danger' : 'ok'}">${s.stock}${s.unit}</span> · 售¥${s.retailPrice} ${canCost ? `· 底${engine.formatSensitiveMoney(s.costPrice)}` : ''}
                 </div>
               </div>
-              <span class="badge ${s.stock <= s.minStock ? 'danger' : 'ok'}">${s.stock} ${s.unit}</span>
+              <button class="sm" data-m-add-ord="${s.id}">+ 订货</button>
             </div>
           `).join('') || '<div style="color:var(--text-muted); text-align:center; padding:16px;">暂无建档商品</div>'}
         </div>
@@ -662,6 +713,75 @@
     }
 
     function bindGoodsTab() {
+      if ($('btnMAutoSplit')) {
+        $('btnMAutoSplit').onclick = () => {
+          const res = engine.autoSplitRestockOrders();
+          alert(res.message);
+          renderMobile();
+        };
+      }
+
+      document.querySelectorAll('[data-m-add-ord]').forEach(btn => {
+        btn.onclick = () => {
+          const sku = engine.state.catalog.find(s => s.id === btn.dataset.mAddOrd);
+          if (!sku) return;
+          const found = mOrderCart.find(c => c.skuId === sku.id);
+          if (found) found.qty += 5;
+          else mOrderCart.push({ skuId: sku.id, name: sku.name, unit: sku.unit, qty: 10, unitPrice: sku.costPrice || 0 });
+          renderMobile();
+        };
+      });
+
+      document.querySelectorAll('[data-m-ord-inc]').forEach(b => {
+        b.onclick = () => { mOrderCart[b.dataset.mOrdInc].qty += 1; renderMobile(); };
+      });
+      document.querySelectorAll('[data-m-ord-dec]').forEach(b => {
+        b.onclick = () => {
+          mOrderCart[b.dataset.mOrdDec].qty -= 1;
+          if (mOrderCart[b.dataset.mOrdDec].qty <= 0) mOrderCart.splice(b.dataset.mOrdDec, 1);
+          renderMobile();
+        };
+      });
+
+      if ($('btnMSubmitOrder')) {
+        $('btnMSubmitOrder').onclick = () => {
+          const res = engine.createPurchaseOrder({ items: mOrderCart, note: '掌中宝快捷订货' });
+          if (res.ok) {
+            mOrderCart = [];
+            engine.speakFeedback('订货单已生成');
+            alert(`✅ ${res.message}`);
+            renderMobile();
+          }
+        };
+      }
+
+      document.querySelectorAll('[data-m-rcv-po]').forEach(btn => {
+        btn.onclick = () => {
+          const res = engine.receivePurchaseOrder(btn.dataset.mRcvPo, { payMethod: 'CREDIT' });
+          if (res.ok) {
+            engine.speakFeedback('订货单已核对签收入库');
+            alert('✅ 已完成随车核对签收入库');
+            renderMobile();
+          }
+        };
+      });
+
+      document.querySelectorAll('[data-m-copy-po]').forEach(btn => {
+        btn.onclick = () => {
+          const txt = engine.formatPurchaseOrderText(btn.dataset.mCopyPo);
+          navigator.clipboard?.writeText(txt);
+          alert(`已复制订货单，可直接发微信：\n\n${txt}`);
+        };
+      });
+
+      document.querySelectorAll('[data-m-clone-po]').forEach(btn => {
+        btn.onclick = () => {
+          const res = engine.cloneLastPurchaseOrder(btn.dataset.mClonePo);
+          alert(res.message);
+          renderMobile();
+        };
+      });
+
       $('btnMQuickAddSku').onclick = () => {
         const name = prompt('输入新商品名称：');
         if (!name) return;
@@ -695,24 +815,6 @@
           updatedAt: Date.now()
         });
         engine._persist();
-        renderMobile();
-      };
-
-      $('btnMConfirmRcv').onclick = () => {
-        const sku = engine.state.catalog.find(s => s.id === $('mRcvSku')?.value);
-        if (!sku) return alert('请先新增至少一款商品');
-        const qty = Number($('mRcvQty').value) || 0;
-        const unitPrice = roundMoney($('mRcvPrice').value);
-        engine.commitVoucher({
-          type: 'RECEIVE',
-          items: [{ skuId: sku.id, name: sku.name, qty, bonusQty: 0, unitPrice, costPrice: unitPrice }],
-          totalAmount: roundMoney(qty * unitPrice),
-          payMethod: 'CREDIT',
-          creditAmount: roundMoney(qty * unitPrice),
-          note: '掌中宝随车签收'
-        });
-        engine.speakFeedback(`签收入库${qty}${sku.unit}`);
-        alert(`✅ 已签收入库【${sku.name}】${qty}${sku.unit}`);
         renderMobile();
       };
     }
@@ -831,6 +933,7 @@
         const res = engine.addBranchStore({ name: name.trim() });
         if (res.ok) {
           mCart = [];
+          mOrderCart = [];
           alert(`已创建并切换至新分店【${res.store.name}】`);
           renderMobile();
         } else {
