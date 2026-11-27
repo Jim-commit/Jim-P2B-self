@@ -388,11 +388,12 @@
           '2. <strong>电脑全面版（store.html）</strong>：点右上角「🖥️ 全面版」或底部「进完整工作台 →」，进入宽屏三联总账 + 全功能多栏调度台，手机电脑数据完全互通。');
       };
 
-      $('btn-open-add-item').onclick = () => {
+      const openQuickAddForm = (prefillBarcode = '') => {
         const lex = vault.getLexicon();
         openDrawer(`<h3>📦 快速新增${lex.itemLabel}</h3>
           <div style="display:grid;gap:8px;margin:10px 0;">
             <input id="p-nm" class="sdxt-input" placeholder="${lex.itemLabel}名称" />
+            <input id="p-bc" class="sdxt-input" placeholder="条码 (选填)" value="${prefillBarcode}" />
             <div class="sdxt-grid-2">
               <input id="p-cost" type="number" step="0.01" class="sdxt-input" placeholder="进货底价" />
               <input id="p-ret" type="number" step="0.01" class="sdxt-input" placeholder="对外零售价" />
@@ -402,11 +403,28 @@
           <button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="p-sv">保存上架</button>`);
         $('p-sv').onclick = async () => {
           if (!$('p-nm').value.trim()) return;
-          await cat.upsertCatalogItem({ name: $('p-nm').value.trim(), costPrice: $('p-cost').value, retailPrice: $('p-ret').value, stock: $('p-stk').value });
+          await cat.upsertCatalogItem({ name: $('p-nm').value.trim(), barcode: $('p-bc').value.trim(), costPrice: $('p-cost').value, retailPrice: $('p-ret').value, stock: $('p-stk').value });
           closeDrawer();
           renderAll();
         };
       };
+
+      $('btn-open-add-item').onclick = () => openQuickAddForm('');
+      window.addEventListener('sdxt:unknown-barcode', (e) => openQuickAddForm(e.detail?.barcode || ''));
+
+      window.addEventListener('sdxt:join-coproduction', (e) => {
+        const camp = e.detail;
+        if (!camp) return;
+        openDrawer(`<h3>🔥 跟单参与上游凑单开产</h3>
+          <p style="font-size:13px;">活动：<strong>${camp.title}</strong>（已凑 ${camp.currentQty || 0}/${camp.targetQty}${camp.unit || '件'}）</p>
+          <input id="m-cpq" type="number" class="sdxt-input" value="10" style="margin:8px 0;" />
+          <button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="m-cpo">确认报数凑单</button>`);
+        $('m-cpo').onclick = () => {
+          upstream.joinCoProduction(camp.id, $('m-cpq').value);
+          closeDrawer();
+          showMsg('✅ 报数成功', '已计入上游凑单开产总进度');
+        };
+      });
 
       $('btn-pos-scan-confirm').onclick = () => { pos.handleUniversalInput($('pos-universal-input').value); $('pos-universal-input').value = ''; renderPosCart(); };
       $('btn-undo-sale').onclick = async () => { try { await pos.undoLastSale(); renderAll(); } catch (e) { showMsg('提示', e.message); } };
