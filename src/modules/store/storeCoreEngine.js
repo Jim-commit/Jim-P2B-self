@@ -2,15 +2,16 @@
  * ============================================================================
  * 商道相通 · 百工商业全域智慧工作台 —— 共享核心大脑 (storeCoreEngine.js)
  * ============================================================================
- * 终极无缺版 · 遵循大道与五项核心总纲：
- * 1. 工具为人所用 · 唯老板保留最终核决权（AI与规则只出草案，绝不擅自卡死或改账）
- * 2. 流水无痕 · 白纸渐进（新店开箱即用，未启用或未授权模块彻底隐身）
- * 3. 四重严格界限 & 手电筒隔离（人机界限、权责光圈、主体隔离、货钱账单四位并立）
- * 4. 不可篡改铁账（只增不删、红字冲销、交班时间锁、AES加密信封、四方重算与隔离裁决）
- * 5. 全网一体相容（统一单据信封、多店统购调拨、可选生物识别、远程放行码与家业常青备忘）
+ * 终极全量融合版：
+ * 1. 完整保留并升级交互式订货下单（选品加购、缺货自动拆单、照上次再来一单剔除高库存、
+ *    多店统购、生成正式电子订货单并无缝流转至到货验收台一键签收）
+ * 2. 遵循大道 · 流水无痕（白纸开箱、渐进呈现、未授权模块彻底隐身）
+ * 3. 工具为人所用 · 唯老板保留最终核决权
+ * 4. 货、钱、账、单四位并立，链式防篡改，AES加密信封，四方重算与隔离裁决
+ * 5. 全网一体相容（多店档案、动态角色工坊、可选生物识别、远程放行码与家业常青备忘）
  */
 
-export const ENGINE_VERSION = '4.0.0-complete';
+export const ENGINE_VERSION = '4.2.0-full-fusion';
 
 export const STORAGE_KEYS = {
   MAIN_STATE: 'shd_store_workbench_v3',
@@ -21,8 +22,8 @@ export const STORAGE_KEYS = {
 };
 
 export const MODULE_CATALOG = [
-  { id: 'procurement', code: '01', name: '订货与供货方', stage: '上游供应链线', icon: '📦', desc: '供货方名册、缺货拆单、同品比价与邻里联采拼单' },
-  { id: 'receiving',   code: '02', name: '到货验收与载具', stage: '上游供应链线', icon: '🚚', desc: '随车扫码签收、拆零搭赠折算、退验与周转筐押金' },
+  { id: 'procurement', code: '01', name: '订货与供货方', stage: '上游供应链线', icon: '📦', desc: '交互式订货下单、缺货自动拆单、照上次再来一单与供货方名册' },
+  { id: 'receiving',   code: '02', name: '到货验收与载具', stage: '上游供应链线', icon: '🚚', desc: '订货单一键核对签收、随车入库、拆零搭赠折算与周转筐押金' },
   { id: 'catalog',     code: '03', name: '商品库与库存', stage: '店内经营线', icon: '🏷️', desc: '边卖边建、拆箱反推、临期雷达、报损与跨店调拨' },
   { id: 'pos',         code: '04', name: '柜台收银与履约', stage: '店内经营线', icon: '🧾', desc: '正负一单清、防掉包收款码、熟客赊账、定金工单与驿站核销' },
   { id: 'marketing',   code: '05', name: '拓客与邻里驿站', stage: '店内经营线', icon: '📣', desc: '群接龙文案、零库存预售凑团、A4传单与16:9大屏轮播' },
@@ -149,7 +150,7 @@ export const DEFAULT_ROLES = [
     id: 'role_stocker',
     name: '理货采购员',
     isSystemBoss: false,
-    desc: '负责随车签收、入库上架、保质期巡检与报损登记',
+    desc: '负责交互式订货、随车签收、入库上架、保质期巡检与报损登记',
     modules: ['procurement', 'receiving', 'catalog'],
     permissions: {
       viewCostAndProfit: false,
@@ -162,7 +163,7 @@ export const DEFAULT_ROLES = [
 ];
 
 /* ============================================================================
- * 通用工具函数：精度计算、链式防篡改哈希与 Web Crypto 加密信封
+ * 通用工具函数
  * ============================================================================ */
 
 export function roundMoney(num) {
@@ -282,10 +283,10 @@ export class StoreCoreEngine {
         lastChainHash: 'GENESIS_0000',
         lastBackupAt: null,
         lastUpdatedAt: Date.now(),
-        uiMode: 'simple',          // 'simple' 极简白纸态 | 'full' 全面调度态
-        elderLargeMode: false,     // 👓 长辈关怀大字模式
-        voiceFeedback: true,       // 中文语音口头复述开关
-        autoIdleLockMinutes: 5,    // 柜台闲置自动锁屏分钟数（0=关闭）
+        uiMode: 'simple',
+        elderLargeMode: false,
+        voiceFeedback: true,
+        autoIdleLockMinutes: 5,
         independentPosMode: false,
         cloudSyncEnabled: true
       },
@@ -314,7 +315,7 @@ export class StoreCoreEngine {
             roleId: 'role_boss',
             storeIds: ['*'],
             pinHash: '',
-            biometricEnabled: false, // 👆 可选指纹/面容秒解（默认关闭，自主开启）
+            biometricEnabled: false,
             webAuthnId: '',
             active: true,
             extraPermissions: {}
@@ -336,8 +337,11 @@ export class StoreCoreEngine {
       suppliers: [],
       customers: [],
 
+      // 正式电子采购订货单库（支持交互式下单、照上次再来一单、流转至第②板块一键签收）
+      purchaseOrders: [], // { id, storeId, supplierId, supplierName, items: [{ skuId, name, unit, qty, unitPrice, subtotal }], totalAmount, note, status: 'PENDING_DELIVERY'|'RECEIVED'|'CANCELLED', createdAt, operatorName, verifyCode }
+
       // 售后质保 / 定金取货工单 & 邻里驿站代订自提单
-      serviceTickets: [], // { id, storeId, type: 'WARRANTY'|'DEPOSIT'|'RELAY_PICKUP', customerName, phoneTail, itemDesc, depositPaid, totalFee, serviceProfit, status: 'OPEN'|'DONE', createdAt }
+      serviceTickets: [],
 
       cashBook: {
         openingCash: 0,
@@ -358,9 +362,9 @@ export class StoreCoreEngine {
       approvalQueue: [],
 
       community: {
-        groupBuys: [],     // { id, storeId, title, targetQty, currentQty, unitPrice, status: 'OPEN'|'CLOSED', createdAt }
+        groupBuys: [],
         sharedTools: [],
-        customForms: []    // 白纸自定义业务小卡片：{ id, title, fields: ['客户/地块', '规格/事项', '金额'], records: [] }
+        customForms: []
       }
     };
   }
@@ -394,6 +398,8 @@ export class StoreCoreEngine {
         ...(saved.rbac || {}),
         successionMemo: { ...def.rbac.successionMemo, ...(saved.rbac?.successionMemo || {}) }
       },
+      purchaseOrders: Array.isArray(saved.purchaseOrders) ? saved.purchaseOrders : [],
+      serviceTickets: Array.isArray(saved.serviceTickets) ? saved.serviceTickets : [],
       cashBook: { ...def.cashBook, ...(saved.cashBook || {}) },
       ledgers: { ...def.ledgers, ...(saved.ledgers || {}) },
       community: { ...def.community, ...(saved.community || {}) }
@@ -471,7 +477,182 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 2. 响应式通知、持久化、多门店管理与时光机快照
+   * 2. 交互式采购订货单引擎（下单、缺货智能拆单、照上次再来一单、签收完结）
+   * -------------------------------------------------------------------------- */
+  createPurchaseOrder({ supplierId = '', items = [], note = '' }) {
+    if (!Array.isArray(items) || items.length === 0) {
+      return { ok: false, message: '订货清单不能为空' };
+    }
+    const acc = this.getCurrentAccount();
+    const store = this.getActiveStore();
+    const sup = this.state.suppliers.find(s => s.id === supplierId);
+    const orderId = generateId('PO');
+
+    const cleanItems = items.map(it => {
+      const qty = Number(it.qty) || 1;
+      const unitPrice = roundMoney(it.unitPrice || 0);
+      return {
+        skuId: it.skuId || '',
+        name: String(it.name || '未命名商品'),
+        unit: it.unit || this.getActiveGene().unitDefault,
+        qty,
+        unitPrice,
+        subtotal: roundMoney(qty * unitPrice)
+      };
+    });
+
+    const totalAmount = roundMoney(cleanItems.reduce((s, it) => s + it.subtotal, 0));
+    const verifyCode = syncChainHash(`${orderId}|${store.id}|${totalAmount}`, 'PO_SEAL', this.state.meta.ledgerSalt);
+
+    const po = {
+      id: orderId,
+      storeId: store.id,
+      supplierId: sup?.id || '',
+      supplierName: sup?.name || '通用供货方/大集拼单',
+      items: cleanItems,
+      totalAmount,
+      note,
+      status: 'PENDING_DELIVERY', // PENDING_DELIVERY | RECEIVED | CANCELLED
+      createdAt: Date.now(),
+      operatorName: acc.name,
+      verifyCode
+    };
+
+    // 顺手记住每款商品的默认供货方，方便下次一键按供货方自动拆单
+    if (sup) {
+      for (const it of cleanItems) {
+        const sku = this.state.catalog.find(s => s.id === it.skuId);
+        if (sku && !sku.supplierId) sku.supplierId = sup.id;
+      }
+    }
+
+    this.state.purchaseOrders.unshift(po);
+    this._persist(this.state, true, 'PURCHASE_ORDER_CREATED', po);
+    return { ok: true, order: po, message: `已生成正式订货单 [${orderId}]` };
+  }
+
+  /**
+   * 缺货按默认供货方自动拆单生成订货单
+   */
+  autoSplitRestockOrders() {
+    const storeId = this.state.activeStoreId;
+    const lowSkus = this.state.catalog.filter(s => (s.storeId === storeId || !s.storeId) && s.stock <= s.minStock);
+    if (lowSkus.length === 0) {
+      return { ok: false, message: '当前所有商品库存充足，暂无低于安全库存线的商品' };
+    }
+
+    const grouped = new Map();
+    for (const s of lowSkus) {
+      const key = s.supplierId || '__UNASSIGNED__';
+      if (!grouped.has(key)) grouped.set(key, []);
+      const suggestQty = Math.max(10, (s.maxStock || 50) - Math.max(0, s.stock));
+      grouped.get(key).push({
+        skuId: s.id,
+        name: s.name,
+        unit: s.unit,
+        qty: suggestQty,
+        unitPrice: s.costPrice || 0
+      });
+    }
+
+    let createdCount = 0;
+    grouped.forEach((items, supKey) => {
+      this.createPurchaseOrder({
+        supplierId: supKey === '__UNASSIGNED__' ? '' : supKey,
+        items,
+        note: '缺货智能按默认供货方自动拆单'
+      });
+      createdCount++;
+    });
+
+    return { ok: true, createdCount, message: `已按默认供货方自动拆分为 ${createdCount} 张订货单` };
+  }
+
+  /**
+   * 照上次再来一单（自动过滤当前库存已达上限 maxStock 的积压商品）
+   */
+  cloneLastPurchaseOrder(orderId) {
+    const orig = this.state.purchaseOrders.find(o => o.id === orderId);
+    if (!orig) return { ok: false, message: '未找到该历史订货单' };
+
+    const filteredItems = [];
+    let skippedCount = 0;
+    for (const it of orig.items) {
+      const sku = this.state.catalog.find(s => s.id === it.skuId);
+      if (sku && sku.maxStock > 0 && sku.stock >= sku.maxStock) {
+        skippedCount++;
+        continue;
+      }
+      filteredItems.push({ ...it });
+    }
+
+    if (filteredItems.length === 0) {
+      return { ok: false, message: '原单商品当前库存均已充足，已为您拦截重复囤货' };
+    }
+
+    const res = this.createPurchaseOrder({
+      supplierId: orig.supplierId,
+      items: filteredItems,
+      note: `照历史单 [${orig.id}] 再来一单` + (skippedCount > 0 ? `（已自动剔除${skippedCount}款高库存商品）` : '')
+    });
+    return {
+      ...res,
+      message: res.ok
+        ? `已生成新订货单 [${res.order.id}]` + (skippedCount > 0 ? `，已自动剔除 ${skippedCount} 款高库存积压货` : '')
+        : res.message
+    };
+  }
+
+  /**
+   * 到货验收台一键签收整张订货单（四位并立落账 + 更新订货单状态）
+   */
+  receivePurchaseOrder(orderId, { payMethod = 'CREDIT', carrierDelta = 0, note = '' } = {}) {
+    const po = this.state.purchaseOrders.find(o => o.id === orderId);
+    if (!po) return { ok: false, message: '未找到对应订货单' };
+    if (po.status === 'RECEIVED') return { ok: false, message: '该订货单已完成签收，请勿重复入库' };
+
+    const res = this.commitVoucher({
+      type: 'RECEIVE',
+      storeId: po.storeId,
+      items: po.items.map(it => ({
+        skuId: it.skuId,
+        name: it.name,
+        qty: it.qty,
+        bonusQty: 0,
+        unitPrice: it.unitPrice,
+        costPrice: it.unitPrice
+      })),
+      totalAmount: po.totalAmount,
+      payMethod,
+      cashPaid: payMethod === 'CASH' ? po.totalAmount : 0,
+      creditAmount: payMethod === 'CREDIT' ? po.totalAmount : 0,
+      carrierDelta: Number(carrierDelta) || 0,
+      counterpartyId: po.supplierId,
+      counterpartyName: po.supplierName,
+      note: note || `订货单 [${po.id}] 随车核对签收入库`
+    });
+
+    if (res.ok) {
+      po.status = 'RECEIVED';
+      po.receivedAt = Date.now();
+      this._persist(this.state, true, 'PURCHASE_ORDER_RECEIVED', po);
+    }
+    return res;
+  }
+
+  /**
+   * 格式化订货单微信发单文本（遵守手电筒原则：对外发单可选不带底价或仅列供货价）
+   */
+  formatPurchaseOrderText(orderId) {
+    const po = this.state.purchaseOrders.find(o => o.id === orderId);
+    if (!po) return '';
+    const store = this.state.stores.find(s => s.id === po.storeId) || this.getActiveStore();
+    const lines = po.items.map((it, idx) => `${idx + 1}. ${it.name} × ${it.qty}${it.unit}`).join('\n');
+    return `📦【${store.name} · 采购订货单】\n单号：${po.id}\n供货方：${po.supplierName}\n----------------\n${lines}\n----------------\n验真短码：${po.verifyCode}\n请安排随车配送，到店扫码核对签收！`;
+  }
+
+  /* --------------------------------------------------------------------------
+   * 3. 响应式通知、持久化、多门店管理与时光机快照
    * -------------------------------------------------------------------------- */
   subscribe(fn) {
     this.listeners.add(fn);
@@ -587,7 +768,7 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 3. 账号、动态角色工坊与手电筒权限模型（含可选生物识别与远程放行码）
+   * 4. 账号、动态角色工坊与手电筒权限模型
    * -------------------------------------------------------------------------- */
   getCurrentAccount() {
     return this.state.rbac.accounts.find(a => a.id === this.state.rbac.activeAccountId) || this.state.rbac.accounts[0];
@@ -634,9 +815,6 @@ export class StoreCoreEngine {
     return this.privacyShieldActive;
   }
 
-  /**
-   * 动态角色工厂：新建或更新自定义角色（自由勾选 8 大板块与 5 项动作级手电筒锁）
-   */
   upsertCustomRole({ id, name, desc = '', modules = [], permissions = {} }) {
     if (!this.hasPermission('manageStaffAndExport')) {
       return { ok: false, message: '仅掌柜有权配置角色与手电筒权限' };
@@ -662,9 +840,6 @@ export class StoreCoreEngine {
     return { ok: true, message: '角色与手电筒光圈配置已生效' };
   }
 
-  /**
-   * 可选启用/关闭本机生物识别秒解（WebAuthn，默认关闭，绝不强迫）
-   */
   async toggleBiometricForCurrentAccount() {
     const acc = this.getCurrentAccount();
     if (acc.biometricEnabled) {
@@ -774,7 +949,7 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 4. 铁账核心引擎：货、钱、账、单四位并立 & 只增不删 & 红字冲销 & 老板核决
+   * 5. 铁账核心引擎：货、钱、账、单四位并立 & 只增不删 & 红字冲销 & 老板核决
    * -------------------------------------------------------------------------- */
   commitVoucher(draft, options = {}) {
     const { bossApproved = false, approvalNote = '' } = options;
@@ -1037,7 +1212,7 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 5. 外部导入防篡改 & 脱敏经营信用简报凭证
+   * 6. 外部导入防篡改 & 脱敏经营信用简报凭证
    * -------------------------------------------------------------------------- */
   async exportIronBackup(encryptPassphrase = '') {
     const snapshot = JSON.parse(JSON.stringify(this.state));
@@ -1175,9 +1350,6 @@ export class StoreCoreEngine {
     this.state.vouchers = Array.from(vMap.values()).sort((a, b) => b.ts - a.ts);
   }
 
-  /**
-   * 📜 生成脱敏《门店近90天经营稳健度信用简报》（剔除进货底价与客户隐私，供向大供货商申请月结账期）
-   */
   generateCreditBrief() {
     const store = this.getActiveStore();
     const audit = this.runIronAbacusAudit();
@@ -1194,7 +1366,7 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 6. 自动化神经暗线 & 老板核决队列处理
+   * 7. 自动化神经暗线 & 老板核决队列处理
    * -------------------------------------------------------------------------- */
   _inspectDraftRisks(draft) {
     const risks = [];
@@ -1273,10 +1445,17 @@ export class StoreCoreEngine {
     item.decidedBy = acc.name;
     item.decidedNote = note;
 
-    if (decision === 'APPROVED' && item.category === 'RISK_VOUCHER' && item.payload?.draft) {
-      const res = this.commitVoucher(item.payload.draft, { bossApproved: true, approvalNote: note || '掌柜核准特批' });
-      this._persist(this.state, true, 'APPROVAL_DECIDED', item);
-      return res;
+    if (decision === 'APPROVED') {
+      if (item.category === 'RISK_VOUCHER' && item.payload?.draft) {
+        const res = this.commitVoucher(item.payload.draft, { bossApproved: true, approvalNote: note || '掌柜核准特批' });
+        this._persist(this.state, true, 'APPROVAL_DECIDED', item);
+        return res;
+      }
+      if (item.category === 'RESTOCK_DRAFT') {
+        const res = this.autoSplitRestockOrders();
+        this._persist(this.state, true, 'APPROVAL_DECIDED', item);
+        return res;
+      }
     }
 
     this._persist(this.state, true, 'APPROVAL_DECIDED', item);
@@ -1284,7 +1463,7 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 7. 双向语音指令解析、AI 本地参谋与经营指标看板
+   * 8. 双向语音指令解析、AI 本地参谋与经营指标看板
    * -------------------------------------------------------------------------- */
   parseVoiceOrQuickCommand(rawText) {
     const text = String(rawText || '').trim();
@@ -1414,6 +1593,7 @@ export class StoreCoreEngine {
     const soonThreshold = Date.now() + 30 * 86400 * 1000;
     const expiringSkus = storeCatalog.filter(s => s.expiryDate && new Date(s.expiryDate).getTime() <= soonThreshold && s.stock > 0);
     const lowStockSkus = storeCatalog.filter(s => s.stock <= s.minStock);
+    const pendingPurchaseOrders = (this.state.purchaseOrders || []).filter(o => o.storeId === store.id && o.status === 'PENDING_DELIVERY');
 
     return {
       todayRevenue,
@@ -1431,6 +1611,7 @@ export class StoreCoreEngine {
       totalCarriersOut,
       expiringSkus,
       lowStockSkus,
+      pendingPurchaseOrders,
       pendingApprovals: this.state.approvalQueue.filter(a => a.status === 'PENDING')
     };
   }
