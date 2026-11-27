@@ -1,11 +1,11 @@
 /**
  * 商道相通 · 跨端轻量桥接器 (multiTerminalBridge.js)
  * 职责：专注多端身份联动、门店凑单开产提醒、供货方胶囊名称精简与外勤端桥接
- * 原则：零硬编码、零厚重UI侵入、兼容 ES Module 命名导入与全局挂载
+ * 原则：零硬编码、零厚重UI侵入、完整兼容所有页面的 ES Module 命名导入
  */
 
 const Bridge = {
-  version: '4.0.3-esm',
+  version: '4.0.4-esm',
 
   getPageType() {
     const path = (window.location.pathname || '').toLowerCase();
@@ -38,12 +38,10 @@ const Bridge = {
   },
 
   initMall() {
-    // 邻里拼单端轻量桥接钩子
     window.dispatchEvent(new CustomEvent('sdxt:mall-bridge-ready'));
   },
 
   initSuppliers() {
-    // 供货商端双向供需榜轻量桥接钩子
     window.dispatchEvent(new CustomEvent('sdxt:suppliers-bridge-ready'));
   },
 
@@ -116,7 +114,6 @@ const Bridge = {
   }
 };
 
-// ES Module 命名导出，兼容所有子页面 import { ... }
 export function initStoreTerminalBridge() {
   Bridge.initStore();
 }
@@ -127,6 +124,10 @@ export function initDriverTerminalBridge() {
 
 export function initMallTerminalBridge() {
   Bridge.initMall();
+}
+
+export function initSuppliersTerminalBridge() {
+  Bridge.initSuppliers();
 }
 
 export function initSupplierTerminalBridge() {
