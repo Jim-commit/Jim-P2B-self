@@ -3,1078 +3,1619 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>商道相通 · 门店全面版调度工作台</title>
-  <link rel="stylesheet" href="./src/styles/sdxtUnifiedTheme.css" />
+  <title>商道相通 · 百工商业全域智慧工作台（电脑全面调度台）</title>
   <style>
-    .h-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
-    .h-scroll::-webkit-scrollbar { display: none; }
-    .hq-status-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
-    .hq-pill-tag { font-size: 11px; padding: 3px 10px; border-radius: 999px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); color: #e2e8f0; }
-    .hq-pill-tag.gold { background: rgba(245,158,11,0.22); border-color: rgba(251,191,36,0.45); color: #fde68a; font-weight: 700; }
+    :root {
+      --bg-page: #f4f6f8;
+      --bg-card: #ffffff;
+      --bg-subtle: #f8fafc;
+      --border-light: #e2e8f0;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --primary: #0f766e;
+      --primary-light: #ccfbf1;
+      --primary-dark: #115e59;
+      --accent: #b45309;
+      --accent-bg: #fef3c7;
+      --danger: #be123c;
+      --danger-bg: #ffe4e6;
+      --success: #15803d;
+      --success-bg: #dcfce7;
+      --radius: 10px;
+      --shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+      --font-scale: 1;
+    }
+
+    body.elder-mode {
+      --font-scale: 1.25;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg-page);
+      color: var(--text-main);
+      font-size: calc(14px * var(--font-scale));
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* 顶部全局中枢栏 */
+    .topbar {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-light);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      z-index: 20;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: calc(16px * var(--font-scale));
+      color: var(--primary-dark);
+      white-space: nowrap;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: calc(12px * var(--font-scale));
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      color: var(--text-main);
+    }
+    .badge.warn { background: var(--accent-bg); color: var(--accent); border-color: #fde68a; }
+    .badge.danger { background: var(--danger-bg); color: var(--danger); border-color: #fecdd3; }
+    .badge.ok { background: var(--success-bg); color: var(--success); border-color: #bbf7d0; }
+
+    /* 无界灵感胶囊 */
+    .omni-capsule {
+      flex: 1;
+      min-width: 240px;
+      max-width: 480px;
+      display: flex;
+      align-items: center;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: 999px;
+      padding: 4px 12px;
+      gap: 6px;
+    }
+    .omni-capsule:focus-within {
+      border-color: var(--primary);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    }
+    .omni-capsule input {
+      border: none;
+      background: transparent;
+      outline: none;
+      flex: 1;
+      font-size: inherit;
+      color: var(--text-main);
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+      flex-wrap: wrap;
+    }
+
+    button, .btn {
+      border: 1px solid var(--border-light);
+      background: #fff;
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: calc(13px * var(--font-scale));
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+    button:hover { background: var(--bg-subtle); border-color: #cbd5e1; }
+    button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    button.primary:hover { background: var(--primary-dark); }
+    button.warn { background: var(--accent-bg); color: var(--accent); border-color: #fcd34d; }
+    button.danger { background: var(--danger-bg); color: var(--danger); border-color: #fda4af; }
+    button.sm { padding: 4px 8px; font-size: calc(12px * var(--font-scale)); }
+
+    /* 练手沙盒横幅 */
+    .sandbox-banner {
+      background: #fef3c7;
+      color: #92400e;
+      padding: 6px 18px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #fde68a;
+    }
+
+    /* 主体双栏工作台 */
+    .workspace {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* 左侧8大生命线导航 */
+    .sidebar {
+      width: 230px;
+      background: #ffffff;
+      border-right: 1px solid var(--border-light);
+      padding: 12px 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stage-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 10px 10px 4px;
+      letter-spacing: 0.5px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 11px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text-main);
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+    .nav-item:hover { background: var(--bg-subtle); }
+    .nav-item.active {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      font-weight: 700;
+    }
+
+    /* 右侧主内容区 */
+    .main-stage {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 22px 60px;
+    }
+
+    /* 通用卡片与网格 */
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 16px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--bg-subtle);
+    }
+    .card-title { font-weight: 700; font-size: calc(15px * var(--font-scale)); }
+    .stat-val { font-size: calc(22px * var(--font-scale)); font-weight: 700; color: var(--primary-dark); margin: 4px 0; }
+    .stat-sub { font-size: calc(12px * var(--font-scale)); color: var(--text-muted); }
+
+    /* 进度条 */
+    .progress-bar {
+      height: 8px;
+      background: var(--bg-subtle);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--border-light);
+      margin-top: 6px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--primary);
+      transition: width 0.3s;
+    }
+
+    /* 表单与表格 */
+    .form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px; }
+    .field { display: flex; flex-direction: column; gap: 4px; min-width: 130px; flex: 1; }
+    .field label { font-size: calc(12px * var(--font-scale)); color: var(--text-muted); }
+    input, select, textarea {
+      padding: 7px 10px;
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      font-size: inherit;
+      font-family: inherit;
+      background: #fff;
+      color: var(--text-main);
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+
+    table { width: 100%; border-collapse: collapse; font-size: calc(13px * var(--font-scale)); }
+    th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border-light); }
+    th { background: var(--bg-subtle); color: var(--text-muted); font-weight: 600; }
+    tr.voided-row { opacity: 0.55; text-decoration: line-through; background: #fff1f2; }
+
+    /* 待核决草案同构卡片 */
+    .decision-card {
+      border-left: 4px solid var(--accent);
+      background: #fffbeb;
+      padding: 12px 14px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .decision-card.danger { border-left-color: var(--danger); background: #fff1f2; }
+
+    /* 模态框与锁屏覆盖层 */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .overlay.show { display: flex; }
+    .modal-box {
+      background: #fff;
+      border-radius: 14px;
+      max-width: 560px;
+      width: 100%;
+      padding: 22px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .avatar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 16px 0; }
+    .avatar-card {
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: 14px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .avatar-card:hover { border-color: var(--primary); background: var(--primary-light); }
+
+    /* 16:9 店内大屏广告全屏模式 */
+    .signage-screen {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #0f766e 0%, #115e59 100%);
+      color: #fff;
+      z-index: 200;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 40px;
+    }
+    .signage-screen.show { display: flex; }
+
+    /* Toast 轻提示 */
+    .toast {
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      background: #1e293b;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 300;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .toast.show { opacity: 1; }
+
+    @media print {
+      .topbar, .sidebar, .no-print { display: none !important; }
+      .workspace, .main-stage { overflow: visible !important; height: auto !important; }
+    }
   </style>
 </head>
-<body class="layout-desktop">
+<body>
 
-  <main class="sdxt-container">
-    <!-- 宽幅墨玉深森林绿大屏门头 -->
-    <header class="sdxt-forest-cockpit">
-      <div class="sdxt-cockpit-row">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <span style="font-size:12px;color:#a7f3d0;letter-spacing:0.5px;">百工百业智慧门店 · 电脑全面调度台</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <a href="./index.html" class="sdxt-gold-pill" style="text-decoration:none;">📱 切手机掌中宝</a>
-          <button type="button" class="sdxt-forest-pill" id="btn-boss-lock">🔒 锁屏保护</button>
-          <button type="button" class="sdxt-forest-pill" id="btn-hq-refresh">↻ 刷新数据</button>
-        </div>
-      </div>
-
-      <div class="sdxt-cockpit-row" style="margin-top:8px;">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <span style="font-size:21px;font-weight:900;color:#ffffff;" id="ui-store-name">我的门店</span>
-          <button type="button" class="sdxt-forest-pill" id="btn-store-switcher">🏢 切换/新增分店 ▼</button>
-          <span class="hq-pill-tag">当值岗位：<strong id="ui-staff-name" style="color:#fde68a;">掌柜(本人)</strong></span>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button type="button" class="sdxt-gold-pill" id="btn-tool-storage">⚙️ 全局经营策略与积木</button>
-          <button type="button" class="sdxt-forest-pill" id="btn-tool-lexicon">🌐 百业词典百宝箱</button>
-        </div>
-      </div>
-
-      <div class="hq-status-pills" id="ui-active-policy-pills"></div>
-    </header>
-
-    <div id="co-production-banner-slot"></div>
-    <div id="ui-health-banners" class="sdxt-status-trio"></div>
-
-    <!-- 三联大盘总账中枢卡（货物账 / 资金账 / 进货往来账） -->
-    <section class="sdxt-desktop-ledger-trio">
-      <div class="sdxt-card" style="margin-bottom:0;">
-        <div class="sdxt-card-title"><span>📦 货物账 · 库存与动销</span><a href="javascript:void(0)" data-jump="shelf" style="font-size:12px;color:var(--sdxt-forest);text-decoration:none;">管货架/调价 →</a></div>
-        <div class="sdxt-grid-3" style="text-align:center;">
-          <div><div style="font-size:11px;color:var(--sdxt-muted);" id="dk-lbl-stock">在架货值</div><div style="font-size:19px;font-weight:900;" id="dk-val-stock">¥0</div></div>
-          <div><div style="font-size:11px;color:var(--sdxt-muted);">在售品类</div><div style="font-size:19px;font-weight:900;color:#047857;" id="dk-val-sku">0款</div></div>
-          <div><div style="font-size:11px;color:var(--sdxt-muted);">缺货预警</div><div style="font-size:19px;font-weight:900;color:#be123c;" id="dk-val-low">0款</div></div>
-        </div>
-      </div>
-
-      <div class="sdxt-card" style="margin-bottom:0;">
-        <div class="sdxt-card-title"><span>💰 资金账 · 收银与往来</span><a href="javascript:void(0)" data-jump="pos" style="font-size:12px;color:var(--sdxt-forest);text-decoration:none;">柜台收银/对账 →</a></div>
-        <div class="sdxt-grid-3" style="text-align:center;">
-          <div><div style="font-size:11px;color:var(--sdxt-muted);">今日实收</div><div style="font-size:19px;font-weight:900;color:#047857;" id="dk-val-sales">¥0.00</div></div>
-          <div><div style="font-size:11px;color:var(--sdxt-muted);">熟客在账赊欠</div><div style="font-size:19px;font-weight:900;color:#be123c;" id="dk-val-debt">¥0.00</div></div>
-          <div><div style="font-size:11px;color:var(--sdxt-muted);" id="dk-lbl-profit">今日预估毛利</div><div style="font-size:19px;font-weight:900;color:#d97706;" id="dk-val-profit">¥0</div></div>
-        </div>
-      </div>
-
-      <div class="sdxt-card" style="margin-bottom:0;">
-        <div class="sdxt-card-title"><span>🚚 进货账 · 上游供货协同</span><a href="javascript:void(0)" data-jump="supply" style="font-size:12px;color:var(--sdxt-forest);text-decoration:none;">进货订货 →</a></div>
-        <div class="sdxt-grid-3" style="text-align:center;">
-          <div><div style="font-size:11px;color:var(--sdxt-muted);">在途待收货</div><div style="font-size:19px;font-weight:900;color:#d97706;" id="dk-val-po">0单</div></div>
-          <div><div style="font-size:11px;color:var(--sdxt-muted);">供货方待结</div><div style="font-size:19px;font-weight:900;" id="dk-val-sup-debt">¥0</div></div>
-          <div><div style="font-size:11px;color:var(--sdxt-muted);">熟客会员总数</div><div style="font-size:19px;font-weight:900;color:var(--sdxt-forest);" id="dk-val-mems">0人</div></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 电脑全面版左右主工作区 -->
-    <div class="sdxt-workspace-shell">
-      <aside class="sdxt-desktop-sidebar">
-        <button type="button" class="sdxt-side-btn active" data-tab="shelf"><span>🏷️</span><span id="side-lbl-shelf">门店货架与定价</span></button>
-        <button type="button" class="sdxt-side-btn" data-tab="pos" id="side-tab-pos"><span>💰</span><span>柜台收银与称重</span></button>
-        <button type="button" class="sdxt-side-btn" data-tab="supply"><span>🚚</span><span>上游进货与周期账</span></button>
-        <button type="button" class="sdxt-side-btn" data-tab="members"><span>📒</span><span id="side-lbl-mem">熟客赊账与积木会员</span></button>
-        <button type="button" class="sdxt-side-btn" data-tab="manage"><span>🧰</span><span>拓客大屏与多店管理</span></button>
-      </aside>
-
-      <div>
-        <!-- 视图 1：货架与全量商品管理 -->
-        <section id="view-shelf">
-          <div class="sdxt-card" style="padding:12px;">
-            <div style="display:flex;gap:8px;">
-              <input id="shelf-search-input" class="sdxt-input" placeholder="🔍 搜名称 / 扫条码 / 秤号 / 货架位..." />
-              <button type="button" class="sdxt-btn sdxt-btn-primary" id="btn-open-add-item">+ 新增建档</button>
-              <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-batch-price">📈 批量调价</button>
-              <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-print-tags">🏷️ 打印价签/秤签</button>
-              <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-toggle-archived">📦 停售归档</button>
-            </div>
-            <div id="ui-standalone-pos-bar" class="hidden" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--sdxt-line);display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-size:12px;color:var(--sdxt-ink-soft);">🖥️ 已启用独立称重收银一体机模式</span>
-              <button type="button" class="sdxt-pill" id="btn-record-pos-day">📥 录一体机日结</button>
-            </div>
-          </div>
-          <div id="ui-shelf-list"></div>
-        </section>
-
-        <!-- 视图 2：电脑双栏分屏收银台 -->
-        <section id="view-pos" class="hidden">
-          <div class="sdxt-pos-split">
-            <div class="sdxt-card">
-              <div style="display:flex;gap:6px;margin-bottom:8px;">
-                <input id="pos-universal-input" class="sdxt-input" placeholder="扫条码 / 称重签 / 输 品名*重量 (如 鸡蛋*2.5)" />
-                <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-pos-scan-confirm">添加</button>
-                <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-bt-scale" title="连接蓝牙电子秤">⚖️</button>
-              </div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
-                <button type="button" class="sdxt-pill" id="btn-select-pos-member">👤 <span id="ui-selected-mem-label">选熟客/会员</span></button>
-                <button type="button" class="sdxt-pill" id="btn-hold-order">⏸️ 挂单/外送</button>
-                <button type="button" class="sdxt-pill" id="btn-resume-held">📋 取单(<span id="ui-held-count">0</span>)</button>
-                <button type="button" class="sdxt-pill" id="btn-undo-sale">↩️ 撤回上笔</button>
-                <button type="button" class="sdxt-pill" id="btn-show-payqr">💳 收款码</button>
-                <button type="button" class="sdxt-pill" id="btn-open-refund">🔄 退货退款</button>
-              </div>
-
-              <div id="ui-pos-cart-list" style="min-height:140px;border-top:1px solid var(--sdxt-line);border-bottom:1px solid var(--sdxt-line);padding:8px 0;margin-bottom:10px;"></div>
-
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                <div>
-                  <div style="font-size:13px;color:var(--sdxt-muted);">应收合计 <span id="ui-pos-discount-tip" style="color:#d97706;font-weight:700;"></span></div>
-                  <div style="margin-top:4px;display:flex;gap:6px;">
-                    <button type="button" class="sdxt-pill" style="padding:3px 8px;font-size:11px;" id="btn-quick-round-yuan">一键抹零到元</button>
-                    <button type="button" class="sdxt-pill" style="padding:3px 8px;font-size:11px;" id="btn-quick-manual-amt">+ 手输金额</button>
-                  </div>
-                </div>
-                <span style="font-size:30px;font-weight:900;color:#be123c;">¥<span id="ui-pos-payable">0.00</span></span>
-              </div>
-
-              <div class="sdxt-grid-3">
-                <button type="button" class="sdxt-btn sdxt-btn-ok" data-pay="wechat">微信收款</button>
-                <button type="button" class="sdxt-btn sdxt-btn-primary" data-pay="alipay">支付宝</button>
-                <button type="button" class="sdxt-btn sdxt-btn-ghost" data-pay="cash">现金(算找零)</button>
-              </div>
-              <div class="sdxt-grid-2" style="margin-top:8px;">
-                <button type="button" class="sdxt-btn sdxt-btn-ghost" data-pay="credit">记熟客赊账</button>
-                <button type="button" class="sdxt-btn sdxt-btn-ghost hidden" id="btn-pay-balance" data-pay="balance">会员卡扣款</button>
-              </div>
-            </div>
-
-            <div class="sdxt-card">
-              <div style="font-weight:800;font-size:14px;margin-bottom:8px;">🧾 今日收银流水（支持补打58mm小票）</div>
-              <div id="ui-today-tx-list"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- 视图 3：上游进货与周期账 -->
-        <section id="view-supply" class="hidden">
-          <div class="sdxt-pos-split">
-            <div class="sdxt-card">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <span style="font-weight:800;font-size:15px;">🚚 上游供货方与进货单</span>
-                <div style="display:flex;gap:6px;">
-                  <button type="button" class="sdxt-pill" id="btn-sync-upstream">🔄 同步目录</button>
-                  <button type="button" class="sdxt-pill" id="btn-add-supplier">+ 供货方</button>
-                </div>
-              </div>
-              <div class="h-scroll" id="ui-supplier-pills" style="margin-bottom:10px;"></div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
-                <button type="button" class="sdxt-btn sdxt-btn-ghost" style="flex:1;" id="btn-import-lowstock-po">⚡ 导入本店缺货</button>
-                <button type="button" class="sdxt-btn sdxt-btn-ghost hidden" style="flex:1;" id="btn-import-multistore-po">🏢 多店统购汇总</button>
-                <button type="button" class="sdxt-btn sdxt-btn-primary" style="flex:1;" id="btn-add-supply-prod">+ 录供货目录</button>
-              </div>
-              <div id="ui-purchase-cart-box" style="background:#faf9f6;border-radius:12px;padding:10px;margin-bottom:10px;"></div>
-              <div id="ui-supply-catalog-list"></div>
-            </div>
-
-            <div class="sdxt-card">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <span style="font-weight:800;font-size:14px;">📦 采购订单与周期对账单</span>
-                <button type="button" class="sdxt-pill" id="btn-supplier-statements">📑 周期对账汇总</button>
-              </div>
-              <div id="ui-po-order-list"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- 视图 4：熟客赊账与积木会员 -->
-        <section id="view-members" class="hidden">
-          <div class="sdxt-card" style="display:flex;gap:8px;">
-            <input id="member-search-input" class="sdxt-input" placeholder="搜客户姓名 / 手机号..." />
-            <button type="button" class="sdxt-btn sdxt-btn-primary" id="btn-add-member">+ 新熟客</button>
-          </div>
-          <div id="ui-member-list"></div>
-        </section>
-
-        <!-- 视图 5：拓客大屏与多店经营管理 -->
-        <section id="view-manage" class="hidden">
-          <div id="ui-boss-dashboard-card" class="sdxt-card hidden" style="background:linear-gradient(145deg,#123e2e,#0c2e22);color:#ffffff;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-              <span style="font-weight:800;font-size:15px;">📊 门店多店合并内账大盘</span>
-              <div style="display:flex;gap:6px;align-items:center;">
-                <button type="button" class="sdxt-forest-pill" data-dash-range="today">今日</button>
-                <button type="button" class="sdxt-forest-pill" data-dash-range="month">本月</button>
-                <button type="button" class="sdxt-forest-pill" data-dash-range="all">累计</button>
-                <span class="sdxt-badge" style="background:rgba(255,255,255,.15);color:#fde68a;" id="ui-store-count-badge">单店账本</span>
-              </div>
-            </div>
-            <div class="sdxt-grid-3">
-              <div><div style="font-size:11px;opacity:.8;">营业实收</div><div style="font-size:20px;font-weight:800;" id="ui-dash-rev">¥0.00</div></div>
-              <div><div style="font-size:11px;opacity:.8;">成本+杂费</div><div style="font-size:20px;font-weight:800;" id="ui-dash-cost">¥0.00</div></div>
-              <div><div style="font-size:11px;opacity:.8;">预估真净赚</div><div style="font-size:20px;font-weight:800;color:#6ee7b7;" id="ui-dash-profit">¥0.00</div></div>
-            </div>
-          </div>
-
-          <div class="sdxt-card">
-            <div style="font-weight:800;font-size:14px;margin-bottom:10px;">🧰 百业门店拓客与调度工具箱</div>
-            <div class="sdxt-grid-3">
-              <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-tool-alerts">⚠️ 缺货临期与热销分析</button>
-              <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-tool-poster">📣 群接龙海报 / A4传单</button>
-              <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-tool-tv">📺 16:9 店内大屏轮播</button>
-              <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-tool-shift">🧮 交接班实盘清点</button>
-              <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-tool-expense">💸 记门店日常杂费</button>
-              <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-tool-pos-csv">📂 导入一体机CSV表</button>
-              <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-tool-stores">🏢 分店调拨与精细权限</button>
-              <button type="button" class="sdxt-btn sdxt-btn-ghost" id="btn-tool-backup-now">💾 账本备份与离线HTML</button>
-              <button type="button" class="sdxt-btn sdxt-btn-gold" id="btn-tool-lexicon-2">🌐 百业词典与加价参数</button>
-            </div>
-          </div>
-        </section>
-      </div>
+  <!-- 顶部全局中枢栏（双击空白处可一键触发防窥掩护） -->
+  <header class="topbar no-print" id="topbar" title="提示：双击顶部空白处可一键开启/关闭防窥脱敏掩护">
+    <div class="brand">
+      <span>🏮 商道相通</span>
+      <span class="badge" id="storeBadge">本店</span>
+      <span class="badge ok" id="geneBadge">社区便利</span>
     </div>
-  </main>
 
-  <div id="ui-drawer-mask" class="sdxt-drawer-mask hidden">
-    <div class="sdxt-drawer-box" id="ui-drawer-body"></div>
+    <!-- 无界灵感胶囊 -->
+    <div class="omni-capsule">
+      <span>🔍</span>
+      <input type="text" id="omniInput" placeholder="扫条码 / 搜货号 / 输入指令如“老王赊账48元”或“家用拿走200”..." />
+      <button class="sm" id="btnOmniVoice" title="语音/文本解析">🎙️ 解析</button>
+    </div>
+
+    <div class="topbar-actions">
+      <button class="sm" id="btnAccountSwitch">👑 <span id="activeAccName">本机掌柜</span></button>
+      <button class="sm" id="btnToggleUiMode">🌿 极简白纸态</button>
+      <button class="sm" id="btnPrivacyShield">👁️ 防窥</button>
+      <button class="sm" id="btnCustomerScreen">📺 副屏客显</button>
+      <button class="sm" id="btnLockScreen">🔒 锁屏</button>
+    </div>
+  </header>
+
+  <!-- 练手模拟舱提示条 -->
+  <div class="sandbox-banner no-print" id="sandboxBanner" style="display:none;">
+    <span>🎓 <strong>当前处于【练手模拟舱】</strong>：所有开单、改价、冲销操作均在内存沙盒演练，绝不写入正式账本。</span>
+    <button class="sm warn" id="btnExitSandbox">退出模拟舱并还原正式账本</button>
   </div>
 
+  <!-- 主体双栏工作台 -->
+  <div class="workspace">
+    <!-- 左侧 8 大生命线动态导航树 -->
+    <aside class="sidebar no-print" id="sidebarNav"></aside>
+
+    <!-- 右侧主工作舞台 -->
+    <main class="main-stage" id="mainStage"></main>
+  </div>
+
+  <!-- 账号切换与锁屏安全覆盖层 -->
+  <div class="overlay" id="lockOverlay">
+    <div class="modal-box">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;">🔐 岗位值班切换与安全锁</h3>
+        <button class="sm" id="btnCloseLockModal">关闭</button>
+      </div>
+      <p style="color:var(--text-muted); font-size:13px;">点击对应值班头像即可切换岗位（受手电筒权限自动隔离视野）：</p>
+      <div class="avatar-grid" id="avatarGrid"></div>
+      <div id="pinVerifyBox" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--border-light);">
+        <div class="form-row">
+          <div class="field">
+            <label id="pinPromptLabel">请输入 4 位数字上岗口令</label>
+            <input type="password" id="pinInput" maxlength="8" placeholder="输入口令..." />
+          </div>
+          <button class="primary" id="btnConfirmPin">确认上岗</button>
+        </div>
+      </div>
+      <div style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--border-light); display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:12px; color:var(--text-muted);">新店员学徒练手？进入全真隔离沙盒：</span>
+        <button class="sm warn" id="btnEnterSandbox">🎓 进入练手模拟舱</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 16:9 店内大屏广告全屏容器 -->
+  <div class="signage-screen" id="signageScreen">
+    <div style="font-size:22px; opacity:0.85; margin-bottom:12px;" id="signageStoreTitle">本店今日街坊特惠</div>
+    <div style="font-size:56px; font-weight:800; margin-bottom:18px;" id="signageHeadline">新鲜直达 · 诚实守信</div>
+    <div style="font-size:28px; max-width:860px; line-height:1.6;" id="signageBody">欢迎光临！支持微信群接龙预订、到店自提，老街坊享专属熟客价。</div>
+    <button style="margin-top:40px; background:rgba(255,255,255,0.2); color:#fff; border-color:rgba(255,255,255,0.4);" id="btnExitSignage">退出大屏展示 (ESC)</button>
+  </div>
+
+  <div class="toast" id="toastBox"></div>
+
   <script type="module">
-    import { initStoreTerminalBridge } from './src/modules/soulEngine/multiTerminalBridge.js';
-    import './src/modules/store/storeLocalVault.js';
-    import './src/modules/store/storeCounterPos.js';
-    import './src/modules/store/storeCatalogPricing.js';
-    import './src/modules/store/storePosterStudio.js';
-    import './src/modules/store/storeUpstreamOrder.js';
+    import {
+      StoreCoreEngine,
+      MODULE_CATALOG,
+      INDUSTRY_GENES,
+      roundMoney,
+      generateId,
+      sha256Hex
+    } from './src/modules/store/storeCoreEngine.js';
 
-    initStoreTerminalBridge();
+    // 1. 初始化共享核心大脑
+    const engine = new StoreCoreEngine();
+    window.__STORE_ENGINE__ = engine; // 方便跨窗口（如副屏客显）共享同一引擎实例
 
-    (async function bootstrapHqApp() {
-      const vault = await window.StoreLocalVault.init();
-      const pos = window.StoreCounterPos;
-      const cat = window.StoreCatalogPricing;
-      const poster = window.StorePosterStudio;
-      const upstream = window.StoreUpstreamOrder;
-      upstream.init();
+    let activeModule = 'pos'; // 默认落脚柜台收银（开箱即干活）
+    let posCart = [];         // 当前收银台购物车（支持正负混合一单清）
+    let pendingSwitchAccId = null;
+    let customerDisplayWin = null;
 
-      let showArchived = false;
-      let activeSupplierFilter = 'ALL';
-      let dashRange = 'today';
+    const $ = (id) => document.getElementById(id);
 
-      const $ = (id) => document.getElementById(id);
-      const openDrawer = (html) => {
-        $('ui-drawer-body').innerHTML = html;
-        $('ui-drawer-mask').classList.remove('hidden');
-      };
-      const closeDrawer = () => $('ui-drawer-mask').classList.add('hidden');
-      $('ui-drawer-mask').addEventListener('click', (e) => { if (e.target === $('ui-drawer-mask')) closeDrawer(); });
+    function showToast(msg) {
+      const box = $('toastBox');
+      box.textContent = msg;
+      box.classList.add('show');
+      clearTimeout(box._t);
+      box._t = setTimeout(() => box.classList.remove('show'), 2800);
+    }
 
-      const showMsg = (title, text) => {
-        openDrawer(`<h3>${title}</h3><p style="font-size:14px;color:var(--sdxt-ink-soft);">${text}</p><button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="m-ok-btn">知道了</button>`);
-        $('m-ok-btn').onclick = closeDrawer;
-      };
+    /* ========================================================================
+     * 顶部栏、导航树与全局状态同步渲染
+     * ======================================================================== */
+    function renderAll() {
+      const store = engine.getActiveStore();
+      const gene = engine.getActiveGene();
+      const acc = engine.getCurrentAccount();
+      const metrics = engine.getDashboardMetrics();
 
-      function switchTab(tabName) {
-        document.querySelectorAll('.sdxt-side-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === tabName));
-        ['shelf', 'pos', 'supply', 'members', 'manage'].forEach((v) => $(`view-${v}`).classList.toggle('hidden', v !== tabName));
-        renderAll();
+      document.body.classList.toggle('elder-mode', Boolean(engine.state.meta.elderLargeMode));
+      $('storeBadge').textContent = store.name;
+      $('geneBadge').textContent = gene.name.split('/')[0].trim();
+      $('activeAccName').textContent = acc.name;
+      $('btnToggleUiMode').textContent = engine.state.meta.uiMode === 'simple' ? '🌿 极简白纸态' : '🧭 全面调度态';
+      $('btnPrivacyShield').textContent = engine.privacyShieldActive ? '🙈 已开启防窥' : '👁️ 防窥';
+      $('sandboxBanner').style.display = engine.sandboxMode ? 'flex' : 'none';
+
+      // 若当前处于锁屏状态，强制弹出安全锁层
+      if (engine.state.rbac.locked) {
+        openAccountModal(true);
       }
 
-      async function renderAll() {
-        const policy = vault.getPolicy();
-        const lex = vault.getLexicon();
-        const staff = vault.getActiveStaff();
-        const canSeeCost = vault.hasPerm('viewCost');
-
-        $('ui-store-name').textContent = vault.activeStoreData.storeName;
-        $('ui-staff-name').textContent = `${staff.name} (${vault.ROLE_PRESETS[staff.role]?.label || staff.role})`;
-        $('btn-boss-lock').textContent = vault.isBossUnlocked() ? '🔓 已解锁内账' : '🔒 内账锁屏中';
-
-        $('side-lbl-shelf').textContent = `门店${lex.itemLabel}货架`;
-        $('side-lbl-mem').textContent = `${lex.customerLabel}赊账与会员`;
-        $('shelf-search-input').placeholder = `🔍 搜${lex.itemLabel}名称 / 扫条码 / 秤号 / ${lex.locLabel}...`;
-        $('member-search-input').placeholder = `搜${lex.customerLabel}姓名 / 手机号...`;
-        $('btn-import-multistore-po').classList.toggle('hidden', vault.meta.stores.length <= 1);
-
-        const hasPosMachine = Boolean(policy.hardware.hasStandalonePos);
-        $('ui-standalone-pos-bar').classList.toggle('hidden', !hasPosMachine);
-        $('side-tab-pos').classList.toggle('hidden', hasPosMachine);
-
-        const blocks = policy.loyaltyBlocks;
-        const pills = [`<span class="hq-pill-tag gold">📌 行业：${lex.label}</span>`];
-        if (blocks.memberPriceAndDay.enabled) pills.push('<span class="hq-pill-tag">👑 会员专享价已开</span>');
-        if (blocks.storedValueCard.enabled) pills.push('<span class="hq-pill-tag">💳 会员储值卡已开</span>');
-        if (blocks.stampReward.enabled) pills.push('<span class="hq-pill-tag">⭐ 消费攒星已开</span>');
-        if (blocks.punchAndSubscription.enabled) pills.push('<span class="hq-pill-tag">🎟️ 次卡/周期配送已开</span>');
-        if (blocks.referralAndDeposit.enabled) pills.push('<span class="hq-pill-tag">🪣 押金载具已开</span>');
-        if (blocks.fullReductionAndGift.enabled) pills.push('<span class="hq-pill-tag">🧧 满减/满赠已开</span>');
-        pills.push(`<span class="hq-pill-tag">🛡️ 本地主权库 + ${policy.storageChannels.encryptedCloud?.enabled ? '加密云镜像' : '微信快照'}</span>`);
-        $('ui-active-policy-pills').innerHTML = pills.join('');
-
-        const catalogList = Object.values(vault.activeStoreData.catalog || {}).filter((i) => !i.archived);
-        const memberList = Object.values(vault.activeStoreData.members || {});
-        const totalDebt = memberList.reduce((s, m) => s + Number(m.creditDebt || 0), 0);
-        const todayStart = new Date().setHours(0, 0, 0, 0);
-        const todaySales = (vault.activeStoreData.txEvents || [])
-          .filter((e) => !e.voided && e.ts >= todayStart && (e.type === 'sale' || e.type === 'credit_pay'))
-          .reduce((s, e) => s + Number(e.amount || 0), 0);
-        const stockCostVal = catalogList.reduce((s, i) => s + Number(i.stock || 0) * Number(i.costPrice || 0), 0);
-        const { lowStock, nearExpiry } = cat.getAlertsAndRestockList();
-        const pendingOrders = (upstream.data.orders || []).filter((o) => o.status !== 'received');
-        const supUnpaid = upstream.getSupplierPeriodStatements().reduce((s, x) => s + Number(x.unpaidAmount || 0), 0);
-
-        $('dk-lbl-stock').textContent = canSeeCost ? `在架${lex.itemLabel}货值` : `在架${lex.itemLabel}数`;
-        $('dk-val-stock').textContent = canSeeCost ? `¥${Math.round(stockCostVal)}` : `${catalogList.length}款`;
-        $('dk-val-sku').textContent = `${catalogList.length}款`;
-        $('dk-val-low').textContent = `${lowStock.length}款`;
-        $('dk-val-sales').textContent = `¥${todaySales.toFixed(2)}`;
-        $('dk-val-debt').textContent = `¥${totalDebt.toFixed(2)}`;
-        $('dk-lbl-profit').textContent = canSeeCost ? '今日预估毛利' : '今日收银笔数';
-        const todayCount = (vault.activeStoreData.txEvents || []).filter((e) => !e.voided && e.ts >= todayStart && e.type === 'sale').length;
-        $('dk-val-profit').textContent = canSeeCost ? `¥${(todaySales * 0.25).toFixed(0)}` : `${todayCount}笔`;
-        $('dk-val-po').textContent = `${pendingOrders.length}单`;
-        $('dk-val-sup-debt').textContent = `¥${supUnpaid.toFixed(0)}`;
-        $('dk-val-mems').textContent = `${memberList.length}人`;
-
-        $('ui-health-banners').innerHTML = [
-          `<div class="sdxt-status-banner"><span>🟢 <strong>放心干 · 账实健康</strong>（今日实收 ¥${todaySales.toFixed(2)}）</span><a href="javascript:void(0)" data-jump="pos" style="color:inherit;font-weight:800;text-decoration:none;">去收银 →</a></div>`,
-          `<div class="sdxt-status-banner warn"><span>🟡 <strong>留个神 · 待处理</strong>（${pendingOrders.length}笔进货待收 · 赊欠¥${totalDebt.toFixed(0)}）</span><a href="javascript:void(0)" data-jump="members" style="color:inherit;font-weight:800;text-decoration:none;">去核销 →</a></div>`,
-          `<div class="sdxt-status-banner danger"><span>🔴 <strong>赶紧管 · 补货预警</strong>（${lowStock.length}款低库存 · ${nearExpiry.length}款临期）</span><a href="javascript:void(0)" data-jump="supply" style="color:inherit;font-weight:800;text-decoration:none;">去补货 →</a></div>`
-        ].join('');
-        document.querySelectorAll('[data-jump]').forEach((a) => { a.onclick = () => switchTab(a.dataset.jump); });
-
-        const kw = ($('shelf-search-input').value || '').trim().toLowerCase();
-        const items = Object.values(vault.activeStoreData.catalog || {}).filter((i) => {
-          if (Boolean(i.archived) !== showArchived) return false;
-          if (!kw) return true;
-          return (i.name || '').toLowerCase().includes(kw) || String(i.barcode || '').includes(kw) || String(i.plu || '').includes(kw) || (i.shelfLoc || '').toLowerCase().includes(kw);
-        });
-
-        $('ui-shelf-list').innerHTML = items.length ? items.map((it) => {
-          const hasMemPrice = blocks.memberPriceAndDay.enabled && Number(it.memberPrice) > 0;
-          const costHtml = canSeeCost
-            ? `<span class="sdxt-badge" style="background:#fff1f2;color:#be123c;">进 ¥${Number(it.costPrice).toFixed(2)} · 赚 ¥${(Number(it.retailPrice) - Number(it.costPrice)).toFixed(2)}</span>`
-            : '';
-          const tierTip = Array.isArray(it.tierPrices) && it.tierPrices.length
-            ? `<span class="sdxt-badge" style="background:#fffbeb;color:#92400e;">满${it.tierPrices[0].minQty}${it.unit}¥${it.tierPrices[0].price}</span>`
-            : '';
-          return `
-            <div class="sdxt-card" style="padding:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
-              <div>
-                <div style="font-weight:800;font-size:15px;">${it.name}</div>
-                <div style="font-size:12px;color:var(--sdxt-muted);margin-top:3px;">
-                  库存 ${it.stock}${it.unit || lex.unitDefault}${it.shelfLoc ? ` · ${it.shelfLoc}` : ''} ${costHtml} ${tierTip}
-                </div>
-              </div>
-              <div style="display:flex;align-items:center;gap:14px;">
-                <div style="text-align:right;">
-                  <div style="font-size:18px;font-weight:900;color:#be123c;">¥${Number(it.retailPrice).toFixed(2)}<span style="font-size:11px;color:var(--sdxt-muted);font-weight:normal;">/${it.unit || lex.unitDefault}</span></div>
-                  ${hasMemPrice ? `<div style="font-size:11px;color:#d97706;font-weight:700;">会员 ¥${Number(it.memberPrice).toFixed(2)}</div>` : ''}
-                </div>
-                <div style="display:flex;gap:5px;">
-                  <button type="button" class="sdxt-pill" style="padding:4px 9px;font-size:11px;" data-stockin-id="${it.id}">📥 入库</button>
-                  <button type="button" class="sdxt-pill" style="padding:4px 9px;font-size:11px;" data-adjust-id="${it.id}">📋 盘点</button>
-                  <button type="button" class="sdxt-pill" style="padding:4px 9px;font-size:11px;" data-edit-id="${it.id}">✏️ 编辑</button>
-                  <button type="button" class="sdxt-pill" style="padding:4px 9px;font-size:11px;" data-arch-id="${it.id}">${it.archived ? '♻️ 上架' : '📦 停售'}</button>
-                </div>
-              </div>
-            </div>`;
-        }).join('') : `<div class="sdxt-card" style="text-align:center;color:var(--sdxt-muted);padding:24px;">${showArchived ? `暂无停售归档${lex.itemLabel}` : `货架暂无${lex.itemLabel}，点上方「+ 新增建档」录入`}</div>`;
-
-        $('ui-shelf-list').querySelectorAll('[data-stockin-id]').forEach((b) => { b.onclick = () => openStockInDrawer(b.dataset.stockinId); });
-        $('ui-shelf-list').querySelectorAll('[data-adjust-id]').forEach((b) => { b.onclick = () => openStockAdjustDrawer(b.dataset.adjustId); });
-        $('ui-shelf-list').querySelectorAll('[data-edit-id]').forEach((b) => { b.onclick = () => openItemForm('', vault.activeStoreData.catalog[b.dataset.editId]); });
-        $('ui-shelf-list').querySelectorAll('[data-arch-id]').forEach((b) => {
-          b.onclick = async () => { const it = vault.activeStoreData.catalog[b.dataset.archId]; if (it) { it.archived = !it.archived; await vault.persistStore(); renderAll(); } };
-        });
-
-        renderPosCart();
-        renderSupplyView();
-        renderMembers();
-        await renderManageDashboard();
+      // 确保当前模块在当前角色的手电筒光圈内，否则自动切回首个可用模块
+      const allowedModules = MODULE_CATALOG.filter(m => engine.canAccessModule(m.id));
+      if (allowedModules.length > 0 && !allowedModules.some(m => m.id === activeModule)) {
+        activeModule = allowedModules[0].id;
       }
 
-      function renderPosCart() {
-        const policy = vault.getPolicy();
-        const lex = vault.getLexicon();
-        const summary = pos.recalculate();
-        $('ui-pos-payable').textContent = summary.payable.toFixed(2);
-        $('ui-held-count').textContent = (vault.activeStoreData.heldOrders || []).length;
-        $('btn-pay-balance').classList.toggle('hidden', !policy.loyaltyBlocks.storedValueCard.enabled);
+      renderSidebar(allowedModules, metrics);
+      renderMainStage(metrics);
+      syncCustomerDisplayWindow();
+    }
 
-        const selMem = pos.currentMemberId ? vault.activeStoreData.members[pos.currentMemberId] : null;
-        $('ui-selected-mem-label').textContent = selMem ? `${selMem.name}(已选)` : `选${lex.customerLabel}/会员`;
+    function renderSidebar(allowedModules, metrics) {
+      const nav = $('sidebarNav');
+      let lastStage = '';
+      let html = '';
 
-        const tips = [];
-        if (summary.memberSaved > 0) tips.push(`会员省¥${summary.memberSaved}`);
-        if (summary.fullReductionSaved > 0) tips.push(`满减¥${summary.fullReductionSaved}`);
-        if (summary.matchedGift) tips.push(`赠:${summary.matchedGift}`);
-        $('ui-pos-discount-tip').textContent = tips.length ? `(${tips.join(' · ')})` : '';
-
-        const linesHtml = pos.cart.map((l, idx) => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;">
-            <div><strong>${l.name}</strong> <span style="font-size:12px;color:var(--sdxt-muted);">${l.isWeigh ? `${l.weight}${l.weighUnit || lex.weighUnit}` : `x${l.qty}`}</span></div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-weight:800;">¥${Number(l.subtotal).toFixed(2)}</span>
-              <button type="button" data-rm-line="${idx}" style="border:none;background:#fff1f2;color:#be123c;border-radius:6px;padding:2px 7px;cursor:pointer;">删</button>
-            </div>
-          </div>`).join('');
-        const manualHtml = pos.manualAmount > 0 ? `<div style="display:flex;justify-content:space-between;padding:6px 0;"><span>手输快捷金额</span><strong>¥${Number(pos.manualAmount).toFixed(2)}</strong></div>` : '';
-        $('ui-pos-cart-list').innerHTML = (linesHtml || manualHtml) ? (linesHtml + manualHtml) : '<div style="text-align:center;color:var(--sdxt-muted);font-size:13px;padding:30px 0;">扫码枪连扫、称重签或输入“名称*重量”自动算价</div>';
-
-        $('ui-pos-cart-list').querySelectorAll('[data-rm-line]').forEach((btn) => { btn.onclick = () => { pos.cart.splice(Number(btn.dataset.rmLine), 1); renderPosCart(); }; });
-
-        const todayStart = new Date().setHours(0, 0, 0, 0);
-        const todayTxs = (vault.activeStoreData.txEvents || []).filter((e) => !e.voided && e.ts >= todayStart && e.type === 'sale').slice(-12).reverse();
-        $('ui-today-tx-list').innerHTML = todayTxs.map((e) => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed var(--sdxt-line);font-size:13px;">
-            <span>${new Date(e.ts).toLocaleTimeString().slice(0, 5)} · ¥${Number(e.amount).toFixed(2)} (${e.payMethod})</span>
-            <button type="button" data-print-evt="${e.eventId}" class="sdxt-pill" style="padding:3px 8px;">🖨️ 小票</button>
-          </div>`).join('') || '<div style="font-size:12px;color:var(--sdxt-muted);">今日暂无收银流水</div>';
-
-        $('ui-today-tx-list').querySelectorAll('[data-print-evt]').forEach((btn) => {
-          btn.onclick = () => { const evt = vault.activeStoreData.txEvents.find((x) => x.eventId === btn.dataset.printEvt); if (evt) pos.printReceipt(evt); };
-        });
-      }
-
-      function renderSupplyView() {
-        const sups = upstream.data.suppliers || [];
-        $('ui-supplier-pills').innerHTML = `<button type="button" class="sdxt-pill ${activeSupplierFilter === 'ALL' ? 'active' : ''}" data-sup-id="ALL">全部供货方</button>` +
-          sups.map((s) => `<button type="button" class="sdxt-pill ${activeSupplierFilter === s.id ? 'active' : ''}" data-sup-id="${s.id}">${s.name}</button>`).join('');
-        $('ui-supplier-pills').querySelectorAll('[data-sup-id]').forEach((b) => { b.onclick = () => { activeSupplierFilter = b.dataset.supId; renderSupplyView(); }; });
-
-        const pCart = upstream.purchaseCart;
-        const poTotal = pCart.reduce((s, c) => s + c.wholesalePrice * c.qty, 0);
-        $('ui-purchase-cart-box').innerHTML = pCart.length ? `
-          <div style="font-weight:700;font-size:13px;margin-bottom:6px;">🛒 待提交采购单（预估 ¥${poTotal.toFixed(2)}）</div>
-          ${pCart.map((c, i) => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;">
-            <span>${c.name} (${c.supplierName}) × ${c.qty}${c.unit}</span>
-            <span>¥${(c.wholesalePrice * c.qty).toFixed(2)} <a href="javascript:void(0)" data-rm-po="${i}" style="color:#be123c;margin-left:6px;">移除</a></span>
-          </div>`).join('')}
-          <button type="button" class="sdxt-btn sdxt-btn-primary" style="width:100%;margin-top:8px;" id="btn-submit-po">生成正式采购订货单</button>
-        ` : '<div style="font-size:12px;color:var(--sdxt-muted);text-align:center;">采购订货单为空，可点上方一键导入缺货或从下方目录挑选</div>';
-
-        $('ui-purchase-cart-box').querySelectorAll('[data-rm-po]').forEach((a) => { a.onclick = () => { upstream.purchaseCart.splice(Number(a.dataset.rmPo), 1); renderSupplyView(); }; });
-        $('btn-submit-po')?.addEventListener('click', async () => {
-          try {
-            const ords = await upstream.submitPurchaseOrders();
-            showMsg('✅ 订货单已生成', `已按供货方自动拆分为 <strong>${ords.length}</strong> 笔采购单`);
-            renderAll();
-          } catch (e) { showMsg('提示', e.message); }
-        });
-
-        const prods = (upstream.data.supplierItems || []).filter((p) => activeSupplierFilter === 'ALL' || p.supplierId === activeSupplierFilter);
-        $('ui-supply-catalog-list').innerHTML = prods.map((p) => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--sdxt-line);">
-            <div><div style="font-weight:700;font-size:14px;">${p.name}</div><div style="font-size:12px;color:var(--sdxt-muted);">批发价 ¥${Number(p.wholesalePrice).toFixed(2)}/${p.unit} · 1${p.unit}=${p.packRate}散件</div></div>
-            <button type="button" class="sdxt-pill" data-add-po="${p.id}">+ 进货</button>
-          </div>`).join('');
-        $('ui-supply-catalog-list').querySelectorAll('[data-add-po]').forEach((b) => {
-          b.onclick = () => { const p = upstream.data.supplierItems.find((x) => x.id === b.dataset.addPo); if (p) { upstream.addToPurchaseCart(p, 1); renderSupplyView(); } };
-        });
-
-        const orders = upstream.data.orders || [];
-        $('ui-po-order-list').innerHTML = orders.slice(0, 10).map((o) => `
-          <div style="padding:8px 0;border-bottom:1px dashed var(--sdxt-line);font-size:13px;">
-            <div style="display:flex;justify-content:space-between;">
-              <strong>${o.supplierName} (${o.orderId})</strong>
-              <span class="sdxt-badge" style="background:${o.status === 'received' ? '#ecfdf5' : '#fffbeb'};color:${o.status === 'received' ? '#047857' : '#92400e'};">${o.status === 'received' ? '已入库' : '待收货'}</span>
-            </div>
-            <div style="font-size:12px;color:var(--sdxt-muted);margin:4px 0;">金额 ¥${Number(o.totalAmount).toFixed(2)} · 已付 ¥${Number(o.paidAmount || 0).toFixed(2)}</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button type="button" class="sdxt-pill" style="padding:3px 8px;font-size:11px;" data-copy-po="${o.orderId}">📋 复制发微信</button>
-              ${o.status !== 'received' ? `<button type="button" class="sdxt-pill" style="padding:3px 8px;font-size:11px;background:#ecfdf5;color:#047857;" data-recv-po="${o.orderId}">📥 到货一键入库</button>` : ''}
-              ${Number(o.totalAmount) > Number(o.paidAmount || 0) ? `<button type="button" class="sdxt-pill" style="padding:3px 8px;font-size:11px;" data-pay-po="${o.orderId}">💵 登记付款</button>` : ''}
-            </div>
-          </div>`).join('') || '<div style="font-size:12px;color:var(--sdxt-muted);">暂无向上游采购记录</div>';
-
-        $('ui-po-order-list').querySelectorAll('[data-copy-po]').forEach((b) => {
-          b.onclick = async () => {
-            const o = upstream.data.orders.find((x) => x.orderId === b.dataset.copyPo);
-            if (o) { const txt = upstream.buildWechatPurchaseText(o); await navigator.clipboard.writeText(txt).catch(() => {}); showMsg('📋 订货单已复制', `<pre style="white-space:pre-wrap;font-size:12px;">${txt}</pre>`); }
-          };
-        });
-        $('ui-po-order-list').querySelectorAll('[data-recv-po]').forEach((b) => {
-          b.onclick = async () => {
-            try { await upstream.confirmOrderReceivedAndStockIn(b.dataset.recvPo); showMsg('✅ 签收入库成功', '采购商品已按箱规自动拆零计入本店库存！'); renderAll(); } catch (e) { showMsg('提示', e.message); }
-          };
-        });
-        $('ui-po-order-list').querySelectorAll('[data-pay-po]').forEach((b) => {
-          b.onclick = () => {
-            const o = upstream.data.orders.find((x) => x.orderId === b.dataset.payPo);
-            if (!o) return;
-            const remain = Math.max(0, Number(o.totalAmount) - Number(o.paidAmount || 0));
-            openDrawer(`<h3>💵 向【${o.supplierName}】登记货款</h3><p>本单待结余额：¥${remain.toFixed(2)}</p>
-              <input id="po-pay-inp" type="number" step="0.01" class="sdxt-input" value="${remain.toFixed(2)}" />
-              <button class="sdxt-btn sdxt-btn-ok" style="width:100%;margin-top:10px;" id="po-pay-ok">确认核销货款</button>`);
-            $('po-pay-ok').onclick = () => { upstream.paySupplierOrder(o.orderId, $('po-pay-inp').value); closeDrawer(); renderAll(); };
-          };
-        });
-      }
-
-      function renderMembers() {
-        const policy = vault.getPolicy();
-        const blocks = policy.loyaltyBlocks;
-        const lex = vault.getLexicon();
-        const kw = ($('member-search-input').value || '').trim();
-        const list = Object.values(vault.activeStoreData.members || {}).filter((m) => !kw || (m.name || '').includes(kw) || (m.phone || '').includes(kw));
-
-        $('ui-member-list').innerHTML = list.map((m) => {
-          const activePunches = (m.punchCards || []).filter((c) => c.remainTimes > 0);
-          const activeSubs = (m.subscriptions || []).filter((s) => s.remainDeliveries > 0);
-          const activeDeps = (m.deposits || []).filter((d) => !d.returned);
-          return `
-          <div class="sdxt-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <div style="font-weight:800;">${m.name} <span style="font-size:12px;color:var(--sdxt-muted);">${m.phone || ''}</span></div>
-                <div style="font-size:12px;margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;">
-                  ${Number(m.creditDebt) > 0 ? `<span class="sdxt-badge" style="background:#fff1f2;color:#be123c;">待结赊欠 ¥${Number(m.creditDebt).toFixed(2)}</span>` : ''}
-                  ${blocks.storedValueCard.enabled ? `<span class="sdxt-badge" style="background:#ecfdf5;color:#047857;">余额 ¥${Number(m.balance || 0).toFixed(2)}</span>` : ''}
-                  ${blocks.stampReward.enabled ? `<span class="sdxt-badge" style="background:#fffbeb;color:#92400e;">⭐ ${m.stars || 0}星</span>` : ''}
-                  ${activePunches.map((c) => `<span class="sdxt-badge" style="background:#e0e7ff;color:#3730a3;">🎟️ ${c.title}:余${c.remainTimes}次</span>`).join('')}
-                  ${activeSubs.map((s) => `<span class="sdxt-badge" style="background:#fae8ff;color:#86198f;">🚚 ${s.itemDesc}:余${s.remainDeliveries}期(${s.nextDate})</span>`).join('')}
-                  ${activeDeps.map((d) => `<span class="sdxt-badge" style="background:#ffedd5;color:#9a3412;">🪣 押金:${d.itemName} ¥${d.amount}</span>`).join('')}
-                </div>
-              </div>
-              <button type="button" class="sdxt-pill" data-use-mem="${m.id}">选去收银</button>
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--sdxt-line);">
-              ${Number(m.creditDebt) > 0 ? `<button type="button" class="sdxt-pill" style="font-size:11px;padding:3px 8px;" data-copy-debt="${m.id}">微信对账</button><button type="button" class="sdxt-pill" style="font-size:11px;padding:3px 8px;" data-clear-debt="${m.id}">💰 还款销账</button>` : ''}
-              ${blocks.storedValueCard.enabled ? `<button type="button" class="sdxt-pill" style="font-size:11px;padding:3px 8px;" data-topup-mem="${m.id}">💳 储值充送</button>` : ''}
-              ${blocks.stampReward.enabled && Number(m.stars) > 0 ? `<button type="button" class="sdxt-pill" style="font-size:11px;padding:3px 8px;" data-redeem-star="${m.id}">🎁 攒星兑礼</button>` : ''}
-              ${blocks.punchAndSubscription.enabled ? `<button type="button" class="sdxt-pill" style="font-size:11px;padding:3px 8px;" data-punch-manage="${m.id}">🎟️ 次卡/周期配送</button>` : ''}
-              ${blocks.referralAndDeposit.enabled ? `<button type="button" class="sdxt-pill" style="font-size:11px;padding:3px 8px;" data-dep-manage="${m.id}">🪣 押金载具管理</button>` : ''}
-            </div>
-          </div>`;
-        }).join('') || `<div class="sdxt-card" style="text-align:center;color:var(--sdxt-muted);">暂无${lex.customerLabel}档案</div>`;
-
-        $('ui-member-list').querySelectorAll('[data-use-mem]').forEach((b) => { b.onclick = () => { pos.currentMemberId = b.dataset.useMem; switchTab('pos'); }; });
-        $('ui-member-list').querySelectorAll('[data-copy-debt]').forEach((b) => {
-          b.onclick = async () => { const msg = pos.buildPoliteWechatStatement(b.dataset.copyDebt); await navigator.clipboard.writeText(msg).catch(() => {}); showMsg('📋 已复制礼貌对账单', `<pre style="white-space:pre-wrap;font-size:13px;">${msg}</pre>`); };
-        });
-        $('ui-member-list').querySelectorAll('[data-clear-debt]').forEach((b) => {
-          b.onclick = () => {
-            const m = vault.activeStoreData.members[b.dataset.clearDebt];
-            openDrawer(`<h3>💰 ${m.name} 还款销账</h3><p>当前待结欠款：¥${Number(m.creditDebt).toFixed(2)}</p>
-              <input id="repay-amt" type="number" class="sdxt-input" value="${Number(m.creditDebt).toFixed(2)}" />
-              <button class="sdxt-btn sdxt-btn-ok" style="width:100%;margin-top:10px;" id="repay-ok">确认结清入账</button>`);
-            $('repay-ok').onclick = async () => { await pos.settleCreditDebt(m.id, $('repay-amt').value, 'wechat'); closeDrawer(); renderAll(); };
-          };
-        });
-        $('ui-member-list').querySelectorAll('[data-topup-mem]').forEach((b) => {
-          b.onclick = () => {
-            const m = vault.activeStoreData.members[b.dataset.topupMem];
-            openDrawer(`<h3>💳 ${m.name} 储值充送</h3>
-              <div class="sdxt-grid-2" style="margin:10px 0;"><input id="tp-pay" type="number" class="sdxt-input" placeholder="实收充值金额" /><input id="tp-bonus" type="number" class="sdxt-input" placeholder="赠送金额" value="0" /></div>
-              <button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="tp-ok">确认充值</button>`);
-            $('tp-ok').onclick = async () => {
-              const pay = Number($('tp-pay').value || 0); const bonus = Number($('tp-bonus').value || 0); if (pay <= 0) return;
-              m.balance = Number((Number(m.balance || 0) + pay + bonus).toFixed(2));
-              await vault.appendEvent({ type: 'topup', amount: pay, payMethod: 'wechat', memberId: m.id, memberName: m.name, note: `储值实收¥${pay}+赠¥${bonus}` });
-              closeDrawer(); renderAll();
-            };
-          };
-        });
-        $('ui-member-list').querySelectorAll('[data-redeem-star]').forEach((b) => {
-          b.onclick = async () => {
-            const m = vault.activeStoreData.members[b.dataset.redeemStar];
-            const need = Number(policy.loyaltyBlocks.stampReward.starsToRedeem || 10);
-            if (Number(m.stars) < need) { showMsg('提示', `当前 ${m.stars} 星，需满 ${need} 星可兑礼`); return; }
-            m.stars -= need; await vault.persistStore(); showMsg('🎁 兑礼成功', `已扣减 ${need} 星，剩余 ${m.stars} 星`); renderMembers();
-          };
-        });
-        $('ui-member-list').querySelectorAll('[data-punch-manage]').forEach((b) => {
-          b.onclick = () => {
-            const m = vault.activeStoreData.members[b.dataset.punchManage];
-            const cards = (m.punchCards || []).filter((c) => c.remainTimes > 0);
-            const subs = (m.subscriptions || []).filter((s) => s.remainDeliveries > 0);
-            openDrawer(`<h3>🎟️ ${m.name} · 计次卡与周期配送</h3>
-              ${cards.map((c) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--sdxt-line);"><span>${c.title}（余 ${c.remainTimes}/${c.totalTimes} 次）</span><button class="sdxt-pill" data-use-pc="${c.cardId}">核销 -1次</button></div>`).join('')}
-              ${subs.map((s) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--sdxt-line);"><span>🚚 ${s.itemDesc}（余 ${s.remainDeliveries}期）</span><button class="sdxt-pill" data-done-sub="${s.subId}">送达打卡</button></div>`).join('')}
-              <hr style="border:none;border-top:1px solid var(--sdxt-line);margin:10px 0;"/>
-              <div class="sdxt-grid-3" style="margin-bottom:8px;"><input id="pc-title" class="sdxt-input" placeholder="次卡套餐名" /><input id="pc-times" type="number" class="sdxt-input" value="10" /><input id="pc-price" type="number" class="sdxt-input" placeholder="实收金额" /></div>
-              <button class="sdxt-btn sdxt-btn-primary" style="width:100%;margin-bottom:10px;" id="pc-add-btn">办理计次卡</button>
-              <div class="sdxt-grid-3" style="margin-bottom:8px;"><input id="sub-desc" class="sdxt-input" placeholder="周期配送内容" /><input id="sub-days" type="number" class="sdxt-input" value="7" /><input id="sub-cnt" type="number" class="sdxt-input" value="12" /></div>
-              <button class="sdxt-btn sdxt-btn-ok" style="width:100%;" id="sub-add-btn">开启周期配送</button>`);
-            $('ui-drawer-body').querySelectorAll('[data-use-pc]').forEach((btn) => { btn.onclick = async () => { await pos.consumePunch(m.id, btn.dataset.usePc); closeDrawer(); renderAll(); }; });
-            $('ui-drawer-body').querySelectorAll('[data-done-sub]').forEach((btn) => { btn.onclick = async () => { await pos.completeSubscriptionDelivery(m.id, btn.dataset.doneSub); closeDrawer(); renderAll(); }; });
-            $('pc-add-btn').onclick = async () => { await pos.addPunchCard(m.id, { title: $('pc-title').value, totalTimes: $('pc-times').value, price: $('pc-price').value }); closeDrawer(); renderAll(); };
-            $('sub-add-btn').onclick = async () => { await pos.addSubscription(m.id, { itemDesc: $('sub-desc').value, intervalDays: $('sub-days').value, remainDeliveries: $('sub-cnt').value }); closeDrawer(); renderAll(); };
-          };
-        });
-        $('ui-member-list').querySelectorAll('[data-dep-manage]').forEach((b) => {
-          b.onclick = () => {
-            const m = vault.activeStoreData.members[b.dataset.depManage];
-            const deps = (m.deposits || []).filter((d) => !d.returned);
-            openDrawer(`<h3>🪣 ${m.name} · 押金载具寄存</h3>
-              ${deps.map((d) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--sdxt-line);"><span>${d.itemName}（押金 ¥${d.amount}）</span><button class="sdxt-pill" data-ret-dep="${d.depId}">退押金</button></div>`).join('')}
-              <div class="sdxt-grid-2" style="margin:10px 0;"><input id="dep-item" class="sdxt-input" placeholder="载具名称" /><input id="dep-amt" type="number" class="sdxt-input" placeholder="押金金额" /></div>
-              <button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="dep-add-btn">收取押金</button>`);
-            $('ui-drawer-body').querySelectorAll('[data-ret-dep]').forEach((btn) => { btn.onclick = async () => { await pos.refundDeposit(m.id, btn.dataset.retDep); closeDrawer(); renderAll(); }; });
-            $('dep-add-btn').onclick = async () => { await pos.addDeposit(m.id, { itemName: $('dep-item').value, amount: $('dep-amt').value }); closeDrawer(); renderAll(); };
-          };
-        });
-      }
-
-      async function renderManageDashboard() {
-        const canSee = vault.hasPerm('viewCost');
-        $('ui-boss-dashboard-card').classList.toggle('hidden', !canSee);
-        if (!canSee) return;
-        document.querySelectorAll('[data-dash-range]').forEach((b) => {
-          b.style.background = b.dataset.dashRange === dashRange ? '#f59e0b' : 'rgba(255,255,255,0.12)';
-          b.style.color = b.dataset.dashRange === dashRange ? '#1f1600' : '#f8fafc';
-          b.onclick = () => { dashRange = b.dataset.dashRange; renderManageDashboard(); };
-        });
-        const dash = await cat.getMultiStoreDashboard(dashRange);
-        $('ui-dash-rev').textContent = `¥${dash.totalRevenue.toFixed(2)}`;
-        $('ui-dash-cost').textContent = `¥${(dash.totalCost + dash.totalExpense).toFixed(2)}`;
-        $('ui-dash-profit').textContent = `¥${dash.totalNetProfit.toFixed(2)}`;
-        $('ui-store-count-badge').textContent = vault.meta.stores.length > 1 ? `合并 ${vault.meta.stores.length} 家分店` : '本店经营';
-      }
-
-      document.querySelectorAll('.sdxt-side-btn').forEach((btn) => { btn.onclick = () => switchTab(btn.dataset.tab); });
-      $('btn-hq-refresh').onclick = renderAll;
-      $('btn-pos-scan-confirm').onclick = () => { const v = $('pos-universal-input').value; $('pos-universal-input').value = ''; pos.handleUniversalInput(v); renderPosCart(); };
-      $('pos-universal-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btn-pos-scan-confirm').click(); });
-
-      $('btn-bt-scale').onclick = async () => {
-        try { const dev = await pos.connectBluetoothScale((w) => { $('pos-universal-input').value = `*${w}`; }); showMsg('⚖️ 蓝牙秤已连接', dev); } catch (e) { showMsg('提示', e.message); }
-      };
-
-      $('btn-select-pos-member').onclick = () => {
-        const list = Object.values(vault.activeStoreData.members || {});
-        openDrawer(`<h3>👤 选择本单客户/会员</h3><div style="display:grid;gap:6px;margin:10px 0;"><button class="sdxt-btn sdxt-btn-ghost" data-pm="">普通散客</button>${list.map((m) => `<button class="sdxt-btn sdxt-btn-ghost" data-pm="${m.id}">${m.name}</button>`).join('')}</div>`);
-        $('ui-drawer-body').querySelectorAll('[data-pm]').forEach((b) => { b.onclick = () => { pos.currentMemberId = b.dataset.pm; closeDrawer(); renderPosCart(); }; });
-      };
-
-      $('btn-hold-order').onclick = () => {
-        openDrawer(`<h3>⏸️ 挂单/外送单</h3><input id="h-tag" class="sdxt-input" placeholder="备注（如：3号楼王姐微信外送）" /><button class="sdxt-btn sdxt-btn-primary" style="width:100%;margin-top:10px;" id="h-sv">确认挂单</button>`);
-        $('h-sv').onclick = async () => { try { await pos.holdCurrentOrder($('h-tag').value, true); closeDrawer(); renderPosCart(); } catch (e) { showMsg('提示', e.message); } };
-      };
-
-      $('btn-resume-held').onclick = () => {
-        const helds = vault.activeStoreData.heldOrders || [];
-        openDrawer(`<h3>📋 挂单列表</h3>${helds.map((h) => `<div style="display:flex;justify-content:space-between;padding:8px 0;"><span>${h.tagLabel}</span><button class="sdxt-pill" data-rh="${h.holdId}">调出</button></div>`).join('') || '<p>暂无挂单</p>'}<button class="sdxt-btn sdxt-btn-ghost" style="width:100%;" id="hc">关闭</button>`);
-        $('ui-drawer-body').querySelectorAll('[data-rh]').forEach((b) => { b.onclick = async () => { await pos.resumeHeldOrder(b.dataset.rh); closeDrawer(); renderPosCart(); }; });
-        $('hc').onclick = closeDrawer;
-      };
-
-      $('btn-show-payqr').onclick = () => {
-        const qrs = vault.activeStoreData.payQrs || {};
-        openDrawer(`<h3>💳 门店防掉包锁死收款码</h3>
-          <div class="sdxt-grid-2" style="text-align:center;margin:10px 0;">
-            <div><div>微信收款码</div>${qrs.wechat ? `<img src="${qrs.wechat}" style="width:100%;max-width:160px;border-radius:10px;" />` : '<p>未上传</p>'}<input type="file" accept="image/*" id="up-wx" /></div>
-            <div><div>支付宝收款码</div>${qrs.alipay ? `<img src="${qrs.alipay}" style="width:100%;max-width:160px;border-radius:10px;" />` : '<p>未上传</p>'}<input type="file" accept="image/*" id="up-ali" /></div>
-          </div><button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="qd">关闭</button>`);
-        const bindQ = (id, k) => { $(id).onchange = (e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = async () => { vault.activeStoreData.payQrs[k] = r.result; await vault.persistStore(); $('btn-show-payqr').click(); }; r.readAsDataURL(f); }; };
-        bindQ('up-wx', 'wechat'); bindQ('up-ali', 'alipay'); $('qd').onclick = closeDrawer;
-      };
-
-      $('btn-open-refund').onclick = () => {
-        const items = Object.values(vault.activeStoreData.catalog || {}).filter((i) => !i.archived);
-        openDrawer(`<h3>🔄 顾客退货退款冲抵</h3>
-          <div style="display:grid;gap:8px;margin:10px 0;">
-            <select id="rf-item" class="sdxt-input">
-              <option value="">仅退金额（不恢复库存）</option>
-              ${items.map((i) => `<option value="${i.id}">退货回库：${i.name} (¥${i.retailPrice}/${i.unit})</option>`).join('')}
-            </select>
-            <div class="sdxt-grid-2">
-              <input id="rf-qty" type="number" step="0.01" class="sdxt-input" placeholder="退回数量" value="1" />
-              <input id="rf-a" type="number" step="0.01" class="sdxt-input" placeholder="实退金额（元）" />
-            </div>
-            <input id="rf-n" class="sdxt-input" placeholder="退货原因备注" />
+      for (const mod of allowedModules) {
+        if (mod.stage !== lastStage) {
+          html += `<div class="stage-label">${mod.stage}</div>`;
+          lastStage = mod.stage;
+        }
+        let badgeHtml = '';
+        if (mod.id === 'finance' && metrics.pendingApprovals.length > 0) {
+          badgeHtml = `<span class="badge warn">${metrics.pendingApprovals.length}待核决</span>`;
+        } else if (mod.id === 'catalog' && metrics.lowStockSkus.length > 0) {
+          badgeHtml = `<span class="badge danger">${metrics.lowStockSkus.length}缺货</span>`;
+        }
+        html += `
+          <div class="nav-item ${activeModule === mod.id ? 'active' : ''}" data-mod="${mod.id}">
+            <span>${mod.icon} ${mod.name}</span>
+            ${badgeHtml}
           </div>
-          <button class="sdxt-btn sdxt-btn-danger" style="width:100%;" id="rf-ok">确认退款并冲减营收</button>`);
-        $('rf-item').onchange = (e) => {
-          const it = vault.activeStoreData.catalog[e.target.value];
-          if (it) $('rf-a').value = (Number(it.retailPrice || 0) * Number($('rf-qty').value || 1)).toFixed(2);
+        `;
+      }
+
+      // 底部快捷生态入口
+      html += `
+        <div class="stage-label">全网协同入口</div>
+        <div class="nav-item" onclick="window.open('mall.html','_blank')"><span>🛒 逛大集源头拼单</span></div>
+        <div class="nav-item" onclick="window.open('suppliers.html','_blank')"><span>🏭 百业供需名录</span></div>
+      `;
+      nav.innerHTML = html;
+
+      nav.querySelectorAll('[data-mod]').forEach(el => {
+        el.onclick = () => {
+          activeModule = el.dataset.mod;
+          renderAll();
         };
-        $('rf-ok').onclick = async () => {
-          try {
-            await pos.processRefund({
-              itemId: $('rf-item').value,
-              qty: $('rf-qty').value,
-              refundAmount: $('rf-a').value,
-              note: $('rf-n').value
-            });
-            closeDrawer();
+      });
+    }
+
+    /* ========================================================================
+     * 右侧 8 大生命线模块动态渲染
+     * ======================================================================== */
+    function renderMainStage(metrics) {
+      const stage = $('mainStage');
+      const isSimple = engine.state.meta.uiMode === 'simple';
+
+      switch (activeModule) {
+        case 'pos':         stage.innerHTML = viewPos(metrics, isSimple); bindPosEvents(); break;
+        case 'catalog':     stage.innerHTML = viewCatalog(metrics, isSimple); bindCatalogEvents(); break;
+        case 'receiving':   stage.innerHTML = viewReceiving(isSimple); bindReceivingEvents(); break;
+        case 'procurement': stage.innerHTML = viewProcurement(metrics); bindProcurementEvents(); break;
+        case 'marketing':   stage.innerHTML = viewMarketing(); bindMarketingEvents(); break;
+        case 'finance':     stage.innerHTML = viewFinance(metrics, isSimple); bindFinanceEvents(); break;
+        case 'reconcile':   stage.innerHTML = viewReconcile(); bindReconcileEvents(); break;
+        case 'governance':  stage.innerHTML = viewGovernance(); bindGovernanceEvents(); break;
+        default:            stage.innerHTML = viewPos(metrics, isSimple); bindPosEvents();
+      }
+    }
+
+    /* ------------------------------------------------------------------------
+     * 模块 ④：柜台收银与履约（正负混合一单清、无档边卖边建、防掉包收款码、交班）
+     * ------------------------------------------------------------------------ */
+    function viewPos(metrics, isSimple) {
+      const cartTotal = roundMoney(posCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
+      const hint = engine.getCrossSellHint(posCart.map(i => i.skuId));
+      const store = engine.getActiveStore();
+
+      return `
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">🧾 柜台收银台（正负混合一单清 · 数量填负数即退货/退空桶）</span>
+              <button class="sm" id="btnQuickNoCatalog">+ 无档临时代收开单</button>
+            </div>
+
+            <div class="form-row">
+              <div class="field" style="flex:2;">
+                <label>扫码 / 输入品名 / 拼音 / 价格反查</label>
+                <input type="text" id="posSearchInput" placeholder="扫描条码或输入关键词回车加入..." autofocus />
+              </div>
+              <div class="field">
+                <label>熟客/会员（赊账或积分必选）</label>
+                <select id="posCustomerSelect">
+                  <option value="">散客现结</option>
+                  ${engine.state.customers.map(c => `<option value="${c.id}">${c.name} (欠¥${c.receivableBalance})</option>`).join('')}
+                </select>
+              </div>
+            </div>
+
+            ${hint ? `<div class="badge ok" style="margin-bottom:10px; cursor:pointer;" id="btnAcceptCrossSell">💡 顺口带货提示：${hint.text}（点击加入）</div>` : ''}
+
+            <table>
+              <thead>
+                <tr>
+                  <th>商品名称</th>
+                  <th style="width:90px;">数量(负=退)</th>
+                  <th style="width:100px;">成交单价</th>
+                  <th>小计</th>
+                  <th style="width:60px;">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${posCart.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">白纸收银台就绪，扫描条码或点击上方“无档临时代收开单”即可开始</td></tr>` : ''}
+                ${posCart.map((it, idx) => `
+                  <tr>
+                    <td><strong>${it.name}</strong></td>
+                    <td><input type="number" step="1" value="${it.qty}" data-cart-qty="${idx}" style="width:76px;" /></td>
+                    <td><input type="number" step="0.01" value="${it.unitPrice}" data-cart-price="${idx}" style="width:88px;" ${engine.hasPermission('editRetailPrice') ? '' : 'disabled'} /></td>
+                    <td><strong>¥${roundMoney(it.qty * it.unitPrice).toFixed(2)}</strong></td>
+                    <td><button class="sm danger" data-cart-del="${idx}">删</button></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid var(--border-light); flex-wrap:wrap; gap:10px;">
+              <div>
+                <span style="color:var(--text-muted);">本单应收/应退净额：</span>
+                <span style="font-size:26px; font-weight:800; color:var(--primary-dark);">¥${cartTotal.toFixed(2)}</span>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="primary" id="btnPayDigital">📱 扫码收款落账</button>
+                <button id="btnPayCash">💵 现金收款落账</button>
+                <button class="warn" id="btnPayCredit">📒 熟客先记账(赊)</button>
+                <button class="sm" id="btnClearCart">清空</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <!-- 防掉包收款码 & 当班封账卡片 -->
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">🛡️ 店内收款码（受掌柜安全锁保护）</span>
+                ${engine.hasPermission('managePaymentQr') ? `<button class="sm" id="btnUploadQr">更换收款码</button>` : `<span class="badge">已锁定防掉包</span>`}
+              </div>
+              <div style="text-align:center; padding:12px; background:var(--bg-subtle); border-radius:8px;">
+                ${store.paymentQrUrl
+                  ? `<img src="${store.paymentQrUrl}" alt="收款码" style="max-width:190px; max-height:190px; border-radius:8px;" />`
+                  : `<div style="padding:24px; color:var(--text-muted);">尚未上传收款码图片（掌柜可点击右上角上传锁定）</div>`
+                }
+              </div>
+            </div>
+
+            ${!isSimple ? `
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">🔒 当班交接班封账清点</span>
+                <span class="badge">账面钱箱：¥${metrics.currentCash.toFixed(2)}</span>
+              </div>
+              <div class="form-row">
+                <div class="field">
+                  <label>实盘钱箱现金（元）</label>
+                  <input type="number" id="shiftCountedCash" value="${metrics.currentCash}" />
+                </div>
+                <div class="field">
+                  <label>交班备注</label>
+                  <input type="text" id="shiftNote" placeholder="如：晚班交接正常" />
+                </div>
+                <button class="primary" id="btnCloseShift">确认封账交班</button>
+              </div>
+            </div>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function bindPosEvents() {
+      const searchEl = $('posSearchInput');
+      if (searchEl) {
+        searchEl.onkeydown = (e) => {
+          if (e.key !== 'Enter') return;
+          const q = searchEl.value.trim();
+          if (!q) return;
+          const matches = engine.searchCatalog(q);
+          if (matches.length > 0) {
+            const sku = matches[0];
+            const existing = posCart.find(c => c.skuId === sku.id);
+            if (existing) existing.qty += 1;
+            else posCart.push({ skuId: sku.id, name: sku.name, qty: 1, unitPrice: sku.retailPrice, costPrice: sku.costPrice });
+            searchEl.value = '';
             renderAll();
-          } catch (e) { showMsg('提示', e.message); }
-        };
-      };
-
-      $('btn-quick-round-yuan').onclick = () => { vault.updatePolicy({ pricing: { roundingMode: 'yuan' } }); renderPosCart(); };
-      $('btn-quick-manual-amt').onclick = () => {
-        openDrawer(`<h3>⌨️ 手输金额</h3><input id="ma" type="number" class="sdxt-input" /><button class="sdxt-btn sdxt-btn-primary" style="width:100%;margin-top:10px;" id="ma-ok">加入账单</button>`);
-        $('ma-ok').onclick = () => { pos.manualAmount = Number($('ma').value || 0); closeDrawer(); renderPosCart(); };
-      };
-
-      document.querySelectorAll('[data-pay]').forEach((btn) => {
-        btn.onclick = async () => {
-          const m = btn.dataset.pay;
-          if (m === 'cash') {
-            const p = pos.recalculate().payable;
-            openDrawer(`<h3>💵 现金收款</h3><p>应收：¥${p.toFixed(2)}</p><input id="cg" type="number" class="sdxt-input" value="${p.toFixed(2)}" /><div id="ct" style="margin:8px 0;font-weight:700;color:#047857;">找零：¥0.00</div><button class="sdxt-btn sdxt-btn-ok" style="width:100%;" id="cd">确认入账</button>`);
-            $('cg').oninput = (e) => { $('ct').textContent = `应找零：¥${Math.max(0, Number(e.target.value || 0) - p).toFixed(2)}`; };
-            $('cd').onclick = async () => { try { await pos.checkout({ payMethod: 'cash', skipLargeAlert: true }); closeDrawer(); renderAll(); } catch (err) { showMsg('提示', err.message); } };
-            return;
+          } else {
+            // 无档边卖边建：直接询问价格即可开单并自动建档
+            const priceStr = prompt(`商品库暂无【${q}】，请输入零售单价（元）直接边卖边建档：`, '10');
+            if (priceStr !== null && !isNaN(Number(priceStr))) {
+              const price = roundMoney(priceStr);
+              const newSku = {
+                id: generateId('SKU'),
+                storeId: engine.state.activeStoreId,
+                barcode: /^\d+$/.test(q) ? q : '',
+                scaleCode: '',
+                name: q,
+                category: engine.getActiveGene().quickTags[0] || '主营商品',
+                unit: engine.getActiveGene().unitDefault,
+                packUnit: engine.getActiveGene().packUnitDefault,
+                packSize: 1,
+                costPrice: 0,
+                retailPrice: price,
+                memberPrice: price,
+                wholesalePrice: price,
+                tierPrices: [],
+                stock: 0,
+                minStock: 5,
+                maxStock: 100,
+                supplierId: '',
+                expiryDate: '',
+                location: '',
+                isBundle: false,
+                bundleItems: [],
+                updatedAt: Date.now()
+              };
+              engine.state.catalog.push(newSku);
+              posCart.push({ skuId: newSku.id, name: newSku.name, qty: 1, unitPrice: price, costPrice: 0 });
+              searchEl.value = '';
+              showToast(`已自动建档【${q}】并加入收银台`);
+              renderAll();
+            }
           }
-          try {
-            const res = await pos.checkout({ payMethod: m });
-            if (res.needConfirmLarge) {
-              openDrawer(`<h3>⚠️ 大额收款确认</h3><p>应收 ¥${res.amount.toFixed(2)}</p><button class="sdxt-btn sdxt-btn-danger" style="width:100%;" id="cb">确认入账</button>`);
-              $('cb').onclick = async () => { await pos.checkout({ payMethod: m, skipLargeAlert: true }); closeDrawer(); renderAll(); };
-              return;
-            }
+        };
+      }
+
+      if ($('btnQuickNoCatalog')) {
+        $('btnQuickNoCatalog').onclick = () => {
+          const name = prompt('输入临时代收品名：', '散装百货');
+          if (!name) return;
+          const price = roundMoney(prompt('输入金额（元，负数代表退货/退押金）：', '10'));
+          posCart.push({ skuId: '', name, qty: 1, unitPrice: price, costPrice: 0 });
+          renderAll();
+        };
+      }
+
+      if ($('btnAcceptCrossSell')) {
+        $('btnAcceptCrossSell').onclick = () => {
+          const hint = engine.getCrossSellHint(posCart.map(i => i.skuId));
+          if (hint) {
+            posCart.push({ skuId: hint.sku.id, name: hint.sku.name, qty: 1, unitPrice: hint.sku.retailPrice, costPrice: hint.sku.costPrice });
             renderAll();
-          } catch (err) { showMsg('提示', err.message); }
+          }
         };
+      }
+
+      document.querySelectorAll('[data-cart-qty]').forEach(inp => {
+        inp.onchange = () => { posCart[inp.dataset.cartQty].qty = Number(inp.value) || 0; renderAll(); };
+      });
+      document.querySelectorAll('[data-cart-price]').forEach(inp => {
+        inp.onchange = () => { posCart[inp.dataset.cartPrice].unitPrice = roundMoney(inp.value); renderAll(); };
+      });
+      document.querySelectorAll('[data-cart-del]').forEach(btn => {
+        btn.onclick = () => { posCart.splice(btn.dataset.cartDel, 1); renderAll(); };
       });
 
-      $('btn-undo-sale').onclick = async () => { try { await pos.undoLastSale(); renderAll(); } catch (e) { showMsg('提示', e.message); } };
+      const checkout = (payMethod) => {
+        if (posCart.length === 0) return showToast('收银台当前为空');
+        const cusId = $('posCustomerSelect')?.value || '';
+        if (payMethod === 'CREDIT' && !cusId) return showToast('熟客记账请先在上方选择对应熟客');
+        const total = roundMoney(posCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
+        const res = engine.commitVoucher({
+          type: 'SALE',
+          typeName: '柜台收银单',
+          items: posCart,
+          totalAmount: total,
+          payMethod,
+          cashPaid: payMethod === 'CASH' ? total : 0,
+          digitalPaid: payMethod === 'DIGITAL' ? total : 0,
+          creditAmount: payMethod === 'CREDIT' ? total : 0,
+          counterpartyId: cusId
+        });
+        if (res.ok) {
+          posCart = [];
+          engine.speakFeedback(`收款${total}元，已入账`);
+          showToast(`✅ 收银落账成功（单号 ${res.voucher.id}）`);
+        } else {
+          showToast(`⚠️ ${res.message}`);
+        }
+        renderAll();
+      };
 
-      const openItemForm = (prefill = '', edit = null) => {
-        const lex = vault.getLexicon();
-        const t0 = (edit?.tierPrices && edit.tierPrices[0]) || {};
-        openDrawer(`<h3>${edit ? '✏️ 编辑档案' : '📦 新增建档'}</h3>
-          <div style="display:grid;gap:8px;margin:10px 0;">
-            <input id="f-name" class="sdxt-input" placeholder="${lex.itemLabel}名称" value="${edit?.name || ''}" />
-            <div class="sdxt-grid-2"><input id="f-barcode" class="sdxt-input" placeholder="条码" value="${edit?.barcode || prefill}" /><input id="f-plu" class="sdxt-input" placeholder="秤号PLU" value="${edit?.plu || ''}" /></div>
-            <div class="sdxt-grid-2"><input id="f-cost" type="number" step="0.01" class="sdxt-input" placeholder="进货底价" value="${edit?.costPrice ?? ''}" /><input id="f-retail" type="number" step="0.01" class="sdxt-input" placeholder="零售价" value="${edit?.retailPrice ?? ''}" /></div>
-            <div class="sdxt-grid-2"><input id="f-member" type="number" step="0.01" class="sdxt-input" placeholder="会员价" value="${edit?.memberPrice ?? ''}" /><input id="f-stock" type="number" step="0.01" class="sdxt-input" placeholder="库存" value="${edit?.stock ?? ''}" /></div>
-            <div class="sdxt-grid-2"><input id="f-unit" class="sdxt-input" placeholder="单位" value="${edit?.unit || lex.unitDefault}" /><input id="f-pack" type="number" class="sdxt-input" placeholder="箱规换算" value="${edit?.packRate || 1}" /></div>
-            <div class="sdxt-grid-2"><input id="f-cat" class="sdxt-input" placeholder="分类" value="${edit?.category || lex.defaultCategory}" /><input id="f-loc" class="sdxt-input" placeholder="${lex.locLabel}" value="${edit?.shelfLoc || ''}" /></div>
-            <div class="sdxt-grid-2"><input id="f-tq" type="number" class="sdxt-input" placeholder="阶梯批发:满几件" value="${t0.minQty || ''}" /><input id="f-tp" type="number" step="0.01" class="sdxt-input" placeholder="阶梯批发单价" value="${t0.price || ''}" /></div>
-          </div><button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="f-sv">保存</button>`);
-        $('f-sv').onclick = async () => {
-          if (!$('f-name').value.trim()) return;
-          const tq = Number($('f-tq').value || 0); const tp = Number($('f-tp').value || 0);
-          try {
-            await cat.upsertCatalogItem({
-              id: edit?.id, name: $('f-name').value.trim(), barcode: $('f-barcode').value.trim(), plu: $('f-plu').value.trim(),
-              costPrice: parseFloat($('f-cost').value) || 0, retailPrice: parseFloat($('f-retail').value) || 0, memberPrice: parseFloat($('f-member').value) || 0,
-              stock: parseFloat($('f-stock').value) || 0, unit: $('f-unit').value.trim() || lex.unitDefault, packRate: parseInt($('f-pack').value, 10) || 1,
-              category: $('f-cat').value.trim() || lex.defaultCategory, shelfLoc: $('f-loc').value.trim(),
-              tierPrices: tq > 0 && tp > 0 ? [{ minQty: tq, price: tp }] : []
+      if ($('btnPayDigital')) $('btnPayDigital').onclick = () => checkout('DIGITAL');
+      if ($('btnPayCash')) $('btnPayCash').onclick = () => checkout('CASH');
+      if ($('btnPayCredit')) $('btnPayCredit').onclick = () => checkout('CREDIT');
+      if ($('btnClearCart')) $('btnClearCart').onclick = () => { posCart = []; renderAll(); };
+
+      if ($('btnUploadQr')) {
+        $('btnUploadQr').onclick = () => {
+          const url = prompt('请输入收款码图片地址或粘贴 DataURL（支持本地选择扩展）：', engine.getActiveStore().paymentQrUrl);
+          if (url !== null) {
+            engine.getActiveStore().paymentQrUrl = url.trim();
+            engine._persist();
+            showToast('收款码已更新并加锁保护');
+            renderAll();
+          }
+        };
+      }
+
+      if ($('btnCloseShift')) {
+        $('btnCloseShift').onclick = () => {
+          const counted = Number($('shiftCountedCash').value);
+          const note = $('shiftNote').value;
+          const res = engine.closeShiftAndLock(counted, note);
+          showToast(`交接班封账完成，现金长短款差额：¥${res.shiftRecord.cashDiff}`);
+          renderAll();
+        };
+      }
+    }
+
+    /* ------------------------------------------------------------------------
+     * 模块 ③：商品库与库存（拆箱反推、临期/缺货雷达、报损/自用/人情登记）
+     * ------------------------------------------------------------------------ */
+    function viewCatalog(metrics, isSimple) {
+      const canCost = engine.hasPermission('viewCostAndProfit');
+      const gene = engine.getActiveGene();
+      const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
+
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🏷️ 新增 / 录入商品（支持拆箱反推单件底价）</span>
+            <span class="badge">当前库存总成本：${engine.formatSensitiveMoney(metrics.inventoryCostValue)}</span>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>条码 / 货号</label><input id="skuCode" placeholder="选填" /></div>
+            <div class="field" style="flex:2;"><label>商品名称 *</label><input id="skuName" placeholder="如：农夫山泉550ml" /></div>
+            <div class="field"><label>整箱进价(元)</label><input type="number" id="skuPackCost" value="24" /></div>
+            <div class="field"><label>每箱拆零数(${gene.unitDefault})</label><input type="number" id="skuPackSize" value="24" /></div>
+            <div class="field"><label>零售单价(元)</label><input type="number" id="skuRetail" value="2" /></div>
+            <div class="field"><label>初始库存</label><input type="number" id="skuStock" value="48" /></div>
+            <button class="primary" id="btnAddSku">+ 保存商品</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📦 店内商品库存明细（共 ${skus.length} 款）</span>
+            <button class="sm warn" id="btnLossGift">📉 登记报损 / 自用 / 人情赠品</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>品名 / 条码</th>
+                <th>库存状态</th>
+                ${canCost ? '<th>进货底价(手电筒锁)</th>' : ''}
+                <th>零售价</th>
+                <th>保质期</th>
+                <th>快捷操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${skus.map(s => `
+                <tr>
+                  <td><strong>${s.name}</strong><br><span class="stat-sub">${s.barcode || '无条码'} · ${s.category}</span></td>
+                  <td>
+                    <span class="badge ${s.stock <= s.minStock ? 'danger' : 'ok'}">${s.stock} ${s.unit}</span>
+                  </td>
+                  ${canCost ? `<td>${engine.formatSensitiveMoney(s.costPrice)}</td>` : ''}
+                  <td><strong>¥${s.retailPrice.toFixed(2)}</strong></td>
+                  <td>${s.expiryDate || '-'}</td>
+                  <td><button class="sm" data-add-pos="${s.id}">+ 收银</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function bindCatalogEvents() {
+      if ($('btnAddSku')) {
+        $('btnAddSku').onclick = () => {
+          const name = $('skuName').value.trim();
+          if (!name) return showToast('请填写商品名称');
+          const packCost = Number($('skuPackCost').value) || 0;
+          const packSize = Math.max(1, Number($('skuPackSize').value) || 1);
+          const unitCost = roundMoney(packCost / packSize);
+          const retail = roundMoney($('skuRetail').value);
+          const stock = Number($('skuStock').value) || 0;
+          const gene = engine.getActiveGene();
+
+          engine.state.catalog.unshift({
+            id: generateId('SKU'),
+            storeId: engine.state.activeStoreId,
+            barcode: $('skuCode').value.trim(),
+            scaleCode: '',
+            name,
+            category: gene.quickTags[0] || '主营商品',
+            unit: gene.unitDefault,
+            packUnit: gene.packUnitDefault,
+            packSize,
+            costPrice: unitCost,
+            retailPrice: retail,
+            memberPrice: retail,
+            wholesalePrice: retail,
+            tierPrices: [],
+            stock,
+            minStock: 5,
+            maxStock: 100,
+            supplierId: '',
+            expiryDate: '',
+            location: '',
+            isBundle: false,
+            bundleItems: [],
+            updatedAt: Date.now()
+          });
+          engine._persist();
+          showToast(`已保存【${name}】，拆零单件底价 ¥${unitCost}`);
+          renderAll();
+        };
+      }
+
+      if ($('btnLossGift')) {
+        $('btnLossGift').onclick = () => {
+          const skus = engine.state.catalog;
+          if (skus.length === 0) return showToast('请先添加商品');
+          const name = prompt('输入报损或自用商品名称：', skus[0].name);
+          const sku = skus.find(s => s.name.includes(name));
+          if (!sku) return showToast('未找到匹配商品');
+          const qty = Number(prompt(`输入减少数量（${sku.unit}）：`, '1')) || 0;
+          const reason = prompt('选择用途备注（如：破损报损 / 店内自用 / 试吃人情往来）：', '破损报损');
+          if (qty > 0) {
+            engine.commitVoucher({
+              type: 'LOSS_GIFT',
+              items: [{ skuId: sku.id, name: sku.name, qty, unitPrice: sku.costPrice, costPrice: sku.costPrice }],
+              note: reason
             });
-            closeDrawer(); renderAll();
-          } catch (e) { showMsg('提示', e.message); }
+            showToast(`已登记【${sku.name}】${qty}${sku.unit}（${reason}）`);
+            renderAll();
+          }
         };
-      };
+      }
 
-      const openStockInDrawer = (id) => {
-        const it = vault.activeStoreData.catalog[id]; if (!it) return;
-        openDrawer(`<h3>📥 ${it.name} 到货入库</h3><input id="iq" type="number" class="sdxt-input" value="1" style="margin:8px 0;" /><label><input type="checkbox" id="ib" ${Number(it.packRate) > 1 ? 'checked' : ''} /> 按整包装入库(x${it.packRate || 1})</label><input id="ic" type="number" step="0.01" class="sdxt-input" placeholder="最新进价(选填)" style="margin:8px 0;" /><button class="sdxt-btn sdxt-btn-ok" style="width:100%;" id="is">确认入库</button>`);
-        $('is').onclick = async () => { await cat.receiveStock({ itemId: id, qtyIn: $('iq').value, isBox: $('ib').checked, newCostPrice: $('ic').value ? Number($('ic').value) : null }); closeDrawer(); renderAll(); };
-      };
-
-      const openStockAdjustDrawer = (id) => {
-        const it = vault.activeStoreData.catalog[id]; if (!it) return;
-        openDrawer(`<h3>📋 ${it.name} 实盘校准</h3><input id="aa" type="number" class="sdxt-input" value="${it.stock}" style="margin:8px 0;" /><input id="ar" class="sdxt-input" value="日常盘点校准" style="margin-bottom:10px;" /><button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="as">确认校准</button>`);
-        $('as').onclick = async () => { try { await cat.adjustActualStock(id, $('aa').value, $('ar').value); closeDrawer(); renderAll(); } catch (e) { showMsg('提示', e.message); } };
-      };
-
-      $('btn-open-add-item').onclick = () => openItemForm('');
-      window.addEventListener('sdxt:unknown-barcode', (e) => openItemForm(e.detail?.barcode || ''));
-      $('btn-toggle-archived').onclick = () => { showArchived = !showArchived; $('btn-toggle-archived').classList.toggle('active', showArchived); renderAll(); };
-      $('btn-batch-price').onclick = () => {
-        openDrawer(`<h3>📈 批量调价</h3><input id="bc" class="sdxt-input" value="ALL" style="margin:8px 0;" /><input id="bp" type="number" class="sdxt-input" placeholder="调价百分比(如10或-5)" style="margin-bottom:10px;" /><button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="bo">执行调价</button>`);
-        $('bo').onclick = async () => { try { const c = await cat.batchAdjustPrice({ category: $('bc').value.trim() || 'ALL', pct: Number($('bp').value || 0) }); showMsg('✅ 调价完成', `已更新 ${c} 项`); renderAll(); } catch (e) { showMsg('提示', e.message); } };
-      };
-      $('btn-print-tags').onclick = () => {
-        const all = Object.values(vault.activeStoreData.catalog || {}).filter((i) => !i.archived);
-        openDrawer(`<h3>🏷️ 打印价签/秤签</h3><button class="sdxt-btn sdxt-btn-primary" style="width:100%;margin:8px 0;" id="ps">打印全部货架价签</button><div class="sdxt-grid-2" style="margin-bottom:8px;"><select id="pwi" class="sdxt-input">${all.map((i) => `<option value="${i.id}">${i.name}</option>`).join('')}</select><input id="pwv" type="number" step="0.01" class="sdxt-input" value="1" /></div><button class="sdxt-btn sdxt-btn-ok" style="width:100%;" id="pw">打印散货称重条码签</button>`);
-        $('ps').onclick = () => { closeDrawer(); cat.printPriceTags(all, false); };
-        $('pw').onclick = () => { const it = vault.activeStoreData.catalog[$('pwi').value]; if (!it) return; const w = Number($('pwv').value || 1); closeDrawer(); cat.printPriceTags([{ ...it, tagWeight: w, tagTotal: Number((w * it.retailPrice).toFixed(2)) }], true); };
-      };
-      $('btn-record-pos-day').onclick = () => {
-        openDrawer(`<h3>📥 录一体机日结</h3><input id="pdt" type="number" class="sdxt-input" placeholder="今日总营业额" style="margin:8px 0;" /><button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="pdo">合并入账</button>`);
-        $('pdo').onclick = async () => { try { await cat.recordStandalonePosSummary({ totalAmount: $('pdt').value }); closeDrawer(); renderAll(); } catch (e) { showMsg('提示', e.message); } };
-      };
-
-      $('btn-sync-upstream').onclick = async () => { const c = await upstream.syncFromCloudOrShared(); showMsg('🔄 同步完成', `同步了 ${c} 项最新报价`); renderSupplyView(); };
-      $('btn-add-supplier').onclick = () => {
-        openDrawer(`<h3>🚚 新增供货方</h3><input id="sn" class="sdxt-input" placeholder="名称" style="margin:8px 0;" /><button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="ss">保存</button>`);
-        $('ss').onclick = () => { upstream.upsertSupplier({ name: $('sn').value }); closeDrawer(); renderSupplyView(); };
-      };
-      $('btn-add-supply-prod').onclick = () => {
-        const sups = upstream.data.suppliers || [];
-        openDrawer(`<h3>📦 录入供货方批发目录</h3>
-          <div style="display:grid;gap:8px;margin:10px 0;">
-            <select id="sps" class="sdxt-input">${sups.map((s) => `<option value="${s.id}">${s.name}</option>`).join('')}</select>
-            <input id="spn" class="sdxt-input" placeholder="商品/物料名称（必填）" />
-            <div class="sdxt-grid-2">
-              <input id="spw" type="number" step="0.01" class="sdxt-input" placeholder="批发进货价" />
-              <input id="spu" class="sdxt-input" placeholder="批发单位 (如 箱/件/袋)" value="箱" />
-            </div>
-            <input id="spr" type="number" class="sdxt-input" placeholder="包装换算（1大件拆多少散件，默认1）" value="1" />
-          </div>
-          <button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="spok">保存到供货目录</button>`);
-        $('spok').onclick = () => {
-          if (!$('spn').value.trim()) return;
-          upstream.upsertSupplierProduct({
-            supplierId: $('sps').value,
-            name: $('spn').value,
-            wholesalePrice: $('spw').value,
-            unit: $('spu').value || '箱',
-            packRate: $('spr').value || 1
-          });
-          closeDrawer();
-          renderSupplyView();
+      document.querySelectorAll('[data-add-pos]').forEach(btn => {
+        btn.onclick = () => {
+          const sku = engine.state.catalog.find(s => s.id === btn.dataset.addPos);
+          if (sku) {
+            posCart.push({ skuId: sku.id, name: sku.name, qty: 1, unitPrice: sku.retailPrice, costPrice: sku.costPrice });
+            activeModule = 'pos';
+            renderAll();
+          }
         };
-      };
-      $('btn-import-lowstock-po').onclick = () => { upstream.importLowStockToPurchaseCart(); renderSupplyView(); };
-      $('btn-import-multistore-po').onclick = async () => {
-        const m = await cat.getMultiStoreRestockSummary();
-        m.forEach((x) => upstream.addToPurchaseCart({ id: x.itemId, name: `${x.name}[${x.storeDetails.join('+')}]`, wholesalePrice: x.costPrice, unit: x.unit, packRate: x.packRate }, x.totalNeedQty));
-        renderSupplyView();
-      };
-      $('btn-supplier-statements').onclick = () => {
-        const list = upstream.getSupplierPeriodStatements();
-        openDrawer(`<h3>📑 供货方周期对账单</h3>${list.map((s) => `<div style="padding:6px 0;border-bottom:1px solid var(--sdxt-line);">${s.supplierName}：总¥${s.totalAmount} · 待结¥${s.unpaidAmount}</div>`).join('') || '<p>暂无记录</p>'}<button class="sdxt-btn sdxt-btn-primary" style="width:100%;margin-top:10px;" id="stc">关闭</button>`);
-        $('stc').onclick = closeDrawer;
-      };
-
-      $('btn-tool-alerts').onclick = () => {
-        const { lowStock, nearExpiry } = cat.getAlertsAndRestockList();
-        const { topSelling } = cat.getSalesAnalytics(30);
-        openDrawer(`<h3>⚠️ 预警与热销分析</h3><p>低库存 ${lowStock.length} 项 · 临期 ${nearExpiry.length} 项</p>${topSelling.map((t, i) => `<div>${i + 1}. ${t.name} (¥${t.revenue.toFixed(2)})</div>`).join('')}<button class="sdxt-btn sdxt-btn-primary" style="width:100%;margin-top:10px;" id="alc">关闭</button>`);
-        $('alc').onclick = closeDrawer;
-      };
-      $('btn-tool-poster').onclick = () => {
-        const items = Object.values(vault.activeStoreData.catalog || {}).filter((i) => !i.archived);
-        openDrawer(`<h3>📣 拓客海报与A4传单</h3><div class="sdxt-grid-2" style="margin:10px 0;"><button class="sdxt-btn sdxt-btn-danger" id="pg">群接龙海报</button><button class="sdxt-btn sdxt-btn-primary" id="pa">打印A4传单</button></div>`);
-        $('pg').onclick = () => { closeDrawer(); poster.openGroupPosterModal({ items: items.slice(0, 6) }); };
-        $('pa').onclick = () => { closeDrawer(); poster.printA4Flyer({ items }); };
-      };
-      $('btn-tool-tv').onclick = () => { try { poster.launchTvSlideshow(); } catch (e) { showMsg('提示', e.message); } };
-      $('btn-tool-shift').onclick = () => {
-        openDrawer(`<h3>🧮 交接班实盘清点</h3><input id="sf" type="number" class="sdxt-input" value="${vault.getPolicy().posSafety.drawerFloatDefault}" style="margin:8px 0;" /><input id="sc" type="number" class="sdxt-input" placeholder="实点现金" style="margin-bottom:10px;" /><button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="ssb">对账</button>`);
-        $('ssb').onclick = async () => { const r = await cat.closeShiftHandover({ floatCash: $('sf').value, countedCash: $('sc').value }); showMsg('✅ 交班完成', `长短款差额：¥${r.diffCash.toFixed(2)}`); };
-      };
-      $('btn-tool-expense').onclick = () => {
-        openDrawer(`<h3>💸 记门店杂费</h3><input id="et" class="sdxt-input" placeholder="事由" style="margin:8px 0;" /><input id="ea" type="number" class="sdxt-input" placeholder="金额" style="margin-bottom:10px;" /><button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="eo">记账</button>`);
-        $('eo').onclick = async () => { try { await cat.recordExpense({ title: $('et').value, amount: $('ea').value }); closeDrawer(); renderAll(); } catch (e) { showMsg('提示', e.message); } };
-      };
-      $('btn-tool-pos-csv').onclick = () => {
-        openDrawer(`<h3>📂 导入一体机CSV</h3><input type="file" accept=".csv,.txt" id="cfi" class="sdxt-input" />`);
-        $('cfi').onchange = (e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = async () => { const c = await cat.importPosCsv(r.result); showMsg('✅ 导入完成', `同步 ${c} 项`); renderAll(); }; r.readAsText(f); };
-      };
-
-      const openLexiconDrawer = () => {
-        const lex = vault.getLexicon();
-        const policy = vault.getPolicy();
-        const presets = vault.INDUSTRY_LEXICONS;
-        openDrawer(`<h3>🌐 百工百业词典与经营参数</h3>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;">${Object.entries(presets).map(([k, v]) => `<button type="button" class="sdxt-pill" data-ik="${k}">${v.label}</button>`).join('')}</div>
-          <div class="sdxt-grid-2" style="margin-bottom:10px;">
-            <input id="li" class="sdxt-input" placeholder="商品称谓" value="${lex.itemLabel}" /><input id="lc" class="sdxt-input" placeholder="客户称谓" value="${lex.customerLabel}" />
-            <input id="lu" class="sdxt-input" placeholder="默认散件单位" value="${lex.unitDefault}" /><input id="lp" class="sdxt-input" placeholder="整包装单位" value="${lex.packUnit}" />
-            <input id="lw" class="sdxt-input" placeholder="计重单位" value="${lex.weighUnit}" /><input id="ll" class="sdxt-input" placeholder="货架位称谓" value="${lex.locLabel}" />
-          </div>
-          <div class="sdxt-grid-2" style="margin-bottom:10px;">
-            <input id="pm" type="number" class="sdxt-input" placeholder="全店默认加价率%" value="${policy.pricing.defaultMarkupPct || 0}" />
-            <input id="pa-lim" type="number" class="sdxt-input" placeholder="大额收银防呆阈值" value="${policy.posSafety.largeAmountAlert || 500}" />
-          </div>
-          <button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="ls">保存词典与参数</button>`);
-        $('ui-drawer-body').querySelectorAll('[data-ik]').forEach((b) => { b.onclick = () => { vault.applyIndustryLexicon(b.dataset.ik); openLexiconDrawer(); renderAll(); }; });
-        $('ls').onclick = () => {
-          vault.updatePolicy({
-            lexicon: { itemLabel: $('li').value, customerLabel: $('lc').value, unitDefault: $('lu').value, packUnit: $('lp').value, weighUnit: $('lw').value, locLabel: $('ll').value },
-            pricing: { defaultMarkupPct: Number($('pm').value || 0) },
-            posSafety: { largeAmountAlert: Number($('pa-lim').value || 500) }
-          });
-          closeDrawer(); renderAll();
-        };
-      };
-      $('btn-tool-lexicon').onclick = openLexiconDrawer;
-      $('btn-tool-lexicon-2').onclick = openLexiconDrawer;
-
-      const openStorageAndPolicyDrawer = async () => {
-        const policy = vault.getPolicy();
-        const blocks = policy.loyaltyBlocks;
-        const ch = policy.storageChannels;
-        const rule0 = (blocks.fullReductionAndGift.rules && blocks.fullReductionAndGift.rules[0]) || {};
-        const health = await vault.getStorageHealth();
-        openDrawer(`<h3>⚙️ 全局经营策略、多选存储与积木规则</h3>
-          <p style="font-size:12px;color:var(--sdxt-muted);">本地容量状态：${health.status}（已存 ${health.txCount} 笔流水）</p>
-          <div style="display:grid;gap:8px;margin:10px 0;font-size:13px;">
-            <label><input type="checkbox" checked disabled /> <strong>本地高速主库 (IndexedDB)</strong> - 0ms秒开必选</label>
-            <label><input type="checkbox" id="cw" ${ch.wechatQuickShare?.enabled ? 'checked' : ''} /> <strong>微信文件传输助手快捷快照</strong> - 满20笔提醒</label>
-            <label><input type="checkbox" id="cc" ${ch.encryptedCloud?.enabled ? 'checked' : ''} /> <strong>端到端加密云端镜像</strong> - 安全码加密同步</label>
-            <div id="cub" class="${ch.encryptedCloud?.enabled ? '' : 'hidden'}" style="display:flex;gap:6px;">
-              <input id="icu" class="sdxt-input" placeholder="加密云端同步地址" value="${ch.encryptedCloud?.endpoint || ''}" />
-              <button type="button" class="sdxt-btn sdxt-btn-ghost" id="bpc">云端拉取</button>
-            </div>
-            <label><input type="checkbox" id="cwd" ${ch.webdav?.enabled ? 'checked' : ''} /> <strong>自有私有网盘 / WebDAV</strong> - 坚果云/NAS自动备</label>
-            <input id="iwu" class="sdxt-input ${ch.webdav?.enabled ? '' : 'hidden'}" placeholder="WebDAV 目录地址" value="${ch.webdav?.url || ''}" />
-            <hr style="border:none;border-top:1px solid var(--sdxt-line);"/>
-            <label><input type="checkbox" id="cp" ${policy.hardware.hasStandalonePos ? 'checked' : ''} /> 🖥️ 已启用独立称重收银一体机</label>
-            <label><input type="checkbox" id="cm" ${blocks.memberPriceAndDay.enabled ? 'checked' : ''} /> 👑 会员专享价与会员日</label>
-            <label><input type="checkbox" id="cs" ${blocks.storedValueCard.enabled ? 'checked' : ''} /> 💳 会员储值卡</label>
-            <label><input type="checkbox" id="ct" ${blocks.stampReward.enabled ? 'checked' : ''} /> ⭐ 消费攒星兑礼</label>
-            <label><input type="checkbox" id="cpu" ${blocks.punchAndSubscription.enabled ? 'checked' : ''} /> 🎟️ 计次卡与周期配送</label>
-            <label><input type="checkbox" id="cd" ${blocks.referralAndDeposit.enabled ? 'checked' : ''} /> 🪣 押金载具寄存与老带新</label>
-            <label><input type="checkbox" id="cfr" ${blocks.fullReductionAndGift.enabled ? 'checked' : ''} /> 🧧 消费满减/满赠</label>
-            <div class="sdxt-grid-3">
-              <input id="frm" type="number" class="sdxt-input" placeholder="满多少元" value="${rule0.minAmount || ''}" />
-              <input id="frs" type="number" class="sdxt-input" placeholder="减多少元" value="${rule0.minusAmount || ''}" />
-              <input id="frg" class="sdxt-input" placeholder="送赠品名" value="${rule0.giftName || ''}" />
-            </div>
-          </div>
-          <div class="sdxt-grid-3" style="margin-bottom:8px;">
-            <button type="button" class="sdxt-btn sdxt-btn-ok" id="ej">📤 发微信/导JSON</button>
-            <button type="button" class="sdxt-btn sdxt-btn-ghost" id="ij">📂 导入合并JSON</button>
-            <button type="button" class="sdxt-btn sdxt-btn-ghost" id="eh">📄 离线HTML账本</button>
-          </div>
-          <input type="file" accept=".json" id="fij" class="hidden" />
-          <div style="display:flex;gap:8px;">
-            <button type="button" class="sdxt-btn sdxt-btn-ghost" style="color:#be123c;" id="bcd">清空测试流水</button>
-            <button type="button" class="sdxt-btn sdxt-btn-primary" style="flex:1;" id="sp-save">保存并生效</button>
-          </div>`);
-        $('cc').onchange = (e) => $('cub').classList.toggle('hidden', !e.target.checked);
-        $('cwd').onchange = (e) => $('iwu').classList.toggle('hidden', !e.target.checked);
-        $('bpc').onclick = async () => { try { await vault.pullEncryptedCloudMirror(); showMsg('✅ 云端还原完成', '已合并最新账本'); renderAll(); } catch (e) { showMsg('提示', e.message); } };
-        $('ej').onclick = () => vault.exportOrShareJsonBackup(true);
-        $('eh').onclick = () => vault.exportOfflineHtmlLedger();
-        $('ij').onclick = () => $('fij').click();
-        $('fij').onchange = (e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = async () => { await vault.importAndMergeBackup(r.result); showMsg('✅ 合并完成', '账本已去重合并'); renderAll(); }; r.readAsText(f); };
-        $('bcd').onclick = async () => { await vault.clearDemoDataSafely(); showMsg('✅ 已安全清空', '系统已先自动下载备份文件，测试流水已清空'); renderAll(); };
-        $('sp-save').onclick = () => {
-          const fm = Number($('frm').value || 0); const fs = Number($('frs').value || 0); const fg = $('frg').value.trim();
-          vault.updatePolicy({
-            hardware: { hasStandalonePos: $('cp').checked },
-            storageChannels: {
-              wechatQuickShare: { enabled: $('cw').checked },
-              encryptedCloud: { enabled: $('cc').checked, endpoint: $('icu').value.trim() },
-              webdav: { enabled: $('cwd').checked, url: $('iwu').value.trim() }
-            },
-            loyaltyBlocks: {
-              memberPriceAndDay: { enabled: $('cm').checked },
-              storedValueCard: { enabled: $('cs').checked },
-              stampReward: { enabled: $('ct').checked },
-              punchAndSubscription: { enabled: $('cpu').checked },
-              referralAndDeposit: { enabled: $('cd').checked },
-              fullReductionAndGift: { enabled: $('cfr').checked, rules: fm > 0 ? [{ minAmount: fm, minusAmount: fs, giftName: fg }] : [] }
-            }
-          });
-          closeDrawer(); renderAll();
-        };
-      };
-      $('btn-tool-storage').onclick = openStorageAndPolicyDrawer;
-      $('btn-tool-backup-now').onclick = openStorageAndPolicyDrawer;
-
-      const openStoresDrawer = () => {
-        const stores = vault.meta.stores;
-        const staffList = vault.meta.staff.filter((s) => s.active);
-        const items = Object.values(vault.activeStoreData.catalog || {}).filter((i) => !i.archived);
-        openDrawer(`<h3>🏢 多店管理、调拨与精细权限</h3>
-          <div style="font-weight:700;font-size:13px;margin-bottom:6px;">1. 切换或新增分店</div>
-          <div style="margin:6px 0;">${stores.map((s) => `<button class="sdxt-pill ${s.id === vault.meta.activeStoreId ? 'active' : ''}" data-ss="${s.id}" style="margin:2px;">${s.name}</button>`).join('')}</div>
-          <div style="display:flex;gap:6px;margin-bottom:12px;"><input id="nsn" class="sdxt-input" placeholder="新分店名称" /><button class="sdxt-btn sdxt-btn-primary" id="ncs">+ 新增分店</button></div>
-          ${stores.length > 1 ? `
-            <div style="font-weight:700;font-size:13px;margin-bottom:6px;">2. 分店间库存调拨</div>
-            <div class="sdxt-grid-3" style="margin-bottom:8px;">
-              <select id="ti" class="sdxt-input">${items.map((i) => `<option value="${i.id}">${i.name}(余${i.stock})</option>`).join('')}</select>
-              <select id="tt" class="sdxt-input">${stores.filter((s) => s.id !== vault.meta.activeStoreId).map((s) => `<option value="${s.id}">调至:${s.name}</option>`).join('')}</select>
-              <input id="tq" type="number" class="sdxt-input" value="1" />
-            </div>
-            <button class="sdxt-btn sdxt-btn-ok" style="width:100%;margin-bottom:12px;" id="bdt">确认调拨出库</button>
-          ` : ''}
-          <div style="font-weight:700;font-size:13px;margin-bottom:6px;">3. 成员管理与逐项细粒度权限</div>
-          <div style="margin-bottom:8px;">${staffList.map((st) => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--sdxt-line);">
-              <span>${st.name} (${vault.ROLE_PRESETS[st.role]?.label || st.role})</span>
-              <div style="display:flex;gap:4px;">
-                <button class="sdxt-pill" style="padding:2px 8px;font-size:11px;" data-ps="${st.id}">细调权限</button>
-                <button class="sdxt-pill" style="padding:2px 8px;font-size:11px;" data-sws="${st.id}">切换</button>
-                ${st.id !== 'staff_boss' ? `<button class="sdxt-pill" style="padding:2px 8px;font-size:11px;color:#be123c;" data-rms="${st.id}">停用</button>` : ''}
-              </div>
-            </div>`).join('')}</div>
-          <div class="sdxt-grid-3">
-            <input id="snm" class="sdxt-input" placeholder="成员姓名" />
-            <select id="srl" class="sdxt-input"><option value="clerk">店员预设</option><option value="manager">店长预设</option><option value="boss">掌柜预设</option></select>
-            <button class="sdxt-btn sdxt-btn-primary" id="sad">+ 添加</button>
-          </div>`);
-        $('ui-drawer-body').querySelectorAll('[data-ss]').forEach((b) => { b.onclick = async () => { await vault.loadStore(b.dataset.ss); closeDrawer(); renderAll(); }; });
-        $('ncs').onclick = async () => { if ($('nsn').value.trim()) { await vault.addStore($('nsn').value.trim()); closeDrawer(); renderAll(); } };
-        $('bdt')?.addEventListener('click', async () => {
-          try { await cat.transferStockBetweenStores({ targetStoreId: $('tt').value, itemId: $('ti').value, qty: $('tq').value }); showMsg('✅ 调拨完成', '库存已扣减并计入目标分店'); renderAll(); } catch (e) { showMsg('提示', e.message); }
-        });
-        $('ui-drawer-body').querySelectorAll('[data-ps]').forEach((b) => {
-          b.onclick = () => {
-            const target = vault.meta.staff.find((s) => s.id === b.dataset.ps);
-            if (!target) return;
-            openDrawer(`<h3>🔑 细粒度权限勾选：${target.name}</h3>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;font-size:13px;">
-                ${Object.entries(vault.PERM_LABELS).map(([pk, lbl]) => `<label><input type="checkbox" data-pk="${pk}" ${target.perms[pk] ? 'checked' : ''} /> ${lbl}</label>`).join('')}
-              </div>
-              <button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="scp">保存权限</button>`);
-            $('scp').onclick = () => {
-              const np = {};
-              $('ui-drawer-body').querySelectorAll('[data-pk]').forEach((c) => { np[c.dataset.pk] = c.checked; });
-              vault.upsertStaff({ id: target.id, name: target.name, role: target.role, customPerms: np });
-              openStoresDrawer(); renderAll();
-            };
-          };
-        });
-        $('ui-drawer-body').querySelectorAll('[data-sws]').forEach((b) => { b.onclick = () => { vault.switchStaff(b.dataset.sws); closeDrawer(); renderAll(); }; });
-        $('ui-drawer-body').querySelectorAll('[data-rms]').forEach((b) => { b.onclick = () => { vault.removeStaff(b.dataset.rms); openStoresDrawer(); renderAll(); }; });
-        $('sad').onclick = () => { if ($('snm').value.trim()) { vault.upsertStaff({ name: $('snm').value, role: $('srl').value }); openStoresDrawer(); } };
-      };
-      $('btn-store-switcher').onclick = openStoresDrawer;
-      $('btn-tool-stores').onclick = openStoresDrawer;
-
-      $('btn-boss-lock').onclick = () => {
-        if (vault.isBossUnlocked() && vault.meta.pinHash) { vault.lockBoss(); renderAll(); return; }
-        openDrawer(`<h3>🔒 掌柜安全码验证</h3>
-          <div style="display:grid;gap:8px;margin:10px 0;">
-            <input id="pi" type="password" inputmode="numeric" class="sdxt-input" placeholder="${vault.meta.pinHash ? '输入掌柜安全码解锁' : '首次设置4位安全码'}" />
-            ${!vault.meta.pinHash ? '<input id="pt" maxlength="4" inputmode="numeric" class="sdxt-input" placeholder="应急找回手机后4位（选填）" />' : ''}
-          </div>
-          <button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="psb">${vault.meta.pinHash ? '解锁内账' : '设置并解锁'}</button>
-          ${vault.meta.pinHash && vault.meta.recoveryPhoneTail ? '<button class="sdxt-btn sdxt-btn-ghost" style="width:100%;margin-top:8px;font-size:12px;" id="pfg">忘记安全码？用手机尾号重置</button>' : ''}`);
-        $('psb').onclick = () => {
-          const v = $('pi').value.trim();
-          if (!vault.meta.pinHash) { try { vault.setupPin(v, $('pt')?.value || ''); closeDrawer(); renderAll(); } catch (e) { showMsg('提示', e.message); } }
-          else if (vault.verifyPin(v)) { closeDrawer(); renderAll(); }
-          else showMsg('安全码错误', '请重新输入');
-        };
-        $('pfg')?.addEventListener('click', () => {
-          openDrawer(`<h3>🔑 手机尾号重置安全码</h3><input id="fgt" maxlength="4" class="sdxt-input" placeholder="预留手机号后4位" style="margin:8px 0;" /><input id="fgn" type="password" class="sdxt-input" placeholder="新4位安全码" style="margin-bottom:10px;" /><button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="fgo">确认重置</button>`);
-          $('fgo').onclick = () => { try { vault.resetPinByPhoneTail($('fgt').value, $('fgn').value); closeDrawer(); renderAll(); } catch (e) { showMsg('失败', e.message); } };
-        });
-      };
-
-      $('btn-add-member').onclick = () => {
-        const lex = vault.getLexicon();
-        const policy = vault.getPolicy();
-        const existing = Object.values(vault.activeStoreData.members || {});
-        openDrawer(`<h3>👤 新增${lex.customerLabel}/会员</h3>
-          <div style="display:grid;gap:8px;margin:10px 0;">
-            <input id="mn" class="sdxt-input" placeholder="${lex.customerLabel}称呼" />
-            <input id="mp" class="sdxt-input" placeholder="手机号" />
-            ${policy.loyaltyBlocks.referralAndDeposit.enabled && existing.length ? `<select id="mr" class="sdxt-input"><option value="">老带新推荐人（选填）</option>${existing.map((em) => `<option value="${em.id}">推荐人：${em.name}</option>`).join('')}</select>` : ''}
-          </div>
-          <button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="ms">保存</button>`);
-        $('ms').onclick = async () => {
-          if (!$('mn').value.trim()) return;
-          await pos.upsertMember({ name: $('mn').value.trim(), phone: $('mp').value.trim(), referrerId: $('mr') ? $('mr').value : '' });
-          closeDrawer(); renderAll();
-        };
-      };
-
-      window.addEventListener('sdxt:join-coproduction', (e) => {
-        const camp = e.detail;
-        if (!camp) return;
-        openDrawer(`<h3>🔥 跟单参与上游凑单开产</h3><p>活动：<strong>${camp.title}</strong>（已凑 ${camp.currentQty || 0}/${camp.targetQty}${camp.unit || '件'}）</p><input id="cpq" type="number" class="sdxt-input" value="10" style="margin:8px 0;" /><button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="cpo">确认报数</button>`);
-        $('cpo').onclick = () => { upstream.joinCoProduction(camp.id, $('cpq').value); closeDrawer(); showMsg('✅ 报数成功', '已计入上游凑单开产总进度'); };
       });
+    }
 
-      $('shelf-search-input').oninput = renderAll;
-      $('member-search-input').oninput = renderMembers;
+    /* ------------------------------------------------------------------------
+     * 模块 ②：到货验收与载具（随车一键签收、拆零、周转筐借还）
+     * ------------------------------------------------------------------------ */
+    function viewReceiving() {
+      const gene = engine.getActiveGene();
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🚚 随车到货一键签收与载具台账（${gene.carrierName}）</span>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label>供货商</label>
+              <select id="rcvSupplier">
+                <option value="">临时现结供货方</option>
+                ${engine.state.suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field" style="flex:2;">
+              <label>到货商品</label>
+              <select id="rcvSku">
+                ${engine.state.catalog.map(s => `<option value="${s.id}">${s.name} (当前库存:${s.stock}${s.unit})</option>`).join('')}
+              </select>
+            </div>
+            <div class="field"><label>实收数量</label><input type="number" id="rcvQty" value="20" /></div>
+            <div class="field"><label>搭赠数量(0成本)</label><input type="number" id="rcvBonus" value="0" /></div>
+            <div class="field"><label>本次进货单价</label><input type="number" step="0.01" id="rcvPrice" value="1.5" /></div>
+            <div class="field"><label>载具净增减(+借/-还)</label><input type="number" id="rcvCarrier" value="0" /></div>
+            <div class="field">
+              <label>结算方式</label>
+              <select id="rcvPayMethod">
+                <option value="CREDIT">挂入周期应付账</option>
+                <option value="CASH">随车现金结清</option>
+              </select>
+            </div>
+            <button class="primary" id="btnConfirmReceive">✅ 确认签收入库</button>
+          </div>
+        </div>
+      `;
+    }
 
-      await renderAll();
-    })();
+    function bindReceivingEvents() {
+      if ($('btnConfirmReceive')) {
+        $('btnConfirmReceive').onclick = () => {
+          const sku = engine.state.catalog.find(s => s.id === $('rcvSku')?.value);
+          if (!sku) return showToast('请先在商品库建立至少一款商品');
+          const qty = Number($('rcvQty').value) || 0;
+          const bonusQty = Number($('rcvBonus').value) || 0;
+          const unitPrice = roundMoney($('rcvPrice').value);
+          const carrierDelta = Number($('rcvCarrier').value) || 0;
+          const payMethod = $('rcvPayMethod').value;
+          const total = roundMoney(qty * unitPrice);
+
+          const res = engine.commitVoucher({
+            type: 'RECEIVE',
+            items: [{ skuId: sku.id, name: sku.name, qty, bonusQty, unitPrice, costPrice: unitPrice }],
+            totalAmount: total,
+            payMethod,
+            cashPaid: payMethod === 'CASH' ? total : 0,
+            creditAmount: payMethod === 'CREDIT' ? total : 0,
+            carrierDelta,
+            counterpartyId: $('rcvSupplier').value,
+            note: `随车签收入库（含赠${bonusQty}）`
+          });
+          if (res.ok) {
+            showToast(`✅ 已签收入库【${sku.name}】共 ${qty + bonusQty} ${sku.unit}`);
+            renderAll();
+          }
+        };
+      }
+    }
+
+    /* ------------------------------------------------------------------------
+     * 模块 ①：订货与供货方（名册、载具押金余额、智能补货草案）
+     * ------------------------------------------------------------------------ */
+    function viewProcurement(metrics) {
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📦 供货方合作名册与载具往来</span>
+            <button class="primary sm" id="btnAddSupplier">+ 新增供货方</button>
+          </div>
+          <table>
+            <thead>
+              <tr><th>供货方名称</th><th>联系人/电话</th><th>周期应付货款</th><th>在店周转载具净数</th></tr>
+            </thead>
+            <tbody>
+              ${engine.state.suppliers.length === 0 ? `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">暂无固定供货方，点击右上角新增或直接在“逛大集”采购</td></tr>` : ''}
+              ${engine.state.suppliers.map(s => `
+                <tr>
+                  <td><strong>${s.name}</strong></td>
+                  <td>${s.contact || '-'} ${s.phone || ''}</td>
+                  <td>¥${roundMoney(s.payableBalance).toFixed(2)}</td>
+                  <td><span class="badge">${s.carrierBalance || 0} 个</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🤖 缺货预警与智能补货参谋（待掌柜核准）</span>
+          </div>
+          <p class="stat-sub">当前共 <strong>${metrics.lowStockSkus.length}</strong> 款商品低于安全库存线：${metrics.lowStockSkus.map(s => s.name).join('、') || '库存充足'}</p>
+        </div>
+      `;
+    }
+
+    function bindProcurementEvents() {
+      if ($('btnAddSupplier')) {
+        $('btnAddSupplier').onclick = () => {
+          const name = prompt('输入供货方/批发商名称：');
+          if (!name) return;
+          const phone = prompt('输入送货师傅或业务员电话：', '');
+          engine.state.suppliers.unshift({
+            id: generateId('SUP'),
+            name: name.trim(),
+            contact: '',
+            phone: phone || '',
+            category: '综合供货',
+            creditNote: '',
+            payableBalance: 0,
+            carrierBalance: 0,
+            updatedAt: Date.now()
+          });
+          engine._persist();
+          showToast(`已添加供货方【${name}】`);
+          renderAll();
+        };
+      }
+    }
+
+    /* ------------------------------------------------------------------------
+     * 模块 ⑤：拓客与邻里驿站（群接龙文案、A4 促销传单、16:9 店内大屏轮播）
+     * ------------------------------------------------------------------------ */
+    function viewMarketing() {
+      const skus = engine.state.catalog.slice(0, 6);
+      const jielongText = `🏮【${engine.getActiveStore().name} · 今日街坊福利接龙】\n` +
+        (skus.length > 0
+          ? skus.map((s, i) => `${i + 1}. ${s.name} —— 街坊价 ¥${s.retailPrice}/${s.unit}`).join('\n')
+          : '1. 时令新鲜好货到店，欢迎群里接龙预留！') +
+        `\n👉 群里直接回复“序号+数量”即可，到店报手机尾号秒提！`;
+
+      return `
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">💬 微信群接龙种草文案一键生成</span>
+              <button class="primary sm" id="btnCopyJielong">📋 复制发微信群</button>
+            </div>
+            <textarea id="jielongBox" rows="7" style="width:100%;">${jielongText}</textarea>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">🖥️ 电脑端专享：A4 促销传单 & 16:9 店内大屏广告</span>
+            </div>
+            <p class="stat-sub">将店里闲置电脑或外接显示器面向门口，一键开启全屏轮播海报；或直接打印 A4 门口特价单。</p>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+              <button class="primary" id="btnLaunchSignage">🎬 启动 16:9 店内大屏轮播</button>
+              <button id="btnPrintA4">🖨️ 打印 A4 门店特惠传单</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function bindMarketingEvents() {
+      if ($('btnCopyJielong')) {
+        $('btnCopyJielong').onclick = () => {
+          navigator.clipboard?.writeText($('jielongBox').value);
+          showToast('接龙文案已复制，可直接去微信群粘贴');
+        };
+      }
+      if ($('btnLaunchSignage')) {
+        $('btnLaunchSignage').onclick = () => {
+          $('signageStoreTitle').textContent = `${engine.getActiveStore().name} · 今日街坊特惠`;
+          $('signageBody').textContent = $('jielongBox').value.replace(/\n/g, '  |  ');
+          $('signageScreen').classList.add('show');
+        };
+      }
+      if ($('btnPrintA4')) {
+        $('btnPrintA4').onclick = () => window.print();
+      }
+    }
+
+    /* ------------------------------------------------------------------------
+     * 模块 ⑥：经营状况与财务（三联总账、保本线、家庭支取隔离、AI铁面稽核与老板核决台）
+     * ------------------------------------------------------------------------ */
+    function viewFinance(metrics, isSimple) {
+      const auditReport = engine.runIronAbacusAudit();
+      const quarantineRaw = localStorage.getItem('shd_store_quarantine_box');
+      const quarantine = quarantineRaw ? JSON.parse(quarantineRaw) : null;
+
+      return `
+        <div class="grid-4">
+          <div class="card">
+            <div class="stat-sub">今日实收营业额（${metrics.todayOrderCount}笔）</div>
+            <div class="stat-val">¥${metrics.todayRevenue.toFixed(2)}</div>
+            <div class="stat-sub">今日毛利：${engine.formatSensitiveMoney(metrics.todayGrossProfit)}</div>
+          </div>
+          <div class="card">
+            <div class="stat-sub">钱箱实有现金（已隔离家庭支取）</div>
+            <div class="stat-val">¥${metrics.currentCash.toFixed(2)}</div>
+            <div class="stat-sub">累计家庭私人支取：¥${metrics.familyDrawTotal.toFixed(2)}</div>
+          </div>
+          <div class="card">
+            <div class="stat-sub">下游熟客应收赊账</div>
+            <div class="stat-val" style="color:var(--accent);">¥${metrics.totalReceivable.toFixed(2)}</div>
+            <div class="stat-sub">上游供货应付：¥${metrics.totalPayable.toFixed(2)}</div>
+          </div>
+          <div class="card">
+            <div class="stat-sub">今日保本毛利线达成度</div>
+            <div class="stat-val">${metrics.breakevenProgress}%</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${metrics.breakevenProgress}%;"></div></div>
+          </div>
+        </div>
+
+        <!-- 掌柜最终核决中心 & AI 铁面稽核台（工具为人所用，唯老板拍板） -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">⚖️ 掌柜最终核决中心 & AI 铁面无私稽核台</span>
+            <span class="badge ${auditReport.passed ? 'ok' : 'danger'}">
+              ${auditReport.passed ? '🛡️ 货钱账单四方 100% 吻合' : `⚠️ 发现 ${auditReport.anomalies.length} 处稽核疑点`}
+            </span>
+          </div>
+
+          ${quarantine ? `
+            <div class="decision-card danger">
+              <div>
+                <strong>🛑 隔离区待裁决账本包：</strong><br>
+                <span style="font-size:13px;">${quarantine.auditRes?.anomalies?.join('；') || '总封签校验不一致'}</span>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <button class="danger sm" id="btnQuarantineDiscard">丢弃异常包</button>
+                <button class="primary sm" id="btnQuarantineAccept">掌柜核准接管入账</button>
+              </div>
+            </div>
+          ` : ''}
+
+          ${metrics.pendingApprovals.length === 0 && auditReport.passed ? `
+            <p style="color:var(--text-muted); margin:8px 0;">当前无待拍板草案，账目清白，所有规则均在您的掌控之中。</p>
+          ` : ''}
+
+          ${metrics.pendingApprovals.map(item => `
+            <div class="decision-card">
+              <div>
+                <strong>${item.title}</strong>
+                <div style="font-size:13px; color:var(--text-muted); margin-top:2px;">${item.reason} · ${item.impactSummary}</div>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <button class="primary sm" data-approve-id="${item.id}">✅ 掌柜核准执行</button>
+                <button class="sm" data-dismiss-id="${item.id}">放行归档</button>
+              </div>
+            </div>
+          `).join('')}
+
+          ${!auditReport.passed ? `
+            <div style="margin-top:10px; padding:10px; background:#fff1f2; border-radius:8px; font-size:13px; color:var(--danger);">
+              <strong>铁面判官巡检提示：</strong> ${auditReport.anomalies.join(' ｜ ')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function bindFinanceEvents() {
+      document.querySelectorAll('[data-approve-id]').forEach(btn => {
+        btn.onclick = () => {
+          const note = prompt('可输入一句掌柜核准批注（选填）：', '核实无误，特批执行');
+          if (note === null) return;
+          const res = engine.decideApprovalItem(btn.dataset.approveId, 'APPROVED', note);
+          showToast(res.message);
+          renderAll();
+        };
+      });
+      document.querySelectorAll('[data-dismiss-id]').forEach(btn => {
+        btn.onclick = () => {
+          engine.decideApprovalItem(btn.dataset.dismissId, 'DISMISSED', '掌柜已阅放行');
+          showToast('已按掌柜意见放行归档');
+          renderAll();
+        };
+      });
+      if ($('btnQuarantineDiscard')) {
+        $('btnQuarantineDiscard').onclick = () => {
+          const res = engine.bossResolveQuarantine('DISCARD');
+          showToast(res.message);
+          renderAll();
+        };
+      }
+      if ($('btnQuarantineAccept')) {
+        $('btnQuarantineAccept').onclick = () => {
+          const note = prompt('请输入掌柜接管原因留痕：', '线下核对实物无误，特批入账');
+          if (note === null) return;
+          const res = engine.bossResolveQuarantine('ACCEPT', note);
+          showToast(res.message);
+          renderAll();
+        };
+      }
+    }
+
+    /* ------------------------------------------------------------------------
+     * 模块 ⑦：往来对账与单据（只增不删链式凭证、红字冲销、加密备份导出与导入）
+     * ------------------------------------------------------------------------ */
+    function viewReconcile() {
+      const vouchers = engine.state.vouchers.slice(0, 30);
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🔐 铁账绝对主权 · 加密备份导出与铁算盘重算导入</span>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <button class="primary" id="btnExportIron">📤 导出铁账加密备份包 (JSON)</button>
+            <label class="btn" style="cursor:pointer;">
+              📥 导入账本备份包（自动四方验真）
+              <input type="file" id="fileImportIron" accept=".json" style="display:none;" />
+            </label>
+            <button class="sm" id="btnCompactCold">🧹 90天冷热账本自动瘦身</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📑 不可篡改链式凭证流水（只增不删 · 错单红字冲销）</span>
+          </div>
+          <table>
+            <thead>
+              <tr><th>单号 / 时间</th><th>业务类型</th><th>金额</th><th>经手人</th><th>防篡改指纹链</th><th>状态 / 操作</th></tr>
+            </thead>
+            <tbody>
+              ${vouchers.map(v => `
+                <tr class="${v.status === 'VOIDED' ? 'voided-row' : ''}">
+                  <td><strong>${v.id}</strong><br><span class="stat-sub">${new Date(v.ts).toLocaleString('zh-CN')}</span></td>
+                  <td>${v.type} ${v.note ? `<br><span class="stat-sub">${v.note}</span>` : ''}</td>
+                  <td><strong>¥${v.totalAmount.toFixed(2)}</strong></td>
+                  <td>${v.operatorName}</td>
+                  <td><code style="font-size:11px;">${v.hash}</code></td>
+                  <td>
+                    ${v.status === 'POSTED' && v.type !== 'VOID_RED' && engine.hasPermission('approveAuditAndVoid')
+                      ? `<button class="sm danger" data-void-id="${v.id}">红字冲销</button>`
+                      : `<span class="badge">${v.status === 'VOIDED' ? '已红字冲销' : '已落账封存'}</span>`
+                    }
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function bindReconcileEvents() {
+      if ($('btnExportIron')) {
+        $('btnExportIron').onclick = async () => {
+          const pass = prompt('可选：输入微信转发加密口令（留空则导出明文防篡改封签包）：', '');
+          if (pass === null) return;
+          const pkg = await engine.exportIronBackup(pass.trim());
+          const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `商道铁账备份_${new Date().toISOString().slice(0, 10)}.json`;
+          a.click();
+          showToast('铁账备份包已导出，可发微信永久留底');
+        };
+      }
+
+      if ($('fileImportIron')) {
+        $('fileImportIron').onchange = (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = async () => {
+            let res = await engine.importWithIronJudge(reader.result);
+            if (res.needPassphrase) {
+              const pass = prompt('该账本受 AES 加密信封保护，请输入解密口令：', '');
+              if (pass) res = await engine.importWithIronJudge(reader.result, pass);
+            }
+            alert(res.message);
+            renderAll();
+          };
+          reader.readAsText(file);
+        };
+      }
+
+      if ($('btnCompactCold')) {
+        $('btnCompactCold').onclick = () => {
+          const res = engine.compactColdData(90);
+          showToast(`冷热分层完成，已归档 ${res.archivedCount} 条 90 天前历史流水`);
+          renderAll();
+        };
+      }
+
+      document.querySelectorAll('[data-void-id]').forEach(btn => {
+        btn.onclick = () => {
+          const reason = prompt('请输入红字冲销原因（将永久记入审计链）：', '录错更正');
+          if (!reason) return;
+          const res = engine.voidVoucherWithRedEntry(btn.dataset.voidId, reason);
+          showToast(res.message);
+          renderAll();
+        };
+      });
+    }
+
+    /* ------------------------------------------------------------------------
+     * 模块 ⑧：策略、角色与主权（百业基因、长辈模式、动态角色、家业常青备忘）
+     * ------------------------------------------------------------------------ */
+    function viewGovernance() {
+      const store = engine.getActiveStore();
+      const snapshots = engine.getSnapshots();
+      return `
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><span class="card-title">🧬 百业行当基因与关怀设置</span></div>
+            <div class="form-row">
+              <div class="field">
+                <label>切换行当基因</label>
+                <select id="govGeneSelect">
+                  ${Object.values(INDUSTRY_GENES).map(g => `<option value="${g.id}" ${store.geneId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="field">
+                <label>月固定摊销成本（房租/工资，算保本线）</label>
+                <input type="number" id="govFixedCost" value="${store.monthlyFixedCost || 0}" />
+              </div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+              <button class="sm" id="btnToggleElder">${engine.state.meta.elderLargeMode ? '✅ 已开启长辈大字模式' : '👓 开启长辈关怀大字模式'}</button>
+              <button class="sm" id="btnToggleVoice">${engine.state.meta.voiceFeedback ? '🔊 语音回执：开' : '🔇 语音回执：关'}</button>
+              <button class="primary sm" id="btnSaveStoreCfg">保存门店设置</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">👥 岗位账号与动态角色管理（同源权限）</span>
+              <button class="primary sm" id="btnAddStaff">+ 新增店员账号</button>
+            </div>
+            <table>
+              <thead><tr><th>姓名</th><th>角色</th><th>口令状态</th></tr></thead>
+              <tbody>
+                ${engine.state.rbac.accounts.map(a => {
+                  const r = engine.state.rbac.roles.find(role => role.id === a.roleId);
+                  return `<tr><td>${a.avatar} <strong>${a.name}</strong></td><td>${r?.name || '-'}</td><td>${a.pinHash ? '🔒 4位数字口令' : '🌿 免密直进'}</td></tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🏮 家业常青 · 副掌柜授权备忘 & 应急纸质兜底册</span>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="primary" id="btnExportPaperBook">🖨️ 导出《应急纸质兜底册》（断电断网可查价目与欠款）</button>
+            <button class="warn" id="btnConfigSuccession">🔑 设置副掌柜接力交接备忘</button>
+            ${snapshots.map(s => `<button class="sm" data-snap-id="${s.id}">⏪ 恢复快照：${s.label}</button>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function bindGovernanceEvents() {
+      if ($('btnSaveStoreCfg')) {
+        $('btnSaveStoreCfg').onclick = () => {
+          const store = engine.getActiveStore();
+          store.geneId = $('govGeneSelect').value;
+          store.monthlyFixedCost = roundMoney($('govFixedCost').value);
+          engine._persist();
+          showToast('门店行当基因与保本线设置已生效');
+          renderAll();
+        };
+      }
+      if ($('btnToggleElder')) {
+        $('btnToggleElder').onclick = () => {
+          engine.state.meta.elderLargeMode = !engine.state.meta.elderLargeMode;
+          engine._persist();
+          renderAll();
+        };
+      }
+      if ($('btnToggleVoice')) {
+        $('btnToggleVoice').onclick = () => {
+          engine.state.meta.voiceFeedback = !engine.state.meta.voiceFeedback;
+          engine._persist();
+          renderAll();
+        };
+      }
+      if ($('btnAddStaff')) {
+        $('btnAddStaff').onclick = async () => {
+          const name = prompt('输入新店员姓名（如：前台小王）：');
+          if (!name) return;
+          const roleChoice = prompt('选择岗位编号：1=副掌柜/店长，2=前台收银员，3=理货采购员', '2');
+          const roleMap = { '1': 'role_manager', '2': 'role_cashier', '3': 'role_stocker' };
+          const pin = prompt('设置4位数字上岗口令（留空则支持点头像免密上岗）：', '');
+          const accId = generateId('ACC');
+          const pinHash = pin ? await sha256Hex(`${accId}:${pin.trim()}`) : '';
+          engine.state.rbac.accounts.push({
+            id: accId,
+            name: name.trim(),
+            phoneOrCode: String(1000 + engine.state.rbac.accounts.length + 1),
+            avatar: roleChoice === '1' ? '🧭' : '🙂',
+            roleId: roleMap[roleChoice] || 'role_cashier',
+            storeIds: [engine.state.activeStoreId],
+            pinHash,
+            webAuthnId: '',
+            active: true,
+            extraPermissions: {}
+          });
+          engine._persist();
+          showToast(`已新增岗位账号【${name}】`);
+          renderAll();
+        };
+      }
+      if ($('btnExportPaperBook')) {
+        $('btnExportPaperBook').onclick = () => {
+          const book = engine.generateEmergencyPaperBook();
+          const win = window.open('', '_blank');
+          win.document.write(`
+            <html><head><title>${book.title}</title><style>body{font-family:sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{border:1px solid #999;padding:6px;text-align:left;}</style></head>
+            <body><h2>${book.title}</h2><p>生成时间：${book.generatedAt}</p>
+            <h3>一、在售商品零售价目表</h3>
+            <table><tr><th>编码</th><th>品名</th><th>单位</th><th>零售价</th><th>熟客价</th><th>货架位</th></tr>
+            ${book.priceList.map(p => `<tr><td>${p.code}</td><td>${p.name}</td><td>${p.unit}</td><td>¥${p.retailPrice}</td><td>¥${p.memberPrice}</td><td>${p.location}</td></tr>`).join('')}
+            </table>
+            <h3>二、熟客往来欠款备忘</h3>
+            <table><tr><th>姓名</th><th>电话</th><th>待结金额</th></tr>
+            ${book.receivables.map(r => `<tr><td>${r.name}</td><td>${r.phone}</td><td>¥${r.balance}</td></tr>`).join('')}
+            </table><script>window.print();<\/script></body></html>
+          `);
+        };
+      }
+      if ($('btnConfigSuccession')) {
+        $('btnConfigSuccession').onclick = () => {
+          const person = prompt('输入家业接力副掌柜/家人称呼（外出进货或旅游时交接）：', engine.state.rbac.successionMemo.successorName);
+          if (person === null) return;
+          const note = prompt('输入交接嘱托备忘（如常用进货渠道与账期提示）：', engine.state.rbac.successionMemo.handoverNote);
+          engine.state.rbac.successionMemo.enabled = true;
+          engine.state.rbac.successionMemo.successorName = person;
+          engine.state.rbac.successionMemo.handoverNote = note || '';
+          engine._persist();
+          showToast('家业常青副掌柜接力备忘已保存');
+        };
+      }
+      document.querySelectorAll('[data-snap-id]').forEach(btn => {
+        btn.onclick = () => {
+          if (!confirm('确认恢复至此时间点快照？当前之后的新增流水将被回退。')) return;
+          const res = engine.restoreSnapshot(btn.dataset.snapId);
+          showToast(res.message);
+          renderAll();
+        };
+      });
+    }
+
+    /* ========================================================================
+     * 顶部交互、账号切换模态框与双屏客显同步
+     * ======================================================================== */
+    function openAccountModal(isLocked = false) {
+      $('lockOverlay').classList.add('show');
+      $('btnCloseLockModal').style.display = isLocked ? 'none' : 'inline-flex';
+      $('pinVerifyBox').style.display = 'none';
+      const grid = $('avatarGrid');
+      grid.innerHTML = engine.state.rbac.accounts.filter(a => a.active).map(acc => {
+        const role = engine.state.rbac.roles.find(r => r.id === acc.roleId);
+        return `
+          <div class="avatar-card" data-acc-id="${acc.id}">
+            <div style="font-size:28px;">${acc.avatar}</div>
+            <div style="font-weight:700; margin-top:4px;">${acc.name}</div>
+            <div style="font-size:11px; color:var(--text-muted);">${role?.name || ''}</div>
+          </div>
+        `;
+      }).join('');
+
+      grid.querySelectorAll('[data-acc-id]').forEach(card => {
+        card.onclick = async () => {
+          const accId = card.dataset.accId;
+          const res = await engine.switchAccount(accId, '');
+          if (res.ok) {
+            $('lockOverlay').classList.remove('show');
+            showToast(`已切换至【${res.account.name}】视角`);
+            renderAll();
+          } else if (res.needPin) {
+            pendingSwitchAccId = accId;
+            $('pinPromptLabel').textContent = res.message;
+            $('pinVerifyBox').style.display = 'block';
+            $('pinInput').value = '';
+            $('pinInput').focus();
+          }
+        };
+      });
+    }
+
+    $('btnConfirmPin').onclick = async () => {
+      if (!pendingSwitchAccId) return;
+      const res = await engine.switchAccount(pendingSwitchAccId, $('pinInput').value);
+      if (res.ok) {
+        $('lockOverlay').classList.remove('show');
+        showToast(`口令验证通过，欢迎【${res.account.name}】`);
+        renderAll();
+      } else {
+        showToast(res.message);
+      }
+    };
+
+    $('btnAccountSwitch').onclick = () => openAccountModal(false);
+    $('btnCloseLockModal').onclick = () => $('lockOverlay').classList.remove('show');
+    $('btnLockScreen').onclick = () => engine.lockScreen();
+    $('btnToggleUiMode').onclick = () => {
+      engine.state.meta.uiMode = engine.state.meta.uiMode === 'simple' ? 'full' : 'simple';
+      engine._persist();
+      renderAll();
+    };
+    $('btnPrivacyShield').onclick = () => {
+      const on = engine.togglePrivacyShield();
+      showToast(on ? '已开启防窥掩护，敏感底价已脱敏' : '已恢复正常显示');
+    };
+    $('topbar').ondblclick = (e) => {
+      if (e.target === $('topbar')) $('btnPrivacyShield').click();
+    };
+
+    $('btnEnterSandbox').onclick = () => {
+      engine.enterSandbox();
+      $('lockOverlay').classList.remove('show');
+      renderAll();
+    };
+    $('btnExitSandbox').onclick = () => {
+      engine.exitSandbox();
+      showToast('已退出练手模拟舱，正式账本分毫未动');
+      renderAll();
+    };
+    $('btnExitSignage').onclick = () => $('signageScreen').classList.remove('show');
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') $('signageScreen').classList.remove('show');
+    });
+
+    // 无界灵感胶囊解析
+    $('btnOmniVoice').onclick = () => {
+      const cmd = engine.parseVoiceOrQuickCommand($('omniInput').value);
+      if (cmd.intent === 'FAMILY_DRAW' || cmd.intent === 'EXPENSE') {
+        if (!cmd.amount) return showToast('请在指令中包含具体金额，如“家用拿走200元”');
+        if (confirm(`识别为【${cmd.label}】，金额 ¥${cmd.amount}，确认核准落账吗？`)) {
+          engine.commitVoucher({ type: cmd.intent, totalAmount: cmd.amount, payMethod: 'CASH', note: cmd.note });
+          $('omniInput').value = '';
+          engine.speakFeedback(`已记录${cmd.amount}元`);
+          showToast(`✅ ${cmd.label} 已落账`);
+          renderAll();
+        }
+      } else if (cmd.matchedSkus?.length > 0) {
+        const sku = cmd.matchedSkus[0];
+        posCart.push({ skuId: sku.id, name: sku.name, qty: 1, unitPrice: sku.retailPrice, costPrice: sku.costPrice });
+        activeModule = 'pos';
+        $('omniInput').value = '';
+        showToast(`已将【${sku.name}】加入收银台`);
+        renderAll();
+      } else {
+        showToast(cmd.label || '未匹配到指令');
+      }
+    };
+    $('omniInput').onkeydown = (e) => { if (e.key === 'Enter') $('btnOmniVoice').click(); };
+
+    // 双屏客显独立窗口（自动剔除进货底价，遵守手电筒隔离）
+    $('btnCustomerScreen').onclick = () => {
+      customerDisplayWin = window.open('', 'CustomerDisplay', 'width=800,height=600');
+      syncCustomerDisplayWindow();
+      showToast('已开启副屏客显窗口，可拖至面向顾客的副屏');
+    };
+
+    function syncCustomerDisplayWindow() {
+      if (!customerDisplayWin || customerDisplayWin.closed) return;
+      const store = engine.getActiveStore();
+      const total = roundMoney(posCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
+      customerDisplayWin.document.open();
+      customerDisplayWin.document.write(`
+        <!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>客显屏 - ${store.name}</title>
+        <style>body{font-family:sans-serif;background:#0f172a;color:#fff;margin:0;padding:30px;display:flex;flex-direction:column;height:100vh;box-sizing:border-box;}
+        .header{font-size:24px;color:#5eead4;border-bottom:1px solid #334155;padding-bottom:14px;}
+        .list{flex:1;overflow:auto;font-size:22px;padding:16px 0;}
+        .row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px dashed #334155;}
+        .footer{font-size:44px;font-weight:800;text-align:right;color:#fde047;padding-top:16px;border-top:2px solid #475569;}</style></head>
+        <body>
+          <div class="header">🏮 欢迎光临 ${store.name} · 诚实守信</div>
+          <div class="list">
+            ${posCart.length === 0 ? '<div style="text-align:center;margin-top:80px;color:#94a3b8;">祝您生活愉快，欢迎选购！</div>' :
+              posCart.map(it => `<div class="row"><span>${it.name} × ${it.qty}</span><span>¥${roundMoney(it.qty * it.unitPrice).toFixed(2)}</span></div>`).join('')}
+          </div>
+          <div class="footer">合计：¥${total.toFixed(2)}</div>
+        </body></html>
+      `);
+      customerDisplayWin.document.close();
+    }
+
+    engine.subscribe(() => renderAll());
+    renderAll();
   </script>
 </body>
 </html>
