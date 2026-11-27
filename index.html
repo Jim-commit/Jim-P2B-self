@@ -128,7 +128,10 @@
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <span style="font-weight:800;font-size:15px;">🚚 上游供货方与进货单</span>
-          <button type="button" class="pill-btn" id="btn-add-supplier">+ 供货方</button>
+          <div style="display:flex;gap:6px;">
+            <button type="button" class="pill-btn" id="btn-sync-upstream">🔄 同步目录</button>
+            <button type="button" class="pill-btn" id="btn-add-supplier">+ 供货方</button>
+          </div>
         </div>
         <div class="h-scroll" id="ui-supplier-pills" style="margin-bottom:10px;"></div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
@@ -239,7 +242,6 @@
         const staff = vault.getActiveStaff();
         const canSeeCost = vault.hasPerm('viewCost');
 
-        // 动态词典实时渲染
         $('nav-lbl-shelf').textContent = `${lex.itemLabel}货架`;
         $('nav-lbl-mem').textContent = `${lex.customerLabel}会员`;
         $('shelf-search-input').placeholder = `🔍 搜${lex.itemLabel}名称 / 条码 / ${lex.locLabel}...`;
@@ -358,7 +360,7 @@
         });
       }
 
-      // 3. 渲染上游供货方采购视图
+      // 3. 渲染上游供货方采购视图（含登记付款核销按钮）
       function renderSupplyView() {
         const sups = upstream.data.suppliers || [];
         $('ui-supplier-pills').innerHTML = `<button type="button" class="pill-btn ${activeSupplierFilter === 'ALL' ? 'active' : ''}" data-sup-id="ALL">全部供货方</button>` +
@@ -413,9 +415,10 @@
               <span class="badge" style="background:${o.status === 'received' ? '#dcfce7' : '#fef3c7'};color:${o.status === 'received' ? '#15803d' : '#b45309'};">${o.status === 'received' ? '已入库' : '待收货'}</span>
             </div>
             <div style="font-size:12px;color:#64748b;margin:4px 0;">金额 ¥${Number(o.totalAmount).toFixed(2)} · 已付 ¥${Number(o.paidAmount || 0).toFixed(2)}</div>
-            <div style="display:flex;gap:6px;">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
               <button type="button" class="pill-btn" style="padding:3px 8px;font-size:11px;" data-copy-po="${o.orderId}">📋 复制发微信</button>
               ${o.status !== 'received' ? `<button type="button" class="pill-btn" style="padding:3px 8px;font-size:11px;background:#ecfdf5;color:#047857;" data-recv-po="${o.orderId}">📥 到货一键入库</button>` : ''}
+              ${Number(o.totalAmount) > Number(o.paidAmount || 0) ? `<button type="button" class="pill-btn" style="padding:3px 8px;font-size:11px;" data-pay-po="${o.orderId}">💵 登记付款</button>` : ''}
             </div>
           </div>`).join('') || '<div style="font-size:12px;color:#94a3b8;">暂无向上游采购记录</div>';
 
@@ -436,6 +439,21 @@
               showMsg('✅ 签收入库成功', '采购商品已按箱规自动拆零计入本店库存，并更新最新进货价！');
               renderAll();
             } catch (e) { showMsg('提示', e.message); }
+          };
+        });
+        $('ui-po-order-list').querySelectorAll('[data-pay-po]').forEach((b) => {
+          b.onclick = () => {
+            const o = upstream.data.orders.find((x) => x.orderId === b.dataset.payPo);
+            if (!o) return;
+            const remain = Math.max(0, Number(o.totalAmount) - Number(o.paidAmount || 0));
+            openDrawer(`<h3>💵 向【${o.supplierName}】登记货款</h3><p>本单待结余额：¥${remain.toFixed(2)}</p>
+              <input id="po-pay-inp" type="number" step="0.01" class="input" value="${remain.toFixed(2)}" />
+              <button class="btn btn-ok" style="width:100%;margin-top:10px;" id="po-pay-ok">确认核销货款</button>`);
+            $('po-pay-ok').onclick = () => {
+              upstream.paySupplierOrder(o.orderId, $('po-pay-inp').value);
+              closeDrawer();
+              renderSupplyView();
+            };
           };
         });
       }
@@ -530,7 +548,6 @@
           };
         });
 
-        // 计次卡 & 周期配送管理抽屉
         $('ui-member-list').querySelectorAll('[data-punch-manage]').forEach((b) => {
           b.onclick = () => {
             const m = vault.activeStoreData.members[b.dataset.punchManage];
@@ -580,7 +597,6 @@
           };
         });
 
-        // 押金载具寄存与退还抽屉
         $('ui-member-list').querySelectorAll('[data-dep-manage]').forEach((b) => {
           b.onclick = () => {
             const m = vault.activeStoreData.members[b.dataset.depManage];
@@ -625,7 +641,6 @@
       }
       document.querySelectorAll('.tab').forEach((btn) => { btn.onclick = () => switchTab(btn.dataset.tab); });
 
-      // 收银事件绑定
       $('btn-pos-scan-confirm').onclick = () => {
         const val = $('pos-universal-input').value;
         $('pos-universal-input').value = '';
@@ -763,7 +778,6 @@
         try { await pos.undoLastSale(); renderAll(); } catch (e) { showMsg('提示', e.message); }
       };
 
-      // 商品建档 / 编辑（含阶梯批发价录入框）
       const openItemForm = (prefillBarcode = '', editItem = null) => {
         const lex = vault.getLexicon();
         const tier0 = (editItem?.tierPrices && editItem.tierPrices[0]) || {};
@@ -888,15 +902,28 @@
         };
       };
 
+      // 打印常规货架价签 & 指定散货净重打价条码标签
       $('btn-print-tags').onclick = () => {
         const allItems = Object.values(vault.activeStoreData.catalog || {}).filter((i) => !i.archived);
+        const weighItems = allItems.filter((i) => i.plu || i.unit === vault.getLexicon().weighUnit);
         openDrawer(`<h3>🏷️ 打印货架价签 / 散货称重贴袋签</h3>
-          <div class="grid-2" style="margin:10px 0;">
-            <button class="btn btn-primary" id="pt-shelf">打印全部货架价签</button>
-            <button class="btn btn-ok" id="pt-weigh">打印散货称重条码签</button>
-          </div>`);
+          <button class="btn btn-primary" style="width:100%;margin:8px 0;" id="pt-shelf">打印全部常规货架价签</button>
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0;"/>
+          <div style="font-weight:700;font-size:13px;margin-bottom:6px;">⚖️ 现场称重打价贴袋标签（无条码秤专用）</div>
+          <div class="grid-2" style="margin-bottom:8px;">
+            <select id="pt-weigh-item" class="input">${(weighItems.length ? weighItems : allItems).map((i) => `<option value="${i.id}">${i.name} (¥${i.retailPrice}/${i.unit})</option>`).join('')}</select>
+            <input id="pt-weigh-val" type="number" step="0.01" class="input" placeholder="输入净重 (如 2.35)" value="1" />
+          </div>
+          <button class="btn btn-ok" style="width:100%;" id="pt-weigh">生成称重条码标签并打印</button>`);
         $('pt-shelf').onclick = () => { closeDrawer(); cat.printPriceTags(allItems, false); };
-        $('pt-weigh').onclick = () => { closeDrawer(); cat.printPriceTags(allItems.filter((i) => i.plu || i.unit === vault.getLexicon().weighUnit), true); };
+        $('pt-weigh').onclick = () => {
+          const picked = vault.activeStoreData.catalog[$('pt-weigh-item').value];
+          if (!picked) return;
+          const w = Math.max(0.01, Number($('pt-weigh-val').value || 1));
+          const total = Number((w * Number(picked.retailPrice || 0)).toFixed(2));
+          closeDrawer();
+          cat.printPriceTags([{ ...picked, tagWeight: w, tagTotal: total }], true);
+        };
       };
 
       $('btn-record-pos-day').onclick = () => {
@@ -916,7 +943,13 @@
         };
       };
 
-      // 上游采购与多店统购缺货汇总
+      // 上游采购按钮完整接通
+      $('btn-sync-upstream').onclick = async () => {
+        const cnt = await upstream.syncFromCloudOrShared();
+        showMsg('🔄 同步完成', cnt > 0 ? `已从跨端供货库同步 <strong>${cnt}</strong> 项最新报价` : '当前上游目录已是最新');
+        renderSupplyView();
+      };
+
       $('btn-add-supplier').onclick = () => {
         openDrawer(`<h3>🚚 新增上游供货方</h3>
           <div style="display:grid;gap:8px;margin:10px 0;">
@@ -985,7 +1018,6 @@
         $('st-ok').onclick = closeDrawer;
       };
 
-      // 掌柜工具箱其余全部入口
       $('btn-tool-alerts').onclick = () => {
         const { lowStock, nearExpiry } = cat.getAlertsAndRestockList();
         const { topSelling, stagnant } = cat.getSalesAnalytics(30);
@@ -1052,7 +1084,6 @@
         };
       };
 
-      // 多选存储通道 & 全套积木规则配置（含满减规则设置）
       $('btn-tool-storage').onclick = async () => {
         const policy = vault.getPolicy();
         const ch = policy.storageChannels;
@@ -1141,7 +1172,6 @@
         };
       };
 
-      // 百工百业词典与全局参数自定义抽屉
       $('btn-tool-lexicon').onclick = () => {
         const lex = vault.getLexicon();
         const policy = vault.getPolicy();
@@ -1185,7 +1215,6 @@
         };
       };
 
-      // 多店管理、调拨与成员逐项细粒度权限勾选
       const openStoresAndStaffDrawer = () => {
         const stores = vault.meta.stores;
         const staffList = vault.meta.staff.filter((s) => s.active);
@@ -1275,7 +1304,6 @@
       $('btn-store-switcher').onclick = openStoresAndStaffDrawer;
       $('btn-staff-role').onclick = openStoresAndStaffDrawer;
 
-      // 安全码锁屏与手机尾号自救
       $('btn-boss-lock').onclick = () => {
         if (vault.isBossUnlocked() && vault.meta.pinHash) {
           vault.lockBoss();
@@ -1316,7 +1344,6 @@
         }
       };
 
-      // 新增客户/会员（含老带新推荐人绑定）
       $('btn-add-member').onclick = () => {
         const lex = vault.getLexicon();
         const policy = vault.getPolicy();
@@ -1344,6 +1371,20 @@
           renderAll();
         };
       };
+
+      window.addEventListener('sdxt:join-coproduction', (e) => {
+        const camp = e.detail;
+        if (!camp) return;
+        openDrawer(`<h3>🔥 跟单参与上游凑单开产</h3>
+          <p style="font-size:13px;">活动：<strong>${camp.title}</strong><br/>当前已凑 ${camp.currentQty || 0}/${camp.targetQty}${camp.unit || '件'}</p>
+          <input id="cp-qty" type="number" class="input" placeholder="输入本店跟单数量" value="10" />
+          <button class="btn btn-primary" style="width:100%;margin-top:10px;" id="cp-ok">确认报数凑单</button>`);
+        $('cp-ok').onclick = () => {
+          upstream.joinCoProduction(camp.id, $('cp-qty').value);
+          closeDrawer();
+          showMsg('✅ 报数成功', '已计入上游凑单开产总进度，满额即锁价排产！');
+        };
+      });
 
       $('shelf-search-input').oninput = renderAll;
       $('member-search-input').oninput = renderMembers;
