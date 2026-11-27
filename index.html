@@ -7,11 +7,11 @@
   <title>商道相通 · 掌中宝随身作战舱</title>
   <style>
     :root {
-      --bg-page: #f1f5f9;
+      --bg-page: #f4f6f8;
       --bg-card: #ffffff;
       --bg-subtle: #f8fafc;
       --border-light: #e2e8f0;
-      --text-main: #0f172a;
+      --text-main: #1e293b;
       --text-muted: #64748b;
       --primary: #0f766e;
       --primary-light: #ccfbf1;
@@ -25,9 +25,7 @@
       --font-scale: 1;
     }
 
-    body.elder-mode {
-      --font-scale: 1.28;
-    }
+    body.elder-mode { --font-scale: 1.28; }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
@@ -37,10 +35,9 @@
       color: var(--text-main);
       font-size: calc(15px * var(--font-scale));
       line-height: 1.45;
-      padding-bottom: 84px; /* 留出底部拇指导航热区 */
+      padding-bottom: 84px;
     }
 
-    /* 顶部状态微栏 */
     .m-header {
       position: sticky;
       top: 0;
@@ -51,26 +48,30 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 8px;
-    }
-    .m-header-title {
-      font-weight: 700;
-      font-size: calc(16px * var(--font-scale));
-      display: flex;
-      align-items: center;
       gap: 6px;
     }
+    .m-store-select {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-weight: 700;
+      font-size: calc(14px * var(--font-scale));
+      max-width: 155px;
+    }
+    .m-store-select option { color: var(--text-main); background: #fff; }
     .m-pill {
       background: rgba(255, 255, 255, 0.16);
       border: 1px solid rgba(255, 255, 255, 0.25);
       color: #fff;
-      padding: 4px 10px;
+      padding: 4px 9px;
       border-radius: 999px;
       font-size: calc(12px * var(--font-scale));
       cursor: pointer;
+      white-space: nowrap;
     }
 
-    /* 时辰自适应提示横幅 */
     .time-banner {
       background: #fffbeb;
       border-bottom: 1px solid #fde68a;
@@ -85,7 +86,6 @@
 
     .container { padding: 12px; max-width: 600px; margin: 0 auto; }
 
-    /* 卡片与指标 */
     .card {
       background: var(--bg-card);
       border-radius: 14px;
@@ -101,24 +101,14 @@
       margin-bottom: 10px;
       font-weight: 700;
       font-size: calc(15px * var(--font-scale));
+      gap: 8px;
     }
 
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-    .kpi-box {
-      background: #fff;
-      border-radius: 12px;
-      padding: 12px;
-      border: 1px solid var(--border-light);
-    }
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .kpi-box { background: #fff; border-radius: 12px; padding: 12px; border: 1px solid var(--border-light); }
     .kpi-label { font-size: calc(12px * var(--font-scale)); color: var(--text-muted); }
     .kpi-num { font-size: calc(20px * var(--font-scale)); font-weight: 800; color: var(--primary-dark); margin-top: 2px; }
 
-    /* 大拇指友好按钮 */
     button, .btn {
       border: 1px solid var(--border-light);
       background: #fff;
@@ -152,15 +142,9 @@
     }
     input:focus, select:focus { outline: none; border-color: var(--primary); }
 
-    /* 语音与快捷指令胶囊 */
-    .voice-bar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
+    .voice-bar { display: flex; gap: 8px; margin-bottom: 12px; }
     .voice-bar input { flex: 1; border-radius: 999px; padding-left: 16px; }
 
-    /* 购物车条目 */
     .cart-row {
       display: flex;
       justify-content: space-between;
@@ -169,14 +153,9 @@
       border-bottom: 1px solid var(--bg-subtle);
       gap: 8px;
     }
-    .qty-ctrl {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .qty-ctrl { display: flex; align-items: center; gap: 6px; }
     .qty-ctrl button { width: 32px; height: 32px; padding: 0; border-radius: 8px; }
 
-    /* 底部固定单手拇指导航栏 */
     .bottom-nav {
       position: fixed;
       bottom: 0;
@@ -206,7 +185,6 @@
     .tab-btn.active { color: var(--primary); font-weight: 800; }
     .tab-icon { font-size: calc(20px * var(--font-scale)); }
 
-    /* 弹窗与锁屏层 */
     .modal-mask {
       position: fixed;
       inset: 0;
@@ -242,35 +220,29 @@
 </head>
 <body>
 
-  <!-- 顶部状态微栏（双击标题区一键防窥脱敏） -->
   <header class="m-header" id="mHeader">
-    <div class="m-header-title">
+    <div style="display:flex; align-items:center; gap:6px;">
       <span>🏮</span>
-      <span id="mStoreName">本店</span>
+      <select class="m-store-select" id="mStoreSelect" title="切换总店/分店"></select>
     </div>
     <div style="display:flex; gap:6px; align-items:center;">
-      <span class="m-pill" id="mCloudStatus" title="点击切换云端同步">☁️ 同步就绪</span>
+      <span class="m-pill" id="mCloudStatus">☁️ 已连</span>
       <span class="m-pill" id="mPrivacyBtn">👁️</span>
       <span class="m-pill" id="mAccBtn">👑 <span id="mAccName">掌柜</span></span>
     </div>
   </header>
 
-  <!-- 练手模拟舱横幅 -->
   <div id="mSandboxBar" style="display:none; background:#fef3c7; color:#92400e; padding:8px 14px; font-size:13px; justify-content:space-between; align-items:center;">
-    <span>🎓 <strong>练手模拟舱</strong>（不记入真账）</span>
+    <span>🎓 <strong>掌中宝练手模拟舱</strong>（不记入真账）</span>
     <button class="sm warn" id="btnMExitSandbox">退出</button>
   </div>
 
-  <!-- 随营业时辰自适应提醒横幅 -->
   <div class="time-banner" id="timeContextBanner"></div>
 
-  <!-- 主作战容器 -->
   <main class="container" id="mMainContainer"></main>
 
-  <!-- 底部单手拇指导航热区 -->
   <nav class="bottom-nav" id="mBottomNav"></nav>
 
-  <!-- 底部抽屉弹窗（收款码亮码 / 账号切换 / 相机扫码） -->
   <div class="modal-mask" id="mSheetMask">
     <div class="bottom-sheet" id="mSheetBody"></div>
   </div>
@@ -278,24 +250,20 @@
   <script type="module">
     import {
       StoreCoreEngine,
-      INDUSTRY_GENES,
       roundMoney,
       generateId
     } from './src/modules/store/storeCoreEngine.js';
 
-    // 保留并挂载原有云端联动适配器（断网本地优先，联网异步队列上报）
     const cloudSyncQueue = [];
     const engine = new StoreCoreEngine({
       cloudSyncAdapter: (state, eventType, detail) => {
         cloudSyncQueue.push({ ts: Date.now(), eventType, storeId: state.activeStoreId, detailId: detail?.id || '' });
-        if (typeof window.onStoreCloudSync === 'function') {
-          window.onStoreCloudSync(state, eventType, detail);
-        }
+        if (typeof window.onStoreCloudSync === 'function') window.onStoreCloudSync(state, eventType, detail);
         updateCloudBadge();
       }
     });
 
-    let activeTab = 'cashier'; // cashier(收银) | goods(货品到货) | ledger(账本核决) | more(全能百宝箱)
+    let activeTab = 'cashier';
     let mCart = [];
     let cameraStream = null;
 
@@ -304,18 +272,11 @@
     function updateCloudBadge() {
       const el = $('mCloudStatus');
       if (!el) return;
-      if (!engine.state.meta.cloudSyncEnabled) {
-        el.textContent = '📴 纯本地';
-      } else if (!navigator.onLine) {
-        el.textContent = `⏳ 离线(${cloudSyncQueue.length})`;
-      } else {
-        el.textContent = '☁️ 云端已连';
-      }
+      if (!engine.state.meta.cloudSyncEnabled) el.textContent = '📴 本地';
+      else if (!navigator.onLine) el.textContent = `⏳ 离线(${cloudSyncQueue.length})`;
+      else el.textContent = '☁️ 云端';
     }
 
-    /* ========================================================================
-     * 营业时辰感知器（晨间签收补货 / 日间极速收银 / 晚间打烊晴雨与周备份催备）
-     * ======================================================================== */
     function getTimeContextHint(metrics) {
       const hour = new Date().getHours();
       const daysSinceBackup = engine.state.meta.lastBackupAt
@@ -335,7 +296,7 @@
           text: needBackup
             ? `🌙 晚间打烊：已超 ${daysSinceBackup === 99 ? '7' : daysSinceBackup} 天未导出备份，建议发微信留底`
             : `🌙 晚间打烊：今日实收 ¥${metrics.todayRevenue.toFixed(2)}（${metrics.todayOrderCount}笔）`,
-          btnText: needBackup ? '一键导出留底' : '打烊封账',
+          btnText: needBackup ? '一键导出留底' : '打烊核账',
           action: () => {
             if (needBackup) exportMobileBackup();
             else { activeTab = 'ledger'; renderMobile(); }
@@ -349,38 +310,39 @@
       };
     }
 
-    /* ========================================================================
-     * 全局渲染调度
-     * ======================================================================== */
     function renderMobile() {
       const store = engine.getActiveStore();
       const acc = engine.getCurrentAccount();
       const metrics = engine.getDashboardMetrics();
 
       document.body.classList.toggle('elder-mode', Boolean(engine.state.meta.elderLargeMode));
-      $('mStoreName').textContent = store.name;
+
+      const visibleStores = engine.getVisibleStores();
+      const sel = $('mStoreSelect');
+      sel.innerHTML = visibleStores.map(s => `<option value="${s.id}" ${s.id === store.id ? 'selected' : ''}>${s.name}</option>`).join('');
+      sel.onchange = () => {
+        const res = engine.switchStore(sel.value);
+        if (res.ok) mCart = [];
+        else alert(res.message);
+      };
+
       $('mAccName').textContent = acc.name;
       $('mPrivacyBtn').textContent = engine.privacyShieldActive ? '🙈' : '👁️';
       $('mSandboxBar').style.display = engine.sandboxMode ? 'flex' : 'none';
       updateCloudBadge();
 
-      if (engine.state.rbac.locked) {
-        openAccountSheet(true);
-      }
+      if (engine.state.rbac.locked) openAccountSheet(true);
 
-      // 渲染时辰横幅
       const ctx = getTimeContextHint(metrics);
       const banner = $('timeContextBanner');
       banner.innerHTML = `<span>${ctx.text}</span><button class="sm warn" id="btnTimeCtxAction">${ctx.btnText}</button>`;
       $('btnTimeCtxAction').onclick = ctx.action;
 
-      // 渲染底部动态导航（受角色手电筒隔离）
       renderBottomNav(metrics);
 
-      // 渲染主视图
       const container = $('mMainContainer');
       if (activeTab === 'cashier') {
-        container.innerHTML = renderCashierTab(metrics);
+        container.innerHTML = renderCashierTab();
         bindCashierTab();
       } else if (activeTab === 'goods') {
         container.innerHTML = renderGoodsTab(metrics);
@@ -398,13 +360,11 @@
       const tabs = [
         { id: 'cashier', icon: '🧾', label: '极速收银', allow: engine.canAccessModule('pos') },
         { id: 'goods',   icon: '📦', label: '货品签收', allow: engine.canAccessModule('catalog') || engine.canAccessModule('receiving') },
-        { id: 'ledger',  icon: '💰', label: metrics.pendingApprovals.length > 0 ? `账本(${metrics.pendingApprovals.length})` : '账本核决', allow: engine.canAccessModule('finance') || engine.canAccessModule('reconcile') },
+        { id: 'ledger',  icon: '💰', label: metrics.pendingApprovals.length > 0 ? `核决(${metrics.pendingApprovals.length})` : '账本核决', allow: engine.canAccessModule('finance') || engine.canAccessModule('reconcile') },
         { id: 'more',    icon: '🧭', label: '百宝箱',   allow: true }
       ].filter(t => t.allow);
 
-      if (!tabs.some(t => t.id === activeTab) && tabs.length > 0) {
-        activeTab = tabs[0].id;
-      }
+      if (!tabs.some(t => t.id === activeTab) && tabs.length > 0) activeTab = tabs[0].id;
 
       const nav = $('mBottomNav');
       nav.innerHTML = tabs.map(t => `
@@ -415,22 +375,17 @@
       `).join('');
 
       nav.querySelectorAll('[data-tab]').forEach(btn => {
-        btn.onclick = () => {
-          activeTab = btn.dataset.tab;
-          renderMobile();
-        };
+        btn.onclick = () => { activeTab = btn.dataset.tab; renderMobile(); };
       });
     }
 
-    /* ------------------------------------------------------------------------
-     * 视图 1：极速收银 & 双向语音指令 & 亮码（单手拇指热区）
-     * ------------------------------------------------------------------------ */
-    function renderCashierTab(metrics) {
+    function renderCashierTab() {
       const total = roundMoney(mCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
       const hint = engine.getCrossSellHint(mCart.map(i => i.skuId));
+      const storeSkus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
+      const openTickets = (engine.state.serviceTickets || []).filter(t => t.storeId === engine.state.activeStoreId && t.status === 'OPEN');
 
       return `
-        <!-- 语音/快捷指令输入条 -->
         <div class="voice-bar">
           <input type="text" id="mVoiceInput" placeholder="点键盘麦克风说话：如“老王赊账48元”或输品名..." />
           <button class="primary" id="btnMVoiceGo">执行</button>
@@ -439,14 +394,14 @@
 
         <div class="card">
           <div class="card-hd">
-            <span>🛒 当前收银清单（数量可减至负数退货）</span>
+            <span>🛒 当前收银清单（数量减至负数即退货）</span>
             <button class="sm" id="btnMNoCatalog">+ 临时代收</button>
           </div>
 
           ${hint ? `<div class="badge ok" style="margin-bottom:8px; display:block; padding:6px 10px;" id="btnMCrossSell">💡 顺口带货：${hint.text}（点此加入）</div>` : ''}
 
           ${mCart.length === 0 ? `
-            <div style="text-align:center; padding:26px 10px; color:var(--text-muted);">
+            <div style="text-align:center; padding:24px 10px; color:var(--text-muted);">
               上方输入品名/条码，或点 📷 连续扫码开单
             </div>
           ` : mCart.map((it, idx) => `
@@ -478,11 +433,22 @@
           </div>
         </div>
 
-        <!-- 快捷商品点选墙（常用前8款，单手点选零打字） -->
+        ${openTickets.length > 0 ? `
+          <div class="card">
+            <div class="card-hd"><span>🎫 街坊自提 / 定金工单尾号核销</span></div>
+            ${openTickets.map(t => `
+              <div class="cart-row">
+                <div><strong>尾号 ${t.phoneTail} · ${t.customerName}</strong><div style="font-size:12px; color:var(--text-muted);">${t.itemDesc} (¥${t.totalFee})</div></div>
+                <button class="sm primary" data-m-done-tkt="${t.id}">核销交付</button>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+
         <div class="card">
           <div class="card-hd"><span>⚡ 常用商品一键点选</span></div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            ${engine.state.catalog.slice(0, 8).map(s => `
+            ${storeSkus.slice(0, 8).map(s => `
               <button style="justify-content:space-between; font-weight:500;" data-m-quick-sku="${s.id}">
                 <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.name}</span>
                 <strong style="color:var(--primary);">¥${s.retailPrice}</strong>
@@ -514,7 +480,6 @@
           $('mVoiceInput').value = '';
           renderMobile();
         } else {
-          // 边卖边建
           const p = prompt(`未找到【${raw}】，输入售价（元）直接边卖边建档：`, '10');
           if (p !== null && !isNaN(Number(p))) {
             const price = roundMoney(p);
@@ -575,6 +540,24 @@
         };
       }
 
+      document.querySelectorAll('[data-m-done-tkt]').forEach(btn => {
+        btn.onclick = () => {
+          const tkt = engine.state.serviceTickets.find(t => t.id === btn.dataset.mDoneTkt);
+          if (!tkt) return;
+          tkt.status = 'DONE';
+          engine.commitVoucher({
+            type: 'RELAY_ORDER',
+            totalAmount: tkt.totalFee,
+            serviceFee: tkt.serviceProfit || 0,
+            payMethod: 'DIGITAL',
+            digitalPaid: tkt.totalFee,
+            note: `掌中宝核销【${tkt.customerName}】(尾号${tkt.phoneTail})`
+          });
+          engine.speakFeedback('核销交付成功');
+          renderMobile();
+        };
+      });
+
       document.querySelectorAll('[data-m-inc]').forEach(b => {
         b.onclick = () => { mCart[b.dataset.mInc].qty += 1; renderMobile(); };
       });
@@ -612,7 +595,7 @@
         const total = roundMoney(mCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
         const res = engine.commitVoucher({
           type: 'SALE',
-          typeName: '手机掌中宝收银单',
+          typeName: '掌中宝收银单',
           items: mCart,
           totalAmount: total,
           payMethod,
@@ -638,11 +621,9 @@
       $('btnMShowQrOnly').onclick = () => openQrSheet();
     }
 
-    /* ------------------------------------------------------------------------
-     * 视图 2：货品库存 & 随车到货一键签收
-     * ------------------------------------------------------------------------ */
     function renderGoodsTab(metrics) {
       const canCost = engine.hasPermission('viewCostAndProfit');
+      const storeSkus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
       return `
         <div class="card">
           <div class="card-hd">
@@ -651,7 +632,7 @@
           </div>
           <div style="display:flex; flex-direction:column; gap:8px;">
             <select id="mRcvSku">
-              ${engine.state.catalog.map(s => `<option value="${s.id}">${s.name} (库存:${s.stock}${s.unit})</option>`).join('')}
+              ${storeSkus.map(s => `<option value="${s.id}">${s.name} (库存:${s.stock}${s.unit})</option>`).join('')}
             </select>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
               <input type="number" id="mRcvQty" placeholder="实收数量" value="10" />
@@ -663,9 +644,9 @@
 
         <div class="card">
           <div class="card-hd">
-            <span>📦 在库商品清单（缺货预警 ${metrics.lowStockSkus.length} 款）</span>
+            <span>📦 本店在库商品（缺货预警 ${metrics.lowStockSkus.length} 款）</span>
           </div>
-          ${engine.state.catalog.map(s => `
+          ${storeSkus.map(s => `
             <div class="cart-row">
               <div>
                 <strong>${s.name}</strong>
@@ -728,7 +709,7 @@
           totalAmount: roundMoney(qty * unitPrice),
           payMethod: 'CREDIT',
           creditAmount: roundMoney(qty * unitPrice),
-          note: '手机端随车签收'
+          note: '掌中宝随车签收'
         });
         engine.speakFeedback(`签收入库${qty}${sku.unit}`);
         alert(`✅ 已签收入库【${sku.name}】${qty}${sku.unit}`);
@@ -736,9 +717,6 @@
       };
     }
 
-    /* ------------------------------------------------------------------------
-     * 视图 3：三联总账 & AI 铁面稽核 & 掌柜最终核决台
-     * ------------------------------------------------------------------------ */
     function renderLedgerTab(metrics) {
       const audit = engine.runIronAbacusAudit();
       return `
@@ -761,7 +739,6 @@
           </div>
         </div>
 
-        <!-- 掌柜核决待办区 -->
         <div class="card">
           <div class="card-hd">
             <span>⚖️ 掌柜核决与 AI 铁面稽核</span>
@@ -779,7 +756,6 @@
           `).join('') || '<div style="color:var(--text-muted); font-size:13px;">当前无待拍板草案，账目清白稳健。</div>'}
         </div>
 
-        <!-- 熟客欠款快速收款 -->
         <div class="card">
           <div class="card-hd"><span>📒 熟客往来欠款与还款核销</span></div>
           ${engine.state.customers.filter(c => c.receivableBalance > 0).map(c => `
@@ -795,7 +771,7 @@
     function bindLedgerTab() {
       document.querySelectorAll('[data-m-approve]').forEach(btn => {
         btn.onclick = () => {
-          const res = engine.decideApprovalItem(btn.dataset.mApprove, 'APPROVED', '手机端掌柜核准');
+          const res = engine.decideApprovalItem(btn.dataset.mApprove, 'APPROVED', '掌中宝掌柜核准');
           alert(res.message);
           renderMobile();
         };
@@ -828,16 +804,15 @@
       });
     }
 
-    /* ------------------------------------------------------------------------
-     * 视图 4：全能百宝箱（桌面总控联动、群接龙、加密备份、长辈大字模式、家庭支取）
-     * ------------------------------------------------------------------------ */
     function renderMoreTab() {
       return `
         <div class="card">
-          <div class="card-hd"><span>🧭 跨端协同与主权百宝箱</span></div>
+          <div class="card-hd"><span>🧭 掌中宝全域协同与主权百宝箱</span></div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
             <button onclick="location.href='store.html'">🖥️ 切至电脑调度台</button>
             <button onclick="location.href='mall.html'">🛒 逛大集源头拼单</button>
+            <button id="btnMAddBranch">+ 新增分店</button>
+            <button id="btnMOtpGen">🔑 远程放行码</button>
             <button id="btnMShareJielong">💬 复制群接龙文案</button>
             <button id="btnMFamilyDraw">🏠 记一笔家庭支取</button>
             <button id="btnMExportBackup">📤 导出铁账备份包</button>
@@ -850,8 +825,26 @@
     }
 
     function bindMoreTab() {
+      $('btnMAddBranch').onclick = () => {
+        const name = prompt('输入新分店名称（如：二店 · 城南店）：');
+        if (!name || !name.trim()) return;
+        const res = engine.addBranchStore({ name: name.trim() });
+        if (res.ok) {
+          mCart = [];
+          alert(`已创建并切换至新分店【${res.store.name}】`);
+          renderMobile();
+        } else {
+          alert(res.message);
+        }
+      };
+      $('btnMOtpGen').onclick = () => {
+        const challenge = prompt('输入分店店员屏幕报出的4位挑战码：', '1001');
+        if (!challenge) return;
+        const code = engine.generateOneTimePasscode(challenge.trim());
+        alert(`🔑 一次性远程放行码：【 ${code} 】（5分钟内有效）`);
+      };
       $('btnMShareJielong').onclick = () => {
-        const skus = engine.state.catalog.slice(0, 6);
+        const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId).slice(0, 6);
         const txt = `🏮【${engine.getActiveStore().name} · 街坊福利接龙】\n` +
           skus.map((s, i) => `${i + 1}. ${s.name} —— ¥${s.retailPrice}/${s.unit}`).join('\n') +
           `\n👉 群里直接回复“序号+数量”即可到店自提！`;
@@ -890,9 +883,6 @@
       alert('铁账备份包已导出，建议转发到微信“文件传输助手”永久留底！');
     }
 
-    /* ========================================================================
-     * 底部抽屉：亮收款码、账号切换与原生摄像头连续扫码
-     * ======================================================================== */
     function openQrSheet(paidAmount = null) {
       const store = engine.getActiveStore();
       $('mSheetBody').innerHTML = `
@@ -901,7 +891,7 @@
           ${paidAmount !== null ? `<div style="font-size:24px; font-weight:800; color:var(--primary); margin-bottom:10px;">本单应收：¥${paidAmount.toFixed(2)}</div>` : ''}
           ${store.paymentQrUrl
             ? `<img src="${store.paymentQrUrl}" style="max-width:240px; border-radius:12px; border:1px solid var(--border-light);" />`
-            : `<div style="padding:30px; background:var(--bg-subtle); border-radius:12px; color:var(--text-muted);">尚未上传收款码（掌柜可在电脑端或设置中上传锁定）</div>`
+            : `<div style="padding:30px; background:var(--bg-subtle); border-radius:12px; color:var(--text-muted);">尚未上传收款码（掌柜可在电脑调度台上传锁定）</div>`
           }
           <button class="primary block" style="margin-top:16px;" id="btnCloseSheet">完成并关闭</button>
         </div>
@@ -936,12 +926,8 @@
             const pin = prompt(res.message, '');
             if (pin !== null) res = await engine.switchAccount(accId, pin);
           }
-          if (res.ok) {
-            closeSheet();
-            renderMobile();
-          } else {
-            alert(res.message);
-          }
+          if (res.ok) { closeSheet(); renderMobile(); }
+          else alert(res.message);
         };
       });
     }
@@ -996,7 +982,7 @@
         } else {
           $('mScanHint').textContent = '当前浏览器不支持原生连续解码，可使用外部扫码枪或直接输入条码';
         }
-      } catch (err) {
+      } catch (_) {
         $('mScanHint').textContent = '无法调起摄像头，请检查浏览器相机权限';
       }
     }
