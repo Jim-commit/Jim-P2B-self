@@ -7,7 +7,7 @@
   'use strict';
 
   const Bridge = {
-    version: '4.0.0-slim',
+    version: '4.0.1-slim',
 
     getPageType() {
       const path = (window.location.pathname || '').toLowerCase();
@@ -90,7 +90,9 @@
     },
 
     escapeHtml(str) {
-      return String(str).replace(/[&<>"']/g, (m) => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m]));
+      const div = document.createElement('div');
+      div.textContent = String(str == null ? '' : str);
+      return div.innerHTML.replace(/"/g, '"').replace(/'/g, ''');
     }
   };
 
