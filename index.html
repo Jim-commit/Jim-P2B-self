@@ -52,6 +52,14 @@
               </div>
             </a>
 
+            <button type="button" onclick="window.openAllAgentsModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-emerald-50/90 hover:bg-emerald-100 border border-emerald-200 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98] mb-1">
+              <span class="w-6 h-6 rounded-lg bg-emerald-800 text-amber-300 flex items-center justify-center text-xs font-bold">🏢</span>
+              <div>
+                <div class="font-bold text-emerald-950 text-[11px]">多供货方名册与增减管理</div>
+                <div class="text-[9px] text-emerald-800">新增/编辑/解绑供货方 · 切换账期</div>
+              </div>
+            </button>
+
             <button type="button" onclick="window.openMultiPosterModal(); window.closeAllMenus();" class="w-full px-2.5 py-2 text-left bg-emerald-50/90 hover:bg-emerald-100 border border-emerald-200 rounded-xl flex items-center gap-2.5 transition active:scale-[0.98] mb-1">
               <span class="w-6 h-6 rounded-lg bg-[#1b4332] text-amber-300 flex items-center justify-center text-xs font-bold">🎨</span>
               <div>
@@ -270,12 +278,15 @@
         </div>
       </div>
 
-      <!-- 供货方胶囊导航 -->
+      <!-- 供货方胶囊导航（多供应商切换 + 常驻增减供货方入口） -->
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
         <span class="text-[10px] text-emerald-200 font-bold whitespace-nowrap shrink-0">供货方:</span>
-        <div id="agents-nav-chips" class="flex gap-1.5 overflow-x-auto no-scrollbar items-center max-w-[68%]"></div>
-        <button type="button" onclick="window.openAllAgentsModal()" id="btn-all-agents" class="hidden px-2.5 py-0.5 rounded-full text-[10px] bg-amber-400 text-stone-900 font-bold whitespace-nowrap shrink-0 active:scale-95 shadow-sm">
-          🗂️ 全部名册 (<span id="total-agents-count">0</span>)
+        <div id="agents-nav-chips" class="flex gap-1.5 overflow-x-auto no-scrollbar items-center max-w-[56%]"></div>
+        <button type="button" onclick="window.openAddSupplierDrawer()" class="px-2 py-0.5 rounded-full text-[10px] bg-white/15 hover:bg-white/25 text-amber-300 font-bold whitespace-nowrap shrink-0 active:scale-95">
+          + 供货方
+        </button>
+        <button type="button" onclick="window.openAllAgentsModal()" id="btn-all-agents" class="px-2.5 py-0.5 rounded-full text-[10px] bg-amber-400 text-stone-900 font-bold whitespace-nowrap shrink-0 active:scale-95 shadow-sm">
+          🗂️ 名册(<span id="total-agents-count">0</span>)
         </button>
       </div>
 
@@ -392,7 +403,6 @@
     </div>
   </div>
 
-  <!-- 全部保留的业务弹窗层（同城余缺、公器共享、用度计划、公约、对账单、收款码、收银台等） -->
   <!-- 1. 邻里公器共享 -->
   <div id="community-hub-modal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[88] flex items-center justify-center p-3.5" onclick="if(event.target===this) window.closeModal('community-hub-modal')">
     <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 text-stone-800 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar">
@@ -611,12 +621,11 @@
     </div>
   </div>
 
-  <!-- 通用动态业务抽屉（商品总库建档调价 / 掌柜内账 / 熟客积木本 / 门店模式与权限 / 备份恢复） -->
+  <!-- 通用动态业务抽屉 -->
   <div id="universal-store-drawer" class="hidden fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-[95] flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="if(event.target===this) window.closeModal('universal-store-drawer')">
     <div id="universal-drawer-body" class="bg-white border border-stone-200 rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 space-y-3 shadow-2xl text-xs max-h-[90vh] overflow-y-auto no-scrollbar"></div>
   </div>
 
-  <!-- 统一加载独立高内聚门店引擎（零外部云依赖报错，离线/线上秒开） -->
   <script type="module">
     import { initStoreTerminalBridge } from './src/modules/soulEngine/multiTerminalBridge.js';
     import './src/modules/store/storeLocalVault.js';
@@ -660,7 +669,6 @@
         openUniversalDrawer(`<h3 class="font-bold text-sm text-stone-900">${title}</h3><p class="text-xs text-stone-600 leading-relaxed">${text}</p><button type="button" onclick="window.closeModal('universal-store-drawer')" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl">知道了</button>`);
       };
 
-      // 菜单展开控制
       window.toggleLeftNavMenu = (e) => { e?.stopPropagation(); const el = $('left-nav-menu'); const h = el.classList.contains('hidden'); window.closeAllMenus(); if (h) el.classList.remove('hidden'); };
       window.toggleRightNavMenu = (e) => { e?.stopPropagation(); const el = $('right-nav-menu'); const h = el.classList.contains('hidden'); window.closeAllMenus(); if (h) el.classList.remove('hidden'); };
       window.toggleMultiBranchDropdown = (e) => {
@@ -685,7 +693,6 @@
         $('btn-save-br').onclick = async () => { const nm = $('new-br-name').value.trim(); if (nm) { await vault.addStore(nm); window.closeModal('universal-store-drawer'); refreshAllUI(); } };
       };
 
-      // 角色视角与当班人员切换
       window.toggleActiveStaffDropdown = (e) => {
         e?.stopPropagation();
         const el = $('active-staff-dropdown');
@@ -711,7 +718,6 @@
         if (!e.target.closest('[data-dropdown-root]')) window.closeAllMenus();
       });
 
-      // 锁屏与安全码自救
       window.lockStoreCounterScreen = () => {
         if (!vault.meta.pinHash) {
           openUniversalDrawer(`<h3 class="font-bold text-sm">🔒 首次设置 4 位掌柜安全码</h3>
@@ -751,7 +757,6 @@
         };
       };
 
-      // 分类与标签筛选
       window.filterByCategory = (catName) => { activeCategory = catName; refreshAllUI(); };
       window.filterBySpecialTag = (tag) => {
         activeSpecialTag = tag;
@@ -762,7 +767,6 @@
         refreshAllUI();
       };
 
-      // 刷新整页UI
       function refreshAllUI() {
         const policy = vault.getPolicy();
         const lex = vault.getLexicon();
@@ -773,14 +777,12 @@
         $('active-staff-label').textContent = `${staff.name} (${vault.ROLE_PRESETS[staff.role]?.label || staff.role})`;
         document.querySelectorAll('[data-lex]').forEach((el) => { const k = el.getAttribute('data-lex'); if (lex[k]) el.textContent = lex[k]; });
 
-        // 信用周转与载具看板
         const supUnpaid = upstream.getSupplierPeriodStatements().reduce((s, x) => s + Number(x.unpaidAmount || 0), 0);
         $('credit-avail').textContent = `¥${Math.max(0, Number(comm.state.creditLimit || 2000) - supUnpaid).toFixed(2)}`;
         $('store-basket-count').textContent = `${comm.state.borrowedCarriers || 0} 件`;
         $('credit-debt').textContent = `¥${supUnpaid.toFixed(2)}`;
         $('store-driver').textContent = comm.state.driverName || '老张师傅';
 
-        // 熟客赊欠徽章
         const memDebt = Object.values(vault.activeStoreData.members || {}).reduce((s, m) => s + Number(m.creditDebt || 0), 0);
         const debtBadge = $('menu-credit-debt-badge');
         if (debtBadge) {
@@ -788,12 +790,10 @@
           debtBadge.classList.toggle('hidden', memDebt <= 0);
         }
 
-        // POS 模式适配（若门店已有独立称重收银一体机，自动隐藏手机收银主按钮，切换为缺货补货按钮）
         const hasStandalonePos = Boolean(policy.hardware.hasStandalonePos);
         $('btn-home-pos-entry').classList.toggle('hidden', hasStandalonePos);
         $('btn-home-shortage-order').classList.toggle('hidden', !hasStandalonePos);
 
-        // 缺货与临期自动预警条
         const { lowStock, nearExpiry } = cat.getAlertsAndRestockList();
         const strip = $('store-shortage-memo-strip');
         if (lowStock.length > 0 || nearExpiry.length > 0) {
@@ -803,21 +803,17 @@
           strip.classList.add('hidden');
         }
 
-        // 供货方胶囊渲染
         const sups = upstream.data.suppliers || [];
         $('agents-nav-chips').innerHTML = `<button type="button" onclick="window.selectSupplierFilter('ALL')" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${activeSupplierFilter === 'ALL' ? 'bg-amber-400 text-stone-950' : 'bg-white/15 text-emerald-100'}">全部</button>` +
           sups.map((s) => `<button type="button" onclick="window.selectSupplierFilter('${s.id}')" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${activeSupplierFilter === s.id ? 'bg-amber-400 text-stone-950' : 'bg-white/15 text-emerald-100'}">${s.name}</button>`).join('');
         $('total-agents-count').textContent = sups.length;
-        $('btn-all-agents').classList.toggle('hidden', sups.length <= 2);
 
-        // 分类栏渲染
         const allItems = Object.values(vault.activeStoreData.catalog || {}).filter((i) => !i.archived);
         const cats = ['全部', ...new Set(allItems.map((i) => i.category || lex.defaultCategory))];
         $('category-bar').innerHTML = cats.map((c) => `
           <button type="button" onclick="window.filterByCategory('${c}')" class="px-3 py-1 rounded-xl whitespace-nowrap font-bold transition ${activeCategory === c ? 'bg-[#1b4332] text-amber-300' : 'bg-stone-100 text-stone-600'}">${c}</button>
         `).join('');
 
-        // 货架商品列表渲染（手电筒视角：未解锁或非掌柜视角绝不泄露进货底价与毛利）
         const list = allItems.filter((it) => {
           if (activeCategory !== '全部' && (it.category || lex.defaultCategory) !== activeCategory) return false;
           if (activeSpecialTag !== '全部' && !(it.category || '').includes(activeSpecialTag.replace(/^[^\u4e00-\u9fa5]+/, '').trim())) return false;
@@ -850,7 +846,6 @@
             </div>`;
         }).join('') : `<div class="p-10 text-center text-stone-400 text-xs space-y-2"><p>暂无在架${lex.itemLabel}</p><button type="button" onclick="window.openStoreProductCatalogModal()" class="bg-[#1b4332] text-amber-300 font-bold px-4 py-2 rounded-xl">+ 立即建档录入</button></div>`;
 
-        // 底部进货单汇总同步
         const repSum = comm.getReplenishSummary();
         $('cart-total-amount').textContent = repSum.netPayable.toFixed(2);
         $('cart-count-badge').textContent = repSum.totalCount;
@@ -868,7 +863,6 @@
         } catch (e) { showToastMsg('提示', e.message); }
       };
 
-      // 随车送货签收凭单提交
       window.openSettlementModal = () => {
         const sum = comm.getReplenishSummary();
         if (!sum.totalCount) { showToastMsg('提示', '请先在商品右侧点「+」选择要进货的商品'); return; }
@@ -883,8 +877,86 @@
         refreshAllUI();
       };
 
+      // ==================== 完整的多供应商管理与增减抽屉 ====================
+      window.openAllAgentsModal = (searchKw = '') => {
+        const sups = upstream.data.suppliers || [];
+        const kw = String(searchKw || '').trim().toLowerCase();
+        const filtered = sups.filter((s) => !kw || (s.name || '').toLowerCase().includes(kw) || (s.phone || '').includes(kw) || (s.id || '').toLowerCase().includes(kw));
+
+        openUniversalDrawer(`
+          <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+            <div>
+              <h3 class="font-bold text-sm text-stone-900">🏢 多供货方名册与增减管理</h3>
+              <p class="text-[10px] text-stone-400">共 ${sups.length} 家合作供货方 · 支持切换筛选、编辑与解绑</p>
+            </div>
+            <button type="button" onclick="window.closeModal('universal-store-drawer')" class="text-stone-400 text-lg">✕</button>
+          </div>
+          <div class="flex gap-1.5">
+            <input id="sup-mgr-search" oninput="window.openAllAgentsModal(this.value)" value="${searchKw}" placeholder="🔍 搜供货方名称 / 电话 / 商号..." class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 outline-none">
+            <button type="button" onclick="window.openAddSupplierDrawer()" class="bg-[#1b4332] text-amber-300 font-bold px-3 py-1.5 rounded-xl shrink-0">+ 新增</button>
+          </div>
+          <div class="divide-y divide-stone-100 max-h-72 overflow-y-auto">
+            ${filtered.map((s) => `
+              <div class="py-2.5 flex justify-between items-center gap-2">
+                <div class="min-w-0">
+                  <div class="font-bold text-stone-900 truncate">${s.name} ${activeSupplierFilter === s.id ? '<span class="text-[10px] bg-emerald-100 text-emerald-900 px-1.5 rounded">当前查看</span>' : ''}</div>
+                  <div class="text-[10px] text-stone-400">${s.phone || '未留电话'} · 结算：${s.settleCycle || '货到付款'}</div>
+                </div>
+                <div class="flex gap-1 shrink-0">
+                  <button type="button" onclick="window.selectSupplierFilter('${s.id}');window.closeModal('universal-store-drawer');" class="px-2 py-1 bg-emerald-50 text-emerald-900 rounded-lg font-bold">查看</button>
+                  <button type="button" onclick="window.openAddSupplierDrawer('${s.id}')" class="px-2 py-1 bg-stone-100 text-stone-700 rounded-lg font-bold">编辑</button>
+                  ${s.id !== 'sup_default_1' ? `<button type="button" onclick="window.deleteSupplierItem('${s.id}')" class="px-2 py-1 bg-rose-50 text-rose-700 rounded-lg font-bold">解绑</button>` : ''}
+                </div>
+              </div>`).join('') || '<p class="text-center text-stone-400 py-4">未找到匹配的供货方</p>'}
+          </div>
+          <button type="button" onclick="window.selectSupplierFilter('ALL');window.closeModal('universal-store-drawer');" class="w-full bg-stone-100 text-stone-700 font-bold py-2 rounded-xl">显示全部供货方货品</button>`);
+        const inp = $('sup-mgr-search');
+        if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+      };
+
+      window.openAddSupplierDrawer = (editId = '') => {
+        const editSup = editId ? (upstream.data.suppliers || []).find((x) => x.id === editId) : null;
+        openUniversalDrawer(`
+          <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+            <h3 class="font-bold text-sm text-stone-900">${editSup ? '✏️ 编辑供货方资料' : '🚚 新增 / 绑定上游供货方'}</h3>
+            <button type="button" onclick="window.closeModal('universal-store-drawer')" class="text-stone-400 text-lg">✕</button>
+          </div>
+          <div class="space-y-2">
+            <input id="sup-edit-name" value="${editSup?.name || ''}" placeholder="供货方名称（如：城北粮油批发部 / 伏牛山合作社）*" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold">
+            <input id="sup-edit-phone" value="${editSup?.phone || ''}" placeholder="业务员电话 / 手机号（选填）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
+            <select id="sup-edit-cycle" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none font-bold">
+              <option value="货到付款" ${editSup?.settleCycle === '货到付款' ? 'selected' : ''}>💳 货到付款（随车现结）</option>
+              <option value="信用周转月结" ${editSup?.settleCycle === '信用周转月结' ? 'selected' : ''}>📅 信用周转月结（周期对账）</option>
+              <option value="先款后货" ${editSup?.settleCycle === '先款后货' ? 'selected' : ''}>🏦 先款后货（订货预付）</option>
+            </select>
+          </div>
+          <button type="button" id="btn-save-sup-edit" class="w-full bg-[#1b4332] text-amber-300 font-bold py-2.5 rounded-xl">✅ 保存供货方信息</button>`);
+        $('btn-save-sup-edit').onclick = () => {
+          const nm = $('sup-edit-name').value.trim();
+          if (!nm) { showToastMsg('提示', '请填写供货方名称'); return; }
+          const saved = upstream.upsertSupplier({
+            id: editSup?.id,
+            name: nm,
+            phone: $('sup-edit-phone').value.trim(),
+            settleCycle: $('sup-edit-cycle').value
+          });
+          activeSupplierFilter = saved.id;
+          window.closeModal('universal-store-drawer');
+          refreshAllUI();
+        };
+      };
+
+      window.deleteSupplierItem = (supId) => {
+        try {
+          upstream.removeSupplier(supId);
+          if (activeSupplierFilter === supId) activeSupplierFilter = 'ALL';
+          window.openAllAgentsModal();
+          refreshAllUI();
+        } catch (e) { showToastMsg('提示', e.message); }
+      };
+
       // 本店商品总库、建档、调价与价签打印
-      window.openStoreProductCatalogModal = (tab = 'all') => {
+      window.openStoreProductCatalogModal = () => {
         const lex = vault.getLexicon();
         const items = Object.values(vault.activeStoreData.catalog || {}).filter((i) => !i.archived);
         openUniversalDrawer(`
@@ -945,7 +1017,6 @@
         });
       };
 
-      // 掌柜内账大盘（手电筒防泄露校验）
       window.openStoreBusinessReportModal = async () => {
         if (!vault.hasPerm('viewCost')) {
           showToastMsg('🔒 内账保护中', '当前视角未解锁掌柜安全码，无法查看进货成本与真实毛利。请先解锁安全码或切换至掌柜视角。');
@@ -967,7 +1038,6 @@
           </div>`);
       };
 
-      // 熟客赊账与积木会员本
       window.openStoreCreditBookModal = () => {
         const list = Object.values(vault.activeStoreData.members || {});
         openUniversalDrawer(`
@@ -993,7 +1063,6 @@
         });
       };
 
-      // 记日常杂费
       window.openStoreExpenseQuickModal = () => {
         openUniversalDrawer(`<h3 class="font-bold text-sm">💸 记一笔门店日常杂费</h3>
           <input id="ex-t" placeholder="支出事由（如：水电/包装袋/零工运费）" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none">
@@ -1002,7 +1071,6 @@
         $('ex-ok').onclick = async () => { try { await cat.recordExpense({ title: $('ex-t').value, amount: $('ex-a').value }); window.closeModal('universal-store-drawer'); refreshAllUI(); } catch (e) { showToastMsg('提示', e.message); } };
       };
 
-      // 门店POS模式与成员权限配置
       window.openStorePosModeAndStaffModal = () => {
         const policy = vault.getPolicy();
         const staffList = vault.meta.staff.filter((s) => s.active);
@@ -1024,7 +1092,6 @@
         $('pos-mode-sv').onclick = () => { vault.updatePolicy({ hardware: { hasStandalonePos: $('chk-pos-mode').checked } }); window.closeModal('universal-store-drawer'); refreshAllUI(); };
       };
 
-      // 本地账本导出与恢复
       window.openStoreBackupFileModal = () => {
         openUniversalDrawer(`<h3 class="font-bold text-sm">💾 本地账本导出 / 换机文件恢复</h3>
           <p class="text-[11px] text-stone-500">数据完全归属本店，支持一键导出发微信文件传输助手保存，或导入历史备份合并。</p>
@@ -1038,7 +1105,6 @@
         $('bk-file').onchange = (e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = async () => { await vault.importAndMergeBackup(r.result); showToastMsg('✅ 账本恢复完成', '已完成去重合并'); refreshAllUI(); }; r.readAsText(f); };
       };
 
-      // 柜台智能收银交互
       window.openStoreCounterPosModal = () => { window.openModal('modal-store-counter-pos'); renderPosBasket(); };
       window.closeStoreCounterPosModal = () => { window.closeModal('modal-store-counter-pos'); if (posCamStream) { posCamStream.getTracks().forEach((t) => t.stop()); posCamStream = null; } };
       window.switchStorePosTab = (tab) => {
@@ -1104,7 +1170,6 @@
         } catch (e) { showToastMsg('提示', e.message); }
       };
 
-      // 多品海报、余缺池、公器共享、用度计划、对账单、云端码与引荐码
       window.openMultiPosterModal = () => { const items = Object.values(vault.activeStoreData.catalog || {}).filter((i) => !i.archived); poster.openGroupPosterModal({ items: items.slice(0, 6) }); };
       window.openLocalPoolModal = () => {
         $('local-pool-list').innerHTML = comm.state.poolOffers.map((o) => `<div class="p-2 bg-stone-50 rounded-xl flex justify-between"><span><strong>${o.prodName}</strong> ×${o.qty} (¥${o.price})</span><span>${o.status === 'open' ? '待认领' : '已调剂'}</span></div>`).join('') || '<div class="text-center text-stone-400 py-3">暂无余货挂单</div>';
@@ -1146,7 +1211,6 @@
       window.copyReferralShareText = async () => { await navigator.clipboard.writeText($('ref-link-text').textContent).catch(() => {}); showToastMsg('📋 已复制引荐链接', '可发送给同行掌柜共享源头集采底价'); };
       window.openReceiptsModal = () => { window.openStoreSelfStatementModal(); };
       window.callDriver = () => { showToastMsg('📞 随车送货师傅', `当前负责师傅：<strong>${comm.state.driverName || '老张师傅'}</strong>`); };
-      window.openAllAgentsModal = () => { window.openStoreSelfStatementModal(); };
       window.promptCustomDeliveryNote = () => {
         openUniversalDrawer(`<h3 class="font-bold text-sm">💬 给送货师傅捎句话</h3><input id="dn-in" value="${comm.state.lastNote || ''}" placeholder="如：放门口货架、上午10点前送达" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 outline-none"><button type="button" id="dn-ok" class="w-full bg-[#1b4332] text-white font-bold py-2.5 rounded-xl">保存口信</button>`);
         $('dn-ok').onclick = () => { comm.state.lastNote = $('dn-in').value.trim(); comm.save(); window.closeModal('universal-store-drawer'); };
