@@ -198,9 +198,14 @@
         <!-- 视图 5：拓客大屏与多店经营管理 -->
         <section id="view-manage" class="hidden">
           <div id="ui-boss-dashboard-card" class="sdxt-card hidden" style="background:linear-gradient(145deg,#123e2e,#0c2e22);color:#ffffff;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span style="font-weight:800;font-size:15px;">📊 门店多店合并内账大盘（今日）</span>
-              <span class="sdxt-badge" style="background:rgba(255,255,255,.15);color:#fde68a;" id="ui-store-count-badge">单店账本</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+              <span style="font-weight:800;font-size:15px;">📊 门店多店合并内账大盘</span>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <button type="button" class="sdxt-forest-pill" data-dash-range="today">今日</button>
+                <button type="button" class="sdxt-forest-pill" data-dash-range="month">本月</button>
+                <button type="button" class="sdxt-forest-pill" data-dash-range="all">累计</button>
+                <span class="sdxt-badge" style="background:rgba(255,255,255,.15);color:#fde68a;" id="ui-store-count-badge">单店账本</span>
+              </div>
             </div>
             <div class="sdxt-grid-3">
               <div><div style="font-size:11px;opacity:.8;">营业实收</div><div style="font-size:20px;font-weight:800;" id="ui-dash-rev">¥0.00</div></div>
@@ -252,6 +257,7 @@
 
       let showArchived = false;
       let activeSupplierFilter = 'ALL';
+      let dashRange = 'today';
 
       const $ = (id) => document.getElementById(id);
       const openDrawer = (html) => {
@@ -613,7 +619,12 @@
         const canSee = vault.hasPerm('viewCost');
         $('ui-boss-dashboard-card').classList.toggle('hidden', !canSee);
         if (!canSee) return;
-        const dash = await cat.getMultiStoreDashboard('today');
+        document.querySelectorAll('[data-dash-range]').forEach((b) => {
+          b.style.background = b.dataset.dashRange === dashRange ? '#f59e0b' : 'rgba(255,255,255,0.12)';
+          b.style.color = b.dataset.dashRange === dashRange ? '#1f1600' : '#f8fafc';
+          b.onclick = () => { dashRange = b.dataset.dashRange; renderManageDashboard(); };
+        });
+        const dash = await cat.getMultiStoreDashboard(dashRange);
         $('ui-dash-rev').textContent = `¥${dash.totalRevenue.toFixed(2)}`;
         $('ui-dash-cost').textContent = `¥${(dash.totalCost + dash.totalExpense).toFixed(2)}`;
         $('ui-dash-profit').textContent = `¥${dash.totalNetProfit.toFixed(2)}`;
@@ -659,8 +670,36 @@
       };
 
       $('btn-open-refund').onclick = () => {
-        openDrawer(`<h3>🔄 顾客退货退款</h3><input id="rf-a" type="number" class="sdxt-input" placeholder="退款金额" style="margin:8px 0;" /><input id="rf-n" class="sdxt-input" placeholder="原因" style="margin-bottom:10px;" /><button class="sdxt-btn sdxt-btn-danger" style="width:100%;" id="rf-ok">确认退款</button>`);
-        $('rf-ok').onclick = async () => { try { await pos.processRefund({ refundAmount: $('rf-a').value, note: $('rf-n').value }); closeDrawer(); renderAll(); } catch (e) { showMsg('提示', e.message); } };
+        const items = Object.values(vault.activeStoreData.catalog || {}).filter((i) => !i.archived);
+        openDrawer(`<h3>🔄 顾客退货退款冲抵</h3>
+          <div style="display:grid;gap:8px;margin:10px 0;">
+            <select id="rf-item" class="sdxt-input">
+              <option value="">仅退金额（不恢复库存）</option>
+              ${items.map((i) => `<option value="${i.id}">退货回库：${i.name} (¥${i.retailPrice}/${i.unit})</option>`).join('')}
+            </select>
+            <div class="sdxt-grid-2">
+              <input id="rf-qty" type="number" step="0.01" class="sdxt-input" placeholder="退回数量" value="1" />
+              <input id="rf-a" type="number" step="0.01" class="sdxt-input" placeholder="实退金额（元）" />
+            </div>
+            <input id="rf-n" class="sdxt-input" placeholder="退货原因备注" />
+          </div>
+          <button class="sdxt-btn sdxt-btn-danger" style="width:100%;" id="rf-ok">确认退款并冲减营收</button>`);
+        $('rf-item').onchange = (e) => {
+          const it = vault.activeStoreData.catalog[e.target.value];
+          if (it) $('rf-a').value = (Number(it.retailPrice || 0) * Number($('rf-qty').value || 1)).toFixed(2);
+        };
+        $('rf-ok').onclick = async () => {
+          try {
+            await pos.processRefund({
+              itemId: $('rf-item').value,
+              qty: $('rf-qty').value,
+              refundAmount: $('rf-a').value,
+              note: $('rf-n').value
+            });
+            closeDrawer();
+            renderAll();
+          } catch (e) { showMsg('提示', e.message); }
+        };
       };
 
       $('btn-quick-round-yuan').onclick = () => { vault.updatePolicy({ pricing: { roundingMode: 'yuan' } }); renderPosCart(); };
@@ -759,8 +798,29 @@
       };
       $('btn-add-supply-prod').onclick = () => {
         const sups = upstream.data.suppliers || [];
-        openDrawer(`<h3>📦 录供货目录</h3><select id="sps" class="sdxt-input" style="margin:8px 0;">${sups.map((s) => `<option value="${s.id}">${s.name}</option>`).join('')}</select><input id="spn" class="sdxt-input" placeholder="名称" style="margin-bottom:8px;" /><input id="spw" type="number" class="sdxt-input" placeholder="批发价" style="margin-bottom:8px;" /><button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="spok">保存</button>`);
-        $('spok').onclick = () => { upstream.upsertSupplierProduct({ supplierId: $('sps').value, name: $('spn').value, wholesalePrice: $('spw').value }); closeDrawer(); renderSupplyView(); };
+        openDrawer(`<h3>📦 录入供货方批发目录</h3>
+          <div style="display:grid;gap:8px;margin:10px 0;">
+            <select id="sps" class="sdxt-input">${sups.map((s) => `<option value="${s.id}">${s.name}</option>`).join('')}</select>
+            <input id="spn" class="sdxt-input" placeholder="商品/物料名称（必填）" />
+            <div class="sdxt-grid-2">
+              <input id="spw" type="number" step="0.01" class="sdxt-input" placeholder="批发进货价" />
+              <input id="spu" class="sdxt-input" placeholder="批发单位 (如 箱/件/袋)" value="箱" />
+            </div>
+            <input id="spr" type="number" class="sdxt-input" placeholder="包装换算（1大件拆多少散件，默认1）" value="1" />
+          </div>
+          <button class="sdxt-btn sdxt-btn-primary" style="width:100%;" id="spok">保存到供货目录</button>`);
+        $('spok').onclick = () => {
+          if (!$('spn').value.trim()) return;
+          upstream.upsertSupplierProduct({
+            supplierId: $('sps').value,
+            name: $('spn').value,
+            wholesalePrice: $('spw').value,
+            unit: $('spu').value || '箱',
+            packRate: $('spr').value || 1
+          });
+          closeDrawer();
+          renderSupplyView();
+        };
       };
       $('btn-import-lowstock-po').onclick = () => { upstream.importLowStockToPurchaseCart(); renderSupplyView(); };
       $('btn-import-multistore-po').onclick = async () => {
@@ -800,7 +860,6 @@
         $('cfi').onchange = (e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = async () => { const c = await cat.importPosCsv(r.result); showMsg('✅ 导入完成', `同步 ${c} 项`); renderAll(); }; r.readAsText(f); };
       };
 
-      // 百业词典与加价率/大额阈值全参数配置
       const openLexiconDrawer = () => {
         const lex = vault.getLexicon();
         const policy = vault.getPolicy();
@@ -830,7 +889,6 @@
       $('btn-tool-lexicon').onclick = openLexiconDrawer;
       $('btn-tool-lexicon-2').onclick = openLexiconDrawer;
 
-      // 全局经营策略、多选存储保险箱（本地 + 微信快照 + 加密云拉取 + WebDAV + 离线HTML + 安全清测试数据）与积木规则
       const openStorageAndPolicyDrawer = async () => {
         const policy = vault.getPolicy();
         const blocks = policy.loyaltyBlocks;
@@ -905,7 +963,6 @@
       $('btn-tool-storage').onclick = openStorageAndPolicyDrawer;
       $('btn-tool-backup-now').onclick = openStorageAndPolicyDrawer;
 
-      // 多店切换、分店间库存调拨与成员逐项细粒度权限勾选
       const openStoresDrawer = () => {
         const stores = vault.meta.stores;
         const staffList = vault.meta.staff.filter((s) => s.active);
@@ -967,7 +1024,6 @@
       $('btn-store-switcher').onclick = openStoresDrawer;
       $('btn-tool-stores').onclick = openStoresDrawer;
 
-      // 安全码锁屏 + 手机尾号自救重置
       $('btn-boss-lock').onclick = () => {
         if (vault.isBossUnlocked() && vault.meta.pinHash) { vault.lockBoss(); renderAll(); return; }
         openDrawer(`<h3>🔒 掌柜安全码验证</h3>
@@ -989,7 +1045,6 @@
         });
       };
 
-      // 新增熟客/会员（含老带新推荐人选择）
       $('btn-add-member').onclick = () => {
         const lex = vault.getLexicon();
         const policy = vault.getPolicy();
@@ -1008,7 +1063,6 @@
         };
       };
 
-      // 响应上游凑单开产跟单事件
       window.addEventListener('sdxt:join-coproduction', (e) => {
         const camp = e.detail;
         if (!camp) return;
