@@ -26,9 +26,7 @@
       --font-scale: 1;
     }
 
-    body.elder-mode {
-      --font-scale: 1.25;
-    }
+    body.elder-mode { --font-scale: 1.25; }
 
     * { box-sizing: border-box; }
     body {
@@ -44,14 +42,13 @@
       overflow: hidden;
     }
 
-    /* 顶部全局中枢栏 */
     .topbar {
       background: #ffffff;
       border-bottom: 1px solid var(--border-light);
       padding: 10px 18px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
       z-index: 20;
     }
@@ -63,6 +60,15 @@
       font-size: calc(16px * var(--font-scale));
       color: var(--primary-dark);
       white-space: nowrap;
+    }
+    .store-select {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      color: var(--primary-dark);
+      cursor: pointer;
     }
     .badge {
       display: inline-flex;
@@ -79,11 +85,10 @@
     .badge.danger { background: var(--danger-bg); color: var(--danger); border-color: #fecdd3; }
     .badge.ok { background: var(--success-bg); color: var(--success); border-color: #bbf7d0; }
 
-    /* 无界灵感胶囊 */
     .omni-capsule {
       flex: 1;
       min-width: 240px;
-      max-width: 480px;
+      max-width: 460px;
       display: flex;
       align-items: center;
       background: var(--bg-subtle);
@@ -97,22 +102,9 @@
       background: #fff;
       box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
     }
-    .omni-capsule input {
-      border: none;
-      background: transparent;
-      outline: none;
-      flex: 1;
-      font-size: inherit;
-      color: var(--text-main);
-    }
+    .omni-capsule input { border: none; background: transparent; outline: none; flex: 1; font-size: inherit; color: var(--text-main); }
 
-    .topbar-actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-left: auto;
-      flex-wrap: wrap;
-    }
+    .topbar-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-wrap: wrap; }
 
     button, .btn {
       border: 1px solid var(--border-light);
@@ -135,7 +127,6 @@
     button.danger { background: var(--danger-bg); color: var(--danger); border-color: #fda4af; }
     button.sm { padding: 4px 8px; font-size: calc(12px * var(--font-scale)); }
 
-    /* 练手沙盒横幅 */
     .sandbox-banner {
       background: #fef3c7;
       color: #92400e;
@@ -147,16 +138,9 @@
       border-bottom: 1px solid #fde68a;
     }
 
-    /* 主体双栏工作台 */
-    .workspace {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    /* 左侧8大生命线导航 */
+    .workspace { display: flex; flex: 1; overflow: hidden; }
     .sidebar {
-      width: 230px;
+      width: 236px;
       background: #ffffff;
       border-right: 1px solid var(--border-light);
       padding: 12px 10px;
@@ -165,12 +149,7 @@
       flex-direction: column;
       gap: 4px;
     }
-    .stage-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      padding: 10px 10px 4px;
-      letter-spacing: 0.5px;
-    }
+    .stage-label { font-size: 11px; color: var(--text-muted); padding: 10px 10px 4px; letter-spacing: 0.5px; }
     .nav-item {
       display: flex;
       align-items: center;
@@ -183,22 +162,12 @@
       transition: background 0.15s;
     }
     .nav-item:hover { background: var(--bg-subtle); }
-    .nav-item.active {
-      background: var(--primary-light);
-      color: var(--primary-dark);
-      font-weight: 700;
-    }
+    .nav-item.active { background: var(--primary-light); color: var(--primary-dark); font-weight: 700; }
 
-    /* 右侧主内容区 */
-    .main-stage {
-      flex: 1;
-      overflow-y: auto;
-      padding: 18px 22px 60px;
-    }
+    .main-stage { flex: 1; overflow-y: auto; padding: 18px 22px 60px; }
 
-    /* 通用卡片与网格 */
     .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 16px; }
-    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; margin-bottom: 16px; }
     .card {
       background: var(--bg-card);
       border: 1px solid var(--border-light);
@@ -214,27 +183,16 @@
       margin-bottom: 12px;
       padding-bottom: 8px;
       border-bottom: 1px solid var(--bg-subtle);
+      gap: 8px;
+      flex-wrap: wrap;
     }
     .card-title { font-weight: 700; font-size: calc(15px * var(--font-scale)); }
     .stat-val { font-size: calc(22px * var(--font-scale)); font-weight: 700; color: var(--primary-dark); margin: 4px 0; }
     .stat-sub { font-size: calc(12px * var(--font-scale)); color: var(--text-muted); }
 
-    /* 进度条 */
-    .progress-bar {
-      height: 8px;
-      background: var(--bg-subtle);
-      border-radius: 999px;
-      overflow: hidden;
-      border: 1px solid var(--border-light);
-      margin-top: 6px;
-    }
-    .progress-fill {
-      height: 100%;
-      background: var(--primary);
-      transition: width 0.3s;
-    }
+    .progress-bar { height: 8px; background: var(--bg-subtle); border-radius: 999px; overflow: hidden; border: 1px solid var(--border-light); margin-top: 6px; }
+    .progress-fill { height: 100%; background: var(--primary); transition: width 0.3s; }
 
-    /* 表单与表格 */
     .form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px; }
     .field { display: flex; flex-direction: column; gap: 4px; min-width: 130px; flex: 1; }
     .field label { font-size: calc(12px * var(--font-scale)); color: var(--text-muted); }
@@ -254,7 +212,6 @@
     th { background: var(--bg-subtle); color: var(--text-muted); font-weight: 600; }
     tr.voided-row { opacity: 0.55; text-decoration: line-through; background: #fff1f2; }
 
-    /* 待核决草案同构卡片 */
     .decision-card {
       border-left: 4px solid var(--accent);
       background: #fffbeb;
@@ -269,7 +226,9 @@
     }
     .decision-card.danger { border-left-color: var(--danger); background: #fff1f2; }
 
-    /* 模态框与锁屏覆盖层 */
+    .check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 8px; margin: 8px 0; }
+    .check-item { display: flex; align-items: center; gap: 6px; font-size: 13px; background: var(--bg-subtle); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-light); cursor: pointer; }
+
     .overlay {
       position: fixed;
       inset: 0;
@@ -285,7 +244,7 @@
     .modal-box {
       background: #fff;
       border-radius: 14px;
-      max-width: 560px;
+      max-width: 620px;
       width: 100%;
       padding: 22px;
       box-shadow: 0 20px 40px rgba(0,0,0,0.2);
@@ -303,7 +262,6 @@
     }
     .avatar-card:hover { border-color: var(--primary); background: var(--primary-light); }
 
-    /* 16:9 店内大屏广告全屏模式 */
     .signage-screen {
       position: fixed;
       inset: 0;
@@ -319,7 +277,6 @@
     }
     .signage-screen.show { display: flex; }
 
-    /* Toast 轻提示 */
     .toast {
       position: fixed;
       bottom: 22px;
@@ -344,19 +301,17 @@
 </head>
 <body>
 
-  <!-- 顶部全局中枢栏（双击空白处可一键触发防窥掩护） -->
   <header class="topbar no-print" id="topbar" title="提示：双击顶部空白处可一键开启/关闭防窥脱敏掩护">
     <div class="brand">
       <span>🏮 商道相通</span>
-      <span class="badge" id="storeBadge">本店</span>
+      <select class="store-select" id="storeSelector" title="切换当前查看的总店/分店"></select>
       <span class="badge ok" id="geneBadge">社区便利</span>
     </div>
 
-    <!-- 无界灵感胶囊 -->
     <div class="omni-capsule">
       <span>🔍</span>
-      <input type="text" id="omniInput" placeholder="扫条码 / 搜货号 / 输入指令如“老王赊账48元”或“家用拿走200”..." />
-      <button class="sm" id="btnOmniVoice" title="语音/文本解析">🎙️ 解析</button>
+      <input type="text" id="omniInput" placeholder="扫条码 / 搜货号 / 指令如“老王赊账48元”或“家用拿走200”..." />
+      <button class="sm" id="btnOmniVoice">🎙️ 解析</button>
     </div>
 
     <div class="topbar-actions">
@@ -368,18 +323,13 @@
     </div>
   </header>
 
-  <!-- 练手模拟舱提示条 -->
   <div class="sandbox-banner no-print" id="sandboxBanner" style="display:none;">
     <span>🎓 <strong>当前处于【练手模拟舱】</strong>：所有开单、改价、冲销操作均在内存沙盒演练，绝不写入正式账本。</span>
     <button class="sm warn" id="btnExitSandbox">退出模拟舱并还原正式账本</button>
   </div>
 
-  <!-- 主体双栏工作台 -->
   <div class="workspace">
-    <!-- 左侧 8 大生命线动态导航树 -->
     <aside class="sidebar no-print" id="sidebarNav"></aside>
-
-    <!-- 右侧主工作舞台 -->
     <main class="main-stage" id="mainStage"></main>
   </div>
 
@@ -408,6 +358,11 @@
     </div>
   </div>
 
+  <!-- 动态角色工厂配置弹窗 -->
+  <div class="overlay" id="roleModalOverlay">
+    <div class="modal-box" id="roleModalBody"></div>
+  </div>
+
   <!-- 16:9 店内大屏广告全屏容器 -->
   <div class="signage-screen" id="signageScreen">
     <div style="font-size:22px; opacity:0.85; margin-bottom:12px;" id="signageStoreTitle">本店今日街坊特惠</div>
@@ -423,17 +378,17 @@
       StoreCoreEngine,
       MODULE_CATALOG,
       INDUSTRY_GENES,
+      PERMISSION_CATALOG,
       roundMoney,
       generateId,
       sha256Hex
     } from './src/modules/store/storeCoreEngine.js';
 
-    // 1. 初始化共享核心大脑
     const engine = new StoreCoreEngine();
-    window.__STORE_ENGINE__ = engine; // 方便跨窗口（如副屏客显）共享同一引擎实例
+    window.__STORE_ENGINE__ = engine;
 
-    let activeModule = 'pos'; // 默认落脚柜台收银（开箱即干活）
-    let posCart = [];         // 当前收银台购物车（支持正负混合一单清）
+    let activeModule = 'pos';
+    let posCart = [];
     let pendingSwitchAccId = null;
     let customerDisplayWin = null;
 
@@ -447,9 +402,6 @@
       box._t = setTimeout(() => box.classList.remove('show'), 2800);
     }
 
-    /* ========================================================================
-     * 顶部栏、导航树与全局状态同步渲染
-     * ======================================================================== */
     function renderAll() {
       const store = engine.getActiveStore();
       const gene = engine.getActiveGene();
@@ -457,19 +409,28 @@
       const metrics = engine.getDashboardMetrics();
 
       document.body.classList.toggle('elder-mode', Boolean(engine.state.meta.elderLargeMode));
-      $('storeBadge').textContent = store.name;
+
+      const visibleStores = engine.getVisibleStores();
+      const sel = $('storeSelector');
+      sel.innerHTML = visibleStores.map(s => `<option value="${s.id}" ${s.id === store.id ? 'selected' : ''}>🏪 ${s.name}</option>`).join('');
+      sel.onchange = () => {
+        const res = engine.switchStore(sel.value);
+        if (res.ok) {
+          posCart = [];
+          showToast(`已切换至【${res.store.name}】`);
+        } else {
+          showToast(res.message);
+        }
+      };
+
       $('geneBadge').textContent = gene.name.split('/')[0].trim();
       $('activeAccName').textContent = acc.name;
       $('btnToggleUiMode').textContent = engine.state.meta.uiMode === 'simple' ? '🌿 极简白纸态' : '🧭 全面调度态';
       $('btnPrivacyShield').textContent = engine.privacyShieldActive ? '🙈 已开启防窥' : '👁️ 防窥';
       $('sandboxBanner').style.display = engine.sandboxMode ? 'flex' : 'none';
 
-      // 若当前处于锁屏状态，强制弹出安全锁层
-      if (engine.state.rbac.locked) {
-        openAccountModal(true);
-      }
+      if (engine.state.rbac.locked) openAccountModal(true);
 
-      // 确保当前模块在当前角色的手电筒光圈内，否则自动切回首个可用模块
       const allowedModules = MODULE_CATALOG.filter(m => engine.canAccessModule(m.id));
       if (allowedModules.length > 0 && !allowedModules.some(m => m.id === activeModule)) {
         activeModule = allowedModules[0].id;
@@ -504,36 +465,30 @@
         `;
       }
 
-      // 底部快捷生态入口
       html += `
-        <div class="stage-label">全网协同入口</div>
+        <div class="stage-label">全域平台协同</div>
+        <div class="nav-item" onclick="location.href='index.html'"><span>📱 掌中宝随身作战舱</span></div>
         <div class="nav-item" onclick="window.open('mall.html','_blank')"><span>🛒 逛大集源头拼单</span></div>
         <div class="nav-item" onclick="window.open('suppliers.html','_blank')"><span>🏭 百业供需名录</span></div>
       `;
       nav.innerHTML = html;
 
       nav.querySelectorAll('[data-mod]').forEach(el => {
-        el.onclick = () => {
-          activeModule = el.dataset.mod;
-          renderAll();
-        };
+        el.onclick = () => { activeModule = el.dataset.mod; renderAll(); };
       });
     }
 
-    /* ========================================================================
-     * 右侧 8 大生命线模块动态渲染
-     * ======================================================================== */
     function renderMainStage(metrics) {
       const stage = $('mainStage');
       const isSimple = engine.state.meta.uiMode === 'simple';
 
       switch (activeModule) {
         case 'pos':         stage.innerHTML = viewPos(metrics, isSimple); bindPosEvents(); break;
-        case 'catalog':     stage.innerHTML = viewCatalog(metrics, isSimple); bindCatalogEvents(); break;
-        case 'receiving':   stage.innerHTML = viewReceiving(isSimple); bindReceivingEvents(); break;
+        case 'catalog':     stage.innerHTML = viewCatalog(metrics); bindCatalogEvents(); break;
+        case 'receiving':   stage.innerHTML = viewReceiving(); bindReceivingEvents(); break;
         case 'procurement': stage.innerHTML = viewProcurement(metrics); bindProcurementEvents(); break;
         case 'marketing':   stage.innerHTML = viewMarketing(); bindMarketingEvents(); break;
-        case 'finance':     stage.innerHTML = viewFinance(metrics, isSimple); bindFinanceEvents(); break;
+        case 'finance':     stage.innerHTML = viewFinance(metrics); bindFinanceEvents(); break;
         case 'reconcile':   stage.innerHTML = viewReconcile(); bindReconcileEvents(); break;
         case 'governance':  stage.innerHTML = viewGovernance(); bindGovernanceEvents(); break;
         default:            stage.innerHTML = viewPos(metrics, isSimple); bindPosEvents();
@@ -541,12 +496,13 @@
     }
 
     /* ------------------------------------------------------------------------
-     * 模块 ④：柜台收银与履约（正负混合一单清、无档边卖边建、防掉包收款码、交班）
+     * 模块 ④：柜台收银与履约（含售后质保/定金取货工单 & 邻里驿站自提尾号核销）
      * ------------------------------------------------------------------------ */
     function viewPos(metrics, isSimple) {
       const cartTotal = roundMoney(posCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
       const hint = engine.getCrossSellHint(posCart.map(i => i.skuId));
       const store = engine.getActiveStore();
+      const openTickets = (engine.state.serviceTickets || []).filter(t => t.storeId === store.id && t.status === 'OPEN');
 
       return `
         <div class="grid-2">
@@ -558,7 +514,7 @@
 
             <div class="form-row">
               <div class="field" style="flex:2;">
-                <label>扫码 / 输入品名 / 拼音 / 价格反查</label>
+                <label>扫码 / 输入品名 / 18位称重码 / 价格反查</label>
                 <input type="text" id="posSearchInput" placeholder="扫描条码或输入关键词回车加入..." autofocus />
               </div>
               <div class="field">
@@ -611,7 +567,6 @@
           </div>
 
           <div>
-            <!-- 防掉包收款码 & 当班封账卡片 -->
             <div class="card">
               <div class="card-header">
                 <span class="card-title">🛡️ 店内收款码（受掌柜安全锁保护）</span>
@@ -623,6 +578,29 @@
                   : `<div style="padding:24px; color:var(--text-muted);">尚未上传收款码图片（掌柜可点击右上角上传锁定）</div>`
                 }
               </div>
+            </div>
+
+            <!-- 售后质保/定金取货工单 & 邻里驿站自提尾号核销 -->
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">🎫 定金工单 / 质保凭证 / 驿站自提尾号核销</span>
+                <button class="primary sm" id="btnAddServiceTicket">+ 登记工单/代订自提</button>
+              </div>
+              ${openTickets.length === 0 ? `<div class="stat-sub">暂无待取货/待核销工单</div>` : `
+                <table>
+                  <thead><tr><th>类型 / 尾号</th><th>客户与事项</th><th>金额/纯利</th><th>操作</th></tr></thead>
+                  <tbody>
+                    ${openTickets.map(t => `
+                      <tr>
+                        <td><span class="badge warn">${t.type === 'RELAY_PICKUP' ? '驿站自提' : '定金/质保'}</span><br><strong>尾号 ${t.phoneTail}</strong></td>
+                        <td>${t.customerName} · ${t.itemDesc}</td>
+                        <td>¥${t.totalFee} (润¥${t.serviceProfit || 0})</td>
+                        <td><button class="sm primary" data-done-ticket="${t.id}">核销交付</button></td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              `}
             </div>
 
             ${!isSimple ? `
@@ -664,7 +642,6 @@
             searchEl.value = '';
             renderAll();
           } else {
-            // 无档边卖边建：直接询问价格即可开单并自动建档
             const priceStr = prompt(`商品库暂无【${q}】，请输入零售单价（元）直接边卖边建档：`, '10');
             if (priceStr !== null && !isNaN(Number(priceStr))) {
               const price = roundMoney(priceStr);
@@ -723,6 +700,52 @@
         };
       }
 
+      if ($('btnAddServiceTicket')) {
+        $('btnAddServiceTicket').onclick = () => {
+          const typeChoice = prompt('选择工单类型：1=街坊代订自提(剥离驿站服务纯利)  2=定金取货/售后质保凭证', '1');
+          const customerName = prompt('街坊/客户称呼：', '李姐');
+          if (!customerName) return;
+          const phoneTail = prompt('手机尾号（4位，方便到店核销）：', '8866') || '0000';
+          const itemDesc = prompt('登记事项或代订货品名称：', '大集拼单礼盒 1箱') || '代订包裹';
+          const totalFee = roundMoney(prompt('货款总额（元）：', '50'));
+          const serviceProfit = typeChoice === '1' ? roundMoney(prompt('其中本店驿站服务纯利（元）：', '5')) : 0;
+
+          engine.state.serviceTickets.unshift({
+            id: generateId('TKT'),
+            storeId: engine.state.activeStoreId,
+            type: typeChoice === '1' ? 'RELAY_PICKUP' : 'DEPOSIT',
+            customerName,
+            phoneTail,
+            itemDesc,
+            totalFee,
+            serviceProfit,
+            status: 'OPEN',
+            createdAt: Date.now()
+          });
+          engine._persist();
+          showToast(`已登记工单（尾号 ${phoneTail}）`);
+          renderAll();
+        };
+      }
+
+      document.querySelectorAll('[data-done-ticket]').forEach(btn => {
+        btn.onclick = () => {
+          const tkt = engine.state.serviceTickets.find(t => t.id === btn.dataset.doneTicket);
+          if (!tkt) return;
+          tkt.status = 'DONE';
+          engine.commitVoucher({
+            type: 'RELAY_ORDER',
+            totalAmount: tkt.totalFee,
+            serviceFee: tkt.serviceProfit || 0,
+            payMethod: 'DIGITAL',
+            digitalPaid: tkt.totalFee,
+            note: `核销交付【${tkt.customerName}】(尾号${tkt.phoneTail})：${tkt.itemDesc}`
+          });
+          showToast(`已核销交付，驿站服务纯利 ¥${tkt.serviceProfit || 0} 已独立入账`);
+          renderAll();
+        };
+      });
+
       document.querySelectorAll('[data-cart-qty]').forEach(inp => {
         inp.onchange = () => { posCart[inp.dataset.cartQty].qty = Number(inp.value) || 0; renderAll(); };
       });
@@ -766,7 +789,7 @@
 
       if ($('btnUploadQr')) {
         $('btnUploadQr').onclick = () => {
-          const url = prompt('请输入收款码图片地址或粘贴 DataURL（支持本地选择扩展）：', engine.getActiveStore().paymentQrUrl);
+          const url = prompt('请输入收款码图片地址或粘贴 DataURL：', engine.getActiveStore().paymentQrUrl);
           if (url !== null) {
             engine.getActiveStore().paymentQrUrl = url.trim();
             engine._persist();
@@ -788,9 +811,9 @@
     }
 
     /* ------------------------------------------------------------------------
-     * 模块 ③：商品库与库存（拆箱反推、临期/缺货雷达、报损/自用/人情登记）
+     * 模块 ③：商品库与库存
      * ------------------------------------------------------------------------ */
-    function viewCatalog(metrics, isSimple) {
+    function viewCatalog(metrics) {
       const canCost = engine.hasPermission('viewCostAndProfit');
       const gene = engine.getActiveGene();
       const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
@@ -814,8 +837,11 @@
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">📦 店内商品库存明细（共 ${skus.length} 款）</span>
-            <button class="sm warn" id="btnLossGift">📉 登记报损 / 自用 / 人情赠品</button>
+            <span class="card-title">📦 本店商品库存明细（共 ${skus.length} 款）</span>
+            <div style="display:flex; gap:8px;">
+              ${engine.state.stores.length > 1 ? `<button class="sm" id="btnTransferStore">🔄 跨分店调拨</button>` : ''}
+              <button class="sm warn" id="btnLossGift">📉 登记报损 / 自用 / 人情赠品</button>
+            </div>
           </div>
           <table>
             <thead>
@@ -832,9 +858,7 @@
               ${skus.map(s => `
                 <tr>
                   <td><strong>${s.name}</strong><br><span class="stat-sub">${s.barcode || '无条码'} · ${s.category}</span></td>
-                  <td>
-                    <span class="badge ${s.stock <= s.minStock ? 'danger' : 'ok'}">${s.stock} ${s.unit}</span>
-                  </td>
+                  <td><span class="badge ${s.stock <= s.minStock ? 'danger' : 'ok'}">${s.stock} ${s.unit}</span></td>
                   ${canCost ? `<td>${engine.formatSensitiveMoney(s.costPrice)}</td>` : ''}
                   <td><strong>¥${s.retailPrice.toFixed(2)}</strong></td>
                   <td>${s.expiryDate || '-'}</td>
@@ -892,7 +916,7 @@
 
       if ($('btnLossGift')) {
         $('btnLossGift').onclick = () => {
-          const skus = engine.state.catalog;
+          const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
           if (skus.length === 0) return showToast('请先添加商品');
           const name = prompt('输入报损或自用商品名称：', skus[0].name);
           const sku = skus.find(s => s.name.includes(name));
@@ -911,6 +935,30 @@
         };
       }
 
+      if ($('btnTransferStore')) {
+        $('btnTransferStore').onclick = () => {
+          const otherStores = engine.state.stores.filter(s => s.id !== engine.state.activeStoreId);
+          if (otherStores.length === 0) return showToast('暂无其他分店可调拨');
+          const target = otherStores[0];
+          const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId);
+          if (skus.length === 0) return showToast('当前门店暂无可调拨商品');
+          const name = prompt(`调往【${target.name}】，输入商品名称：`, skus[0].name);
+          const sku = skus.find(s => s.name.includes(name));
+          if (!sku) return showToast('未找到商品');
+          const qty = Number(prompt(`输入调出数量（${sku.unit}）：`, '5')) || 0;
+          if (qty > 0) {
+            engine.commitVoucher({
+              type: 'TRANSFER_STORE',
+              targetStoreId: target.id,
+              items: [{ skuId: sku.id, name: sku.name, qty, unitPrice: sku.costPrice, costPrice: sku.costPrice }],
+              note: `调拨至【${target.name}】`
+            });
+            showToast(`已调出 ${qty}${sku.unit} 至【${target.name}】`);
+            renderAll();
+          }
+        };
+      }
+
       document.querySelectorAll('[data-add-pos]').forEach(btn => {
         btn.onclick = () => {
           const sku = engine.state.catalog.find(s => s.id === btn.dataset.addPos);
@@ -924,10 +972,11 @@
     }
 
     /* ------------------------------------------------------------------------
-     * 模块 ②：到货验收与载具（随车一键签收、拆零、周转筐借还）
+     * 模块 ②：到货验收与载具
      * ------------------------------------------------------------------------ */
     function viewReceiving() {
       const gene = engine.getActiveGene();
+      const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
       return `
         <div class="card">
           <div class="card-header">
@@ -944,7 +993,7 @@
             <div class="field" style="flex:2;">
               <label>到货商品</label>
               <select id="rcvSku">
-                ${engine.state.catalog.map(s => `<option value="${s.id}">${s.name} (当前库存:${s.stock}${s.unit})</option>`).join('')}
+                ${skus.map(s => `<option value="${s.id}">${s.name} (当前库存:${s.stock}${s.unit})</option>`).join('')}
               </select>
             </div>
             <div class="field"><label>实收数量</label><input type="number" id="rcvQty" value="20" /></div>
@@ -996,7 +1045,7 @@
     }
 
     /* ------------------------------------------------------------------------
-     * 模块 ①：订货与供货方（名册、载具押金余额、智能补货草案）
+     * 模块 ①：订货与供货方（含 🤝 邻里联采拼单脱敏需求单）
      * ------------------------------------------------------------------------ */
     function viewProcurement(metrics) {
       return `
@@ -1025,9 +1074,10 @@
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">🤖 缺货预警与智能补货参谋（待掌柜核准）</span>
+            <span class="card-title">🤝 缺货预警 & 邻里联采拼单（严守手电筒隔离，仅汇总数量不泄底价）</span>
+            <button class="warn sm" id="btnGenJointOrder">📋 生成脱敏《片区联采需求单》</button>
           </div>
-          <p class="stat-sub">当前共 <strong>${metrics.lowStockSkus.length}</strong> 款商品低于安全库存线：${metrics.lowStockSkus.map(s => s.name).join('、') || '库存充足'}</p>
+          <p class="stat-sub">当前共 <strong>${metrics.lowStockSkus.length}</strong> 款商品触及安全库存线：${metrics.lowStockSkus.map(s => `${s.name}(建议补${Math.max(10, s.maxStock - s.stock)}${s.unit})`).join('、') || '库存充足'}</p>
         </div>
       `;
     }
@@ -1054,13 +1104,24 @@
           renderAll();
         };
       }
+      if ($('btnGenJointOrder')) {
+        $('btnGenJointOrder').onclick = () => {
+          const metrics = engine.getDashboardMetrics();
+          const lines = metrics.lowStockSkus.length > 0
+            ? metrics.lowStockSkus.map((s, i) => `${i + 1}. ${s.name} × ${Math.max(10, s.maxStock - s.stock)}${s.unit}`).join('\n')
+            : '1. 畅销饮品/粮油常规补货 20箱';
+          const text = `🤝【片区邻里联采拼单需求单（已脱敏底价与库存）】\n发起门店：${engine.getActiveStore().name}\n${lines}\n欢迎同片区同行接龙凑大单向源头厂家压价！`;
+          navigator.clipboard?.writeText(text);
+          alert(`已生成并复制脱敏联采单：\n\n${text}`);
+        };
+      }
     }
 
     /* ------------------------------------------------------------------------
-     * 模块 ⑤：拓客与邻里驿站（群接龙文案、A4 促销传单、16:9 店内大屏轮播）
+     * 模块 ⑤：拓客与邻里驿站（群接龙、零库存预售凑团、A4传单与16:9大屏）
      * ------------------------------------------------------------------------ */
     function viewMarketing() {
-      const skus = engine.state.catalog.slice(0, 6);
+      const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId).slice(0, 6);
       const jielongText = `🏮【${engine.getActiveStore().name} · 今日街坊福利接龙】\n` +
         (skus.length > 0
           ? skus.map((s, i) => `${i + 1}. ${s.name} —— 街坊价 ¥${s.retailPrice}/${s.unit}`).join('\n')
@@ -1071,7 +1132,7 @@
         <div class="grid-2">
           <div class="card">
             <div class="card-header">
-              <span class="card-title">💬 微信群接龙种草文案一键生成</span>
+              <span class="card-title">💬 微信群接龙 & 零库存预售凑团文案</span>
               <button class="primary sm" id="btnCopyJielong">📋 复制发微信群</button>
             </div>
             <textarea id="jielongBox" rows="7" style="width:100%;">${jielongText}</textarea>
@@ -1105,15 +1166,13 @@
           $('signageScreen').classList.add('show');
         };
       }
-      if ($('btnPrintA4')) {
-        $('btnPrintA4').onclick = () => window.print();
-      }
+      if ($('btnPrintA4')) $('btnPrintA4').onclick = () => window.print();
     }
 
     /* ------------------------------------------------------------------------
-     * 模块 ⑥：经营状况与财务（三联总账、保本线、家庭支取隔离、AI铁面稽核与老板核决台）
+     * 模块 ⑥：经营状况与财务（含脱敏《门店经营稳健度信用简报》）
      * ------------------------------------------------------------------------ */
-    function viewFinance(metrics, isSimple) {
+    function viewFinance(metrics) {
       const auditReport = engine.runIronAbacusAudit();
       const quarantineRaw = localStorage.getItem('shd_store_quarantine_box');
       const quarantine = quarantineRaw ? JSON.parse(quarantineRaw) : null;
@@ -1142,13 +1201,15 @@
           </div>
         </div>
 
-        <!-- 掌柜最终核决中心 & AI 铁面稽核台（工具为人所用，唯老板拍板） -->
         <div class="card">
           <div class="card-header">
             <span class="card-title">⚖️ 掌柜最终核决中心 & AI 铁面无私稽核台</span>
-            <span class="badge ${auditReport.passed ? 'ok' : 'danger'}">
-              ${auditReport.passed ? '🛡️ 货钱账单四方 100% 吻合' : `⚠️ 发现 ${auditReport.anomalies.length} 处稽核疑点`}
-            </span>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button class="sm" id="btnGenCreditBrief">📜 生成脱敏经营信用简报</button>
+              <span class="badge ${auditReport.passed ? 'ok' : 'danger'}">
+                ${auditReport.passed ? '🛡️ 货钱账单四方 100% 吻合' : `⚠️ 发现 ${auditReport.anomalies.length} 处稽核疑点`}
+              </span>
+            </div>
           </div>
 
           ${quarantine ? `
@@ -1191,6 +1252,12 @@
     }
 
     function bindFinanceEvents() {
+      if ($('btnGenCreditBrief')) {
+        $('btnGenCreditBrief').onclick = () => {
+          const b = engine.generateCreditBrief();
+          alert(`📜【${b.storeName} · 脱敏经营稳健度信用简报】\n（已自动剔除进货底价与客户隐私，供申请月结账期）\n\n• 持续规范记账天数：${b.activeOperatingDays} 天\n• 铁账防篡改累计凭证：${b.totalVerifiedVouchers} 笔\n• 货钱账单四方勾稽状态：${b.ledgerIntegrityPassed ? '100% 吻合无异常' : '存在待核对项'}\n• 铁账验真短码：${b.verifyShortCode}\n• 出具时间：${b.generatedAt}`);
+        };
+      }
       document.querySelectorAll('[data-approve-id]').forEach(btn => {
         btn.onclick = () => {
           const note = prompt('可输入一句掌柜核准批注（选填）：', '核实无误，特批执行');
@@ -1226,14 +1293,14 @@
     }
 
     /* ------------------------------------------------------------------------
-     * 模块 ⑦：往来对账与单据（只增不删链式凭证、红字冲销、加密备份导出与导入）
+     * 模块 ⑦：往来对账与单据
      * ------------------------------------------------------------------------ */
     function viewReconcile() {
       const vouchers = engine.state.vouchers.slice(0, 30);
       return `
         <div class="card">
           <div class="card-header">
-            <span class="card-title">🔐 铁账绝对主权 · 加密备份导出与铁算盘重算导入</span>
+            <span class="card-title">🔐 铁账绝对主权 · 加密备份导出、铁算盘重算导入与实物冲抵</span>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
             <button class="primary" id="btnExportIron">📤 导出铁账加密备份包 (JSON)</button>
@@ -1241,6 +1308,7 @@
               📥 导入账本备份包（自动四方验真）
               <input type="file" id="fileImportIron" accept=".json" style="display:none;" />
             </label>
+            <button class="warn" id="btnBarterOffset">⚖️ 登记厂家返利/实物轧差冲抵单</button>
             <button class="sm" id="btnCompactCold">🧹 90天冷热账本自动瘦身</button>
           </div>
         </div>
@@ -1308,6 +1376,27 @@
         };
       }
 
+      if ($('btnBarterOffset')) {
+        $('btnBarterOffset').onclick = () => {
+          if (engine.state.suppliers.length === 0) return showToast('请先在①订货与供货方中添加供货方');
+          const sup = engine.state.suppliers[0];
+          const amt = roundMoney(prompt(`登记与【${sup.name}】的返利/实物折价冲抵金额（元）：`, '100'));
+          const note = prompt('冲抵说明（如：年底陈列返利货抵货款）：', '厂家返利实物冲抵应付货款');
+          if (amt > 0) {
+            engine.commitVoucher({
+              type: 'BARTER_OFFSET',
+              totalAmount: amt,
+              payMethod: 'OFFSET',
+              counterpartyId: sup.id,
+              counterpartyName: sup.name,
+              note
+            });
+            showToast(`已生成实物轧差冲抵单 ¥${amt}`);
+            renderAll();
+          }
+        };
+      }
+
       if ($('btnCompactCold')) {
         $('btnCompactCold').onclick = () => {
           const res = engine.compactColdData(90);
@@ -1328,15 +1417,44 @@
     }
 
     /* ------------------------------------------------------------------------
-     * 模块 ⑧：策略、角色与主权（百业基因、长辈模式、动态角色、家业常青备忘）
+     * 模块 ⑧：策略、角色与主权（完整闭环：多门店 + 动态角色工厂 + 可选生物识别 + 远程放行码 + 家业常青）
      * ------------------------------------------------------------------------ */
     function viewGovernance() {
       const store = engine.getActiveStore();
+      const acc = engine.getCurrentAccount();
       const snapshots = engine.getSnapshots();
       return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🏪 门店与分店档案管理（共 ${engine.state.stores.length} 家 · 货钱账单独立隔离）</span>
+            <button class="primary sm" id="btnAddBranchStore">+ 新增分店</button>
+          </div>
+          <table>
+            <thead>
+              <tr><th>门店名称</th><th>行当基因</th><th>月固定摊销</th><th>当前状态 / 切换</th></tr>
+            </thead>
+            <tbody>
+              ${engine.state.stores.map(st => {
+                const g = INDUSTRY_GENES[st.geneId] || INDUSTRY_GENES.convenience;
+                const isCurrent = st.id === engine.state.activeStoreId;
+                return `
+                  <tr>
+                    <td><strong>${st.name}</strong></td>
+                    <td>${g.name.split('/')[0].trim()}</td>
+                    <td>¥${roundMoney(st.monthlyFixedCost || 0).toFixed(2)}</td>
+                    <td>
+                      ${isCurrent ? `<span class="badge ok">当前正在查看</span>` : `<button class="sm" data-switch-store="${st.id}">切至此店</button>`}
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+
         <div class="grid-2">
           <div class="card">
-            <div class="card-header"><span class="card-title">🧬 百业行当基因与关怀设置</span></div>
+            <div class="card-header"><span class="card-title">🧬 行当基因、长辈关怀与可选安全增强</span></div>
             <div class="form-row">
               <div class="field">
                 <label>切换行当基因</label>
@@ -1345,28 +1463,34 @@
                 </select>
               </div>
               <div class="field">
-                <label>月固定摊销成本（房租/工资，算保本线）</label>
+                <label>月固定摊销成本（算保本线）</label>
                 <input type="number" id="govFixedCost" value="${store.monthlyFixedCost || 0}" />
               </div>
             </div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-              <button class="sm" id="btnToggleElder">${engine.state.meta.elderLargeMode ? '✅ 已开启长辈大字模式' : '👓 开启长辈关怀大字模式'}</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+              <button class="sm" id="btnToggleElder">${engine.state.meta.elderLargeMode ? '✅ 已开大字版' : '👓 长辈关怀大字模式'}</button>
               <button class="sm" id="btnToggleVoice">${engine.state.meta.voiceFeedback ? '🔊 语音回执：开' : '🔇 语音回执：关'}</button>
+              <button class="sm" id="btnToggleBiometric">${acc.biometricEnabled ? '✅ 指纹/刷脸秒解：已开' : '👆 开启指纹/刷脸秒解(可选)'}</button>
+              <button class="sm warn" id="btnGenOtp">🔑 生成一次性远程放行码</button>
               <button class="primary sm" id="btnSaveStoreCfg">保存门店设置</button>
             </div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <span class="card-title">👥 岗位账号与动态角色管理（同源权限）</span>
-              <button class="primary sm" id="btnAddStaff">+ 新增店员账号</button>
+              <span class="card-title">👥 岗位账号与动态角色手电筒工厂</span>
+              <div style="display:flex; gap:6px;">
+                <button class="sm" id="btnManageRoles">🎛️ 角色权限工坊</button>
+                <button class="primary sm" id="btnAddStaff">+ 新增店员账号</button>
+              </div>
             </div>
             <table>
-              <thead><tr><th>姓名</th><th>角色</th><th>口令状态</th></tr></thead>
+              <thead><tr><th>姓名</th><th>角色</th><th>管辖范围</th><th>口令状态</th></tr></thead>
               <tbody>
                 ${engine.state.rbac.accounts.map(a => {
                   const r = engine.state.rbac.roles.find(role => role.id === a.roleId);
-                  return `<tr><td>${a.avatar} <strong>${a.name}</strong></td><td>${r?.name || '-'}</td><td>${a.pinHash ? '🔒 4位数字口令' : '🌿 免密直进'}</td></tr>`;
+                  const scopeLabel = a.storeIds.includes('*') ? '全部门店' : `${a.storeIds.length}家指定门店`;
+                  return `<tr><td>${a.avatar} <strong>${a.name}</strong></td><td>${r?.name || '-'}</td><td>${scopeLabel}</td><td>${a.pinHash ? '🔒 4位口令' : '🌿 免密直进'}</td></tr>`;
                 }).join('')}
               </tbody>
             </table>
@@ -1375,18 +1499,89 @@
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">🏮 家业常青 · 副掌柜授权备忘 & 应急纸质兜底册</span>
+            <span class="card-title">🏮 家业常青 · 副掌柜授权备忘 & 应急纸质兜底册 & 自定义白纸表单</span>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="primary" id="btnExportPaperBook">🖨️ 导出《应急纸质兜底册》（断电断网可查价目与欠款）</button>
+            <button class="primary" id="btnExportPaperBook">🖨️ 导出《应急纸质兜底册》</button>
             <button class="warn" id="btnConfigSuccession">🔑 设置副掌柜接力交接备忘</button>
+            <button class="sm" id="btnCustomFormBuilder">🧩 自定义白纸业务小卡片</button>
             ${snapshots.map(s => `<button class="sm" data-snap-id="${s.id}">⏪ 恢复快照：${s.label}</button>`).join('')}
           </div>
         </div>
       `;
     }
 
+    function openRoleWorkshopModal() {
+      const roles = engine.state.rbac.roles;
+      $('roleModalBody').innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="margin:0;">🎛️ 动态角色与手电筒权限工坊</h3>
+          <button class="sm" id="btnCloseRoleModal">关闭</button>
+        </div>
+        <p class="stat-sub">自由新建角色并勾选可见业务板块与敏感动作锁，未勾选模块在界面彻底隐身：</p>
+        <div class="form-row">
+          <div class="field"><label>新角色名称</label><input id="newRoleName" placeholder="如：晚班看店合伙人" /></div>
+          <div class="field"><label>职责简述</label><input id="newRoleDesc" placeholder="负责晚间收银与盘点" /></div>
+        </div>
+        <label style="font-size:12px; color:var(--text-muted);">可见业务生命线板块（8选N）：</label>
+        <div class="check-grid" id="roleModChecks">
+          ${MODULE_CATALOG.map(m => `<label class="check-item"><input type="checkbox" value="${m.id}" ${['pos', 'catalog'].includes(m.id) ? 'checked' : ''} /> ${m.icon} ${m.name}</label>`).join('')}
+        </div>
+        <label style="font-size:12px; color:var(--text-muted);">手电筒敏感动作锁（5选N）：</label>
+        <div class="check-grid" id="rolePermChecks">
+          ${PERMISSION_CATALOG.map(p => `<label class="check-item"><input type="checkbox" value="${p.key}" /> ${p.label}</label>`).join('')}
+        </div>
+        <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:8px;">
+          <button class="primary" id="btnSaveNewRole">✅ 保存并创建该角色</button>
+        </div>
+        <hr style="margin:16px 0; border:none; border-top:1px solid var(--border-light);" />
+        <div style="font-size:13px; font-weight:700; margin-bottom:6px;">现有角色列表（共 ${roles.length} 个）：</div>
+        ${roles.map(r => `<div class="badge" style="margin:3px;">${r.name} (${r.modules.length}板块)</div>`).join('')}
+      `;
+      $('roleModalOverlay').classList.add('show');
+      $('btnCloseRoleModal').onclick = () => $('roleModalOverlay').classList.remove('show');
+      $('btnSaveNewRole').onclick = () => {
+        const name = $('newRoleName').value.trim();
+        if (!name) return showToast('请输入角色名称');
+        const modules = Array.from($('roleModChecks').querySelectorAll('input:checked')).map(i => i.value);
+        const permissions = {};
+        $('rolePermChecks').querySelectorAll('input').forEach(i => { permissions[i.value] = i.checked; });
+        const res = engine.upsertCustomRole({ name, desc: $('newRoleDesc').value.trim(), modules, permissions });
+        showToast(res.message);
+        $('roleModalOverlay').classList.remove('show');
+        renderAll();
+      };
+    }
+
     function bindGovernanceEvents() {
+      if ($('btnAddBranchStore')) {
+        $('btnAddBranchStore').onclick = () => {
+          const name = prompt('请输入新分店名称（如：二店 · 城南社区店）：');
+          if (!name || !name.trim()) return;
+          const geneChoice = prompt('选择分店行当编号：\n1=社区便利百货  2=生鲜果蔬  3=五金建材  4=农资合作社  5=餐饮茶饮', '1');
+          const geneMap = { '1': 'convenience', '2': 'fresh', '3': 'hardware', '4': 'agri', '5': 'tea_food' };
+          const fixedCost = roundMoney(prompt('输入该分店月固定摊销成本（房租/人工，元）：', '3000'));
+          const res = engine.addBranchStore({
+            name: name.trim(),
+            geneId: geneMap[geneChoice] || 'convenience',
+            monthlyFixedCost: fixedCost
+          });
+          if (res.ok) {
+            posCart = [];
+            showToast(`已创建并切换至新分店【${res.store.name}】`);
+          } else {
+            showToast(res.message);
+          }
+        };
+      }
+
+      document.querySelectorAll('[data-switch-store]').forEach(btn => {
+        btn.onclick = () => {
+          const res = engine.switchStore(btn.dataset.switchStore);
+          if (res.ok) { posCart = []; showToast(`已切换至【${res.store.name}】`); }
+        };
+      });
+
       if ($('btnSaveStoreCfg')) {
         $('btnSaveStoreCfg').onclick = () => {
           const store = engine.getActiveStore();
@@ -1398,25 +1593,37 @@
         };
       }
       if ($('btnToggleElder')) {
-        $('btnToggleElder').onclick = () => {
-          engine.state.meta.elderLargeMode = !engine.state.meta.elderLargeMode;
-          engine._persist();
-          renderAll();
-        };
+        $('btnToggleElder').onclick = () => { engine.state.meta.elderLargeMode = !engine.state.meta.elderLargeMode; engine._persist(); renderAll(); };
       }
       if ($('btnToggleVoice')) {
-        $('btnToggleVoice').onclick = () => {
-          engine.state.meta.voiceFeedback = !engine.state.meta.voiceFeedback;
-          engine._persist();
+        $('btnToggleVoice').onclick = () => { engine.state.meta.voiceFeedback = !engine.state.meta.voiceFeedback; engine._persist(); renderAll(); };
+      }
+      if ($('btnToggleBiometric')) {
+        $('btnToggleBiometric').onclick = async () => {
+          const res = await engine.toggleBiometricForCurrentAccount();
+          alert(res.message);
           renderAll();
         };
       }
+      if ($('btnGenOtp')) {
+        $('btnGenOtp').onclick = () => {
+          const challenge = prompt('请输入分店店员屏幕报出的4位挑战码（如 3921）：', '1001');
+          if (!challenge) return;
+          const code = engine.generateOneTimePasscode(challenge.trim());
+          alert(`🔑 一次性远程放行码：【 ${code} 】\n（5分钟内有效、用完即废，报给店员即可放行本次特殊业务）`);
+        };
+      }
+      if ($('btnManageRoles')) $('btnManageRoles').onclick = () => openRoleWorkshopModal();
+
       if ($('btnAddStaff')) {
         $('btnAddStaff').onclick = async () => {
           const name = prompt('输入新店员姓名（如：前台小王）：');
           if (!name) return;
-          const roleChoice = prompt('选择岗位编号：1=副掌柜/店长，2=前台收银员，3=理货采购员', '2');
-          const roleMap = { '1': 'role_manager', '2': 'role_cashier', '3': 'role_stocker' };
+          const roles = engine.state.rbac.roles;
+          const roleMenu = roles.map((r, i) => `${i + 1}=${r.name}`).join('  ');
+          const idx = (Number(prompt(`选择岗位角色编号：\n${roleMenu}`, '3')) || 3) - 1;
+          const chosenRole = roles[idx] || roles[0];
+          const scopeAll = confirm('是否授权该账号查看全部门店？（确定=全部门店，取消=仅限当前门店）');
           const pin = prompt('设置4位数字上岗口令（留空则支持点头像免密上岗）：', '');
           const accId = generateId('ACC');
           const pinHash = pin ? await sha256Hex(`${accId}:${pin.trim()}`) : '';
@@ -1424,10 +1631,11 @@
             id: accId,
             name: name.trim(),
             phoneOrCode: String(1000 + engine.state.rbac.accounts.length + 1),
-            avatar: roleChoice === '1' ? '🧭' : '🙂',
-            roleId: roleMap[roleChoice] || 'role_cashier',
-            storeIds: [engine.state.activeStoreId],
+            avatar: chosenRole.isSystemBoss ? '👑' : '🙂',
+            roleId: chosenRole.id,
+            storeIds: scopeAll ? ['*'] : [engine.state.activeStoreId],
             pinHash,
+            biometricEnabled: false,
             webAuthnId: '',
             active: true,
             extraPermissions: {}
@@ -1437,6 +1645,22 @@
           renderAll();
         };
       }
+
+      if ($('btnCustomFormBuilder')) {
+        $('btnCustomFormBuilder').onclick = () => {
+          const title = prompt('捏造一张白纸专属业务小卡片（如：农资地块施肥登记 / 电器维修单 / 洗衣登记）：', '街坊便民登记卡');
+          if (!title) return;
+          engine.state.community.customForms.push({
+            id: generateId('FRM'),
+            title: title.trim(),
+            fields: ['客户/联系人', '具体事项/规格', '约定金额'],
+            records: []
+          });
+          engine._persist();
+          showToast(`已创建白纸专属业务卡片【${title}】`);
+        };
+      }
+
       if ($('btnExportPaperBook')) {
         $('btnExportPaperBook').onclick = () => {
           const book = engine.generateEmergencyPaperBook();
@@ -1455,6 +1679,7 @@
           `);
         };
       }
+
       if ($('btnConfigSuccession')) {
         $('btnConfigSuccession').onclick = () => {
           const person = prompt('输入家业接力副掌柜/家人称呼（外出进货或旅游时交接）：', engine.state.rbac.successionMemo.successorName);
@@ -1467,6 +1692,7 @@
           showToast('家业常青副掌柜接力备忘已保存');
         };
       }
+
       document.querySelectorAll('[data-snap-id]').forEach(btn => {
         btn.onclick = () => {
           if (!confirm('确认恢复至此时间点快照？当前之后的新增流水将被回退。')) return;
@@ -1477,9 +1703,6 @@
       });
     }
 
-    /* ========================================================================
-     * 顶部交互、账号切换模态框与双屏客显同步
-     * ======================================================================== */
     function openAccountModal(isLocked = false) {
       $('lockOverlay').classList.add('show');
       $('btnCloseLockModal').style.display = isLocked ? 'none' : 'inline-flex';
@@ -1539,26 +1762,13 @@
       const on = engine.togglePrivacyShield();
       showToast(on ? '已开启防窥掩护，敏感底价已脱敏' : '已恢复正常显示');
     };
-    $('topbar').ondblclick = (e) => {
-      if (e.target === $('topbar')) $('btnPrivacyShield').click();
-    };
+    $('topbar').ondblclick = (e) => { if (e.target === $('topbar')) $('btnPrivacyShield').click(); };
 
-    $('btnEnterSandbox').onclick = () => {
-      engine.enterSandbox();
-      $('lockOverlay').classList.remove('show');
-      renderAll();
-    };
-    $('btnExitSandbox').onclick = () => {
-      engine.exitSandbox();
-      showToast('已退出练手模拟舱，正式账本分毫未动');
-      renderAll();
-    };
+    $('btnEnterSandbox').onclick = () => { engine.enterSandbox(); $('lockOverlay').classList.remove('show'); renderAll(); };
+    $('btnExitSandbox').onclick = () => { engine.exitSandbox(); showToast('已退出练手模拟舱，正式账本分毫未动'); renderAll(); };
     $('btnExitSignage').onclick = () => $('signageScreen').classList.remove('show');
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') $('signageScreen').classList.remove('show');
-    });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('signageScreen').classList.remove('show'); });
 
-    // 无界灵感胶囊解析
     $('btnOmniVoice').onclick = () => {
       const cmd = engine.parseVoiceOrQuickCommand($('omniInput').value);
       if (cmd.intent === 'FAMILY_DRAW' || cmd.intent === 'EXPENSE') {
@@ -1583,7 +1793,6 @@
     };
     $('omniInput').onkeydown = (e) => { if (e.key === 'Enter') $('btnOmniVoice').click(); };
 
-    // 双屏客显独立窗口（自动剔除进货底价，遵守手电筒隔离）
     $('btnCustomerScreen').onclick = () => {
       customerDisplayWin = window.open('', 'CustomerDisplay', 'width=800,height=600');
       syncCustomerDisplayWindow();
