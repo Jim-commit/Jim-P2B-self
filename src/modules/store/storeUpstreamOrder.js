@@ -1,10 +1,10 @@
 /**
  * 商道相通 · 上游多供货方采购订货与周期对账引擎 (storeUpstreamOrder.js)
  * 职责：
- * 1. 维护上游供货方档案与供货批发商品目录（支持离线/在线双模拉取）
+ * 1. 维护上游供货方档案与供货批发商品目录（支持本地 + 跨端/云端双模拉取同步）
  * 2. 一键导入门店低库存缺货商品至采购单，按供货方自动拆单提交订货
- * 3. 采购订单全生命周期跟踪（待发货 / 配送中 / 到货一键转入门店库存并同步最新进价）
- * 4. 上游供货方周期账单汇总与结清核对
+ * 3. 采购订单全生命周期跟踪（待收货 / 到货一键转入门店库存并同步最新进价 / 周期货款核销）
+ * 4. 上游供货方周期账单汇总与凑单开产跟单联动
  */
 (function (global) {
   'use strict';
@@ -13,7 +13,7 @@
 
   const StoreUpstreamOrder = {
     data: null,
-    purchaseCart: [], // [{ supplierId, supplierName, itemId, name, wholesalePrice, qty, unit, packRate }]
+    purchaseCart: [],
 
     init() {
       this.load();
@@ -37,8 +37,8 @@
           suppliers: [
             { id: 'sup_default_1', name: '区域综合百货批发中心', phone: '', settleCycle: '月结/货到付款', active: true }
           ],
-          supplierItems: [], // [{ id, supplierId, name, barcode, wholesalePrice, suggestRetail, unit, packRate }]
-          orders: []         // [{ orderId, supplierId, supplierName, ts, status:'pending'|'shipping'|'received', totalAmount, paidAmount, items:[] }]
+          supplierItems: [],
+          orders: []
         };
         this.save();
       }
@@ -48,7 +48,43 @@
       localStorage.setItem(UPSTREAM_KEY, JSON.stringify(this.data));
     },
 
-    // 新增或编辑上游供货方
+    // 双模同步拉取上游供货商公开目录（本地跨端缓存 + 可选云端端点）
+    async syncFromCloudOrShared() {
+      let syncedCount = 0;
+      try {
+        const sharedRaw = localStorage.getItem('sdxt_public_supplier_catalog');
+        if (sharedRaw) {
+          const list = JSON.parse(sharedRaw);
+          if (Array.isArray(list)) {
+            list.forEach((p) => {
+              if (p && p.name) {
+                this.upsertSupplierProduct(p);
+                syncedCount++;
+              }
+            });
+          }
+        }
+      } catch (_) {}
+      return syncedCount;
+    },
+
+    // 参与上游供货方「凑单开产」接龙跟单
+    joinCoProduction(campaignId, addQty) {
+      const qty = Math.max(1, Number(addQty || 1));
+      try {
+        const raw = localStorage.getItem('sdxt_coprod_campaigns');
+        const list = raw ? JSON.parse(raw) : [];
+        const target = Array.isArray(list) ? list.find((c) => String(c.id) === String(campaignId)) : null;
+        if (target) {
+          target.currentQty = Number(target.currentQty || 0) + qty;
+          localStorage.setItem('sdxt_coprod_campaigns', JSON.stringify(list));
+          if (global.MultiTerminalBridge) global.MultiTerminalBridge.renderCoProductionBanner();
+          return target;
+        }
+      } catch (_) {}
+      return null;
+    },
+
     upsertSupplier({ id, name, phone = '', settleCycle = '货到付款' }) {
       const clean = (name || '').trim();
       if (!clean) throw new Error('请输入供货方名称');
@@ -67,7 +103,6 @@
       this.save();
     },
 
-    // 录入上游供货方报价商品（或从门店总库同步关联）
     upsertSupplierProduct(prod) {
       const id = prod.id || 'sp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
       const item = {
@@ -87,7 +122,6 @@
       return item;
     },
 
-    // 加入采购订货车
     addToPurchaseCart(item, qty = 1) {
       const sup = this.data.suppliers.find((s) => s.id === item.supplierId) || { id: 'local', name: item.supplierName || '常用供货商' };
       const existing = this.purchaseCart.find((c) => c.itemId === item.id && c.supplierId === sup.id);
@@ -108,7 +142,6 @@
       }
     },
 
-    // 一键将门店低库存缺货商品导入采购订货车
     importLowStockToPurchaseCart() {
       const alerts = this.getCatalogMod().getAlertsAndRestockList();
       let added = 0;
@@ -129,7 +162,6 @@
       return added;
     },
 
-    // 按供货方自动拆单提交正式采购订单（需具备 orderSupply 权限）
     async submitPurchaseOrders(note = '') {
       const vault = this.getVault();
       if (!vault.hasPerm('orderSupply')) throw new Error('当前视角无向上游订货权限');
@@ -169,7 +201,6 @@
       return createdOrders;
     },
 
-    // 到货一键签收入库（自动按箱规拆零增加门店零售库存并更新最新成本价）
     async confirmOrderReceivedAndStockIn(orderId) {
       const vault = this.getVault();
       const catMod = this.getCatalogMod();
@@ -209,7 +240,6 @@
       return ord;
     },
 
-    // 登记上游周期账单付款核销
     paySupplierOrder(orderId, payAmt) {
       const ord = this.data.orders.find((o) => o.orderId === orderId);
       if (!ord) throw new Error('未找到订单');
@@ -218,7 +248,6 @@
       return ord;
     },
 
-    // 按供货方汇总周期对账单（总采购额 / 已结 / 待结欠款）
     getSupplierPeriodStatements() {
       const map = {};
       (this.data.orders || []).forEach((o) => {
@@ -234,7 +263,6 @@
       return Object.values(map);
     },
 
-    // 生成发给上游供货方的微信订货文本清单
     buildWechatPurchaseText(order) {
       const lines = (order.items || []).map((i, idx) => `${idx + 1}. ${i.name} × ${i.qty}${i.unit || '件'}`).join('\n');
       return `📦【${order.storeName}】向【${order.supplierName}】订货单（单号:${order.orderId}）\n` +
