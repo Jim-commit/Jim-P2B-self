@@ -1,16 +1,16 @@
 /**
  * 商道相通 · 柜台收银与积木会员引擎 (storeCounterPos.js)
  * 职责：
- * 1. 万能输入嗅探（标品条码 + HID扫码枪全局捕获 + 动态规则称重条码解析 + 品名*重量散货算价 + Web Bluetooth台秤读数）
+ * 1. 万能输入嗅探（标品条码 + HID扫码枪 + 动态称重条码 + 品名*重量散货 + Web Bluetooth台秤）
  * 2. 确定性促销结算管线（阶梯批零价 -> 会员专享价/会员日 -> 满减/买赠 -> 自定义抹零 -> 自动攒星）
- * 3. 高频收银工具（暂存挂单/外送单、大额防呆、60秒快捷撤回、语音播报、退货冲抵、58mm/电子小票、防掉包收款码）
- * 4. 熟客与积木式会员核销（赊账消账、微信礼貌对账单、储值卡、计次卡、周期配送、老带新、押金载具寄存）
+ * 3. 高频收银工具（挂单/外送、大额防呆、60秒撤回、语音播报、退货冲抵、小票、防掉包收款码）
+ * 4. 完整积木会员体系（赊账/微信对账、储值充送、计次卡建卡与-1次核销、周期配送排班打卡、押金寄存与退还、老带新）
  */
 (function (global) {
   'use strict';
 
   const StoreCounterPos = {
-    cart: [],                 // [{ lineId, itemId, name, unitPrice, qty, weight, isWeigh, subtotal, gift }]
+    cart: [],
     currentMemberId: '',
     manualAmount: 0,
     lastSaleEvent: null,
@@ -25,7 +25,6 @@
       return global.StoreLocalVault;
     },
 
-    // 全局 HID 有线/蓝牙扫码枪监听（光标不在输入框也能直接连扫）
     bindGlobalHidScanner() {
       document.addEventListener('keydown', (e) => {
         const tag = (e.target && e.target.tagName) || '';
@@ -48,7 +47,6 @@
       });
     },
 
-    // 播放清脆提示音
     playBeep(freq = 880) {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -63,7 +61,6 @@
       } catch (_) {}
     },
 
-    // 收款成功语音播报
     speakAmount(payLabel, amount) {
       const policy = this.getVault().getPolicy();
       if (!policy.posSafety.voiceBroadcast || !('speechSynthesis' in window)) return;
@@ -75,7 +72,6 @@
       } catch (_) {}
     },
 
-    // 动态规则称重条码解析器（兼容 20~29 前缀及自定义配置码制）
     parseWeighBarcode(code) {
       const hw = this.getVault().getPolicy().hardware;
       const clean = String(code || '').trim();
@@ -89,13 +85,13 @@
       return { plu, mode: hw.valueMode, value: parsedVal, rawCode: clean };
     },
 
-    // 万能输入框嗅探器：自动识别 称重条码 / 标品条码 / 品名*重量散货 / 纯数字金额
     handleUniversalInput(rawInput) {
       const input = String(rawInput || '').trim();
       if (!input) return { status: 'empty' };
-      const catalog = Object.values(this.getVault().activeStoreData.catalog || {}).filter((i) => !i.archived);
+      const vault = this.getVault();
+      const lex = vault.getLexicon();
+      const catalog = Object.values(vault.activeStoreData.catalog || {}).filter((i) => !i.archived);
 
-      // 1. 嗅探动态规则称重条码（来自条码秤或称重收银一体机标签）
       const weighParsed = this.parseWeighBarcode(input);
       if (weighParsed) {
         const matched = catalog.find((i) => String(i.plu || '').replace(/^0+/, '') === weighParsed.plu);
@@ -110,10 +106,11 @@
         }
         this.addCartLine({
           itemId: matched ? matched.id : `plu_${weighParsed.plu}`,
-          name: matched ? matched.name : `散称商品#${weighParsed.plu}`,
+          name: matched ? matched.name : `散称${lex.itemLabel}#${weighParsed.plu}`,
           unitPrice,
           qty: 1,
           weight,
+          weighUnit: matched?.unit || lex.weighUnit,
           isWeigh: true,
           subtotal
         });
@@ -121,7 +118,6 @@
         return { status: 'matched-weigh', matched };
       }
 
-      // 2. 嗅探散货快捷输入格式：品名*重量 或 PLU*重量（如 "鸡蛋*2.5"）
       if (input.includes('*')) {
         const [kw, wStr] = input.split('*');
         const weight = parseFloat(wStr);
@@ -135,6 +131,7 @@
               unitPrice,
               qty: 1,
               weight,
+              weighUnit: matched.unit || lex.weighUnit,
               isWeigh: true,
               subtotal: Number((unitPrice * weight).toFixed(2))
             });
@@ -144,7 +141,6 @@
         }
       }
 
-      // 3. 嗅探常规标品条码（精确匹配）
       const byBarcode = catalog.find((i) => String(i.barcode || '') === input);
       if (byBarcode) {
         this.addCartLine({
@@ -160,18 +156,29 @@
         return { status: 'matched-barcode', item: byBarcode };
       }
 
-      // 4. 若为 6~14 位未建档纯数字条码 -> 触发内置快速建档抽屉（绝不使用原生 prompt）
       if (/^\d{6,14}$/.test(input)) {
         window.dispatchEvent(new CustomEvent('sdxt:unknown-barcode', { detail: { barcode: input } }));
         return { status: 'unknown-barcode', barcode: input };
       }
 
-      // 5. 关键词模糊检索
       const fuzzy = catalog.filter((i) => i.name.includes(input));
+      if (fuzzy.length === 1) {
+        const hit = fuzzy[0];
+        this.addCartLine({
+          itemId: hit.id,
+          name: hit.name,
+          unitPrice: Number(hit.retailPrice || 0),
+          qty: 1,
+          weight: 0,
+          isWeigh: false,
+          subtotal: Number(hit.retailPrice || 0)
+        });
+        this.playBeep(880);
+        return { status: 'matched-fuzzy-single', item: hit };
+      }
       return { status: 'fuzzy-list', list: fuzzy };
     },
 
-    // Web Bluetooth 蓝牙电子秤直连读取重量（标准 GATT 串口/Weight Scale 兼容）
     async connectBluetoothScale(onWeightRead) {
       if (!navigator.bluetooth) throw new Error('当前浏览器不支持蓝牙直连，可使用散货快捷算价');
       const device = await navigator.bluetooth.requestDevice({
@@ -213,7 +220,6 @@
       this.recalculate();
     },
 
-    // 确定性促销与价格结算管线（零硬编码）
     recalculate() {
       const vault = this.getVault();
       const policy = vault.getPolicy();
@@ -221,7 +227,6 @@
       const member = this.currentMemberId ? vault.activeStoreData.members[this.currentMemberId] : null;
       const blocks = policy.loyaltyBlocks;
 
-      // 判断今天是否为设定的会员日
       const now = new Date();
       const isMemberDay = blocks.memberPriceAndDay.enabled && (
         (blocks.memberPriceAndDay.memberDaysOfWeek || []).includes(now.getDay()) ||
@@ -242,7 +247,6 @@
           return;
         }
 
-        // 1. 匹配阶梯批发价（如满5件单价更低）
         let effectiveUnit = Number(item.retailPrice || 0);
         if (!line.isWeigh && Array.isArray(item.tierPrices)) {
           const sortedTiers = [...item.tierPrices].sort((a, b) => b.minQty - a.minQty);
@@ -253,7 +257,6 @@
         const baseLine = line.isWeigh ? Number(line.subtotal || 0) : Number((effectiveUnit * line.qty).toFixed(2));
         rawTotal += baseLine;
 
-        // 2. 匹配会员专享价 / 会员日折扣
         let finalUnit = effectiveUnit;
         if (blocks.memberPriceAndDay.enabled && member) {
           if (Number(item.memberPrice) > 0 && Number(item.memberPrice) < finalUnit) {
@@ -271,7 +274,6 @@
 
       const subTotal = this.cart.reduce((s, l) => s + Number(l.subtotal || 0), 0) + Number(this.manualAmount || 0);
 
-      // 3. 匹配满减促销
       let fullReductionSaved = 0;
       let matchedGift = '';
       if (blocks.fullReductionAndGift.enabled && Array.isArray(blocks.fullReductionAndGift.rules)) {
@@ -284,14 +286,11 @@
       }
 
       let payable = Math.max(0, subTotal - fullReductionSaved);
-
-      // 4. 应用自定义抹零精度
       const rMode = policy.pricing.roundingMode;
       if (rMode === 'yuan') payable = Math.floor(payable);
       else if (rMode === 'jiao') payable = Math.floor(payable * 10) / 10;
       payable = Number(payable.toFixed(2));
 
-      // 5. 预计新增攒星数
       const earnedStars = (blocks.stampReward.enabled && member && blocks.stampReward.amountPerStar > 0)
         ? Math.floor(payable / Number(blocks.stampReward.amountPerStar))
         : 0;
@@ -307,7 +306,6 @@
       };
     },
 
-    // 完成收款入账（支持大额防呆检测、扣库存、更新会员余额/攒星/赊账、语音播报）
     async checkout({ payMethod = 'wechat', actualPaid, skipLargeAlert = false, note = '' }) {
       const vault = this.getVault();
       const policy = vault.getPolicy();
@@ -318,7 +316,6 @@
         throw new Error('请先扫码或输入收款金额');
       }
 
-      // 大额收银防呆确认拦截
       const alertThreshold = Number(policy.posSafety.largeAmountAlert || 0);
       if (!skipLargeAlert && alertThreshold > 0 && finalAmount >= alertThreshold) {
         return { needConfirmLarge: true, amount: finalAmount };
@@ -331,12 +328,11 @@
         member.balance = Number((Number(member.balance) - finalAmount).toFixed(2));
         member.updatedAt = Date.now();
       } else if (payMethod === 'credit') {
-        if (!member) throw new Error('赊账挂账需先选择或登记熟客');
+        if (!member) throw new Error('赊账挂账需先选择或登记客户');
         member.creditDebt = Number((Number(member.creditDebt || 0) + finalAmount).toFixed(2));
         member.updatedAt = Date.now();
       }
 
-      // 扣减本地商品库存
       const catalog = vault.activeStoreData.catalog || {};
       this.cart.forEach((line) => {
         const item = catalog[line.itemId];
@@ -346,7 +342,6 @@
         }
       });
 
-      // 累计会员攒星
       if (member && summary.earnedStars > 0) {
         member.stars = Number(member.stars || 0) + summary.earnedStars;
         member.updatedAt = Date.now();
@@ -367,12 +362,11 @@
       this.manualAmount = 0;
       this.currentMemberId = '';
 
-      const payNames = { wechat: '微信', alipay: '支付宝', cash: '现金', balance: '会员卡', credit: '熟客挂账' };
+      const payNames = { wechat: '微信', alipay: '支付宝', cash: '现金', balance: '会员卡', credit: '挂账' };
       this.speakAmount(payNames[payMethod] || '', finalAmount);
       return { ok: true, event: evt };
     },
 
-    // 60秒内快捷撤回刚收错的那一笔
     async undoLastSale() {
       if (!this.lastSaleEvent) throw new Error('暂无可撤回的近期收款');
       const windowMs = (this.getVault().getPolicy().posSafety.undoWindowSec || 60) * 1000;
@@ -384,7 +378,6 @@
       if (!target || target.voided) throw new Error('该单据已撤回');
 
       target.voided = true;
-      // 回滚库存
       const catalog = vault.activeStoreData.catalog || {};
       (target.items || []).forEach((line) => {
         const item = catalog[line.itemId];
@@ -393,7 +386,6 @@
           item.stock = Number((Number(item.stock || 0) + restore).toFixed(3));
         }
       });
-      // 回滚会员余额/赊账
       if (target.memberId && vault.activeStoreData.members[target.memberId]) {
         const m = vault.activeStoreData.members[target.memberId];
         if (target.payMethod === 'balance') m.balance = Number((Number(m.balance || 0) + Number(target.amount)).toFixed(2));
@@ -404,7 +396,6 @@
       return true;
     },
 
-    // 暂存挂单 & 微信/电话外送单
     async holdCurrentOrder(tagLabel = '', isDelivery = false) {
       if (this.cart.length === 0 && this.manualAmount <= 0) throw new Error('当前篮子为空');
       const vault = this.getVault();
@@ -435,7 +426,6 @@
       return true;
     },
 
-    // 顾客退货退款冲抵（需具备 refund 权限）
     async processRefund({ itemId, qty = 1, refundAmount, refundMethod = 'cash', note = '' }) {
       const vault = this.getVault();
       if (!vault.hasPerm('refund')) throw new Error('当前视角无退货退款权限');
@@ -452,7 +442,7 @@
       });
     },
 
-    // 熟客与积木式会员核销操作（储值充送/次卡核销/攒星兑礼/押金寄存/生成礼貌对账单）
+    // 熟客与积木式会员完整操作集（赊账/储值/次卡/周期配送/押金/老带新）
     async upsertMember(payload) {
       const vault = this.getVault();
       const id = payload.id || 'mem_' + Date.now().toString(36);
@@ -461,13 +451,103 @@
       };
       vault.activeStoreData.members[id] = { ...existing, ...payload, id, updatedAt: Date.now() };
       await vault.persistStore();
+
+      // 老带新自动发放推荐人奖励
+      if (!payload.id && payload.referrerId && vault.activeStoreData.members[payload.referrerId]) {
+        const bonus = Number(vault.getPolicy().loyaltyBlocks.referralAndDeposit?.referralBonus || 0);
+        if (bonus > 0) {
+          const refMem = vault.activeStoreData.members[payload.referrerId];
+          refMem.balance = Number((Number(refMem.balance || 0) + bonus).toFixed(2));
+          await vault.persistStore();
+        }
+      }
       return vault.activeStoreData.members[id];
+    },
+
+    // 计次卡建卡与核销 (-1次)
+    async addPunchCard(memberId, { title, totalTimes = 10, price = 0 }) {
+      const vault = this.getVault();
+      const m = vault.activeStoreData.members[memberId];
+      if (!m) throw new Error('未找到会员');
+      if (!Array.isArray(m.punchCards)) m.punchCards = [];
+      m.punchCards.push({
+        cardId: 'pc_' + Date.now().toString(36),
+        title: title || '计次套餐卡',
+        remainTimes: Number(totalTimes),
+        totalTimes: Number(totalTimes)
+      });
+      if (Number(price) > 0) {
+        await vault.appendEvent({ type: 'topup', amount: Number(price), payMethod: 'wechat', memberId: m.id, memberName: m.name, note: `办理次卡:${title}(${totalTimes}次)` });
+      } else {
+        await vault.persistStore();
+      }
+    },
+
+    async consumePunch(memberId, cardId) {
+      const vault = this.getVault();
+      const m = vault.activeStoreData.members[memberId];
+      const card = m?.punchCards?.find((c) => c.cardId === cardId);
+      if (!card || card.remainTimes <= 0) throw new Error('余次不足');
+      card.remainTimes -= 1;
+      await vault.appendEvent({ type: 'punch_use', amount: 0, payMethod: 'punch', memberId: m.id, memberName: m.name, note: `次卡核销[${card.title}] -1次（余${card.remainTimes}次）` });
+      return card.remainTimes;
+    },
+
+    // 周期配送订户建档与送达打卡（送奶/送水/定期农资/耗材配送）
+    async addSubscription(memberId, { itemDesc, intervalDays = 7, remainDeliveries = 12 }) {
+      const vault = this.getVault();
+      const m = vault.activeStoreData.members[memberId];
+      if (!m) throw new Error('未找到客户');
+      if (!Array.isArray(m.subscriptions)) m.subscriptions = [];
+      m.subscriptions.push({
+        subId: 'sub_' + Date.now().toString(36),
+        itemDesc: itemDesc || '周期配送商品',
+        intervalDays: Number(intervalDays || 7),
+        remainDeliveries: Number(remainDeliveries || 1),
+        nextDate: new Date(Date.now() + Number(intervalDays || 7) * 86400000).toISOString().slice(0, 10)
+      });
+      await vault.persistStore();
+    },
+
+    async completeSubscriptionDelivery(memberId, subId) {
+      const vault = this.getVault();
+      const m = vault.activeStoreData.members[memberId];
+      const sub = m?.subscriptions?.find((s) => s.subId === subId);
+      if (!sub || sub.remainDeliveries <= 0) throw new Error('周期配送已全部完成');
+      sub.remainDeliveries -= 1;
+      sub.nextDate = new Date(Date.now() + sub.intervalDays * 86400000).toISOString().slice(0, 10);
+      await vault.appendEvent({ type: 'delivery_done', amount: 0, payMethod: 'sub', memberId: m.id, memberName: m.name, note: `周期送达[${sub.itemDesc}]（余${sub.remainDeliveries}期）` });
+    },
+
+    // 押金载具寄存与退还（水桶、周转筐、钢瓶、施工器具押金）
+    async addDeposit(memberId, { itemName, amount = 0 }) {
+      const vault = this.getVault();
+      const m = vault.activeStoreData.members[memberId];
+      if (!m) throw new Error('未找到客户');
+      if (!Array.isArray(m.deposits)) m.deposits = [];
+      m.deposits.push({
+        depId: 'dep_' + Date.now().toString(36),
+        itemName: itemName || '载具/周转桶',
+        amount: Number(amount || 0),
+        ts: Date.now(),
+        returned: false
+      });
+      await vault.appendEvent({ type: 'deposit_in', amount: Number(amount || 0), payMethod: 'cash', memberId: m.id, memberName: m.name, note: `收取押金[${itemName}]` });
+    },
+
+    async refundDeposit(memberId, depId) {
+      const vault = this.getVault();
+      const m = vault.activeStoreData.members[memberId];
+      const dep = m?.deposits?.find((d) => d.depId === depId && !d.returned);
+      if (!dep) throw new Error('未找到有效押金记录');
+      dep.returned = true;
+      await vault.appendEvent({ type: 'deposit_out', amount: -Math.abs(Number(dep.amount || 0)), payMethod: 'cash', memberId: m.id, memberName: m.name, note: `退还载具押金[${dep.itemName}]` });
     },
 
     async settleCreditDebt(memberId, payAmount, payMethod = 'wechat') {
       const vault = this.getVault();
       const m = vault.activeStoreData.members[memberId];
-      if (!m) throw new Error('未找到该熟客档案');
+      if (!m) throw new Error('未找到该客户档案');
       const amt = Math.min(Number(m.creditDebt || 0), Number(payAmount || 0));
       m.creditDebt = Number((Number(m.creditDebt || 0) - amt).toFixed(2));
       m.updatedAt = Date.now();
@@ -477,7 +557,7 @@
         payMethod,
         memberId: m.id,
         memberName: m.name,
-        note: `熟客还账（剩余欠款 ¥${m.creditDebt.toFixed(2)}）`
+        note: `往来还账（剩余待结 ¥${m.creditDebt.toFixed(2)}）`
       });
       return m.creditDebt;
     },
@@ -495,13 +575,13 @@
       return `${m.name}您好，咱们【${storeName}】近期往来明细核对：\n${recentDebts || '· 历史往来累计'}\n当前待结合计：¥${Number(m.creditDebt || 0).toFixed(2)}，您方便时核对一下~`;
     },
 
-    // 生成 58mm 热敏小票 / 电子收据打印视图
     printReceipt(eventObj) {
       const vault = this.getVault();
       const policy = vault.getPolicy();
+      const lex = vault.getLexicon();
       const header = policy.posSafety.receiptHeader || vault.activeStoreData.storeName;
       const lines = (eventObj.items || []).map((i) =>
-        `<div style="display:flex;justify-content:space-between;margin:3px 0;"><span>${i.name}${i.isWeigh ? ` (${i.weight}斤)` : ` x${i.qty}`}</span><span>¥${Number(i.subtotal).toFixed(2)}</span></div>`
+        `<div style="display:flex;justify-content:space-between;margin:3px 0;"><span>${i.name}${i.isWeigh ? ` (${i.weight}${i.weighUnit || lex.weighUnit})` : ` x${i.qty}`}</span><span>¥${Number(i.subtotal).toFixed(2)}</span></div>`
       ).join('');
       const win = window.open('', '_blank', 'width=320,height=520');
       if (!win) return;
@@ -513,7 +593,7 @@
         ${lines || '<div>快捷收款</div>'}
         <hr style="border:none;border-top:1px dashed #000;"/>
         <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;"><span>实付合计</span><span>¥${Number(eventObj.amount).toFixed(2)}</span></div>
-        <div style="font-size:11px;margin-top:6px;">收银员：${eventObj.staffName || '当班'}</div>
+        <div style="font-size:11px;margin-top:6px;">经办人：${eventObj.staffName || '当班'}</div>
         <div style="text-align:center;font-size:11px;margin-top:10px;">${policy.posSafety.receiptFooter}</div>
         <script>window.onload=function(){window.print();}</script></body></html>`);
       win.document.close();
