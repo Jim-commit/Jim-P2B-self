@@ -1,10 +1,10 @@
 /**
- * 商道相通 · 门店本地主权保险箱与动态策略内核 (storeLocalVault.js)
+ * 商道相通 · 门店本地主权保险箱与百业动态策略内核 (storeLocalVault.js)
  * 职责：
- * 1. 全参数化配置驱动（零硬编码：定价/抹零/称重码制/会员积木/防呆/商业套餐全动态）
- * 2. Local-First（IndexedDB + localStorage 毫秒优先）+ 多选并行存储分发（加密云镜像/微信分享快照/自有WebDAV）
- * 3. Append-Only 增量流水去重 + 字段级 LWW 合并 + 期初重算一致性保证
- * 4. 多店隔离、三角色细粒度权限、安全码锁屏与应急重置
+ * 1. 百工百业动态词典 (lexicon) 与全参数化配置驱动（零硬编码）
+ * 2. Local-First 毫秒优先 + 多选并行存储（本地主库 + 加密云镜像 + 微信一键快照 + 私有WebDAV）
+ * 3. Append-Only 增量事件去重 + 字段级 LWW 合并 + 云端快照拉取还原
+ * 4. 多店隔离、细粒度逐项权限微调、安全码锁屏与手机尾号自救
  */
 (function (global) {
   'use strict';
@@ -13,57 +13,64 @@
   const IDB_NAME = 'sdxt_store_vault_db';
   const IDB_STORE = 'vault_snapshots';
 
-  // 默认动态策略树（所有字段均可由掌柜或后台动态覆盖，零硬编码）
+  // 百工百业预设词典模板（用户可一键切换，亦可逐字自由修改任何标签）
+  const INDUSTRY_LEXICONS = {
+    general: { label: '综合百货 / 便利店', itemLabel: '商品', unitDefault: '件', weighUnit: '斤', packUnit: '箱', locLabel: '货架位', customerLabel: '熟客', defaultCategory: '常规品类' },
+    fresh: { label: '生鲜果蔬 / 肉禽水产', itemLabel: '菜品/果品', unitDefault: '斤', weighUnit: '斤', packUnit: '筐', locLabel: '冷柜/摊位', customerLabel: '街坊', defaultCategory: '时令生鲜' },
+    hardware: { label: '五金机电 / 建材水暖', itemLabel: '物料/配件', unitDefault: '个', weighUnit: '公斤', packUnit: '盒', locLabel: '仓位/货格', customerLabel: '师傅/工队', defaultCategory: '五金配件' },
+    agri: { label: '农资农具 / 化肥种子', itemLabel: '农资品', unitDefault: '袋', weighUnit: '公斤', packUnit: '件', locLabel: '库区', customerLabel: '农户', defaultCategory: '农资耗材' },
+    bakery: { label: '餐饮烘焙 / 茶饮零食', itemLabel: '餐品/原料', unitDefault: '份', weighUnit: '克', packUnit: '箱', locLabel: '档口', customerLabel: '食客', defaultCategory: '现制招牌' },
+    station: { label: '社区驿站 / 水站综合', itemLabel: '服务/商品', unitDefault: '桶', weighUnit: '斤', packUnit: '提', locLabel: '存放区', customerLabel: '住户', defaultCategory: '便民商品' }
+  };
+
   const DEFAULT_POLICY = {
+    lexicon: { ...INDUSTRY_LEXICONS.general },
     pricing: {
-      defaultMarkupPct: 0,        // 全店默认加价百分比（0表示直接按手动零售价）
-      categoryMarkupPct: {},      // 分类自定义加价率 { "饮料": 25, "生鲜": 30 }
-      roundingMode: 'none',       // 'none' | 'jiao' (抹零到角) | 'yuan' (抹零到元)
+      defaultMarkupPct: 0,
+      categoryMarkupPct: {},
+      roundingMode: 'none',       // 'none' | 'jiao' | 'yuan'
       currencySymbol: '¥'
     },
     hardware: {
-      hasStandalonePos: false,    // 是否已有独立称重收银一体机
+      hasStandalonePos: false,
       weighBarcodePrefixes: ['20', '21', '22', '23', '24', '25', '26', '27', '28', '29'],
       weighBarcodeLength: 13,
       pluStart: 2,
       pluLength: 5,
       valueStart: 7,
       valueLength: 5,
-      valueMode: 'amount',        // 'amount' (5位金额, 分) | 'weight' (5位重量, 克)
-      valueDivisor: 100           // 金额除以100得元，重量除以1000得公斤
+      valueMode: 'amount',
+      valueDivisor: 100
     },
     posSafety: {
-      largeAmountAlert: 500,      // 大额收银防呆提醒阈值
-      undoWindowSec: 60,          // 快捷撤回上一笔时间窗（秒）
-      voiceBroadcast: false,      // 收款语音播报开关
-      drawerFloatDefault: 300,    // 默认抽屉备用底金
-      receiptHeader: '',          // 自定义小票抬头（空则用门店名）
+      largeAmountAlert: 500,
+      undoWindowSec: 60,
+      voiceBroadcast: false,
+      drawerFloatDefault: 300,
+      receiptHeader: '',
       receiptFooter: '谢谢惠顾，欢迎下次光临！'
     },
     inventory: {
-      lowStockThreshold: 5,       // 默认低库存预警线
-      expiryAlertDays: 15,        // 默认临期预警天数
-      stagnantDays: 60            // 滞销判定天数
+      lowStockThreshold: 5,
+      expiryAlertDays: 15,
+      stagnantDays: 60
     },
-    // 积木式会员与促销工具箱（默认全部关闭，不用则零渲染）
     loyaltyBlocks: {
       memberPriceAndDay: { enabled: false, memberDaysOfWeek: [], memberDaysOfMonth: [], memberDayDiscountPct: 95 },
       fullReductionAndGift: { enabled: false, rules: [] }, // [{ minAmount: 50, minusAmount: 3, giftName: '' }]
       stampReward: { enabled: false, amountPerStar: 10, starsToRedeem: 10, rewardDesc: '兑换指定好礼1份' },
-      storedValueCard: { enabled: false, topupTiers: [] }, // [{ pay: 100, bonus: 15 }]
+      storedValueCard: { enabled: false, topupTiers: [] },
       punchAndSubscription: { enabled: false },
       referralAndDeposit: { enabled: false, referralBonus: 5 }
     },
-    // 多选并行存储通道配置（底座本地必选，其余可自由多选叠加）
     storageChannels: {
-      localPrimary: true,         // 必选：本地 IndexedDB + localStorage 毫秒读写
+      localPrimary: true,
       encryptedCloud: { enabled: false, endpoint: '', tenantToken: '', lastSyncAt: 0 },
       wechatQuickShare: { enabled: true, remindEveryTx: 20 },
       webdav: { enabled: false, url: '', username: '', passwordEnc: '', lastSyncAt: 0 }
     },
-    // 商业版本与权益动态配置（可由云端下发覆盖）
     planConfig: {
-      tier: 'free',               // 'free' | 'pro' | 'chain'
+      tier: 'free',
       maxFreeStores: 1,
       referralUnlockTarget: 2,
       unlockedByReferrals: 0,
@@ -71,7 +78,6 @@
     }
   };
 
-  // 预设角色权限模板（支持按具体成员微调勾选）
   const ROLE_PRESETS = {
     clerk: {
       label: '店员',
@@ -85,6 +91,20 @@
       label: '老板',
       perms: { pos: true, creditBook: true, viewPrice: true, poster: true, stockAlert: true, orderSupply: true, refund: true, expense: true, viewCost: true, editPrice: true, transfer: true, exportVault: true, manageStaff: true }
     }
+  };
+
+  const PERM_LABELS = {
+    pos: '前台收银',
+    creditBook: '熟客挂账/核销',
+    poster: '拓客海报/传单',
+    orderSupply: '向上游订货',
+    refund: '顾客退货退款',
+    expense: '记门店杂费',
+    viewCost: '看进货底价与毛利',
+    editPrice: '新增/改价/盘点',
+    transfer: '分店间库存调拨',
+    exportVault: '导出备份与改策略',
+    manageStaff: '管理成员与权限'
   };
 
   const deepMerge = (base, override) => {
@@ -136,18 +156,16 @@
     loadMeta() {
       try {
         const raw = localStorage.getItem(VAULT_META_KEY);
-        if (raw) {
-          this.meta = JSON.parse(raw);
-        }
+        if (raw) this.meta = JSON.parse(raw);
       } catch (_) {}
       if (!this.meta || !Array.isArray(this.meta.stores) || !this.meta.stores.length) {
         const defaultStoreId = 'store_main_1';
         this.meta = {
           activeStoreId: defaultStoreId,
           sessionEpoch: 1,
-          pinHash: '',               // 空表示尚未设置掌柜安全码（首次可设置）
+          pinHash: '',
           pinLength: 4,
-          recoveryPhoneTail: '',     // 应急找回手机后4位
+          recoveryPhoneTail: '',
           activeStaffId: 'staff_boss',
           stores: [{ id: defaultStoreId, name: '我的门店', createdAt: Date.now() }],
           staff: [
@@ -170,24 +188,33 @@
       return this.meta.policy;
     },
 
+    getLexicon() {
+      return this.meta.policy.lexicon || INDUSTRY_LEXICONS.general;
+    },
+
+    applyIndustryLexicon(industryKey) {
+      const preset = INDUSTRY_LEXICONS[industryKey];
+      if (!preset) return;
+      this.updatePolicy({ lexicon: { ...preset } });
+    },
+
     updatePolicy(patch) {
       this.meta.policy = deepMerge(this.meta.policy, patch);
       this.saveMeta();
       this.queueSync('policy');
     },
 
-    // 创建空白单店账本结构（Append-Only 事件流 + 档案表）
     createEmptyStoreBucket(storeId, storeName) {
       return {
         storeId,
         storeName,
         updatedAt: Date.now(),
-        catalog: {},          // { itemId: { id, name, barcode, plu, category, supplierId, supplierName, costPrice, retailPrice, memberPrice, tierPrices:[], packRate:1, unit:'件', stock:0, shelfLoc:'', expiryDate:'', archived:false, fieldTs:{} } }
-        members: {},          // { memberId: { id, name, phone, creditDebt:0, balance:0, stars:0, punchCards:[], subscriptions:[], deposits:[], referrerId:'', updatedAt } }
-        txEvents: [],         // Append-Only 流水事件: { eventId, type:'sale'|'refund'|'credit_pay'|'topup'|'stock_in'|'stock_adjust'|'expense'|'transfer', ts, staffId, staffName, amount, payMethod, items:[], memberId, note, voided:false }
-        heldOrders: [],       // 暂存挂单 & 微信/电话外送单
-        shiftLogs: [],        // 交接班实盘留痕
-        payQrs: { wechat: '', alipay: '' } // 本地防掉包收款码 DataURL
+        catalog: {},
+        members: {},
+        txEvents: [],
+        heldOrders: [],
+        shiftLogs: [],
+        payQrs: { wechat: '', alipay: '' }
       };
     },
 
@@ -218,7 +245,6 @@
       const key = `sdxt_store_data_${this.activeStoreData.storeId}`;
       await this.idbSet(key, this.activeStoreData);
       try {
-        // 同步写一份轻量备份到 localStorage（剔除大图以防超限）
         const lite = { ...this.activeStoreData, payQrs: { wechat: '', alipay: '' } };
         localStorage.setItem(key, JSON.stringify(lite));
       } catch (_) {}
@@ -226,7 +252,6 @@
       this.queueSync('store');
     },
 
-    // Append-Only 追加业务流水事件（确保多端并发零覆盖）
     async appendEvent(evt) {
       const staff = this.getActiveStaff();
       const event = {
@@ -243,7 +268,6 @@
       return event;
     },
 
-    // 多门店增删改切换
     async addStore(name) {
       const clean = (name || '').trim();
       if (!clean) throw new Error('请输入门店名称');
@@ -265,7 +289,6 @@
       this.saveMeta();
     },
 
-    // 三角色与细粒度权限控制
     getActiveStaff() {
       return this.meta.staff.find((s) => s.id === this.meta.activeStaffId && s.active) || this.meta.staff[0];
     },
@@ -274,7 +297,6 @@
       const staff = this.getActiveStaff();
       if (!staff) return false;
       if (staff.role === 'boss' && this.meta.pinHash && !this.isBossUnlocked()) {
-        // 老板视角在未解锁安全码前，涉及核心底价/调价/导出的权限自动收光（手电筒保护）
         const protectedPerms = ['viewCost', 'editPrice', 'transfer', 'exportVault', 'manageStaff'];
         if (protectedPerms.includes(permKey)) return false;
       }
@@ -285,9 +307,7 @@
       const target = this.meta.staff.find((s) => s.id === staffId && s.active);
       if (!target) return false;
       this.meta.activeStaffId = target.id;
-      if (target.role !== 'boss') {
-        this.unlockedUntil = 0; // 切回店员/店长立即自动锁闭老板内账视界
-      }
+      if (target.role !== 'boss') this.unlockedUntil = 0;
       this.saveMeta();
       return true;
     },
@@ -298,7 +318,7 @@
       if (id) {
         const idx = this.meta.staff.findIndex((s) => s.id === id);
         if (idx >= 0) {
-          this.meta.staff[idx] = { ...this.meta.staff[idx], name, role, perms };
+          this.meta.staff[idx] = { ...this.meta.staff[idx], name: name || this.meta.staff[idx].name, role: role || this.meta.staff[idx].role, perms };
         }
       } else {
         this.meta.staff.push({
@@ -312,7 +332,6 @@
       this.saveMeta();
     },
 
-    // 停用/移除离职员工，同时刷新会话版本号防泄密
     removeStaff(staffId) {
       if (staffId === 'staff_boss') return false;
       const target = this.meta.staff.find((s) => s.id === staffId);
@@ -337,7 +356,6 @@
       localStorage.setItem('sdxt_local_epoch', String(this.meta.sessionEpoch || 1));
     },
 
-    // 掌柜安全码（加密哈希、验证、锁屏、手机尾号应急自救）
     hashPin(pin) {
       let h = 2166136261;
       const str = 'sdxt_salt_' + String(pin);
@@ -389,7 +407,7 @@
       return Date.now() < this.unlockedUntil;
     },
 
-    // 多选并行存储通道分发（Encrypted Cloud + WeChat Quick Share + WebDAV）
+    // 多选并行存储通道分发
     async queueSync(reason) {
       const channels = this.meta.policy.storageChannels;
       if (channels.encryptedCloud?.enabled && channels.encryptedCloud.endpoint) {
@@ -400,7 +418,6 @@
       }
     },
 
-    // 简单 XOR + Base64 本地安全码加密封装（确保云端仅存密文）
     encryptPayload(plainObj, secretKey) {
       const raw = unescape(encodeURIComponent(JSON.stringify(plainObj)));
       const key = String(secretKey || this.meta.pinHash || this.deviceId);
@@ -434,6 +451,19 @@
       this.saveMeta();
     },
 
+    async pullEncryptedCloudMirror(secretPin) {
+      const cfg = this.meta.policy.storageChannels.encryptedCloud;
+      if (!cfg?.endpoint) throw new Error('未配置云端镜像地址');
+      const res = await fetch(cfg.endpoint, {
+        headers: { Authorization: `Bearer ${cfg.tenantToken || ''}` }
+      });
+      const json = await res.json();
+      if (!json || !json.cipher) throw new Error('云端暂无加密快照');
+      const bundle = this.decryptPayload(json.cipher, secretPin ? this.hashPin(secretPin) : undefined);
+      await this.importAndMergeBackup(bundle);
+      return true;
+    },
+
     async pushWebDavBackup() {
       const cfg = this.meta.policy.storageChannels.webdav;
       const bundle = await this.buildFullBackupBundle();
@@ -456,7 +486,6 @@
       }
     },
 
-    // 构建全量可移植账本（含全部门店数据，支持微信一键分享或下载）
     async buildFullBackupBundle() {
       const storesData = {};
       for (const s of this.meta.stores) {
@@ -472,7 +501,6 @@
       };
     },
 
-    // 一键调起系统分享发微信【文件传输助手】或下载 .json
     async exportOrShareJsonBackup(preferShare = true) {
       const bundle = await this.buildFullBackupBundle();
       const jsonStr = JSON.stringify(bundle, null, 2);
@@ -494,7 +522,6 @@
       return { mode: 'downloaded', fileName };
     },
 
-    // 一致性智能合并导入（Append-Only 流水去重 + 字段时间戳 LWW 合并）
     async importAndMergeBackup(jsonText) {
       const incoming = typeof jsonText === 'string' ? JSON.parse(jsonText) : jsonText;
       if (!incoming || !incoming.storesData) throw new Error('无效的账本备份文件');
@@ -514,7 +541,6 @@
         const key = `sdxt_store_data_${storeId}`;
         const localBucket = (await this.idbGet(key)) || this.createEmptyStoreBucket(storeId, incBucket.storeName || '导入分店');
 
-        // 1. 流水事件 Append-Only 严格去重合并
         const seenIds = new Set(localBucket.txEvents.map((e) => e.eventId));
         (incBucket.txEvents || []).forEach((evt) => {
           if (!seenIds.has(evt.eventId)) {
@@ -524,7 +550,6 @@
         });
         localBucket.txEvents.sort((a, b) => a.ts - b.ts);
 
-        // 2. 商品档案字段级最新时间戳合并 (LWW)
         Object.entries(incBucket.catalog || {}).forEach(([itemId, incItem]) => {
           const locItem = localBucket.catalog[itemId];
           if (!locItem) {
@@ -545,7 +570,6 @@
           }
         });
 
-        // 3. 会员档案合并
         Object.entries(incBucket.members || {}).forEach(([mId, incM]) => {
           const locM = localBucket.members[mId];
           if (!locM || (incM.updatedAt || 0) >= (locM.updatedAt || 0)) {
@@ -564,7 +588,6 @@
       return true;
     },
 
-    // 导出断网可独立打开查看的 HTML 账本
     exportOfflineHtmlLedger() {
       const d = this.activeStoreData;
       const rows = d.txEvents.slice(-200).reverse().map((e) => `
@@ -589,7 +612,6 @@
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     },
 
-    // 本地存储容量体检
     async getStorageHealth() {
       let usedBytes = 0;
       let quotaBytes = 5 * 1024 * 1024;
@@ -603,7 +625,6 @@
       return { usedBytes, quotaBytes, pct, txCount, status: pct > 80 ? '建议归档旧流水' : '健康' };
     },
 
-    // 正式开张前安全清空演示测试数据（强制先下载备份）
     async clearDemoDataSafely() {
       await this.exportOrShareJsonBackup(false);
       this.activeStoreData.txEvents = [];
@@ -613,7 +634,6 @@
       return true;
     },
 
-    // IndexedDB 轻量封装
     openIdb() {
       return new Promise((resolve, reject) => {
         const req = indexedDB.open(IDB_NAME, 1);
@@ -631,9 +651,7 @@
           req.onsuccess = () => resolve(req.result);
           req.onerror = () => reject(req.error);
         });
-      } catch (_) {
-        return null;
-      }
+      } catch (_) { return null; }
     },
     async idbSet(key, val) {
       try {
@@ -658,7 +676,9 @@
     }
   };
 
+  StoreLocalVault.INDUSTRY_LEXICONS = INDUSTRY_LEXICONS;
   StoreLocalVault.ROLE_PRESETS = ROLE_PRESETS;
+  StoreLocalVault.PERM_LABELS = PERM_LABELS;
   StoreLocalVault.DEFAULT_POLICY = DEFAULT_POLICY;
   global.StoreLocalVault = StoreLocalVault;
 })(window);
