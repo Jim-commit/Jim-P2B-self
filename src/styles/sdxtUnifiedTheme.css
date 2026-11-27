@@ -1,0 +1,387 @@
+/**
+ * 商道相通 · 全端统一视觉设计系统 (sdxtUnifiedTheme.css)
+ * 视觉基因：墨玉深森林绿 (#0f382a) + 琥珀流光金 (#f59e0b) + 暖象牙宣纸底 (#f7f6f2)
+ * 完全对齐《大当家掌中宝》与《百工百业数字调度台》原生设计语言
+ */
+:root {
+  --sdxt-bg: #f7f6f2;
+  --sdxt-card: #ffffff;
+  --sdxt-forest-dark: #0c2e22;
+  --sdxt-forest: #123e2e;
+  --sdxt-forest-soft: #1a523e;
+  --sdxt-gold: #f59e0b;
+  --sdxt-gold-light: #fef3c7;
+  --sdxt-gold-text: #78350f;
+  --sdxt-ink: #1e293b;
+  --sdxt-ink-soft: #475569;
+  --sdxt-muted: #64748b;
+  --sdxt-line: #e5e4de;
+  --sdxt-pink-bg: #fff1f2;
+  --sdxt-pink-line: #fecdd3;
+  --sdxt-pink-ink: #be123c;
+  --sdxt-mint-bg: #ecfdf5;
+  --sdxt-mint-line: #a7f3d0;
+  --sdxt-mint-ink: #047857;
+  --sdxt-amber-bg: #fffbeb;
+  --sdxt-amber-line: #fde68a;
+  --sdxt-radius-xl: 20px;
+  --sdxt-radius-lg: 16px;
+  --sdxt-radius-md: 12px;
+  --sdxt-radius-pill: 999px;
+  --sdxt-shadow-forest: 0 8px 24px rgba(12, 46, 34, 0.18);
+  --sdxt-shadow-card: 0 2px 10px rgba(30, 41, 59, 0.04);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+  background: var(--sdxt-bg);
+  color: var(--sdxt-ink);
+  line-height: 1.5;
+  padding-bottom: 88px;
+}
+
+.sdxt-container {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 10px 12px;
+}
+
+/* 墨玉深森林绿圆角驾驶舱门头（100% 还原掌中宝与调度台顶部质感） */
+.sdxt-forest-cockpit {
+  background: linear-gradient(145deg, var(--sdxt-forest) 0%, var(--sdxt-forest-dark) 100%);
+  color: #ffffff;
+  border-radius: var(--sdxt-radius-xl);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--sdxt-shadow-forest);
+}
+
+.sdxt-cockpit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sdxt-gold-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: var(--sdxt-radius-pill);
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #1f1600;
+  font-size: 12px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.sdxt-forest-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 11px;
+  border-radius: var(--sdxt-radius-pill);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sdxt-forest-pill:active,
+.sdxt-gold-pill:active {
+  transform: scale(0.96);
+}
+
+.sdxt-cockpit-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #a7f3d0;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 视角切换胶囊舱（对齐图中「👑 掌柜切换视角」深绿内嵌栏） */
+.sdxt-role-bar {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: var(--sdxt-radius-md);
+  background: rgba(8, 32, 23, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sdxt-role-select {
+  flex: 1;
+  background: #09241a;
+  color: #fde68a;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: var(--sdxt-radius-pill);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  outline: none;
+}
+
+/* 双模式切换轨道（掌中宝极简指挥舱 <-> 极速收银工作台） */
+.sdxt-mode-tabs {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.sdxt-mode-tab {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: var(--sdxt-radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: #d1fae5;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+}
+
+.sdxt-mode-tab.active {
+  background: #ffffff;
+  color: var(--sdxt-forest-dark);
+  border-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 三色账实健康指标卡（白灰卡 / 柔粉红框欠款卡 / 柔绿框实收卡） */
+.sdxt-kpi-trio {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sdxt-kpi-box {
+  background: #ffffff;
+  border: 1.5px solid var(--sdxt-line);
+  border-radius: var(--sdxt-radius-lg);
+  padding: 12px 8px;
+  text-align: center;
+  box-shadow: var(--sdxt-shadow-card);
+}
+
+.sdxt-kpi-box.pink {
+  background: var(--sdxt-pink-bg);
+  border-color: var(--sdxt-pink-line);
+  color: var(--sdxt-pink-ink);
+}
+
+.sdxt-kpi-box.mint {
+  background: var(--sdxt-mint-bg);
+  border-color: var(--sdxt-mint-line);
+  color: var(--sdxt-mint-ink);
+}
+
+.sdxt-kpi-label {
+  font-size: 11px;
+  color: var(--sdxt-muted);
+  font-weight: 600;
+}
+
+.sdxt-kpi-box.pink .sdxt-kpi-label { color: #e11d48; }
+.sdxt-kpi-box.mint .sdxt-kpi-label { color: #059669; }
+
+.sdxt-kpi-val {
+  font-size: 18px;
+  font-weight: 900;
+  margin-top: 4px;
+  letter-spacing: -0.3px;
+}
+
+/* 三色经营健康提醒条（放心干 / 留个神 / 赶紧管） */
+.sdxt-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--sdxt-radius-lg);
+  margin-bottom: 10px;
+  font-size: 12px;
+  border: 1px solid var(--sdxt-mint-line);
+  background: var(--sdxt-mint-bg);
+  color: var(--sdxt-mint-ink);
+}
+
+.sdxt-status-banner.warn {
+  border-color: var(--sdxt-amber-line);
+  background: var(--sdxt-amber-bg);
+  color: #92400e;
+}
+
+.sdxt-status-banner.danger {
+  border-color: var(--sdxt-pink-line);
+  background: var(--sdxt-pink-bg);
+  color: var(--sdxt-pink-ink);
+}
+
+/* 通用暖白圆角业务卡片 */
+.sdxt-card {
+  background: var(--sdxt-card);
+  border: 1px solid var(--sdxt-line);
+  border-radius: var(--sdxt-radius-lg);
+  padding: 14px;
+  margin-bottom: 12px;
+  box-shadow: var(--sdxt-shadow-card);
+}
+
+.sdxt-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--sdxt-ink);
+  margin-bottom: 10px;
+}
+
+/* 通用表单与按钮 */
+.sdxt-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sdxt-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+.sdxt-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d6d3cb;
+  border-radius: var(--sdxt-radius-md);
+  font-size: 14px;
+  background: #ffffff;
+  color: var(--sdxt-ink);
+  outline: none;
+}
+
+.sdxt-input:focus {
+  border-color: var(--sdxt-forest);
+  box-shadow: 0 0 0 3px rgba(18, 62, 46, 0.1);
+}
+
+.sdxt-btn {
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--sdxt-radius-pill);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.sdxt-btn:active { transform: scale(0.97); }
+.sdxt-btn-primary { background: var(--sdxt-forest); color: #ffffff; }
+.sdxt-btn-gold { background: var(--sdxt-gold); color: #1f1600; }
+.sdxt-btn-danger { background: #dc2626; color: #ffffff; }
+.sdxt-btn-ok { background: #059669; color: #ffffff; }
+.sdxt-btn-ghost { background: #f3f2ee; color: var(--sdxt-ink); border: 1px solid var(--sdxt-line); }
+
+.sdxt-pill {
+  padding: 5px 11px;
+  border-radius: var(--sdxt-radius-pill);
+  border: 1px solid var(--sdxt-line);
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sdxt-ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sdxt-pill.active {
+  background: var(--sdxt-forest);
+  color: #ffffff;
+  border-color: var(--sdxt-forest);
+}
+
+.sdxt-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f3f2ee;
+  color: var(--sdxt-ink-soft);
+}
+
+/* 底部墨玉绿高亮导航栏 */
+.sdxt-tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--sdxt-line);
+  display: flex;
+  padding: 6px 6px env(safe-area-inset-bottom, 6px);
+  gap: 4px;
+}
+
+.sdxt-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 6px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sdxt-muted);
+  border-radius: var(--sdxt-radius-md);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.sdxt-tab.active {
+  color: var(--sdxt-forest);
+  background: #ecfdf5;
+}
+
+/* 抽屉弹窗 */
+.sdxt-drawer-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(12, 46, 34, 0.58);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sdxt-drawer-box {
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--sdxt-bg);
+  border-radius: 22px 22px 0 0;
+  padding: 18px 16px 24px;
+  box-shadow: 0 -10px 30px rgba(12, 46, 34, 0.22);
+}
+
+.hidden { display: none !important; }
