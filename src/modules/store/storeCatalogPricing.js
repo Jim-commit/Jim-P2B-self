@@ -1,10 +1,10 @@
 /**
  * 商道相通 · 商品总库、动态定价与多店经营管理引擎 (storeCatalogPricing.js)
  * 职责：
- * 1. 商品总库建档（标品条码、PLU称重货号、箱规拆零换算、展架位、保质期、过季停售归档）
- * 2. 全参数化动态调价（全店默认加价率、自定义分类加价率、单品零售价/会员价双锁定）
- * 3. 智能补货与一体机联动（低库存/临期预警、热销Top/滞销统计、按供货方分组导出一键订货、一体机CSV导入与日结单合并）
- * 4. 打印与多店经营（58mm/A4货架价签、40x30mm散货称重标签、分店间调拨、多店合并内账大盘、备用金实盘交接班）
+ * 1. 百工百业商品/物料建档（标品条码、PLU称重货号、箱规拆零换算、阶梯批发价、展架位、保质期、停售归档）
+ * 2. 全参数化动态调价（全店默认加价率、自定义分类加价率、零售价/会员价双锁定）
+ * 3. 库房实盘盘点差额校准（报损/盘盈盘亏自动记入流水留痕防篡改）
+ * 4. 智能预警、多店统购缺货汇总单、一体机CSV导入与日结合并、分店调拨、多店合并内账大盘与交接班清点
  */
 (function (global) {
   'use strict';
@@ -14,11 +14,12 @@
       return global.StoreLocalVault;
     },
 
-    // 新增或编辑商品（自动支持箱规拆零成本折算与字段级时间戳 LWW）
+    // 新增或编辑商品/物料（支持箱规拆零、阶梯批发价与字段级时间戳 LWW）
     async upsertCatalogItem(payload) {
       const vault = this.getVault();
+      const lex = vault.getLexicon();
       if (!vault.hasPerm('editPrice') && payload.id) {
-        throw new Error('当前视角无修改商品价格与档案权限');
+        throw new Error(`当前视角无修改${lex.itemLabel}价格与档案权限`);
       }
       const catalog = vault.activeStoreData.catalog;
       const id = payload.id || 'itm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 5);
@@ -28,7 +29,7 @@
         name: '',
         barcode: '',
         plu: '',
-        category: '日用百货',
+        category: lex.defaultCategory || '常规品类',
         supplierId: 'local',
         supplierName: '本地自采',
         costPrice: 0,
@@ -36,7 +37,7 @@
         memberPrice: 0,
         tierPrices: [],
         packRate: 1,
-        unit: '件',
+        unit: lex.unitDefault || '件',
         stock: 0,
         shelfLoc: '',
         expiryDate: '',
@@ -50,7 +51,6 @@
         unitCost = Number((Number(payload.boxCostPrice) / packRate).toFixed(2));
       }
 
-      // 若未手动指定零售价，按动态策略自动计算加价
       let retailPrice = payload.retailPrice !== undefined ? Number(payload.retailPrice) : Number(existing.retailPrice || 0);
       if ((!retailPrice || payload.autoCalcRetail) && unitCost > 0) {
         const policy = vault.getPolicy().pricing;
@@ -85,7 +85,30 @@
       return next;
     },
 
-    // 按分类或全店批量百分比调价（仅掌柜权限可用）
+    // 库房实盘盘点差额校准（自动生成盘盈/盘亏留痕流水）
+    async adjustActualStock(itemId, actualQty, reason = '日常实盘校准') {
+      const vault = this.getVault();
+      if (!vault.hasPerm('editPrice')) throw new Error('当前视角无库存实盘校准权限');
+      const item = vault.activeStoreData.catalog[itemId];
+      if (!item) throw new Error('未找到对应商品');
+      const oldQty = Number(item.stock || 0);
+      const nextQty = Number(actualQty);
+      if (isNaN(nextQty) || nextQty < 0) throw new Error('请输入有效实盘数量');
+      const diff = Number((nextQty - oldQty).toFixed(3));
+      if (diff === 0) return item;
+
+      item.stock = nextQty;
+      item.updatedAt = Date.now();
+      await vault.appendEvent({
+        type: 'stock_adjust',
+        amount: Number((diff * Number(item.costPrice || 0)).toFixed(2)),
+        items: [{ itemId: item.id, name: item.name, qty: diff }],
+        note: `实盘校准[${item.name}] ${oldQty}->${nextQty}（差异 ${diff > 0 ? '+' : ''}${diff} · ${reason}）`
+      });
+      return item;
+    },
+
+    // 按分类或全店批量百分比调价
     async batchAdjustPrice({ category = 'ALL', pct = 0, roundTo = 'jiao' }) {
       const vault = this.getVault();
       if (!vault.hasPerm('editPrice')) throw new Error('当前视角无批量调价权限');
@@ -115,8 +138,9 @@
     // 到货一键入库（支持按整箱自动乘以箱规换算率 + 同步最新进货成本）
     async receiveStock({ itemId, qtyIn = 0, isBox = false, newCostPrice = null }) {
       const vault = this.getVault();
+      const lex = vault.getLexicon();
       const item = vault.activeStoreData.catalog[itemId];
-      if (!item) throw new Error('未找到对应商品');
+      if (!item) throw new Error(`未找到对应${lex.itemLabel}`);
       const rate = isBox ? Math.max(1, Number(item.packRate || 1)) : 1;
       const addedUnits = Number((Number(qtyIn) * rate).toFixed(3));
       item.stock = Number((Number(item.stock || 0) + addedUnits).toFixed(3));
@@ -129,12 +153,12 @@
         type: 'stock_in',
         amount: Number((addedUnits * Number(item.costPrice || 0)).toFixed(2)),
         items: [{ itemId: item.id, name: item.name, qty: addedUnits }],
-        note: `到货入库 +${addedUnits}${item.unit || '件'}`
+        note: `到货入库 +${addedUnits}${item.unit || lex.unitDefault}`
       });
       return item;
     },
 
-    // 智能库存预警（低库存 + 临期商品）与供货方分组补货清单
+    // 单店智能库存预警（低库存 + 临期）
     getAlertsAndRestockList() {
       const vault = this.getVault();
       const policy = vault.getPolicy().inventory;
@@ -167,7 +191,45 @@
       return { lowStock, nearExpiry, bySupplier };
     },
 
-    // 近30天热销Top与滞销商品分析
+    // 多店统购缺货汇总单（合并全部分店的低库存缺货商品，统一下单拿更低批发价）
+    async getMultiStoreRestockSummary() {
+      const vault = this.getVault();
+      const lowLimit = Number(vault.getPolicy().inventory.lowStockThreshold || 5);
+      const mergedMap = {};
+
+      for (const st of vault.meta.stores) {
+        const bucket = st.id === vault.activeStoreData.storeId
+          ? vault.activeStoreData
+          : await vault.idbGet(`sdxt_store_data_${st.id}`);
+        if (!bucket) continue;
+
+        Object.values(bucket.catalog || {}).forEach((it) => {
+          if (it.archived || Number(it.stock || 0) > lowLimit) return;
+          const key = it.barcode ? `bc_${it.barcode}` : `nm_${it.name}`;
+          if (!mergedMap[key]) {
+            mergedMap[key] = {
+              key,
+              itemId: it.id,
+              name: it.name,
+              barcode: it.barcode || '',
+              supplierName: it.supplierName || '本地自采',
+              costPrice: Number(it.costPrice || 0),
+              unit: it.unit || '件',
+              packRate: it.packRate || 1,
+              totalNeedQty: 0,
+              storeDetails: []
+            };
+          }
+          const suggestQty = Math.max(1, Math.ceil(lowLimit - Number(it.stock || 0) + 1));
+          mergedMap[key].totalNeedQty += suggestQty;
+          mergedMap[key].storeDetails.push(`${st.name}(余${it.stock})`);
+        });
+      }
+
+      return Object.values(mergedMap);
+    },
+
+    // 近30天热销Top与滞销分析
     getSalesAnalytics(days = 30) {
       const vault = this.getVault();
       const cutoff = Date.now() - days * 24 * 3600 * 1000;
@@ -193,8 +255,8 @@
       return { topSelling, stagnant };
     },
 
-    // 导入称重收银一体机导出的 CSV 商品表（兼容 PLU,品名,零售价,进价,条码,单位）
     async importPosCsv(csvText) {
+      const lex = this.getVault().getLexicon();
       const lines = String(csvText || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
       if (lines.length < 2) throw new Error('CSV 内容为空或缺少数据行');
       let imported = 0;
@@ -209,7 +271,7 @@
           retailPrice: parseFloat(retailStr) || 0,
           costPrice: parseFloat(costStr) || 0,
           barcode: barcode || '',
-          unit: unit || '斤',
+          unit: unit || lex.weighUnit || '斤',
           supplierName: '一体机同步'
         });
         imported++;
@@ -217,7 +279,6 @@
       return imported;
     },
 
-    // 录入独立称重收银一体机每日营业额日结单（自动合并入今日总流水）
     async recordStandalonePosSummary({ totalAmount, cashAmount = 0, digitalAmount = 0, note = '' }) {
       const vault = this.getVault();
       const total = Number(totalAmount || 0);
@@ -231,7 +292,6 @@
       });
     },
 
-    // 生成国标前缀称重价签条码（方便无条码秤门店用普通标签机打印贴袋）
     buildWeighLabelBarcode(plu, amountYuan) {
       const hw = this.getVault().getPolicy().hardware;
       const prefix = (hw.weighBarcodePrefixes && hw.weighBarcodePrefixes[0]) || '22';
@@ -247,9 +307,9 @@
       return `${body12}${checkDigit}`;
     },
 
-    // 打印货架价签（58mm/A4）或散货称重贴袋价签（40x30mm）
     printPriceTags(items, isWeighTag = false) {
       const vault = this.getVault();
+      const lex = vault.getLexicon();
       const storeName = vault.activeStoreData.storeName;
       const cards = items.map((item) => {
         const weighCode = isWeighTag ? this.buildWeighLabelBarcode(item.plu || '101', item.tagTotal || item.retailPrice) : '';
@@ -257,8 +317,8 @@
           <div style="border:1.5px solid #0f172a;border-radius:6px;padding:8px 10px;width:46mm;display:inline-block;margin:4px;vertical-align:top;font-family:sans-serif;">
             <div style="font-size:10px;color:#475569;display:flex;justify-content:space-between;"><span>${storeName}</span><span>${item.shelfLoc || ''}</span></div>
             <div style="font-weight:bold;font-size:14px;margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.name}</div>
-            ${isWeighTag ? `<div style="font-size:11px;">单价:¥${Number(item.retailPrice).toFixed(2)}/斤 · 净重:${item.tagWeight || 1}斤</div>` : ''}
-            <div style="font-size:20px;font-weight:900;color:#dc2626;margin-top:2px;">¥${Number(isWeighTag ? (item.tagTotal || item.retailPrice) : item.retailPrice).toFixed(2)}<span style="font-size:11px;color:#334155;font-weight:normal;">/${isWeighTag ? '袋' : (item.unit || '件')}</span></div>
+            ${isWeighTag ? `<div style="font-size:11px;">单价:¥${Number(item.retailPrice).toFixed(2)}/${lex.weighUnit} · 净重:${item.tagWeight || 1}${lex.weighUnit}</div>` : ''}
+            <div style="font-size:20px;font-weight:900;color:#dc2626;margin-top:2px;">¥${Number(isWeighTag ? (item.tagTotal || item.retailPrice) : item.retailPrice).toFixed(2)}<span style="font-size:11px;color:#334155;font-weight:normal;">/${isWeighTag ? '份' : (item.unit || lex.unitDefault)}</span></div>
             ${weighCode ? `<div style="font-family:monospace;font-size:10px;letter-spacing:1px;margin-top:4px;border-top:1px dashed #94a3b8;padding-top:2px;">*${weighCode}*</div>` : ''}
           </div>`;
       }).join('');
@@ -270,14 +330,13 @@
       win.document.close();
     },
 
-    // 分店间库存调拨（需具备 transfer 权限）
     async transferStockBetweenStores({ targetStoreId, itemId, qty }) {
       const vault = this.getVault();
       if (!vault.hasPerm('transfer')) throw new Error('当前视角无分店调拨权限');
       const srcStore = vault.activeStoreData;
       if (srcStore.storeId === targetStoreId) throw new Error('不能调拨给当前同一家门店');
       const srcItem = srcStore.catalog[itemId];
-      if (!srcItem) throw new Error('本店无此商品');
+      if (!srcItem) throw new Error('本店无此项目');
       const moveQty = Number(qty || 0);
       if (moveQty <= 0) throw new Error('请输入有效调拨数量');
 
@@ -306,18 +365,14 @@
       return true;
     },
 
-    // 掌柜多店合并内账大盘（仅在具备 viewCost 权限时返回真实毛利与成本）
     async getMultiStoreDashboard(range = 'today') {
       const vault = this.getVault();
       if (!vault.hasPerm('viewCost')) throw new Error('请先解锁掌柜安全码查看经营大盘');
 
       const now = new Date();
       let startTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-      if (range === 'month') {
-        startTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-      } else if (range === 'all') {
-        startTs = 0;
-      }
+      if (range === 'month') startTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      else if (range === 'all') startTs = 0;
 
       let totalRevenue = 0;
       let totalCost = 0;
@@ -374,7 +429,6 @@
       };
     },
 
-    // 门店日常杂费支出登记（水电、包装袋、零工等）
     async recordExpense({ title, amount, payMethod = 'cash' }) {
       const vault = this.getVault();
       if (!vault.hasPerm('expense')) throw new Error('当前视角无记杂费权限');
@@ -388,7 +442,6 @@
       });
     },
 
-    // 交接班实盘清点（备用金 + 今日现金收款 - 现金支出 vs 抽屉实点现金长短款核算）
     async closeShiftHandover({ floatCash = 0, countedCash = 0, note = '' }) {
       const vault = this.getVault();
       const todayStart = new Date();
@@ -402,10 +455,10 @@
       (vault.activeStoreData.txEvents || []).forEach((e) => {
         if (e.voided || e.ts < startTs) return;
         const amt = Number(e.amount || 0);
-        if (e.type === 'sale' || e.type === 'credit_pay') {
+        if (e.type === 'sale' || e.type === 'credit_pay' || e.type === 'topup' || e.type === 'deposit_in') {
           if (e.payMethod === 'cash') cashIn += amt;
           else digitalIn += amt;
-        } else if (e.type === 'refund' || e.type === 'expense') {
+        } else if (e.type === 'refund' || e.type === 'expense' || e.type === 'deposit_out') {
           if (e.payMethod === 'cash') cashOut += Math.abs(amt);
         }
       });
