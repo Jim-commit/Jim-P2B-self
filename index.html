@@ -266,7 +266,8 @@
 
     let activeTab = 'cashier';
     let mCart = [];
-    let mOrderCart = []; // 掌中宝快捷订货清单
+    let mSelectedSupplierId = '';
+    let mOrderCart = [];
     let cameraStream = null;
 
     const $ = (id) => document.getElementById(id);
@@ -288,7 +289,7 @@
       if (hour >= 5 && hour < 10) {
         return {
           text: `🌅 早安！晨间备货时段（低库存 ${metrics.lowStockSkus.length} 款 · 待签收 ${metrics.pendingPurchaseOrders.length} 单）`,
-          btnText: '订货/签收',
+          btnText: '去订货/签收',
           action: () => { activeTab = 'goods'; renderMobile(); }
         };
       }
@@ -623,40 +624,65 @@
       $('btnMShowQrOnly').onclick = () => openQrSheet();
     }
 
-    /* ------------------------------------------------------------------------
-     * 视图 2：掌中宝订货下单 & 待到货一键签收 & 库存管理
-     * ------------------------------------------------------------------------ */
     function renderGoodsTab(metrics) {
       const canCost = engine.hasPermission('viewCostAndProfit');
-      const storeSkus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
+      const suppliers = engine.state.suppliers;
+      if (suppliers.length > 0 && !suppliers.some(s => s.id === mSelectedSupplierId)) {
+        mSelectedSupplierId = suppliers[0].id;
+      }
+      const activeSup = suppliers.find(s => s.id === mSelectedSupplierId) || null;
+      const openOffers = activeSup?.openCatalog || [];
       const pendingOrders = metrics.pendingPurchaseOrders;
-      const storeOrders = (engine.state.purchaseOrders || []).filter(o => o.storeId === engine.state.activeStoreId);
+      const storeSkus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
 
       return `
-        <!-- 1. 掌中宝快捷交互式订货下单 -->
         <div class="card">
           <div class="card-hd">
-            <span>🛒 掌中宝快捷订货下单（已选 ${mOrderCart.length} 项）</span>
-            <button class="sm warn" id="btnMAutoSplit">⚡ 缺货自动拆单(${metrics.lowStockSkus.length})</button>
+            <span>🔗 绑定供货商与开放货盘订货</span>
+            <button class="primary sm" id="btnMBindSup">+ 绑定供货商</button>
           </div>
-          ${mOrderCart.length === 0 ? `
-            <div style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">点击下方商品列表右侧的“+ 订货”即可加入采购单，也可直接照历史单再来一单：</div>
-          ` : `
-            ${mOrderCart.map((it, idx) => `
+          ${suppliers.length > 0 ? `
+            <select id="mSupSelect" style="margin-bottom:10px;">
+              ${suppliers.map(s => `<option value="${s.id}" ${s.id === activeSup?.id ? 'selected' : ''}>🏭 ${s.name}（开放货盘 ${s.openCatalog?.length || 0} 款）</option>`).join('')}
+            </select>
+          ` : `<div style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">尚未绑定供货商，点击右上角“+ 绑定供货商”输入绑定码即可看到其向本店开放的货品</div>`}
+
+          ${activeSup ? `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span style="font-size:13px; font-weight:700;">【${activeSup.name}】开放货盘：</span>
+              <button class="sm" id="btnMAddOffer">+ 录入货盘商品</button>
+            </div>
+            ${openOffers.length === 0 ? `<div style="font-size:12px; color:var(--text-muted); padding:8px 0;">暂未拉取到该供货商货盘条目，可点右上角录入或同步</div>` : openOffers.map(of => `
               <div class="cart-row">
-                <div><strong>${it.name}</strong> (${it.unit})</div>
-                <div class="qty-ctrl">
-                  <button data-m-ord-dec="${idx}">-</button>
-                  <strong>${it.qty}</strong>
-                  <button data-m-ord-inc="${idx}">+</button>
+                <div>
+                  <strong>${of.name}</strong> <span class="badge">${of.spec || of.unit}</span>
+                  <div style="font-size:12px; color:var(--text-muted);">
+                    起订 ${of.minOrderQty}${of.unit} ${canCost ? `· 供货价 ¥${of.supplyPrice}` : ''}
+                  </div>
                 </div>
+                <button class="sm primary" data-m-pick-offer="${of.offerId}">+ 订货</button>
               </div>
             `).join('')}
-            <button class="primary block" style="margin-top:10px;" id="btnMSubmitOrder">📤 发出正式订货单</button>
-          `}
+          ` : ''}
+
+          ${mOrderCart.length > 0 ? `
+            <div style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--border-light);">
+              <div style="font-weight:700; margin-bottom:6px;">📝 当前待发订货单（${mOrderCart.length}项）：</div>
+              ${mOrderCart.map((it, idx) => `
+                <div class="cart-row">
+                  <div><strong>${it.name}</strong> (${it.unit})</div>
+                  <div class="qty-ctrl">
+                    <button data-m-ord-dec="${idx}">-</button>
+                    <strong>${it.qty}</strong>
+                    <button data-m-ord-inc="${idx}">+</button>
+                  </div>
+                </div>
+              `).join('')}
+              <button class="primary block" style="margin-top:8px;" id="btnMSubmitOrder">📤 向【${activeSup?.name || '供货方'}】发出订货单</button>
+            </div>
+          ` : ''}
         </div>
 
-        <!-- 2. 待到货订货单随车一键签收 -->
         ${pendingOrders.length > 0 ? `
           <div class="card">
             <div class="card-hd"><span>🚚 待到货订货单一键签收（${pendingOrders.length}单）</span></div>
@@ -672,30 +698,10 @@
           </div>
         ` : ''}
 
-        <!-- 3. 历史订货单（支持照上次再来一单 & 复制发微信） -->
-        ${storeOrders.length > 0 ? `
-          <div class="card">
-            <div class="card-hd"><span>📋 最近订货单（照上次再来一单）</span></div>
-            ${storeOrders.slice(0, 5).map(po => `
-              <div class="cart-row">
-                <div>
-                  <strong>${po.id}</strong> <span class="badge ${po.status === 'PENDING_DELIVERY' ? 'warn' : 'ok'}">${po.status === 'PENDING_DELIVERY' ? '待到货' : '已签收'}</span>
-                  <div style="font-size:12px; color:var(--text-muted);">${po.items.map(i => `${i.name}×${i.qty}`).join('、')}</div>
-                </div>
-                <div style="display:flex; gap:4px;">
-                  <button class="sm" data-m-copy-po="${po.id}">发微信</button>
-                  <button class="sm" data-m-clone-po="${po.id}">再来一单</button>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        ` : ''}
-
-        <!-- 4. 本店在库商品清单（支持一键加订货） -->
         <div class="card">
           <div class="card-hd">
             <span>📦 本店在库商品（缺货 ${metrics.lowStockSkus.length} 款）</span>
-            <button class="primary sm" id="btnMQuickAddSku">+ 新增商品</button>
+            <button class="sm" id="btnMQuickAddSku">+ 自建商品</button>
           </div>
           ${storeSkus.map(s => `
             <div class="cart-row">
@@ -705,7 +711,6 @@
                   库存 <span class="badge ${s.stock <= s.minStock ? 'danger' : 'ok'}">${s.stock}${s.unit}</span> · 售¥${s.retailPrice} ${canCost ? `· 底${engine.formatSensitiveMoney(s.costPrice)}` : ''}
                 </div>
               </div>
-              <button class="sm" data-m-add-ord="${s.id}">+ 订货</button>
             </div>
           `).join('') || '<div style="color:var(--text-muted); text-align:center; padding:16px;">暂无建档商品</div>'}
         </div>
@@ -713,21 +718,56 @@
     }
 
     function bindGoodsTab() {
-      if ($('btnMAutoSplit')) {
-        $('btnMAutoSplit').onclick = () => {
-          const res = engine.autoSplitRestockOrders();
-          alert(res.message);
+      if ($('btnMBindSup')) {
+        $('btnMBindSup').onclick = () => {
+          const code = prompt('输入供货商绑定码（或编号）：');
+          if (!code) return;
+          const name = prompt('输入供货商名称（如已存在可留空自动匹配）：', '');
+          const res = engine.bindSupplier({ supplierCode: code, name: name || '' });
+          if (res.ok) {
+            mSelectedSupplierId = res.supplier.id;
+            mOrderCart = [];
+            alert(res.message);
+            renderMobile();
+          } else {
+            alert(res.message);
+          }
+        };
+      }
+
+      if ($('mSupSelect')) {
+        $('mSupSelect').onchange = (e) => {
+          mSelectedSupplierId = e.target.value;
+          mOrderCart = [];
           renderMobile();
         };
       }
 
-      document.querySelectorAll('[data-m-add-ord]').forEach(btn => {
+      if ($('btnMAddOffer')) {
+        $('btnMAddOffer').onclick = () => {
+          const activeSup = engine.state.suppliers.find(s => s.id === mSelectedSupplierId);
+          if (!activeSup) return;
+          const name = prompt(`录入【${activeSup.name}】开放货盘商品名称：`);
+          if (!name) return;
+          const supplyPrice = roundMoney(prompt('供货价（元）：', '24'));
+          engine.upsertSupplierOpenOffers(activeSup.id, [{
+            name: name.trim(),
+            unit: engine.getActiveGene().packUnitDefault,
+            supplyPrice,
+            minOrderQty: 1
+          }]);
+          renderMobile();
+        };
+      }
+
+      document.querySelectorAll('[data-m-pick-offer]').forEach(btn => {
         btn.onclick = () => {
-          const sku = engine.state.catalog.find(s => s.id === btn.dataset.mAddOrd);
-          if (!sku) return;
-          const found = mOrderCart.find(c => c.skuId === sku.id);
-          if (found) found.qty += 5;
-          else mOrderCart.push({ skuId: sku.id, name: sku.name, unit: sku.unit, qty: 10, unitPrice: sku.costPrice || 0 });
+          const activeSup = engine.state.suppliers.find(s => s.id === mSelectedSupplierId);
+          const of = activeSup?.openCatalog?.find(o => o.offerId === btn.dataset.mPickOffer);
+          if (!of) return;
+          const found = mOrderCart.find(c => c.offerId === of.offerId);
+          if (found) found.qty += 1;
+          else mOrderCart.push({ offerId: of.offerId, barcode: of.barcode, name: of.name, spec: of.spec, unit: of.unit, qty: of.minOrderQty || 1, unitPrice: of.supplyPrice, suggestRetailPrice: of.suggestRetailPrice });
           renderMobile();
         };
       });
@@ -745,10 +785,10 @@
 
       if ($('btnMSubmitOrder')) {
         $('btnMSubmitOrder').onclick = () => {
-          const res = engine.createPurchaseOrder({ items: mOrderCart, note: '掌中宝快捷订货' });
+          const res = engine.createPurchaseOrder({ supplierId: mSelectedSupplierId, items: mOrderCart, note: '掌中宝供货盘订货' });
           if (res.ok) {
             mOrderCart = [];
-            engine.speakFeedback('订货单已生成');
+            engine.speakFeedback('订货单已发出');
             alert(`✅ ${res.message}`);
             renderMobile();
           }
@@ -763,22 +803,6 @@
             alert('✅ 已完成随车核对签收入库');
             renderMobile();
           }
-        };
-      });
-
-      document.querySelectorAll('[data-m-copy-po]').forEach(btn => {
-        btn.onclick = () => {
-          const txt = engine.formatPurchaseOrderText(btn.dataset.mCopyPo);
-          navigator.clipboard?.writeText(txt);
-          alert(`已复制订货单，可直接发微信：\n\n${txt}`);
-        };
-      });
-
-      document.querySelectorAll('[data-m-clone-po]').forEach(btn => {
-        btn.onclick = () => {
-          const res = engine.cloneLastPurchaseOrder(btn.dataset.mClonePo);
-          alert(res.message);
-          renderMobile();
         };
       });
 
