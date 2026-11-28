@@ -2,14 +2,11 @@
  * ============================================================================
  * 商道相通 · 百工商业全域智慧工作台 —— 共享核心大脑 (storeCoreEngine.js)
  * ============================================================================
- * 顶层使命：人尽其才 · 物尽其用 · 地尽其利 · 货畅其流
- * 1. 100% 无损兼容 index.html 原版结构、src/main.js 与 supabase 云端联动。
- * 2. 铁账四位并立（货、钱、账、单）、链式防篡改哈希、只增不删、红字冲销。
- * 3. 工具为人所用 · 唯老板保留最终核决权（AI与审计规则只出草案，绝不擅自卡死或改账）。
- * 4. 齿轮设置中心支持模块自由显隐（POS收银、邻里互调池、公器共享等均可按需开关）。
+ * 全量向后兼容导出版（确保 Vite / Rollup 打包零报错）：
+ * 同时导出 MODULE_CATALOG、INDUSTRY_GENES、OPTIONAL_UI_MODULES、PERMISSION_CATALOG、DEFAULT_ROLES
  */
 
-export const ENGINE_VERSION = '6.2.0-bridge-harmonized';
+export const ENGINE_VERSION = '6.3.0-vite-safe';
 
 export const STORAGE_KEYS = {
   MAIN_STATE: 'shd_store_workbench_v3',
@@ -21,7 +18,20 @@ export const STORAGE_KEYS = {
 };
 
 /**
- * 门店可选配功能模块目录（在 ⚙️ 设置中心可自由勾选显隐，关闭即彻底隐身）
+ * 兼容旧版与新版引用：全量业务模块目录
+ */
+export const MODULE_CATALOG = [
+  { id: 'procurement', code: '01', name: '订货与供货货盘', pillar: '货畅其流', icon: '📦', optional: false, desc: '绑定供货商、查看开放货盘交互订货、缺货拆单与再来一单' },
+  { id: 'receiving',   code: '02', name: '到货验收与载具', pillar: '货畅其流', icon: '🚚', optional: false, desc: '订货单一键核对签收、随车入库与周转筐押金台账' },
+  { id: 'catalog',     code: '03', name: '商品库与余缺调拨', pillar: '物尽其用', icon: '🏷️', optional: false, desc: '边卖边建、拆箱反推、临期折让与同城/跨店余缺互调' },
+  { id: 'marketing',   code: '04', name: '邻里驿站与云货架', pillar: '地尽其利', icon: '📣', optional: true,  desc: '群接龙自提核销、云端扩充货架码、联采拼单与大屏海报' },
+  { id: 'pos',         code: '05', name: '柜台收银(可选)',   pillar: '地尽其利', icon: '🧾', optional: true,  desc: '已有独立收银机或纯批发店可关闭此模块，保持界面极简' },
+  { id: 'reconcile',   code: '06', name: '往来对账与单据', pillar: '货畅其流', icon: '📑', optional: false, desc: '链式防伪凭证、周期电子对账、实物返利冲抵与加密备份' },
+  { id: 'finance',     code: '07', name: '经营总账与核决', pillar: '人尽其才', icon: '💰', optional: false, desc: '三联总账、保本线、家庭支取隔离、AI铁面稽核与老板核决台' }
+];
+
+/**
+ * 门店可选配UI模块目录（在 ⚙️ 设置中心可自由勾选显隐）
  */
 export const OPTIONAL_UI_MODULES = [
   { id: 'counter_pos',     name: '柜台随手收银与亮码', pillar: '地尽其利', desc: '已有独立收银机或纯批发模式可关闭此入口' },
@@ -31,6 +41,72 @@ export const OPTIONAL_UI_MODULES = [
   { id: 'cloud_shelf',     name: '本店云端扩充货架码', pillar: '地尽其利', desc: '零库存代订 · 服务润利归本店' },
   { id: 'marketing_flyer', name: '邻里便民画报定制',   pillar: '地尽其利', desc: '源头好货海报 · 街坊群拼单' }
 ];
+
+/**
+ * 百业行当基因预设（保留导出以兼容所有引用）
+ */
+export const INDUSTRY_GENES = {
+  convenience: {
+    id: 'convenience',
+    name: '社区便利 / 烟酒百货',
+    unitDefault: '件',
+    packUnitDefault: '箱',
+    carrierName: '周转筐/水桶',
+    quickTags: ['饮料酒水', '休闲零食', '粮油调味', '日用百货', '烟草代售'],
+    enableExpiry: true,
+    enableCarrier: true
+  },
+  fresh: {
+    id: 'fresh',
+    name: '生鲜果蔬 / 肉禽水产',
+    unitDefault: '斤',
+    packUnitDefault: '筐',
+    carrierName: '塑料周转筐',
+    quickTags: ['时令鲜果', '叶菜根茎', '鲜肉禽蛋', '水产冻品', '干货调料'],
+    enableExpiry: true,
+    enableCarrier: true
+  },
+  hardware: {
+    id: 'hardware',
+    name: '五金建材 / 水暖电料',
+    unitDefault: '个',
+    packUnitDefault: '盒',
+    carrierName: '托盘/线盘',
+    quickTags: ['水暖管件', '电工电料', '五金工具', '油漆辅料', '劳保用品'],
+    enableExpiry: false,
+    enableCarrier: true
+  },
+  agri: {
+    id: 'agri',
+    name: '农资化肥 / 供销服务站',
+    unitDefault: '袋',
+    packUnitDefault: '吨',
+    carrierName: '吨袋/周转桶',
+    quickTags: ['复合肥', '种子种苗', '农用物资', '农机配件', '农产品代收'],
+    enableExpiry: true,
+    enableCarrier: true
+  },
+  tea_food: {
+    id: 'tea_food',
+    name: '餐饮小吃 / 茶饮烘焙',
+    unitDefault: '份',
+    packUnitDefault: '提',
+    carrierName: '保温箱/奶桶',
+    quickTags: ['招牌现制', '鲜萃茶饮', '烘焙点心', '原料辅料', '包装耗材'],
+    enableExpiry: true,
+    enableCarrier: false
+  },
+  custom: {
+    id: 'custom',
+    name: '自由白纸 · 自定义行当',
+    unitDefault: '件',
+    packUnitDefault: '箱',
+    carrierName: '周转载具',
+    quickTags: ['主营商品', '配套服务', '代订代购'],
+    enableExpiry: true,
+    enableCarrier: true
+  }
+};
 
 export const PERMISSION_CATALOG = [
   { key: 'viewCostAndProfit',    label: '查看进货底价与真实毛利' },
@@ -46,6 +122,7 @@ export const DEFAULT_ROLES = [
     name: '掌柜（最高核决）',
     isSystemBoss: true,
     desc: '拥有全部视野、底价知情权、红字冲销与最终核决拍板权',
+    modules: ['procurement', 'receiving', 'catalog', 'marketing', 'pos', 'reconcile', 'finance'],
     permissions: {
       viewCostAndProfit: true,
       editRetailPrice: true,
@@ -59,6 +136,7 @@ export const DEFAULT_ROLES = [
     name: '副掌柜 / 店长',
     isSystemBoss: false,
     desc: '协助日常订货、验收、同城互调与店务管理',
+    modules: ['procurement', 'receiving', 'catalog', 'marketing', 'pos', 'reconcile'],
     permissions: {
       viewCostAndProfit: false,
       editRetailPrice: true,
@@ -72,6 +150,7 @@ export const DEFAULT_ROLES = [
     name: '当班店员 / 驿站专员',
     isSystemBoss: false,
     desc: '负责前台收银亮码、街坊自提核销与日常理货，严守底价与总账隔离',
+    modules: ['marketing', 'pos'],
     permissions: {
       viewCostAndProfit: false,
       editRetailPrice: false,
@@ -178,6 +257,7 @@ export class StoreCoreEngine {
   }
 
   _createDefaultState() {
+    const defaultStoreId = 'STORE_MAIN_01';
     const defaultSalt = `SALT_${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
     return {
       meta: {
@@ -186,7 +266,19 @@ export class StoreCoreEngine {
         lastChainHash: 'GENESIS_0000',
         lastBackupAt: null,
         lastUpdatedAt: Date.now(),
+        uiMode: 'simple',
         elderLargeMode: false,
+        voiceFeedback: true,
+        cloudSyncEnabled: true,
+        enabledModules: {
+          procurement: true,
+          receiving: true,
+          catalog: true,
+          marketing: true,
+          pos: true,
+          reconcile: true,
+          finance: true
+        },
         enabledUiModules: {
           counter_pos: true,
           local_pool: true,
@@ -196,6 +288,16 @@ export class StoreCoreEngine {
           marketing_flyer: true
         }
       },
+      stores: [
+        {
+          id: defaultStoreId,
+          name: '厚德便民门店',
+          geneId: 'convenience',
+          monthlyFixedCost: 0,
+          paymentQrUrl: ''
+        }
+      ],
+      activeStoreId: defaultStoreId,
       rbac: {
         roles: JSON.parse(JSON.stringify(DEFAULT_ROLES)),
         accounts: [
@@ -204,6 +306,7 @@ export class StoreCoreEngine {
             name: '本机掌柜',
             avatar: '👑',
             roleId: 'role_boss',
+            storeIds: ['*'],
             pinHash: '',
             active: true
           }
@@ -216,6 +319,11 @@ export class StoreCoreEngine {
           handoverNote: ''
         }
       },
+      catalog: [],
+      suppliers: [],
+      customers: [],
+      purchaseOrders: [],
+      serviceTickets: [],
       cashBook: {
         currentCash: 0,
         digitalReceivedTotal: 0,
@@ -240,6 +348,7 @@ export class StoreCoreEngine {
           meta: {
             ...def.meta,
             ...(parsed.meta || {}),
+            enabledModules: { ...def.meta.enabledModules, ...(parsed.meta?.enabledModules || {}) },
             enabledUiModules: { ...def.meta.enabledUiModules, ...(parsed.meta?.enabledUiModules || {}) }
           },
           rbac: {
@@ -287,6 +396,27 @@ export class StoreCoreEngine {
     return this.state.rbac.roles.find(r => r.id === acc?.roleId) || this.state.rbac.roles[0];
   }
 
+  getActiveStore() {
+    return this.state.stores.find(s => s.id === this.state.activeStoreId) || this.state.stores[0];
+  }
+
+  getActiveGene() {
+    const store = this.getActiveStore();
+    return INDUSTRY_GENES[store?.geneId] || INDUSTRY_GENES.convenience;
+  }
+
+  getVisibleStores() {
+    const acc = this.getCurrentAccount();
+    return this.state.stores.filter(s => acc.storeIds.includes('*') || acc.storeIds.includes(s.id));
+  }
+
+  canAccessModule(moduleId) {
+    if (this.state.rbac.locked) return false;
+    if (this.state.meta.enabledModules && this.state.meta.enabledModules[moduleId] === false) return false;
+    const role = this.getCurrentRole();
+    return Array.isArray(role?.modules) ? role.modules.includes(moduleId) : true;
+  }
+
   hasPermission(permKey) {
     if (this.state.rbac.locked) return false;
     return Boolean(this.getCurrentRole()?.permissions?.[permKey]);
@@ -301,10 +431,21 @@ export class StoreCoreEngine {
     this._persist(this.state, true, 'UI_MODULE_TOGGLED', { modId, enabled });
   }
 
+  toggleModuleVisibility(moduleId, enabled) {
+    this.state.meta.enabledModules[moduleId] = Boolean(enabled);
+    this._persist(this.state, true, 'MODULE_VISIBILITY_CHANGED', { moduleId, enabled });
+    return { ok: true };
+  }
+
   togglePrivacyShield() {
     this.privacyShieldActive = !this.privacyShieldActive;
     this._notify('PRIVACY_CHANGED', { active: this.privacyShieldActive });
     return this.privacyShieldActive;
+  }
+
+  formatSensitiveMoney(amount, permKey = 'viewCostAndProfit') {
+    if (this.privacyShieldActive || !this.hasPermission(permKey)) return '***';
+    return `¥${roundMoney(amount).toFixed(2)}`;
   }
 
   async switchAccount(accountId, pin = '') {
@@ -344,9 +485,6 @@ export class StoreCoreEngine {
     return hash.replace(/\D/g, '').padEnd(4, '8').slice(0, 4);
   }
 
-  /**
-   * 铁账四位并立记账（货、钱、账、单严格隔离，家庭支取不混入经营利润）
-   */
   commitVoucher(draft) {
     const acc = this.getCurrentAccount();
     const now = Date.now();
@@ -433,6 +571,17 @@ export class StoreCoreEngine {
       brokenLinks: broken,
       totalVouchers: this.state.vouchers.length,
       anomalies: broken > 0 ? [`检测到 ${broken} 处凭证哈希断链`] : []
+    };
+  }
+
+  getDashboardMetrics() {
+    return {
+      inventoryCostValue: 0,
+      currentCash: roundMoney(this.state.cashBook.currentCash),
+      totalReceivable: 0,
+      totalPayable: 0,
+      pendingPurchaseOrders: [],
+      pendingApprovals: this.state.approvalQueue.filter(a => a.status === 'PENDING')
     };
   }
 
