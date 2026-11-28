@@ -4,312 +4,158 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>商道相通 · 电脑宽屏全面调度台</title>
-  <style>
-    :root {
-      --bg-page: #f4f6f8;
-      --bg-card: #ffffff;
-      --bg-subtle: #f8fafc;
-      --border-light: #e2e8f0;
-      --text-main: #1e293b;
-      --text-muted: #64748b;
-      --primary: #0f766e;
-      --primary-light: #ccfbf1;
-      --primary-dark: #115e59;
-      --accent: #b45309;
-      --accent-bg: #fef3c7;
-      --danger: #be123c;
-      --danger-bg: #ffe4e6;
-      --success: #15803d;
-      --success-bg: #dcfce7;
-      --radius: 10px;
-      --font-scale: 1;
-    }
-
-    body.elder-mode { --font-scale: 1.24; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-      background: var(--bg-page);
-      color: var(--text-main);
-      font-size: calc(14px * var(--font-scale));
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    .topbar {
-      background: #fff;
-      border-bottom: 1px solid var(--border-light);
-      padding: 10px 18px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .brand { font-weight: 800; font-size: 16px; color: var(--primary-dark); display: flex; align-items: center; gap: 8px; }
-    .store-select { padding: 4px 10px; border-radius: 999px; font-weight: 700; border: 1px solid var(--border-light); background: var(--bg-subtle); color: var(--primary-dark); }
-    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: var(--bg-subtle); border: 1px solid var(--border-light); }
-    .badge.warn { background: var(--accent-bg); color: var(--accent); border-color: #fde68a; }
-    .badge.danger { background: var(--danger-bg); color: var(--danger); border-color: #fecdd3; }
-    .badge.ok { background: var(--success-bg); color: var(--success); border-color: #bbf7d0; }
-
-    button {
-      border: 1px solid var(--border-light);
-      background: #fff;
-      color: var(--text-main);
-      padding: 6px 12px;
-      border-radius: 7px;
-      cursor: pointer;
-      font-weight: 500;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-    button:hover { background: var(--bg-subtle); }
-    button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-    button.warn { background: var(--accent-bg); color: var(--accent); border-color: #fcd34d; }
-    button.danger { background: var(--danger-bg); color: var(--danger); border-color: #fda4af; }
-    button.sm { padding: 4px 8px; font-size: 12px; }
-
-    .workspace { display: flex; flex: 1; overflow: hidden; }
-    .sidebar { width: 240px; background: #fff; border-right: 1px solid var(--border-light); padding: 12px 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
-    .stage-label { font-size: 11px; color: var(--text-muted); padding: 10px 10px 4px; }
-    .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 11px; border-radius: 8px; cursor: pointer; font-weight: 500; }
-    .nav-item:hover { background: var(--bg-subtle); }
-    .nav-item.active { background: var(--primary-light); color: var(--primary-dark); font-weight: 700; }
-
-    .main-stage { flex: 1; overflow-y: auto; padding: 18px 22px 60px; }
-    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; margin-bottom: 16px; }
-    .card { background: #fff; border: 1px solid var(--border-light); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--bg-subtle); }
-    .card-title { font-weight: 700; font-size: 15px; }
-
-    input, select, textarea { padding: 7px 10px; border: 1px solid var(--border-light); border-radius: 6px; font-size: inherit; width: 100%; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border-light); }
-    th { background: var(--bg-subtle); color: var(--text-muted); }
-  </style>
+  <link rel="stylesheet" href="./src/styles/tailwind.css">
 </head>
-<body>
+<body class="bg-[#f7f5f0] text-stone-800 font-sans min-h-screen flex flex-col">
 
-  <header class="topbar">
-    <div class="brand">
-      <span>🏮 商道相通 · 电脑宽屏调度台</span>
-      <select class="store-select" id="pcStoreSelect"></select>
-      <span class="badge ok">人尽其才 · 物尽其用 · 地尽其利 · 货畅其流</span>
+  <!-- 与 index.html 完全同源的松林翠绿顶栏 -->
+  <header class="bg-gradient-to-r from-[#1b4332] via-[#2d6a4f] to-[#1b4332] text-white px-6 py-3.5 shadow-md flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <span class="text-lg font-bold tracking-tight">🏮 商道相通 · 电脑宽屏全面调度台</span>
+      <span id="pc-branch-badge" class="bg-[#d4a373] text-stone-900 text-xs px-2.5 py-0.5 rounded-full font-bold">厚德便民门店</span>
+      <span class="text-xs text-emerald-100/80 hidden md:inline">人尽其才 · 物尽其用 · 地尽其利 · 货畅其流</span>
     </div>
-    <div style="margin-left:auto; display:flex; gap:8px;">
-      <button class="sm" onclick="location.href='index.html'">📱 返回掌中宝</button>
-      <button class="sm" id="btnPcPrivacy">👁️ 防窥</button>
-      <button class="sm primary" id="btnPcGear">⚙️ 设置与模块选配</button>
+    <div class="flex items-center gap-2 text-xs">
+      <a href="hq.html" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition">🏭 批发调度</a>
+      <a href="mall.html" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition">🛍️ 逛大集</a>
+      <a href="suppliers.html" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition">🔎 供需名录</a>
+      <a href="driver.html" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition">🚛 物流履约</a>
+      <a href="index.html" class="px-3 py-1.5 rounded-xl bg-amber-400 text-stone-950 font-bold hover:bg-amber-300 transition">📱 返回手机工作台</a>
     </div>
   </header>
 
-  <div class="workspace">
-    <aside class="sidebar" id="pcSidebar"></aside>
-    <main class="main-stage" id="pcMain"></main>
-  </div>
+  <main class="max-w-6xl w-full mx-auto p-5 grid grid-cols-1 lg:grid-cols-3 gap-5 flex-1">
+    <!-- 左栏：模块选配与商道主线快捷调度 -->
+    <section class="bg-white rounded-3xl p-5 border border-stone-200/80 shadow-sm space-y-4">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
+        <h2 class="font-bold text-sm text-emerald-950">⚙️ 门店模块自由选配（与手机端实时同源）</h2>
+      </div>
+      <div id="pc-module-list" class="space-y-2 text-xs"></div>
+    </section>
+
+    <!-- 中栏：铁账四位并立 & 家庭支取隔离 & 稽核体检 -->
+    <section class="bg-white rounded-3xl p-5 border border-stone-200/80 shadow-sm space-y-4">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
+        <h2 class="font-bold text-sm text-emerald-950">🛡️ 铁账四位并立与主权稽核台</h2>
+        <span id="pc-audit-tag" class="text-[11px] bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full font-bold">四方吻合</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200">
+          <span class="text-[10px] text-stone-400 block">独立钱箱实有现金</span>
+          <b id="pc-cash-val" class="text-lg font-mono text-emerald-950">¥0.00</b>
+        </div>
+        <div class="bg-amber-50/70 p-3 rounded-2xl border border-amber-200">
+          <span class="text-[10px] text-amber-800 block">家庭私人支取(已隔离)</span>
+          <b id="pc-family-val" class="text-lg font-mono text-amber-900">¥0.00</b>
+        </div>
+      </div>
+      <div class="flex gap-2 text-xs">
+        <button type="button" id="pc-btn-family" class="flex-1 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold">🏠 记家庭私人支取</button>
+        <button type="button" id="pc-btn-export" class="flex-1 py-2.5 rounded-xl bg-[#1b4332] text-amber-300 font-bold">🔐 导出加密铁账包</button>
+      </div>
+    </section>
+
+    <!-- 右栏：链式防篡改凭证流水（只增不删 · 红字冲销） -->
+    <section class="bg-white rounded-3xl p-5 border border-stone-200/80 shadow-sm space-y-4">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-2.5">
+        <h2 class="font-bold text-sm text-emerald-950">📑 不可篡改链式凭证流水</h2>
+        <span class="text-[10px] text-stone-400">只增不删 · 红字冲销</span>
+      </div>
+      <div id="pc-voucher-list" class="space-y-2 text-xs max-h-[60vh] overflow-y-auto"></div>
+    </section>
+  </main>
 
   <script type="module">
-    import {
-      StoreCoreEngine,
-      MODULE_CATALOG,
-      INDUSTRY_GENES,
-      roundMoney,
-      generateId
-    } from './src/modules/store/storeCoreEngine.js';
+    import { StoreCoreEngine, OPTIONAL_UI_MODULES, roundMoney } from './src/modules/store/storeCoreEngine.js';
 
     const engine = new StoreCoreEngine();
-    let activeMod = 'procurement';
-    let selectedSupId = '';
-    let orderCart = [];
 
-    const $ = (id) => document.getElementById(id);
+    function renderPcDashboard() {
+      const branch = localStorage.getItem('baigong_active_branch_name');
+      if (branch) document.getElementById('pc-branch-badge').textContent = branch;
 
-    function renderPc() {
-      const store = engine.getActiveStore();
-      const metrics = engine.getDashboardMetrics();
-      document.body.classList.toggle('elder-mode', Boolean(engine.state.meta.elderLargeMode));
+      const audit = coreAudit();
+      document.getElementById('pc-audit-tag').textContent = audit.passed ? `🛡️ 四方吻合 (${audit.totalVouchers}单)` : '⚠️ 发现断链疑点';
+      document.getElementById('pc-cash-val').textContent = `¥${roundMoney(engine.state.cashBook.currentCash).toFixed(2)}`;
+      document.getElementById('pc-family-val').textContent = `¥${roundMoney(engine.state.cashBook.familyDrawTotal).toFixed(2)}`;
 
-      const sel = $('pcStoreSelect');
-      sel.innerHTML = engine.getVisibleStores().map(s => `<option value="${s.id}" ${s.id === store.id ? 'selected' : ''}>🏪 ${s.name}</option>`).join('');
-      sel.onchange = () => { engine.switchStore(sel.value); orderCart = []; };
-
-      const allowed = MODULE_CATALOG.filter(m => engine.canAccessModule(m.id));
-      if (allowed.length > 0 && !allowed.some(m => m.id === activeMod)) activeMod = allowed[0].id;
-
-      $('pcSidebar').innerHTML = `
-        <div class="stage-label">全域平台五大节点</div>
-        <div class="nav-item" onclick="location.href='hq.html'"><span>🏛️ 总控联盟 (hq)</span></div>
-        <div class="nav-item" onclick="location.href='suppliers.html'"><span>🏭 供需名录 (suppliers)</span></div>
-        <div class="nav-item" onclick="location.href='mall.html'"><span>🛒 源头大集 (mall)</span></div>
-        <div class="nav-item" onclick="location.href='driver.html'"><span>🚛 物流配送 (driver)</span></div>
-        <div class="stage-label">本店业务主线（⚙️ 可选配）</div>
-        ${allowed.map(m => `
-          <div class="nav-item ${activeMod === m.id ? 'active' : ''}" data-pc-mod="${m.id}">
-            <span>${m.icon} ${m.name}</span>
-            <span class="badge">${m.pillar}</span>
-          </div>
-        `).join('')}
-      `;
-
-      $('pcSidebar').querySelectorAll('[data-pc-mod]').forEach(el => {
-        el.onclick = () => { activeMod = el.dataset.pcMod; renderPc(); };
-      });
-
-      if (activeMod === 'gear') renderGearView();
-      else renderModuleView(metrics);
-    }
-
-    function renderGearView() {
-      const enabled = engine.state.meta.enabledModules || {};
-      $('pcMain').innerHTML = `
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">⚙️ 设置中心 · 业务模块自由选配（POS收银等模块可按需开关）</span>
-            <button class="primary sm" id="btnBackMain">返回业务工作台</button>
-          </div>
-          <table>
-            <thead><tr><th>业务模块</th><th>商道定位</th><th>功能说明</th><th>启用状态</th></tr></thead>
-            <tbody>
-              ${MODULE_CATALOG.map(m => `
-                <tr>
-                  <td><strong>${m.icon} ${m.name}</strong></td>
-                  <td><span class="badge">${m.pillar}</span></td>
-                  <td>${m.desc}</td>
-                  <td><input type="checkbox" data-pc-toggle="${m.id}" ${enabled[m.id] !== false ? 'checked' : ''} style="width:18px;height:18px;" /></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-      $('btnBackMain').onclick = () => { activeMod = 'procurement'; renderPc(); };
-      $('pcMain').querySelectorAll('[data-pc-toggle]').forEach(chk => {
-        chk.onchange = () => { engine.toggleModuleVisibility(chk.dataset.pcToggle, chk.checked); renderPc(); };
-      });
-    }
-
-    function renderModuleView(metrics) {
-      const canCost = engine.hasPermission('viewCostAndProfit');
-      if (activeMod === 'procurement') {
-        const sups = engine.state.suppliers;
-        if (sups.length > 0 && !sups.some(s => s.id === selectedSupId)) selectedSupId = sups[0].id;
-        const activeSup = sups.find(s => s.id === selectedSupId) || null;
-        const offers = activeSup?.openCatalog || [];
-
-        $('pcMain').innerHTML = `
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">🔗 绑定上游供货商 -> 查看开放货盘交互订货</span>
-              <button class="primary sm" id="btnPcBindSup">+ 绑定供货商</button>
+      const modHost = document.getElementById('pc-module-list');
+      modHost.innerHTML = OPTIONAL_UI_MODULES.map(m => {
+        const checked = engine.isUiModuleEnabled(m.id);
+        return `
+          <label class="flex items-center justify-between bg-stone-50 px-3 py-2.5 rounded-2xl border border-stone-200 cursor-pointer">
+            <div>
+              <div class="font-bold text-stone-800">${m.name} <span class="text-[10px] text-emerald-800 bg-emerald-100 px-1.5 rounded">${m.pillar}</span></div>
+              <div class="text-[10px] text-stone-400 mt-0.5">${m.desc}</div>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-              ${sups.map(s => `<button class="${s.id === activeSup?.id ? 'primary' : ''}" data-pc-sup="${s.id}">🏭 ${s.name} (${s.openCatalog?.length || 0}款)</button>`).join('') || '<span style="color:var(--text-muted);">点击右上角绑定供货商</span>'}
-            </div>
-            ${activeSup ? `
-              <div class="grid-2">
-                <div>
-                  <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <strong>【${activeSup.name}】向本店开放的货盘</strong>
-                    <button class="sm" id="btnPcAddOffer">+ 录入供货商品</button>
-                  </div>
-                  <table>
-                    <thead><tr><th>货品</th><th>规格</th>${canCost ? '<th>供货价</th>' : ''}<th>操作</th></tr></thead>
-                    <tbody>
-                      ${offers.map(o => `<tr><td>${o.name}</td><td>${o.spec || o.unit}</td>${canCost ? `<td>¥${o.supplyPrice}</td>` : ''}<td><button class="sm primary" data-pc-pick="${o.offerId}">+ 订货</button></td></tr>`).join('') || '<tr><td colspan="4">暂无开放条目</td></tr>'}
-                    </tbody>
-                  </table>
-                </div>
-                <div>
-                  <strong>当前交互订货单</strong>
-                  <table>
-                    <thead><tr><th>品名</th><th>数量</th><th>小计</th></tr></thead>
-                    <tbody>
-                      ${orderCart.map(it => `<tr><td>${it.name}</td><td>${it.qty}${it.unit}</td><td>${canCost ? `¥${roundMoney(it.qty * it.unitPrice)}` : '***'}</td></tr>`).join('') || '<tr><td colspan="3">在左侧点选货品加入</td></tr>'}
-                    </tbody>
-                  </table>
-                  ${orderCart.length > 0 ? `<button class="primary" style="margin-top:10px;" id="btnPcSendOrder">📤 发出正式订货单</button>` : ''}
-                </div>
-              </div>
-            ` : ''}
-          </div>
+            <input type="checkbox" data-pc-mod="${m.id}" ${checked ? 'checked' : ''} class="w-4 h-4 accent-[#1b4332]">
+          </label>
         `;
-        $('btnPcBindSup').onclick = () => {
-          const code = prompt('输入供货商绑定码：');
-          if (!code) return;
-          const name = prompt('输入供货商名称：', '');
-          const res = engine.bindSupplier({ supplierCode: code, name: name || '' });
-          if (res.ok) { selectedSupId = res.supplier.id; orderCart = []; renderPc(); }
+      }).join('');
+
+      modHost.querySelectorAll('[data-pc-mod]').forEach(chk => {
+        chk.onchange = () => {
+          engine.setUiModuleEnabled(chk.dataset.pcMod, chk.checked);
+          renderPcDashboard();
         };
-        document.querySelectorAll('[data-pc-sup]').forEach(b => { b.onclick = () => { selectedSupId = b.dataset.pcSup; orderCart = []; renderPc(); }; });
-        if ($('btnPcAddOffer')) {
-          $('btnPcAddOffer').onclick = () => {
-            const name = prompt('商品名称：');
-            if (!name) return;
-            const supplyPrice = roundMoney(prompt('供货价：', '24'));
-            engine.upsertSupplierOpenOffers(activeSup.id, [{ name, unit: '箱', supplyPrice, minOrderQty: 1 }]);
-            renderPc();
-          };
-        }
-        document.querySelectorAll('[data-pc-pick]').forEach(b => {
-          b.onclick = () => {
-            const of = activeSup.openCatalog.find(o => o.offerId === b.dataset.pcPick);
-            if (!of) return;
-            const f = orderCart.find(c => c.offerId === of.offerId);
-            if (f) f.qty += 1; else orderCart.push({ offerId: of.offerId, name: of.name, unit: of.unit, qty: of.minOrderQty || 1, unitPrice: of.supplyPrice });
-            renderPc();
-          };
-        });
-        if ($('btnPcSendOrder')) {
-          $('btnPcSendOrder').onclick = () => {
-            const res = engine.createPurchaseOrder({ supplierId: selectedSupId, items: orderCart });
-            alert(res.message);
-            orderCart = [];
-            renderPc();
-          };
-        }
-      } else if (activeMod === 'receiving') {
-        const pending = metrics.pendingPurchaseOrders;
-        $('pcMain').innerHTML = `
-          <div class="card">
-            <div class="card-header"><span class="card-title">🚚 在途订货单随车一键核对签收（${pending.length}单）</span></div>
-            <table>
-              <thead><tr><th>订货单号</th><th>供货方</th><th>明细</th><th>操作</th></tr></thead>
-              <tbody>
-                ${pending.map(po => `<tr><td>${po.id}</td><td>${po.supplierName}</td><td>${po.items.map(i => `${i.name}×${i.qty}`).join('、')}</td><td><button class="primary sm" data-pc-rcv="${po.id}">✅ 核对签收入库</button></td></tr>`).join('') || '<tr><td colspan="4">暂无在途订货单</td></tr>'}
-              </tbody>
-            </table>
+      });
+
+      const vHost = document.getElementById('pc-voucher-list');
+      const list = engine.state.vouchers.slice(0, 20);
+      vHost.innerHTML = list.length === 0
+        ? '<div class="text-center text-stone-400 py-8">暂无本地扩展凭证记录</div>'
+        : list.map(v => `
+          <div class="p-2.5 rounded-2xl border border-stone-200 flex justify-between items-center ${v.status === 'VOIDED' ? 'opacity-50 line-through bg-rose-50' : 'bg-stone-50'}">
+            <div>
+              <b class="text-stone-800">${v.id}</b> <span class="text-[10px] text-stone-500">(${v.type})</span>
+              <div class="text-[10px] text-stone-400 font-mono">${v.hash}</div>
+            </div>
+            <div class="text-right">
+              <b class="font-mono text-emerald-950">¥${v.totalAmount.toFixed(2)}</b>
+              ${v.status === 'POSTED' && v.type !== 'VOID_RED' ? `<button type="button" data-pc-void="${v.id}" class="block ml-auto mt-1 text-[10px] text-rose-600 underline">红字冲销</button>` : ''}
+            </div>
           </div>
-        `;
-        document.querySelectorAll('[data-pc-rcv]').forEach(b => {
-          b.onclick = () => { const res = engine.receivePurchaseOrder(b.dataset.pcRcv); alert(res.message); renderPc(); };
-        });
-      } else {
-        $('pcMain').innerHTML = `
-          <div class="card">
-            <div class="card-header"><span class="card-title">📊 ${MODULE_CATALOG.find(m => m.id === activeMod)?.name || ''}（与掌中宝实时同源同步）</span></div>
-            <p>在库商品总数：<strong>${engine.state.catalog.length}</strong> 款 ｜ 在库总货值：<strong>${engine.formatSensitiveMoney(metrics.inventoryCostValue)}</strong> ｜ 待掌柜核决草案：<strong>${metrics.pendingApprovals.length}</strong> 项</p>
-            ${metrics.pendingApprovals.map(a => `
-              <div style="padding:10px; background:#fffbeb; border-left:4px solid var(--accent); margin-bottom:8px; display:flex; justify-content:space-between;">
-                <span><strong>${a.title}</strong>：${a.reason}</span>
-                <button class="primary sm" data-pc-apr="${a.id}">✅ 掌柜核准</button>
-              </div>
-            `).join('')}
-          </div>
-        `;
-        document.querySelectorAll('[data-pc-apr]').forEach(b => {
-          b.onclick = () => { const res = engine.decideApprovalItem(b.dataset.pcApr, 'APPROVED'); alert(res.message); renderPc(); };
-        });
-      }
+        `).join('');
+
+      vHost.querySelectorAll('[data-pc-void]').forEach(btn => {
+        btn.onclick = () => {
+          const reason = prompt('输入红字冲销原因：', '录错更正');
+          if (!reason) return;
+          const res = engine.voidVoucherWithRedEntry(btn.dataset.pcVoid, reason);
+          alert(res.message);
+          renderPcDashboard();
+        };
+      });
     }
 
-    $('btnPcPrivacy').onclick = () => { engine.togglePrivacyShield(); renderPc(); };
-    $('btnPcGear').onclick = () => { activeMod = 'gear'; renderPc(); };
+    function coreAudit() {
+      return engine.runIronAbacusAudit();
+    }
 
-    engine.subscribe(() => renderPc());
-    renderPc();
+    document.getElementById('pc-btn-family').onclick = () => {
+      const amt = roundMoney(prompt('输入老板私人/家庭支取现金金额（只扣钱箱，绝不污染经营利润）：', '100'));
+      if (amt > 0) {
+        coreEngineCommitFamily(amt);
+      }
+    };
+
+    function coreEngineCommitFamily(amt) {
+      engine.commitVoucher({ type: 'FAMILY_DRAW', totalAmount: amt, payMethod: 'CASH', note: '电脑台登记家庭支取' });
+      renderPcDashboard();
+    }
+
+    document.getElementById('pc-btn-export').onclick = async () => {
+      const pass = prompt('可选：输入微信转发加密口令（留空则导出防篡改封签包）：', '');
+      if (pass === null) return;
+      const pkg = await engine.exportIronBackup(pass.trim());
+      const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `商道铁账加密备份_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+    };
+
+    renderPcDashboard();
   </script>
 </body>
 </html>
