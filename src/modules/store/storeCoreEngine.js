@@ -2,27 +2,28 @@
  * ============================================================================
  * 商道相通 · 百工商业全域智慧工作台 —— 共享核心大脑 (storeCoreEngine.js)
  * ============================================================================
- * 终极全量融合版：
- * 1. 完整保留并升级交互式订货下单（选品加购、缺货自动拆单、照上次再来一单剔除高库存、
- *    多店统购、生成正式电子订货单并无缝流转至到货验收台一键签收）
- * 2. 遵循大道 · 流水无痕（白纸开箱、渐进呈现、未授权模块彻底隐身）
- * 3. 工具为人所用 · 唯老板保留最终核决权
- * 4. 货、钱、账、单四位并立，链式防篡改，AES加密信封，四方重算与隔离裁决
- * 5. 全网一体相容（多店档案、动态角色工坊、可选生物识别、远程放行码与家业常青备忘）
+ * 原设计全部保留 + 全域无损增强融合版：
+ * 1. 【上下游贯通原设计】：门店绑定供货商 -> 自动获取供货商开放给本店的专属货盘
+ *    (openCatalog / shd_supplier_offers) -> 在供货商货盘上直接交互式点选数量订货 -> 随车签收。
+ * 2. 【遵循大道 · 流水无痕】：白纸开箱、渐进呈现、未授权模块彻底隐身。
+ * 3. 【工具为人所用 · 唯老板保留最终核决权】：AI与审计只出草案，绝不擅自卡死或改账。
+ * 4. 【货钱账单四位并立】：只增不删、红字冲销、交班时间锁、AES加密信封与四方重算。
  */
 
-export const ENGINE_VERSION = '4.2.0-full-fusion';
+export const ENGINE_VERSION = '5.0.0-original-preserved';
 
 export const STORAGE_KEYS = {
   MAIN_STATE: 'shd_store_workbench_v3',
   SNAPSHOTS: 'shd_store_snapshots_v3',
   ARCHIVE_COLD: 'shd_store_cold_archive_v3',
   QUARANTINE: 'shd_store_quarantine_box',
+  // 平台级共享键：厂商端/大集端/云端同步写入的“供货商向门店开放的货盘”
+  SHARED_SUPPLIER_OFFERS: ['shd_supplier_offers', 'supplier_catalog', 'mall_supplier_goods', 'suppliers_data'],
   LEGACY_KEYS: ['store_data', 'my_store_v1', 'my_store_v2', 'shop_ledger', 'pos_state']
 };
 
 export const MODULE_CATALOG = [
-  { id: 'procurement', code: '01', name: '订货与供货方', stage: '上游供应链线', icon: '📦', desc: '交互式订货下单、缺货自动拆单、照上次再来一单与供货方名册' },
+  { id: 'procurement', code: '01', name: '订货与供货方', stage: '上游供应链线', icon: '📦', desc: '绑定供货商、查看供货商开放货盘交互订货、缺货拆单与再来一单' },
   { id: 'receiving',   code: '02', name: '到货验收与载具', stage: '上游供应链线', icon: '🚚', desc: '订货单一键核对签收、随车入库、拆零搭赠折算与周转筐押金' },
   { id: 'catalog',     code: '03', name: '商品库与库存', stage: '店内经营线', icon: '🏷️', desc: '边卖边建、拆箱反推、临期雷达、报损与跨店调拨' },
   { id: 'pos',         code: '04', name: '柜台收银与履约', stage: '店内经营线', icon: '🧾', desc: '正负一单清、防掉包收款码、熟客赊账、定金工单与驿站核销' },
@@ -150,7 +151,7 @@ export const DEFAULT_ROLES = [
     id: 'role_stocker',
     name: '理货采购员',
     isSystemBoss: false,
-    desc: '负责交互式订货、随车签收、入库上架、保质期巡检与报损登记',
+    desc: '负责对接供货商货盘订货、随车签收、入库上架与报损登记',
     modules: ['procurement', 'receiving', 'catalog'],
     permissions: {
       viewCostAndProfit: false,
@@ -267,6 +268,7 @@ export class StoreCoreEngine {
     this.idleTimer = null;
 
     this.state = this._loadOrInitializeState();
+    this._syncSharedSupplierCatalogs();
     this._startIdleGuard();
   }
 
@@ -334,13 +336,12 @@ export class StoreCoreEngine {
       },
 
       catalog: [],
-      suppliers: [],
+
+      // 已绑定供货商名册（每位供货商自带 openCatalog：向本店开放的专属供货货盘！）
+      suppliers: [], // { id, supplierCode, name, contact, phone, category, creditNote, payableBalance, carrierBalance, openCatalog: [{ offerId, barcode, name, spec, unit, supplyPrice, suggestRetailPrice, minOrderQty, carrierPerUnit, note }], updatedAt }
+
       customers: [],
-
-      // 正式电子采购订货单库（支持交互式下单、照上次再来一单、流转至第②板块一键签收）
-      purchaseOrders: [], // { id, storeId, supplierId, supplierName, items: [{ skuId, name, unit, qty, unitPrice, subtotal }], totalAmount, note, status: 'PENDING_DELIVERY'|'RECEIVED'|'CANCELLED', createdAt, operatorName, verifyCode }
-
-      // 售后质保 / 定金取货工单 & 邻里驿站代订自提单
+      purchaseOrders: [],
       serviceTickets: [],
 
       cashBook: {
@@ -389,9 +390,18 @@ export class StoreCoreEngine {
 
   _mergeWithDefaults(saved) {
     const def = this._createDefaultState();
+    const suppliers = Array.isArray(saved.suppliers)
+      ? saved.suppliers.map(s => ({
+          ...s,
+          supplierCode: s.supplierCode || s.code || s.id,
+          openCatalog: Array.isArray(s.openCatalog) ? s.openCatalog : (Array.isArray(s.goods) ? s.goods : [])
+        }))
+      : [];
+
     return {
       ...def,
       ...saved,
+      suppliers,
       meta: { ...def.meta, ...(saved.meta || {}) },
       rbac: {
         ...def.rbac,
@@ -445,6 +455,7 @@ export class StoreCoreEngine {
         if (s?.name) {
           targetState.suppliers.push({
             id: s.id || generateId('SUP'),
+            supplierCode: s.supplierCode || s.code || s.id || generateId('SC'),
             name: s.name,
             contact: s.contact || '',
             phone: s.phone || '',
@@ -452,6 +463,7 @@ export class StoreCoreEngine {
             creditNote: s.creditNote || '',
             payableBalance: roundMoney(s.payableBalance || 0),
             carrierBalance: Number(s.carrierBalance || 0),
+            openCatalog: Array.isArray(s.openCatalog) ? s.openCatalog : (Array.isArray(s.goods) ? s.goods : []),
             updatedAt: Date.now()
           });
         }
@@ -477,8 +489,148 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 2. 交互式采购订货单引擎（下单、缺货智能拆单、照上次再来一单、签收完结）
+   * 2. 【核心原设计保留】：供货商绑定 & 自动拉取供货商向本店开放的专属货盘
    * -------------------------------------------------------------------------- */
+
+  /**
+   * 同步平台级共享存储（厂商端/大集端/云端）推送给已绑定供货商的开放货盘
+   */
+  _syncSharedSupplierCatalogs() {
+    try {
+      for (const sharedKey of STORAGE_KEYS.SHARED_SUPPLIER_OFFERS) {
+        const raw = localStorage.getItem(sharedKey);
+        if (!raw) continue;
+        const data = JSON.parse(raw);
+        const list = Array.isArray(data) ? data : (Array.isArray(data?.suppliers) ? data.suppliers : []);
+        for (const remoteSup of list) {
+          const code = remoteSup.supplierCode || remoteSup.code || remoteSup.id;
+          const localSup = this.state.suppliers.find(s => s.supplierCode === code || s.id === remoteSup.id || s.name === remoteSup.name);
+          if (localSup) {
+            const offers = remoteSup.openCatalog || remoteSup.goods || remoteSup.products || remoteSup.items || [];
+            if (offers.length > 0) {
+              localSup.openCatalog = offers.map(o => this._normalizeOfferItem(o));
+              localSup.updatedAt = Date.now();
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  _normalizeOfferItem(o) {
+    return {
+      offerId: o.offerId || o.id || generateId('OFR'),
+      barcode: o.barcode || o.code || '',
+      name: String(o.name || '未命名货品'),
+      spec: o.spec || o.packSpec || '',
+      unit: o.unit || this.getActiveGene().packUnitDefault || '箱',
+      supplyPrice: roundMoney(o.supplyPrice ?? o.wholesalePrice ?? o.price ?? 0),
+      suggestRetailPrice: roundMoney(o.suggestRetailPrice ?? o.retailPrice ?? roundMoney((o.supplyPrice ?? o.price ?? 0) * 1.25)),
+      minOrderQty: Math.max(1, Number(o.minOrderQty ?? o.moq ?? 1)),
+      carrierPerUnit: Number(o.carrierPerUnit || 0),
+      note: o.note || ''
+    };
+  }
+
+  /**
+   * 门店绑定上游供货商（支持输入供货商绑定码/手机号，自动探测平台共享货盘或接收 JSON 货盘包）
+   */
+  bindSupplier({ supplierCode = '', name = '', contact = '', phone = '', category = '综合供货', initialOffers = [] }) {
+    const cleanCode = String(supplierCode || '').trim();
+    const cleanName = String(name || '').trim();
+    if (!cleanCode && !cleanName) {
+      return { ok: false, message: '请输入供货商绑定码或名称' };
+    }
+
+    // 1. 先检查是否已绑定过该供货商
+    let existing = this.state.suppliers.find(
+      s => (cleanCode && s.supplierCode === cleanCode) || (cleanName && s.name === cleanName)
+    );
+
+    // 2. 自动检索平台本地/云端缓存中该供货商开放的专属货盘
+    let discoveredOffers = Array.isArray(initialOffers) ? initialOffers.map(o => this._normalizeOfferItem(o)) : [];
+    let discoveredSupplierMeta = null;
+
+    if (discoveredOffers.length === 0) {
+      for (const sharedKey of STORAGE_KEYS.SHARED_SUPPLIER_OFFERS) {
+        try {
+          const raw = localStorage.getItem(sharedKey);
+          if (!raw) continue;
+          const parsed = JSON.parse(raw);
+          const list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.suppliers) ? parsed.suppliers : []);
+          const matched = list.find(
+            item => (cleanCode && (item.supplierCode === cleanCode || item.code === cleanCode || item.id === cleanCode)) ||
+                    (cleanName && item.name === cleanName)
+          );
+          if (matched) {
+            discoveredSupplierMeta = matched;
+            const rawOffers = matched.openCatalog || matched.goods || matched.products || matched.items || [];
+            discoveredOffers = rawOffers.map(o => this._normalizeOfferItem(o));
+            break;
+          }
+        } catch (_) {}
+      }
+    }
+
+    // 3. 若外部同步回调已挂载，通知云端按供货商绑定码拉取最新开放货盘
+    if (typeof window !== 'undefined' && typeof window.onBindSupplierRequest === 'function') {
+      try {
+        window.onBindSupplierRequest({ storeId: this.state.activeStoreId, supplierCode: cleanCode, name: cleanName });
+      } catch (_) {}
+    }
+
+    if (existing) {
+      if (discoveredOffers.length > 0) existing.openCatalog = discoveredOffers;
+      existing.updatedAt = Date.now();
+      this._persist(this.state, true, 'SUPPLIER_BOUND', existing);
+      return { ok: true, supplier: existing, message: `已更新供货商【${existing.name}】开放货盘（共 ${existing.openCatalog.length} 款供货商品）` };
+    }
+
+    const newSupplier = {
+      id: generateId('SUP'),
+      supplierCode: cleanCode || generateId('SC'),
+      name: cleanName || discoveredSupplierMeta?.name || `供货商(${cleanCode})`,
+      contact: contact || discoveredSupplierMeta?.contact || '',
+      phone: phone || discoveredSupplierMeta?.phone || '',
+      category: category || discoveredSupplierMeta?.category || '综合供货',
+      creditNote: '',
+      payableBalance: 0,
+      carrierBalance: 0,
+      openCatalog: discoveredOffers,
+      updatedAt: Date.now()
+    };
+
+    this.state.suppliers.unshift(newSupplier);
+    this._persist(this.state, true, 'SUPPLIER_BOUND', newSupplier);
+    return {
+      ok: true,
+      supplier: newSupplier,
+      message: discoveredOffers.length > 0
+        ? `已成功绑定【${newSupplier.name}】，自动同步其开放货盘共 ${discoveredOffers.length} 款商品！`
+        : `已绑定供货商【${newSupplier.name}】，可立即导入或维护其开放给本店的供货货盘`
+    };
+  }
+
+  /**
+   * 接收供货商发来的开放货盘（支持供货商端推送、或导入供货商发在微信里的货盘 JSON/条目）
+   */
+  upsertSupplierOpenOffers(supplierId, offers = []) {
+    const sup = this.state.suppliers.find(s => s.id === supplierId);
+    if (!sup) return { ok: false, message: '未找到对应已绑定供货商' };
+    const normalized = offers.map(o => this._normalizeOfferItem(o));
+    const map = new Map((sup.openCatalog || []).map(item => [item.name + '|' + item.spec, item]));
+    for (const item of normalized) {
+      map.set(item.name + '|' + item.spec, item);
+    }
+    sup.openCatalog = Array.from(map.values());
+    sup.updatedAt = Date.now();
+    this._persist(this.state, true, 'SUPPLIER_OFFERS_UPDATED', sup);
+    return { ok: true, supplier: sup, count: sup.openCatalog.length };
+  }
+
+  /**
+   * 交互式采购订货单生成（直接基于供货商开放货盘下单，下单时自动在店内商品库建立/关联对应货品档案）
+   */
   createPurchaseOrder({ supplierId = '', items = [], note = '' }) {
     if (!Array.isArray(items) || items.length === 0) {
       return { ok: false, message: '订货清单不能为空' };
@@ -490,10 +642,52 @@ export class StoreCoreEngine {
 
     const cleanItems = items.map(it => {
       const qty = Number(it.qty) || 1;
-      const unitPrice = roundMoney(it.unitPrice || 0);
+      const unitPrice = roundMoney(it.unitPrice ?? it.supplyPrice ?? 0);
+
+      // 若来自供货商开放货盘且本店商品库尚无此商品，自动无缝建档关联，确保到货签收时 100% 落入库存！
+      let targetSkuId = it.skuId || '';
+      if (!targetSkuId) {
+        let matchedSku = this.state.catalog.find(
+          s => (s.storeId === store.id || !s.storeId) && (s.name === it.name || (it.barcode && s.barcode === it.barcode))
+        );
+        if (!matchedSku) {
+          matchedSku = {
+            id: generateId('SKU'),
+            storeId: store.id,
+            barcode: it.barcode || '',
+            scaleCode: '',
+            name: String(it.name || '未命名商品'),
+            category: sup?.category || this.getActiveGene().quickTags[0] || '主营商品',
+            unit: it.unit || this.getActiveGene().unitDefault,
+            packUnit: it.unit || this.getActiveGene().packUnitDefault,
+            packSize: 1,
+            costPrice: unitPrice,
+            retailPrice: roundMoney(it.suggestRetailPrice || unitPrice * 1.25),
+            memberPrice: roundMoney(it.suggestRetailPrice || unitPrice * 1.2),
+            wholesalePrice: roundMoney(it.suggestRetailPrice || unitPrice * 1.15),
+            tierPrices: [],
+            stock: 0,
+            minStock: 5,
+            maxStock: 100,
+            supplierId: sup?.id || '',
+            expiryDate: '',
+            location: '',
+            isBundle: false,
+            bundleItems: [],
+            updatedAt: Date.now()
+          };
+          this.state.catalog.unshift(matchedSku);
+        } else if (sup && !matchedSku.supplierId) {
+          matchedSku.supplierId = sup.id;
+        }
+        targetSkuId = matchedSku.id;
+      }
+
       return {
-        skuId: it.skuId || '',
+        skuId: targetSkuId,
+        offerId: it.offerId || '',
         name: String(it.name || '未命名商品'),
+        spec: it.spec || '',
         unit: it.unit || this.getActiveGene().unitDefault,
         qty,
         unitPrice,
@@ -512,28 +706,17 @@ export class StoreCoreEngine {
       items: cleanItems,
       totalAmount,
       note,
-      status: 'PENDING_DELIVERY', // PENDING_DELIVERY | RECEIVED | CANCELLED
+      status: 'PENDING_DELIVERY',
       createdAt: Date.now(),
       operatorName: acc.name,
       verifyCode
     };
 
-    // 顺手记住每款商品的默认供货方，方便下次一键按供货方自动拆单
-    if (sup) {
-      for (const it of cleanItems) {
-        const sku = this.state.catalog.find(s => s.id === it.skuId);
-        if (sku && !sku.supplierId) sku.supplierId = sup.id;
-      }
-    }
-
     this.state.purchaseOrders.unshift(po);
     this._persist(this.state, true, 'PURCHASE_ORDER_CREATED', po);
-    return { ok: true, order: po, message: `已生成正式订货单 [${orderId}]` };
+    return { ok: true, order: po, message: `已向【${po.supplierName}】发出电子订货单 [${orderId}]` };
   }
 
-  /**
-   * 缺货按默认供货方自动拆单生成订货单
-   */
   autoSplitRestockOrders() {
     const storeId = this.state.activeStoreId;
     const lowSkus = this.state.catalog.filter(s => (s.storeId === storeId || !s.storeId) && s.stock <= s.minStock);
@@ -568,9 +751,6 @@ export class StoreCoreEngine {
     return { ok: true, createdCount, message: `已按默认供货方自动拆分为 ${createdCount} 张订货单` };
   }
 
-  /**
-   * 照上次再来一单（自动过滤当前库存已达上限 maxStock 的积压商品）
-   */
   cloneLastPurchaseOrder(orderId) {
     const orig = this.state.purchaseOrders.find(o => o.id === orderId);
     if (!orig) return { ok: false, message: '未找到该历史订货单' };
@@ -603,9 +783,6 @@ export class StoreCoreEngine {
     };
   }
 
-  /**
-   * 到货验收台一键签收整张订货单（四位并立落账 + 更新订货单状态）
-   */
   receivePurchaseOrder(orderId, { payMethod = 'CREDIT', carrierDelta = 0, note = '' } = {}) {
     const po = this.state.purchaseOrders.find(o => o.id === orderId);
     if (!po) return { ok: false, message: '未找到对应订货单' };
@@ -640,14 +817,11 @@ export class StoreCoreEngine {
     return res;
   }
 
-  /**
-   * 格式化订货单微信发单文本（遵守手电筒原则：对外发单可选不带底价或仅列供货价）
-   */
   formatPurchaseOrderText(orderId) {
     const po = this.state.purchaseOrders.find(o => o.id === orderId);
     if (!po) return '';
     const store = this.state.stores.find(s => s.id === po.storeId) || this.getActiveStore();
-    const lines = po.items.map((it, idx) => `${idx + 1}. ${it.name} × ${it.qty}${it.unit}`).join('\n');
+    const lines = po.items.map((it, idx) => `${idx + 1}. ${it.name}${it.spec ? `(${it.spec})` : ''} × ${it.qty}${it.unit}`).join('\n');
     return `📦【${store.name} · 采购订货单】\n单号：${po.id}\n供货方：${po.supplierName}\n----------------\n${lines}\n----------------\n验真短码：${po.verifyCode}\n请安排随车配送，到店扫码核对签收！`;
   }
 
