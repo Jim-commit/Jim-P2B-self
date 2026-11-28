@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#0f766e" />
-  <title>商道相通 · 掌中宝随身作战舱</title>
+  <title>商道相通 · 百工商业全域智慧工作台</title>
   <style>
     :root {
       --bg-page: #f4f6f8;
@@ -25,74 +25,172 @@
       --font-scale: 1;
     }
 
-    body.elder-mode { --font-scale: 1.28; }
+    body.elder-mode { --font-scale: 1.26; }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
       background: var(--bg-page);
       color: var(--text-main);
       font-size: calc(15px * var(--font-scale));
       line-height: 1.45;
-      padding-bottom: 84px;
+      padding-bottom: 36px;
     }
 
-    .m-header {
+    /* 原版经典顶栏：左上三杠 ☰ + 中央门店与模块标题 + 右上齿轮 ⚙️ 与三点 ⋮ */
+    .app-topbar {
       position: sticky;
       top: 0;
-      z-index: 30;
-      background: var(--primary-dark);
-      color: #fff;
-      padding: 10px 14px;
+      z-index: 40;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-light);
+      height: 54px;
+      padding: 0 12px;
       display: flex;
+      align-items: center;
       justify-content: space-between;
+      gap: 8px;
+    }
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      font-size: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-main);
+      padding: 0;
+    }
+    .icon-btn:hover, .icon-btn:active { background: var(--bg-subtle); border-color: var(--border-light); }
+
+    .topbar-center {
+      flex: 1;
+      display: flex;
       align-items: center;
       gap: 6px;
+      overflow: hidden;
     }
-    .m-store-select {
-      background: rgba(255, 255, 255, 0.14);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 999px;
-      padding: 4px 10px;
+    .store-pill-select {
+      border: 1px solid var(--border-light);
+      background: var(--bg-subtle);
+      color: var(--primary-dark);
       font-weight: 700;
       font-size: calc(14px * var(--font-scale));
-      max-width: 155px;
-    }
-    .m-store-select option { color: var(--text-main); background: #fff; }
-    .m-pill {
-      background: rgba(255, 255, 255, 0.16);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: #fff;
-      padding: 4px 9px;
+      padding: 4px 10px;
       border-radius: 999px;
-      font-size: calc(12px * var(--font-scale));
-      cursor: pointer;
+      max-width: 145px;
+    }
+    .current-view-label {
+      font-weight: 700;
+      font-size: calc(15px * var(--font-scale));
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .time-banner {
+    /* 左上三杠 ☰ 滑出生态与主线导航抽屉 */
+    .drawer-mask {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      z-index: 90;
+      display: none;
+    }
+    .drawer-mask.show { display: block; }
+    .left-drawer {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 278px;
+      max-width: 82vw;
+      background: #ffffff;
+      z-index: 95;
+      transform: translateX(-100%);
+      transition: transform 0.22s ease;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 16px 12px 30px;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+    }
+    .left-drawer.open { transform: translateX(0); }
+    .drawer-section-title {
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 12px 10px 4px;
+      letter-spacing: 0.5px;
+    }
+    .drawer-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+    .drawer-item:hover { background: var(--bg-subtle); }
+    .drawer-item.active { background: var(--primary-light); color: var(--primary-dark); font-weight: 700; }
+
+    /* 右上三点 ⋮ 快捷操作下拉菜单 */
+    .more-menu {
+      position: fixed;
+      top: 52px;
+      right: 12px;
+      width: 215px;
+      background: #ffffff;
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+      z-index: 85;
+      display: none;
+      padding: 6px;
+    }
+    .more-menu.show { display: block; }
+    .menu-row {
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: calc(14px * var(--font-scale));
+    }
+    .menu-row:hover { background: var(--bg-subtle); }
+
+    /* 全域商道宗旨与时辰状态微条 */
+    .eco-strip {
       background: #fffbeb;
       border-bottom: 1px solid #fde68a;
       color: #92400e;
-      padding: 8px 14px;
-      font-size: calc(13px * var(--font-scale));
+      padding: 7px 14px;
+      font-size: calc(12.5px * var(--font-scale));
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 8px;
     }
 
-    .container { padding: 12px; max-width: 600px; margin: 0 auto; }
+    .main-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 12px;
+    }
 
     .card {
       background: var(--bg-card);
-      border-radius: 14px;
+      border-radius: 12px;
       padding: 14px;
       margin-bottom: 12px;
-      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
       border: 1px solid var(--border-light);
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
     }
     .card-hd {
       display: flex;
@@ -105,7 +203,7 @@
       flex-wrap: wrap;
     }
 
-    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
     .kpi-box { background: #fff; border-radius: 12px; padding: 12px; border: 1px solid var(--border-light); }
     .kpi-label { font-size: calc(12px * var(--font-scale)); color: var(--text-muted); }
     .kpi-num { font-size: calc(20px * var(--font-scale)); font-weight: 800; color: var(--primary-dark); margin-top: 2px; }
@@ -114,28 +212,28 @@
       border: 1px solid var(--border-light);
       background: #fff;
       color: var(--text-main);
-      padding: 10px 14px;
-      border-radius: 10px;
+      padding: 8px 13px;
+      border-radius: 9px;
       font-size: calc(14px * var(--font-scale));
       font-weight: 600;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 5px;
     }
     button:active { transform: scale(0.98); }
     button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
     button.warn { background: var(--accent-bg); color: var(--accent); border-color: #fcd34d; }
     button.danger { background: var(--danger-bg); color: var(--danger); border-color: #fda4af; }
+    button.sm { padding: 5px 10px; font-size: calc(12px * var(--font-scale)); }
     button.block { width: 100%; }
-    button.sm { padding: 6px 10px; font-size: calc(12px * var(--font-scale)); }
 
     input, select, textarea {
       width: 100%;
-      padding: 10px 12px;
+      padding: 9px 11px;
       border: 1px solid var(--border-light);
-      border-radius: 10px;
+      border-radius: 9px;
       font-size: inherit;
       font-family: inherit;
       background: #fff;
@@ -143,10 +241,20 @@
     }
     input:focus, select:focus { outline: none; border-color: var(--primary); }
 
-    .voice-bar { display: flex; gap: 8px; margin-bottom: 12px; }
-    .voice-bar input { flex: 1; border-radius: 999px; padding-left: 16px; }
+    .sup-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; }
+    .sup-chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-light);
+      background: var(--bg-subtle);
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .sup-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-    .cart-row {
+    .list-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -155,56 +263,7 @@
       gap: 8px;
     }
     .qty-ctrl { display: flex; align-items: center; gap: 6px; }
-    .qty-ctrl button { width: 32px; height: 32px; padding: 0; border-radius: 8px; }
-
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 68px;
-      background: #ffffff;
-      border-top: 1px solid var(--border-light);
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      z-index: 40;
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-    .tab-btn {
-      flex: 1;
-      height: 100%;
-      border: none;
-      background: transparent;
-      border-radius: 0;
-      flex-direction: column;
-      gap: 2px;
-      font-size: calc(11px * var(--font-scale));
-      color: var(--text-muted);
-      padding: 4px;
-    }
-    .tab-btn.active { color: var(--primary); font-weight: 800; }
-    .tab-icon { font-size: calc(20px * var(--font-scale)); }
-
-    .modal-mask {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.7);
-      display: none;
-      align-items: flex-end;
-      justify-content: center;
-      z-index: 100;
-    }
-    .modal-mask.show { display: flex; }
-    .bottom-sheet {
-      background: #fff;
-      width: 100%;
-      max-width: 600px;
-      border-radius: 20px 20px 0 0;
-      padding: 20px;
-      max-height: 88vh;
-      overflow-y: auto;
-    }
+    .qty-ctrl button { width: 30px; height: 30px; padding: 0; }
 
     .badge {
       display: inline-block;
@@ -217,42 +276,87 @@
     .badge.warn { background: var(--accent-bg); color: var(--accent); border-color: #fde68a; }
     .badge.danger { background: var(--danger-bg); color: var(--danger); border-color: #fecdd3; }
     .badge.ok { background: var(--success-bg); color: var(--success); border-color: #bbf7d0; }
+
+    /* ⚙️ 齿轮设置中心全屏抽屉与弹窗 */
+    .modal-mask {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 120;
+    }
+    .modal-mask.show { display: flex; }
+    .sheet-panel {
+      background: #fff;
+      width: 100%;
+      max-width: 640px;
+      border-radius: 18px 18px 0 0;
+      padding: 18px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--bg-subtle);
+      gap: 12px;
+    }
   </style>
 </head>
 <body>
 
-  <header class="m-header" id="mHeader">
-    <div style="display:flex; align-items:center; gap:6px;">
-      <span>🏮</span>
-      <select class="m-store-select" id="mStoreSelect" title="切换总店/分店"></select>
+  <!-- 原版经典顶栏：左上三杠 ☰ ｜ 中央门店与当前主线 ｜ 右上齿轮 ⚙️ 与三点 ⋮ -->
+  <header class="app-topbar" id="appTopbar">
+    <button class="icon-btn" id="btnOpenDrawer" title="打开全域生态与主线导航">☰</button>
+
+    <div class="topbar-center">
+      <select class="store-pill-select" id="topStoreSelect" title="切换总店/分店"></select>
+      <span class="current-view-label" id="topViewTitle">📦 订货与供货货盘</span>
     </div>
-    <div style="display:flex; gap:6px; align-items:center;">
-      <span class="m-pill" id="mCloudStatus">☁️ 已连</span>
-      <span class="m-pill" id="mPrivacyBtn">👁️</span>
-      <span class="m-pill" id="mAccBtn">👑 <span id="mAccName">掌柜</span></span>
+
+    <div style="display:flex; align-items:center; gap:2px;">
+      <button class="icon-btn" id="btnOpenGearSettings" title="⚙️ 设置中心（模块选配/策略/角色/主权）">⚙️</button>
+      <button class="icon-btn" id="btnOpenMoreMenu" title="更多生态协同与快捷操作">⋮</button>
     </div>
   </header>
 
-  <div id="mSandboxBar" style="display:none; background:#fef3c7; color:#92400e; padding:8px 14px; font-size:13px; justify-content:space-between; align-items:center;">
-    <span>🎓 <strong>掌中宝练手模拟舱</strong>（不记入真账）</span>
-    <button class="sm warn" id="btnMExitSandbox">退出</button>
+  <!-- 练手模拟舱提示条 -->
+  <div id="sandboxBanner" style="display:none; background:#fef3c7; color:#92400e; padding:7px 14px; font-size:13px; justify-content:space-between; align-items:center;">
+    <span>🎓 <strong>练手模拟舱</strong>（演练数据绝不记入真账）</span>
+    <button class="sm warn" id="btnExitSandbox">退出</button>
   </div>
 
-  <div class="time-banner" id="timeContextBanner"></div>
+  <!-- 商道主线与营业时辰提示微条 -->
+  <div class="eco-strip" id="ecoStrip"></div>
 
-  <main class="container" id="mMainContainer"></main>
+  <!-- 主工作区 -->
+  <main class="main-wrap" id="mainContainer"></main>
 
-  <nav class="bottom-nav" id="mBottomNav"></nav>
+  <!-- 左上三杠 ☰ 全域生态与主线导航抽屉 -->
+  <div class="drawer-mask" id="drawerMask"></div>
+  <aside class="left-drawer" id="leftDrawer"></aside>
 
-  <div class="modal-mask" id="mSheetMask">
-    <div class="bottom-sheet" id="mSheetBody"></div>
+  <!-- 右上三点 ⋮ 快捷生态与值班菜单 -->
+  <div class="more-menu" id="moreMenu"></div>
+
+  <!-- 底部通用抽屉弹窗（⚙️ 齿轮设置中心 / 账号值班切换 / 收款码 / 扫码） -->
+  <div class="modal-mask" id="modalMask">
+    <div class="sheet-panel" id="modalBody"></div>
   </div>
 
   <script type="module">
     import {
       StoreCoreEngine,
+      MODULE_CATALOG,
+      INDUSTRY_GENES,
+      PERMISSION_CATALOG,
       roundMoney,
-      generateId
+      generateId,
+      sha256Hex
     } from './src/modules/store/storeCoreEngine.js';
 
     const cloudSyncQueue = [];
@@ -260,558 +364,470 @@
       cloudSyncAdapter: (state, eventType, detail) => {
         cloudSyncQueue.push({ ts: Date.now(), eventType, storeId: state.activeStoreId, detailId: detail?.id || '' });
         if (typeof window.onStoreCloudSync === 'function') window.onStoreCloudSync(state, eventType, detail);
-        updateCloudBadge();
       }
     });
+    window.__STORE_ENGINE__ = engine;
 
-    let activeTab = 'cashier';
-    let mCart = [];
-    let mSelectedSupplierId = '';
-    let mOrderCart = [];
+    // 默认聚焦“货畅其流 · 订货与供货货盘”主流价值主线（POS收银为可选模块）
+    let activeModule = 'procurement';
+    let selectedSupplierId = '';
+    let orderCart = [];
+    let posCart = [];
     let cameraStream = null;
 
     const $ = (id) => document.getElementById(id);
 
-    function updateCloudBadge() {
-      const el = $('mCloudStatus');
-      if (!el) return;
-      if (!engine.state.meta.cloudSyncEnabled) el.textContent = '📴 本地';
-      else if (!navigator.onLine) el.textContent = `⏳ 离线(${cloudSyncQueue.length})`;
-      else el.textContent = '☁️ 云端';
+    function openDrawer() {
+      $('drawerMask').classList.add('show');
+      $('leftDrawer').classList.add('open');
+    }
+    function closeDrawer() {
+      $('drawerMask').classList.remove('show');
+      $('leftDrawer').classList.remove('open');
+    }
+    function closeModal() {
+      if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+      $('modalMask').classList.remove('show');
     }
 
-    function getTimeContextHint(metrics) {
-      const hour = new Date().getHours();
-      const daysSinceBackup = engine.state.meta.lastBackupAt
-        ? Math.floor((Date.now() - engine.state.meta.lastBackupAt) / 86400000)
-        : 99;
-
-      if (hour >= 5 && hour < 10) {
-        return {
-          text: `🌅 早安！晨间备货时段（低库存 ${metrics.lowStockSkus.length} 款 · 待签收 ${metrics.pendingPurchaseOrders.length} 单）`,
-          btnText: '去订货/签收',
-          action: () => { activeTab = 'goods'; renderMobile(); }
-        };
-      }
-      if (hour >= 20 || hour < 5) {
-        const needBackup = daysSinceBackup >= 7;
-        return {
-          text: needBackup
-            ? `🌙 晚间打烊：已超 ${daysSinceBackup === 99 ? '7' : daysSinceBackup} 天未导出备份，建议发微信留底`
-            : `🌙 晚间打烊：今日实收 ¥${metrics.todayRevenue.toFixed(2)}（${metrics.todayOrderCount}笔）`,
-          btnText: needBackup ? '一键导出留底' : '打烊核账',
-          action: () => {
-            if (needBackup) exportMobileBackup();
-            else { activeTab = 'ledger'; renderMobile(); }
-          }
-        };
-      }
-      return {
-        text: `☀️ 营业中 · 今日已收 ¥${metrics.todayRevenue.toFixed(2)}（保本线 ${metrics.breakevenProgress}%）`,
-        btnText: '亮收款码',
-        action: () => openQrSheet()
-      };
-    }
-
-    function renderMobile() {
+    /* ========================================================================
+     * 全局渲染：顶栏 + 左上三杠生态抽屉 + 右上三点菜单 + 主线舞台
+     * ======================================================================== */
+    function renderApp() {
       const store = engine.getActiveStore();
-      const acc = engine.getCurrentAccount();
       const metrics = engine.getDashboardMetrics();
-
       document.body.classList.toggle('elder-mode', Boolean(engine.state.meta.elderLargeMode));
 
+      // 顶部门店切换器
       const visibleStores = engine.getVisibleStores();
-      const sel = $('mStoreSelect');
+      const sel = $('topStoreSelect');
       sel.innerHTML = visibleStores.map(s => `<option value="${s.id}" ${s.id === store.id ? 'selected' : ''}>${s.name}</option>`).join('');
       sel.onchange = () => {
         const res = engine.switchStore(sel.value);
-        if (res.ok) { mCart = []; mOrderCart = []; }
+        if (res.ok) { orderCart = []; posCart = []; }
         else alert(res.message);
       };
 
-      $('mAccName').textContent = acc.name;
-      $('mPrivacyBtn').textContent = engine.privacyShieldActive ? '🙈' : '👁️';
-      $('mSandboxBar').style.display = engine.sandboxMode ? 'flex' : 'none';
-      updateCloudBadge();
+      $('sandboxBanner').style.display = engine.sandboxMode ? 'flex' : 'none';
+      if (engine.state.rbac.locked) openAccountSwitchSheet(true);
 
-      if (engine.state.rbac.locked) openAccountSheet(true);
-
-      const ctx = getTimeContextHint(metrics);
-      const banner = $('timeContextBanner');
-      banner.innerHTML = `<span>${ctx.text}</span><button class="sm warn" id="btnTimeCtxAction">${ctx.btnText}</button>`;
-      $('btnTimeCtxAction').onclick = ctx.action;
-
-      renderBottomNav(metrics);
-
-      const container = $('mMainContainer');
-      if (activeTab === 'cashier') {
-        container.innerHTML = renderCashierTab();
-        bindCashierTab();
-      } else if (activeTab === 'goods') {
-        container.innerHTML = renderGoodsTab(metrics);
-        bindGoodsTab();
-      } else if (activeTab === 'ledger') {
-        container.innerHTML = renderLedgerTab(metrics);
-        bindLedgerTab();
-      } else {
-        container.innerHTML = renderMoreTab();
-        bindMoreTab();
+      // 计算当前可见模块（受齿轮设置中心“模块显隐”与角色“手电筒光圈”双重过滤）
+      const allowedModules = MODULE_CATALOG.filter(m => engine.canAccessModule(m.id));
+      if (allowedModules.length > 0 && !allowedModules.some(m => m.id === activeModule)) {
+        activeModule = allowedModules[0].id;
       }
+      const curModObj = allowedModules.find(m => m.id === activeModule) || allowedModules[0];
+      $('topViewTitle').textContent = curModObj ? `${curModObj.icon} ${curModObj.name}` : '商道相通';
+
+      renderLeftDrawer(allowedModules, metrics);
+      renderMoreMenu();
+      renderEcoStrip(metrics);
+      renderMainView(metrics);
     }
 
-    function renderBottomNav(metrics) {
-      const tabs = [
-        { id: 'cashier', icon: '🧾', label: '极速收银', allow: engine.canAccessModule('pos') },
-        { id: 'goods',   icon: '📦', label: metrics.pendingPurchaseOrders.length > 0 ? `订货签收(${metrics.pendingPurchaseOrders.length})` : '订货签收', allow: engine.canAccessModule('catalog') || engine.canAccessModule('receiving') || engine.canAccessModule('procurement') },
-        { id: 'ledger',  icon: '💰', label: metrics.pendingApprovals.length > 0 ? `核决(${metrics.pendingApprovals.length})` : '账本核决', allow: engine.canAccessModule('finance') || engine.canAccessModule('reconcile') },
-        { id: 'more',    icon: '🧭', label: '百宝箱',   allow: true }
-      ].filter(t => t.allow);
+    function renderLeftDrawer(allowedModules, metrics) {
+      const acc = engine.getCurrentAccount();
+      const drawer = $('leftDrawer');
 
-      if (!tabs.some(t => t.id === activeTab) && tabs.length > 0) activeTab = tabs[0].id;
-
-      const nav = $('mBottomNav');
-      nav.innerHTML = tabs.map(t => `
-        <button class="tab-btn ${activeTab === t.id ? 'active' : ''}" data-tab="${t.id}">
-          <span class="tab-icon">${t.icon}</span>
-          <span>${t.label}</span>
-        </button>
-      `).join('');
-
-      nav.querySelectorAll('[data-tab]').forEach(btn => {
-        btn.onclick = () => { activeTab = btn.dataset.tab; renderMobile(); };
-      });
-    }
-
-    function renderCashierTab() {
-      const total = roundMoney(mCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
-      const hint = engine.getCrossSellHint(mCart.map(i => i.skuId));
-      const storeSkus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
-      const openTickets = (engine.state.serviceTickets || []).filter(t => t.storeId === engine.state.activeStoreId && t.status === 'OPEN');
-
-      return `
-        <div class="voice-bar">
-          <input type="text" id="mVoiceInput" placeholder="点键盘麦克风说话：如“老王赊账48元”或输品名..." />
-          <button class="primary" id="btnMVoiceGo">执行</button>
-          <button id="btnMCameraScan" title="摄像头扫码">📷</button>
+      drawer.innerHTML = `
+        <div style="padding:8px 10px 12px; border-bottom:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:800; color:var(--primary-dark); font-size:16px;">🏮 商道相通 · 生态协同</div>
+            <div style="font-size:11px; color:var(--text-muted);">人尽其才 · 物尽其用 · 地尽其利 · 货畅其流</div>
+          </div>
+          <span class="badge ok">${acc.avatar} ${acc.name}</span>
         </div>
 
-        <div class="card">
-          <div class="card-hd">
-            <span>🛒 当前收银清单（数量减至负数即退货）</span>
-            <button class="sm" id="btnMNoCatalog">+ 临时代收</button>
-          </div>
+        <div class="drawer-section-title">全域平台五大节点贯通</div>
+        <div class="drawer-item" onclick="location.href='hq.html'"><span>🏛️ 总控联盟工作台 (hq)</span><span class="badge">总控</span></div>
+        <div class="drawer-item" onclick="location.href='suppliers.html'"><span>🏭 百业供需名录 (suppliers)</span><span class="badge">源头</span></div>
+        <div class="drawer-item" onclick="location.href='mall.html'"><span>🛒 逛大集源头拼单 (mall)</span><span class="badge">集采</span></div>
+        <div class="drawer-item" onclick="location.href='driver.html'"><span>🚛 物流配送履约端 (driver)</span><span class="badge">运力</span></div>
+        <div class="drawer-item" onclick="location.href='store.html'"><span>🖥️ 电脑宽屏调度台 (store)</span><span class="badge">宽屏</span></div>
 
-          ${hint ? `<div class="badge ok" style="margin-bottom:8px; display:block; padding:6px 10px;" id="btnMCrossSell">💡 顺口带货：${hint.text}（点此加入）</div>` : ''}
-
-          ${mCart.length === 0 ? `
-            <div style="text-align:center; padding:24px 10px; color:var(--text-muted);">
-              上方输入品名/条码，或点 📷 连续扫码开单
+        <div class="drawer-section-title">本店业务主线（可在右上 ⚙️ 自由选配模块）</div>
+        ${allowedModules.map(m => {
+          let tag = '';
+          if (m.id === 'receiving' && metrics.pendingPurchaseOrders.length > 0) tag = `<span class="badge warn">${metrics.pendingPurchaseOrders.length}待收</span>`;
+          else if (m.id === 'finance' && metrics.pendingApprovals.length > 0) tag = `<span class="badge warn">${metrics.pendingApprovals.length}待核</span>`;
+          else tag = `<span style="font-size:11px; color:var(--text-muted);">${m.pillar}</span>`;
+          return `
+            <div class="drawer-item ${activeModule === m.id ? 'active' : ''}" data-nav-mod="${m.id}">
+              <span>${m.icon} ${m.name}</span>
+              ${tag}
             </div>
-          ` : mCart.map((it, idx) => `
-            <div class="cart-row">
-              <div style="flex:1;">
-                <div style="font-weight:700;">${it.name}</div>
-                <div style="font-size:12px; color:var(--text-muted);">单价 ¥${it.unitPrice.toFixed(2)} · 小计 ¥${roundMoney(it.qty * it.unitPrice).toFixed(2)}</div>
-              </div>
-              <div class="qty-ctrl">
-                <button data-m-dec="${idx}">-</button>
-                <strong style="min-width:26px; text-align:center;">${it.qty}</strong>
-                <button data-m-inc="${idx}">+</button>
-              </div>
-            </div>
-          `).join('')}
+          `;
+        }).join('')}
 
-          <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border-light);">
-            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
-              <span style="color:var(--text-muted);">本单应收净额：</span>
-              <span style="font-size:28px; font-weight:800; color:var(--primary-dark);">¥${total.toFixed(2)}</span>
-            </div>
-
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-              <button class="primary" id="btnMPayDigital">📱 亮码收款落账</button>
-              <button id="btnMPayCash">💵 现金收款落账</button>
-              <button class="warn" id="btnMPayCredit">📒 熟客记账(赊)</button>
-              <button id="btnMShowQrOnly">🛡️ 仅展示收款码</button>
-            </div>
-          </div>
-        </div>
-
-        ${openTickets.length > 0 ? `
-          <div class="card">
-            <div class="card-hd"><span>🎫 街坊自提 / 定金工单尾号核销</span></div>
-            ${openTickets.map(t => `
-              <div class="cart-row">
-                <div><strong>尾号 ${t.phoneTail} · ${t.customerName}</strong><div style="font-size:12px; color:var(--text-muted);">${t.itemDesc} (¥${t.totalFee})</div></div>
-                <button class="sm primary" data-m-done-tkt="${t.id}">核销交付</button>
-              </div>
-            `).join('')}
-          </div>
-        ` : ''}
-
-        <div class="card">
-          <div class="card-hd"><span>⚡ 常用商品一键点选</span></div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            ${storeSkus.slice(0, 8).map(s => `
-              <button style="justify-content:space-between; font-weight:500;" data-m-quick-sku="${s.id}">
-                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.name}</span>
-                <strong style="color:var(--primary);">¥${s.retailPrice}</strong>
-              </button>
-            `).join('') || '<span style="color:var(--text-muted); font-size:13px;">暂无商品，可点右上角“+ 临时代收”边卖边建</span>'}
-          </div>
+        <div style="margin-top:auto; padding-top:14px;">
+          <button class="block" id="btnDrawerGear">⚙️ 打开设置中心（模块显隐 / 角色 / 主权）</button>
         </div>
       `;
+
+      drawer.querySelectorAll('[data-nav-mod]').forEach(el => {
+        el.onclick = () => {
+          activeModule = el.dataset.navMod;
+          closeDrawer();
+          renderApp();
+        };
+      });
+      $('btnDrawerGear').onclick = () => {
+        closeDrawer();
+        openGearSettingsSheet();
+      };
     }
 
-    function bindCashierTab() {
-      const handleCommand = () => {
-        const raw = $('mVoiceInput').value.trim();
-        if (!raw) return;
-        const cmd = engine.parseVoiceOrQuickCommand(raw);
-        if (cmd.intent === 'FAMILY_DRAW' || cmd.intent === 'EXPENSE') {
-          if (!cmd.amount) return alert('请说明具体金额，例如“家用拿走200元”');
-          if (confirm(`确认记录【${cmd.label}】¥${cmd.amount} 吗？`)) {
-            engine.commitVoucher({ type: cmd.intent, totalAmount: cmd.amount, payMethod: 'CASH', note: cmd.note });
-            engine.speakFeedback(`已记录${cmd.amount}元`);
-            $('mVoiceInput').value = '';
-            renderMobile();
-          }
-        } else if (cmd.matchedSkus?.length > 0) {
-          const sku = cmd.matchedSkus[0];
-          const found = mCart.find(c => c.skuId === sku.id);
-          if (found) found.qty += 1;
-          else mCart.push({ skuId: sku.id, name: sku.name, qty: 1, unitPrice: sku.retailPrice, costPrice: sku.costPrice });
-          $('mVoiceInput').value = '';
-          renderMobile();
-        } else {
-          const p = prompt(`未找到【${raw}】，输入售价（元）直接边卖边建档：`, '10');
-          if (p !== null && !isNaN(Number(p))) {
-            const price = roundMoney(p);
-            const newSku = {
-              id: generateId('SKU'),
-              storeId: engine.state.activeStoreId,
-              barcode: /^\d+$/.test(raw) ? raw : '',
-              scaleCode: '',
-              name: raw,
-              category: engine.getActiveGene().quickTags[0] || '主营商品',
-              unit: engine.getActiveGene().unitDefault,
-              packUnit: engine.getActiveGene().packUnitDefault,
-              packSize: 1,
-              costPrice: 0,
-              retailPrice: price,
-              memberPrice: price,
-              wholesalePrice: price,
-              tierPrices: [],
-              stock: 0,
-              minStock: 5,
-              maxStock: 100,
-              supplierId: '',
-              expiryDate: '',
-              location: '',
-              isBundle: false,
-              bundleItems: [],
-              updatedAt: Date.now()
-            };
-            engine.state.catalog.push(newSku);
-            mCart.push({ skuId: newSku.id, name: newSku.name, qty: 1, unitPrice: price, costPrice: 0 });
-            $('mVoiceInput').value = '';
-            renderMobile();
-          }
-        }
+    function renderMoreMenu() {
+      const acc = engine.getCurrentAccount();
+      $('moreMenu').innerHTML = `
+        <div class="menu-row" id="mnuAccount"><span>${acc.avatar}</span><span>切换值班岗位 (${acc.name})</span></div>
+        <div class="menu-row" id="mnuGear"><span>⚙️</span><span>设置中心（模块/策略/权限）</span></div>
+        <div class="menu-row" id="mnuQr"><span>🛡️</span><span>展示本店防掉包收款码</span></div>
+        <div class="menu-row" id="mnuPrivacy"><span>${engine.privacyShieldActive ? '🙈' : '👁️'}</span><span>${engine.privacyShieldActive ? '关闭防窥掩护' : '开启防窥脱敏掩护'}</span></div>
+        <div class="menu-row" id="mnuBackup"><span>📤</span><span>导出铁账加密备份包</span></div>
+        <div class="menu-row" id="mnuCloud"><span>${engine.state.meta.cloudSyncEnabled ? '☁️' : '📴'}</span><span>${engine.state.meta.cloudSyncEnabled ? '云端联动：已开启' : '云端联动：纯本地'}</span></div>
+        <div class="menu-row" id="mnuSandbox"><span>🎓</span><span>${engine.sandboxMode ? '退出练手模拟舱' : '进入练手模拟舱'}</span></div>
+        <div class="menu-row" style="color:var(--danger);" id="mnuLock"><span>🔒</span><span>立即锁屏</span></div>
+      `;
+
+      $('mnuAccount').onclick = () => { $('moreMenu').classList.remove('show'); openAccountSwitchSheet(false); };
+      $('mnuGear').onclick = () => { $('moreMenu').classList.remove('show'); openGearSettingsSheet(); };
+      $('mnuQr').onclick = () => { $('moreMenu').classList.remove('show'); openQrSheet(); };
+      $('mnuPrivacy').onclick = () => { $('moreMenu').classList.remove('show'); engine.togglePrivacyShield(); renderApp(); };
+      $('mnuBackup').onclick = () => { $('moreMenu').classList.remove('show'); exportBackupFile(); };
+      $('mnuCloud').onclick = () => {
+        $('moreMenu').classList.remove('show');
+        engine.state.meta.cloudSyncEnabled = !engine.state.meta.cloudSyncEnabled;
+        engine._persist();
+        renderApp();
       };
-
-      $('btnMVoiceGo').onclick = handleCommand;
-      $('mVoiceInput').onkeydown = (e) => { if (e.key === 'Enter') handleCommand(); };
-      $('btnMCameraScan').onclick = () => openCameraScannerSheet();
-
-      if ($('btnMNoCatalog')) {
-        $('btnMNoCatalog').onclick = () => {
-          const name = prompt('输入临时代收品名：', '散装百货');
-          if (!name) return;
-          const price = roundMoney(prompt('输入金额（负数代表退货/退桶）：', '10'));
-          mCart.push({ skuId: '', name, qty: 1, unitPrice: price, costPrice: 0 });
-          renderMobile();
-        };
-      }
-
-      if ($('btnMCrossSell')) {
-        $('btnMCrossSell').onclick = () => {
-          const hint = engine.getCrossSellHint(mCart.map(i => i.skuId));
-          if (hint) {
-            mCart.push({ skuId: hint.sku.id, name: hint.sku.name, qty: 1, unitPrice: hint.sku.retailPrice, costPrice: hint.sku.costPrice });
-            renderMobile();
-          }
-        };
-      }
-
-      document.querySelectorAll('[data-m-done-tkt]').forEach(btn => {
-        btn.onclick = () => {
-          const tkt = engine.state.serviceTickets.find(t => t.id === btn.dataset.mDoneTkt);
-          if (!tkt) return;
-          tkt.status = 'DONE';
-          engine.commitVoucher({
-            type: 'RELAY_ORDER',
-            totalAmount: tkt.totalFee,
-            serviceFee: tkt.serviceProfit || 0,
-            payMethod: 'DIGITAL',
-            digitalPaid: tkt.totalFee,
-            note: `掌中宝核销【${tkt.customerName}】(尾号${tkt.phoneTail})`
-          });
-          engine.speakFeedback('核销交付成功');
-          renderMobile();
-        };
-      });
-
-      document.querySelectorAll('[data-m-inc]').forEach(b => {
-        b.onclick = () => { mCart[b.dataset.mInc].qty += 1; renderMobile(); };
-      });
-      document.querySelectorAll('[data-m-dec]').forEach(b => {
-        b.onclick = () => {
-          mCart[b.dataset.mDec].qty -= 1;
-          if (mCart[b.dataset.mDec].qty === 0) mCart.splice(b.dataset.mDec, 1);
-          renderMobile();
-        };
-      });
-      document.querySelectorAll('[data-m-quick-sku]').forEach(b => {
-        b.onclick = () => {
-          const sku = engine.state.catalog.find(s => s.id === b.dataset.mQuickSku);
-          if (!sku) return;
-          const found = mCart.find(c => c.skuId === sku.id);
-          if (found) found.qty += 1;
-          else mCart.push({ skuId: sku.id, name: sku.name, qty: 1, unitPrice: sku.retailPrice, costPrice: sku.costPrice });
-          renderMobile();
-        };
-      });
-
-      const doMobileCheckout = (payMethod) => {
-        if (mCart.length === 0) return alert('当前收银清单为空');
-        let cusId = '';
-        if (payMethod === 'CREDIT') {
-          const cusName = prompt('输入赊账熟客姓名（自动建档或匹配）：', engine.state.customers[0]?.name || '');
-          if (!cusName) return;
-          let cus = engine.state.customers.find(c => c.name === cusName.trim());
-          if (!cus) {
-            cus = { id: generateId('CUS'), name: cusName.trim(), phone: '', creditLimit: 1000, receivableBalance: 0, points: 0, storedValue: 0, note: '', updatedAt: Date.now() };
-            engine.state.customers.unshift(cus);
-          }
-          cusId = cus.id;
-        }
-        const total = roundMoney(mCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
-        const res = engine.commitVoucher({
-          type: 'SALE',
-          typeName: '掌中宝收银单',
-          items: mCart,
-          totalAmount: total,
-          payMethod,
-          cashPaid: payMethod === 'CASH' ? total : 0,
-          digitalPaid: payMethod === 'DIGITAL' ? total : 0,
-          creditAmount: payMethod === 'CREDIT' ? total : 0,
-          counterpartyId: cusId
-        });
-        if (res.ok) {
-          mCart = [];
-          engine.speakFeedback(`收款${total}元，已入账`);
-          if (payMethod === 'DIGITAL') openQrSheet(total);
-          else alert(`✅ 已落账 ¥${total.toFixed(2)}`);
-        } else {
-          alert(`⚠️ ${res.message}`);
-        }
-        renderMobile();
+      $('mnuSandbox').onclick = () => {
+        $('moreMenu').classList.remove('show');
+        if (engine.sandboxMode) engine.exitSandbox(); else engine.enterSandbox();
+        renderApp();
       };
-
-      $('btnMPayDigital').onclick = () => doMobileCheckout('DIGITAL');
-      $('btnMPayCash').onclick = () => doMobileCheckout('CASH');
-      $('btnMPayCredit').onclick = () => doMobileCheckout('CREDIT');
-      $('btnMShowQrOnly').onclick = () => openQrSheet();
+      $('mnuLock').onclick = () => { $('moreMenu').classList.remove('show'); engine.lockScreen(); };
     }
 
-    function renderGoodsTab(metrics) {
+    function renderEcoStrip(metrics) {
+      const strip = $('ecoStrip');
+      const pendingRcv = metrics.pendingPurchaseOrders.length;
+      const pendingApr = metrics.pendingApprovals.length;
+
+      if (pendingApr > 0) {
+        strip.innerHTML = `<span>⚖️ 有 <strong>${pendingApr}</strong> 项经营草案等待掌柜最终核决</span><button class="sm warn" id="btnStripGo">去核决</button>`;
+        $('btnStripGo').onclick = () => { activeModule = 'finance'; renderApp(); };
+      } else if (pendingRcv > 0) {
+        strip.innerHTML = `<span>🚚 有 <strong>${pendingRcv}</strong> 张供货商订货单在途待随车签收</span><button class="sm warn" id="btnStripGo">去签收</button>`;
+        $('btnStripGo').onclick = () => { activeModule = 'receiving'; renderApp(); };
+      } else {
+        strip.innerHTML = `<span>🌿 货畅其流 · 在库货值 ${engine.formatSensitiveMoney(metrics.inventoryCostValue)} · 应收 ¥${metrics.totalReceivable.toFixed(2)}</span><button class="sm" id="btnStripGo">⚙️ 选配模块</button>`;
+        $('btnStripGo').onclick = () => openGearSettingsSheet();
+      }
+    }
+
+    function renderMainView(metrics) {
+      const box = $('mainContainer');
+      switch (activeModule) {
+        case 'procurement': box.innerHTML = viewProcurement(metrics); bindProcurement(); break;
+        case 'receiving':   box.innerHTML = viewReceiving(metrics); bindReceiving(); break;
+        case 'catalog':     box.innerHTML = viewCatalog(metrics); bindCatalog(); break;
+        case 'marketing':   box.innerHTML = viewMarketing(); bindMarketing(); break;
+        case 'pos':         box.innerHTML = viewPos(metrics); bindPos(); break;
+        case 'reconcile':   box.innerHTML = viewReconcile(); bindReconcile(); break;
+        case 'finance':     box.innerHTML = viewFinance(metrics); bindFinance(); break;
+        default:            box.innerHTML = viewProcurement(metrics); bindProcurement();
+      }
+    }
+
+    /* ========================================================================
+     * 主线板块 ①：绑定供货商 -> 查看开放货盘交互订货（主流价值核心）
+     * ======================================================================== */
+    function viewProcurement(metrics) {
       const canCost = engine.hasPermission('viewCostAndProfit');
       const suppliers = engine.state.suppliers;
-      if (suppliers.length > 0 && !suppliers.some(s => s.id === mSelectedSupplierId)) {
-        mSelectedSupplierId = suppliers[0].id;
+      if (suppliers.length > 0 && !suppliers.some(s => s.id === selectedSupplierId)) {
+        selectedSupplierId = suppliers[0].id;
       }
-      const activeSup = suppliers.find(s => s.id === mSelectedSupplierId) || null;
+      const activeSup = suppliers.find(s => s.id === selectedSupplierId) || null;
       const openOffers = activeSup?.openCatalog || [];
-      const pendingOrders = metrics.pendingPurchaseOrders;
-      const storeSkus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
+      const storeOrders = (engine.state.purchaseOrders || []).filter(o => o.storeId === engine.state.activeStoreId);
 
       return `
         <div class="card">
           <div class="card-hd">
-            <span>🔗 绑定供货商与开放货盘订货</span>
-            <button class="primary sm" id="btnMBindSup">+ 绑定供货商</button>
-          </div>
-          ${suppliers.length > 0 ? `
-            <select id="mSupSelect" style="margin-bottom:10px;">
-              ${suppliers.map(s => `<option value="${s.id}" ${s.id === activeSup?.id ? 'selected' : ''}>🏭 ${s.name}（开放货盘 ${s.openCatalog?.length || 0} 款）</option>`).join('')}
-            </select>
-          ` : `<div style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">尚未绑定供货商，点击右上角“+ 绑定供货商”输入绑定码即可看到其向本店开放的货品</div>`}
-
-          ${activeSup ? `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <span style="font-size:13px; font-weight:700;">【${activeSup.name}】开放货盘：</span>
-              <button class="sm" id="btnMAddOffer">+ 录入货盘商品</button>
+            <span>🔗 上游供货方与开放货盘（货畅其流）</span>
+            <div style="display:flex; gap:6px;">
+              <button class="sm warn" id="btnAutoSplit">⚡ 缺货自动拆单(${metrics.lowStockSkus.length})</button>
+              <button class="primary sm" id="btnBindSup">+ 绑定供货商</button>
             </div>
-            ${openOffers.length === 0 ? `<div style="font-size:12px; color:var(--text-muted); padding:8px 0;">暂未拉取到该供货商货盘条目，可点右上角录入或同步</div>` : openOffers.map(of => `
-              <div class="cart-row">
-                <div>
-                  <strong>${of.name}</strong> <span class="badge">${of.spec || of.unit}</span>
-                  <div style="font-size:12px; color:var(--text-muted);">
-                    起订 ${of.minOrderQty}${of.unit} ${canCost ? `· 供货价 ¥${of.supplyPrice}` : ''}
-                  </div>
-                </div>
-                <button class="sm primary" data-m-pick-offer="${of.offerId}">+ 订货</button>
+          </div>
+
+          <div class="sup-tabs">
+            ${suppliers.length === 0 ? `<span style="font-size:13px; color:var(--text-muted);">尚未绑定供货商，点右上角“+ 绑定供货商”输入绑定码即可看到其向本店开放的供货商品</span>` : ''}
+            ${suppliers.map(s => `
+              <div class="sup-chip ${s.id === activeSup?.id ? 'active' : ''}" data-sup-tab="${s.id}">
+                🏭 ${s.name} (${s.openCatalog?.length || 0}款)
               </div>
             `).join('')}
+          </div>
+
+          ${activeSup ? `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-top:6px; border-top:1px solid var(--bg-subtle);">
+              <span style="font-size:13px; font-weight:700;">【${activeSup.name}】向本店开放的货盘：</span>
+              <button class="sm" id="btnAddOfferItem">+ 录入供货商品</button>
+            </div>
+
+            ${openOffers.length === 0 ? `
+              <div style="padding:18px; text-align:center; background:var(--bg-subtle); border-radius:10px; font-size:13px; color:var(--text-muted);">
+                暂未获取到【${activeSup.name}】的开放货盘条目，可点击右上角“+ 录入供货商品”或前往“百业供需名录”同步
+              </div>
+            ` : openOffers.map(of => {
+              const picked = orderCart.find(c => c.offerId === of.offerId);
+              return `
+                <div class="list-row">
+                  <div>
+                    <strong>${of.name}</strong> <span class="badge">${of.spec || of.unit}</span>
+                    <div style="font-size:12px; color:var(--text-muted);">
+                      起订 ${of.minOrderQty}${of.unit} ${canCost ? `· 供货价 ¥${of.supplyPrice}` : ''}
+                    </div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    ${picked ? `<span class="badge ok">已选 ${picked.qty}</span>` : ''}
+                    <button class="sm primary" data-pick-offer="${of.offerId}">+ 订货</button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
           ` : ''}
 
-          ${mOrderCart.length > 0 ? `
-            <div style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--border-light);">
-              <div style="font-weight:700; margin-bottom:6px;">📝 当前待发订货单（${mOrderCart.length}项）：</div>
-              ${mOrderCart.map((it, idx) => `
-                <div class="cart-row">
+          ${orderCart.length > 0 ? `
+            <div style="margin-top:14px; padding-top:12px; border-top:2px dashed var(--border-light);">
+              <div style="font-weight:700; margin-bottom:6px;">📝 当前订货单（发往：${activeSup?.name || '供货方'}）：</div>
+              ${orderCart.map((it, idx) => `
+                <div class="list-row">
                   <div><strong>${it.name}</strong> (${it.unit})</div>
                   <div class="qty-ctrl">
-                    <button data-m-ord-dec="${idx}">-</button>
+                    <button data-ord-dec="${idx}">-</button>
                     <strong>${it.qty}</strong>
-                    <button data-m-ord-inc="${idx}">+</button>
+                    <button data-ord-inc="${idx}">+</button>
                   </div>
                 </div>
               `).join('')}
-              <button class="primary block" style="margin-top:8px;" id="btnMSubmitOrder">📤 向【${activeSup?.name || '供货方'}】发出订货单</button>
+              <button class="primary block" style="margin-top:10px;" id="btnSubmitOrder">📤 确认发出电子订货单</button>
             </div>
           ` : ''}
         </div>
 
-        ${pendingOrders.length > 0 ? `
-          <div class="card">
-            <div class="card-hd"><span>🚚 待到货订货单一键签收（${pendingOrders.length}单）</span></div>
-            ${pendingOrders.map(po => `
-              <div class="cart-row">
-                <div>
-                  <strong>${po.id} · ${po.supplierName}</strong>
-                  <div style="font-size:12px; color:var(--text-muted);">${po.items.map(i => `${i.name}×${i.qty}`).join('、')}</div>
-                </div>
-                <button class="sm primary" data-m-rcv-po="${po.id}">✅ 签收入库</button>
-              </div>
-            `).join('')}
-          </div>
-        ` : ''}
-
         <div class="card">
-          <div class="card-hd">
-            <span>📦 本店在库商品（缺货 ${metrics.lowStockSkus.length} 款）</span>
-            <button class="sm" id="btnMQuickAddSku">+ 自建商品</button>
-          </div>
-          ${storeSkus.map(s => `
-            <div class="cart-row">
-              <div>
-                <strong>${s.name}</strong>
-                <div style="font-size:12px; color:var(--text-muted);">
-                  库存 <span class="badge ${s.stock <= s.minStock ? 'danger' : 'ok'}">${s.stock}${s.unit}</span> · 售¥${s.retailPrice} ${canCost ? `· 底${engine.formatSensitiveMoney(s.costPrice)}` : ''}
-                </div>
+          <div class="card-hd"><span>📋 历史订货单（支持“照上次再来一单”自动剔除高库存）</span></div>
+          ${storeOrders.length === 0 ? `<div style="font-size:13px; color:var(--text-muted);">暂无历史订货单</div>` : storeOrders.slice(0, 8).map(po => `
+            <div class="list-row">
+              <div style="flex:1;">
+                <strong>${po.id}</strong> · ${po.supplierName}
+                <div style="font-size:12px; color:var(--text-muted);">${po.items.map(i => `${i.name}×${i.qty}`).join('、')}</div>
+              </div>
+              <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
+                <button class="sm" data-copy-po="${po.id}">发微信</button>
+                <button class="sm" data-clone-po="${po.id}">再来一单</button>
+                ${po.status === 'PENDING_DELIVERY' ? `<button class="sm primary" data-go-rcv="${po.id}">去签收</button>` : `<span class="badge ok">已签收</span>`}
               </div>
             </div>
-          `).join('') || '<div style="color:var(--text-muted); text-align:center; padding:16px;">暂无建档商品</div>'}
+          `).join('')}
         </div>
       `;
     }
 
-    function bindGoodsTab() {
-      if ($('btnMBindSup')) {
-        $('btnMBindSup').onclick = () => {
-          const code = prompt('输入供货商绑定码（或编号）：');
-          if (!code) return;
-          const name = prompt('输入供货商名称（如已存在可留空自动匹配）：', '');
-          const res = engine.bindSupplier({ supplierCode: code, name: name || '' });
-          if (res.ok) {
-            mSelectedSupplierId = res.supplier.id;
-            mOrderCart = [];
-            alert(res.message);
-            renderMobile();
-          } else {
-            alert(res.message);
-          }
-        };
-      }
+    function bindProcurement() {
+      $('btnBindSup').onclick = () => {
+        const code = prompt('输入供货商绑定码（或编号）：');
+        if (!code) return;
+        const name = prompt('输入供货商名称（如已存在可留空自动匹配）：', '');
+        const res = engine.bindSupplier({ supplierCode: code, name: name || '' });
+        if (res.ok) {
+          selectedSupplierId = res.supplier.id;
+          orderCart = [];
+          alert(res.message);
+          renderApp();
+        } else {
+          alert(res.message);
+        }
+      };
 
-      if ($('mSupSelect')) {
-        $('mSupSelect').onchange = (e) => {
-          mSelectedSupplierId = e.target.value;
-          mOrderCart = [];
-          renderMobile();
-        };
-      }
+      $('btnAutoSplit').onclick = () => {
+        const res = engine.autoSplitRestockOrders();
+        alert(res.message);
+        renderApp();
+      };
 
-      if ($('btnMAddOffer')) {
-        $('btnMAddOffer').onclick = () => {
-          const activeSup = engine.state.suppliers.find(s => s.id === mSelectedSupplierId);
+      document.querySelectorAll('[data-sup-tab]').forEach(el => {
+        el.onclick = () => { selectedSupplierId = el.dataset.supTab; orderCart = []; renderApp(); };
+      });
+
+      if ($('btnAddOfferItem')) {
+        $('btnAddOfferItem').onclick = () => {
+          const activeSup = engine.state.suppliers.find(s => s.id === selectedSupplierId);
           if (!activeSup) return;
           const name = prompt(`录入【${activeSup.name}】开放货盘商品名称：`);
           if (!name) return;
+          const spec = prompt('规格包装（如：1×24瓶/箱）：', '整箱');
           const supplyPrice = roundMoney(prompt('供货价（元）：', '24'));
-          engine.upsertSupplierOpenOffers(activeSup.id, [{
-            name: name.trim(),
-            unit: engine.getActiveGene().packUnitDefault,
-            supplyPrice,
-            minOrderQty: 1
-          }]);
-          renderMobile();
+          engine.upsertSupplierOpenOffers(activeSup.id, [{ name: name.trim(), spec: spec || '', unit: engine.getActiveGene().packUnitDefault, supplyPrice, minOrderQty: 1 }]);
+          renderApp();
         };
       }
 
-      document.querySelectorAll('[data-m-pick-offer]').forEach(btn => {
+      document.querySelectorAll('[data-pick-offer]').forEach(btn => {
         btn.onclick = () => {
-          const activeSup = engine.state.suppliers.find(s => s.id === mSelectedSupplierId);
-          const of = activeSup?.openCatalog?.find(o => o.offerId === btn.dataset.mPickOffer);
+          const activeSup = engine.state.suppliers.find(s => s.id === selectedSupplierId);
+          const of = activeSup?.openCatalog?.find(o => o.offerId === btn.dataset.pickOffer);
           if (!of) return;
-          const found = mOrderCart.find(c => c.offerId === of.offerId);
+          const found = orderCart.find(c => c.offerId === of.offerId);
           if (found) found.qty += 1;
-          else mOrderCart.push({ offerId: of.offerId, barcode: of.barcode, name: of.name, spec: of.spec, unit: of.unit, qty: of.minOrderQty || 1, unitPrice: of.supplyPrice, suggestRetailPrice: of.suggestRetailPrice });
-          renderMobile();
+          else orderCart.push({ offerId: of.offerId, barcode: of.barcode, name: of.name, spec: of.spec, unit: of.unit, qty: of.minOrderQty || 1, unitPrice: of.supplyPrice, suggestRetailPrice: of.suggestRetailPrice });
+          renderApp();
         };
       });
 
-      document.querySelectorAll('[data-m-ord-inc]').forEach(b => {
-        b.onclick = () => { mOrderCart[b.dataset.mOrdInc].qty += 1; renderMobile(); };
-      });
-      document.querySelectorAll('[data-m-ord-dec]').forEach(b => {
+      document.querySelectorAll('[data-ord-inc]').forEach(b => { b.onclick = () => { orderCart[b.dataset.ordInc].qty += 1; renderApp(); }; });
+      document.querySelectorAll('[data-ord-dec]').forEach(b => {
         b.onclick = () => {
-          mOrderCart[b.dataset.mOrdDec].qty -= 1;
-          if (mOrderCart[b.dataset.mOrdDec].qty <= 0) mOrderCart.splice(b.dataset.mOrdDec, 1);
-          renderMobile();
+          orderCart[b.dataset.ordDec].qty -= 1;
+          if (orderCart[b.dataset.ordDec].qty <= 0) orderCart.splice(b.dataset.ordDec, 1);
+          renderApp();
         };
       });
 
-      if ($('btnMSubmitOrder')) {
-        $('btnMSubmitOrder').onclick = () => {
-          const res = engine.createPurchaseOrder({ supplierId: mSelectedSupplierId, items: mOrderCart, note: '掌中宝供货盘订货' });
+      if ($('btnSubmitOrder')) {
+        $('btnSubmitOrder').onclick = () => {
+          const res = engine.createPurchaseOrder({ supplierId: selectedSupplierId, items: orderCart, note: '门店货盘订货' });
           if (res.ok) {
-            mOrderCart = [];
+            orderCart = [];
             engine.speakFeedback('订货单已发出');
             alert(`✅ ${res.message}`);
-            renderMobile();
+            renderApp();
           }
         };
       }
 
-      document.querySelectorAll('[data-m-rcv-po]').forEach(btn => {
+      document.querySelectorAll('[data-copy-po]').forEach(btn => {
         btn.onclick = () => {
-          const res = engine.receivePurchaseOrder(btn.dataset.mRcvPo, { payMethod: 'CREDIT' });
-          if (res.ok) {
-            engine.speakFeedback('订货单已核对签收入库');
-            alert('✅ 已完成随车核对签收入库');
-            renderMobile();
-          }
+          const txt = engine.formatPurchaseOrderText(btn.dataset.copyPo);
+          navigator.clipboard?.writeText(txt);
+          alert(`已复制电子订货单：\n\n${txt}`);
+        };
+      });
+      document.querySelectorAll('[data-clone-po]').forEach(btn => {
+        btn.onclick = () => { const res = engine.cloneLastPurchaseOrder(btn.dataset.clonePo); alert(res.message); renderApp(); };
+      });
+      document.querySelectorAll('[data-go-rcv]').forEach(btn => {
+        btn.onclick = () => { activeModule = 'receiving'; renderApp(); };
+      });
+    }
+
+    /* ========================================================================
+     * 主线板块 ②：到货验收与载具
+     * ======================================================================== */
+    function viewReceiving(metrics) {
+      const pending = metrics.pendingPurchaseOrders;
+      const gene = engine.getActiveGene();
+      const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
+
+      return `
+        <div class="card">
+          <div class="card-hd"><span>🚚 随车订货单一键核对签收（${pending.length}单在途）</span></div>
+          ${pending.length === 0 ? `<div style="font-size:13px; color:var(--text-muted);">当前暂无在途订货单</div>` : pending.map(po => `
+            <div class="list-row">
+              <div>
+                <strong>${po.id} · ${po.supplierName}</strong>
+                <div style="font-size:12px; color:var(--text-muted);">${po.items.map(i => `${i.name}×${i.qty}${i.unit}`).join('、')}</div>
+              </div>
+              <button class="sm primary" data-rcv-po="${po.id}">✅ 核对入库</button>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="card">
+          <div class="card-hd"><span>📦 零星随车到货 & 载具（${gene.carrierName}）登记</span></div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <select id="rcvSkuSelect">
+              ${skus.map(s => `<option value="${s.id}">${s.name} (库存:${s.stock}${s.unit})</option>`).join('')}
+            </select>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <input type="number" id="rcvQtyInp" placeholder="实收数量" value="10" />
+              <input type="number" step="0.01" id="rcvPriceInp" placeholder="本次进货单价" value="2" />
+            </div>
+            <button class="primary block" id="btnDirectReceive">✅ 确认签收入库</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function bindReceiving() {
+      document.querySelectorAll('[data-rcv-po]').forEach(btn => {
+        btn.onclick = () => {
+          const carrier = Number(prompt('本次周转筐/水桶净增减（借入填正，归还填负，无则0）：', '0')) || 0;
+          const res = engine.receivePurchaseOrder(btn.dataset.rcvPo, { payMethod: 'CREDIT', carrierDelta: carrier });
+          if (res.ok) { engine.speakFeedback('核对签收入库成功'); alert('✅ 已按订货单核对入库'); renderApp(); }
         };
       });
 
-      $('btnMQuickAddSku').onclick = () => {
-        const name = prompt('输入新商品名称：');
+      $('btnDirectReceive').onclick = () => {
+        const sku = engine.state.catalog.find(s => s.id === $('rcvSkuSelect')?.value);
+        if (!sku) return alert('请先在商品库新增商品');
+        const qty = Number($('rcvQtyInp').value) || 0;
+        const unitPrice = roundMoney($('rcvPriceInp').value);
+        engine.commitVoucher({
+          type: 'RECEIVE',
+          items: [{ skuId: sku.id, name: sku.name, qty, bonusQty: 0, unitPrice, costPrice: unitPrice }],
+          totalAmount: roundMoney(qty * unitPrice),
+          payMethod: 'CREDIT',
+          creditAmount: roundMoney(qty * unitPrice),
+          note: '随车零星签收入库'
+        });
+        alert(`✅ 已签收入库【${sku.name}】${qty}${sku.unit}`);
+        renderApp();
+      };
+    }
+
+    /* ========================================================================
+     * 主线板块 ③：商品库与余缺调拨（物尽其用）
+     * ======================================================================== */
+    function viewCatalog(metrics) {
+      const canCost = engine.hasPermission('viewCostAndProfit');
+      const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
+      return `
+        <div class="card">
+          <div class="card-hd">
+            <span>🏷️ 在库商品与余缺调拨（共 ${skus.length} 款）</span>
+            <div style="display:flex; gap:6px;">
+              ${engine.state.stores.length > 1 ? `<button class="sm" id="btnStoreTransfer">🔄 跨店调拨</button>` : ''}
+              <button class="sm warn" id="btnLossReg">📉 报损/自用</button>
+              <button class="primary sm" id="btnNewSku">+ 新增商品</button>
+            </div>
+          </div>
+          ${skus.map(s => `
+            <div class="list-row">
+              <div>
+                <strong>${s.name}</strong>
+                <div style="font-size:12px; color:var(--text-muted);">
+                  零售 ¥${s.retailPrice} ${canCost ? `· 底价 ${engine.formatSensitiveMoney(s.costPrice)}` : ''}
+                </div>
+              </div>
+              <span class="badge ${s.stock <= s.minStock ? 'danger' : 'ok'}">${s.stock} ${s.unit}</span>
+            </div>
+          `).join('') || `<div style="text-align:center; padding:18px; color:var(--text-muted);">白纸商品库，点右上角“+ 新增商品”或直接绑定供货商订货自动建档</div>`}
+        </div>
+      `;
+    }
+
+    function bindCatalog() {
+      $('btnNewSku').onclick = () => {
+        const name = prompt('商品名称：');
         if (!name) return;
-        const cost = roundMoney(prompt('输入单件进货底价（元）：', '1.5'));
-        const retail = roundMoney(prompt('输入零售单价（元）：', '2.5'));
-        const stock = Number(prompt('输入初始库存数量：', '24')) || 0;
+        const cost = roundMoney(prompt('单件进货底价（元）：', '1.5'));
+        const retail = roundMoney(prompt('零售单价（元）：', '2.5'));
+        const stock = Number(prompt('初始库存：', '24')) || 0;
         const gene = engine.getActiveGene();
         engine.state.catalog.unshift({
           id: generateId('SKU'),
@@ -839,35 +855,309 @@
           updatedAt: Date.now()
         });
         engine._persist();
-        renderMobile();
+        renderApp();
       };
+
+      $('btnLossReg').onclick = () => {
+        const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
+        if (skus.length === 0) return alert('暂无商品');
+        const name = prompt('输入报损或自用商品名称：', skus[0].name);
+        const sku = skus.find(s => s.name.includes(name));
+        if (!sku) return alert('未找到该商品');
+        const qty = Number(prompt(`减少数量（${sku.unit}）：`, '1')) || 0;
+        const note = prompt('备注（破损报损 / 店内自用 / 人情试吃）：', '破损报损');
+        if (qty > 0) {
+          engine.commitVoucher({ type: 'LOSS_GIFT', items: [{ skuId: sku.id, name: sku.name, qty, unitPrice: sku.costPrice, costPrice: sku.costPrice }], note });
+          renderApp();
+        }
+      };
+
+      if ($('btnStoreTransfer')) {
+        $('btnStoreTransfer').onclick = () => {
+          const other = engine.state.stores.find(s => s.id !== engine.state.activeStoreId);
+          const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId);
+          if (!other || skus.length === 0) return alert('无可调拨分店或商品');
+          const name = prompt(`调往【${other.name}】，输入品名：`, skus[0].name);
+          const sku = skus.find(s => s.name.includes(name));
+          if (!sku) return alert('未找到商品');
+          const qty = Number(prompt('调出数量：', '5')) || 0;
+          if (qty > 0) {
+            engine.commitVoucher({ type: 'TRANSFER_STORE', targetStoreId: other.id, items: [{ skuId: sku.id, name: sku.name, qty, unitPrice: sku.costPrice, costPrice: sku.costPrice }], note: `调往【${other.name}】` });
+            alert(`已调拨 ${qty}${sku.unit} 至【${other.name}】`);
+            renderApp();
+          }
+        };
+      }
     }
 
-    function renderLedgerTab(metrics) {
-      const audit = engine.runIronAbacusAudit();
+    /* ========================================================================
+     * 主线板块 ④：邻里驿站与云货架（地尽其利）
+     * ======================================================================== */
+    function viewMarketing() {
+      const store = engine.getActiveStore();
+      const skus = engine.state.catalog.filter(s => s.storeId === store.id || !s.storeId).slice(0, 6);
+      const openTickets = (engine.state.serviceTickets || []).filter(t => t.storeId === store.id && t.status === 'OPEN');
+
+      const jielong = `🏮【${store.name} · 街坊福利接龙 & 云端扩充货架】\n` +
+        (skus.length > 0 ? skus.map((s, i) => `${i + 1}. ${s.name} —— 街坊价 ¥${s.retailPrice}/${s.unit}`).join('\n') : '1. 源头直采好货预订，群里接龙到店秒提！') +
+        `\n👉 群里直接回复“序号+数量”，报手机尾号到店自提！`;
+
       return `
-        <div class="kpi-grid">
-          <div class="kpi-box">
-            <div class="kpi-label">今日实收营业额</div>
-            <div class="kpi-num">¥${metrics.todayRevenue.toFixed(2)}</div>
+        <div class="card">
+          <div class="card-hd">
+            <span>🎫 街坊代订自提核销 & 定金工单（地尽其利 · 驿站纯利独立核算）</span>
+            <button class="primary sm" id="btnNewTicket">+ 登记代订/定金单</button>
           </div>
-          <div class="kpi-box">
-            <div class="kpi-label">钱箱实有现金</div>
-            <div class="kpi-num">¥${metrics.currentCash.toFixed(2)}</div>
-          </div>
-          <div class="kpi-box">
-            <div class="kpi-label">熟客待收赊账</div>
-            <div class="kpi-num" style="color:var(--accent);">¥${metrics.totalReceivable.toFixed(2)}</div>
-          </div>
-          <div class="kpi-box">
-            <div class="kpi-label">今日真实毛利</div>
-            <div class="kpi-num">${engine.formatSensitiveMoney(metrics.todayGrossProfit)}</div>
-          </div>
+          ${openTickets.length === 0 ? `<div style="font-size:13px; color:var(--text-muted);">暂无待核销自提包裹</div>` : openTickets.map(t => `
+            <div class="list-row">
+              <div>
+                <strong>尾号 ${t.phoneTail} · ${t.customerName}</strong>
+                <div style="font-size:12px; color:var(--text-muted);">${t.itemDesc} · 总额 ¥${t.totalFee} (驿站纯利 ¥${t.serviceProfit || 0})</div>
+              </div>
+              <button class="sm primary" data-done-tkt="${t.id}">核销交付</button>
+            </div>
+          `).join('')}
         </div>
 
         <div class="card">
           <div class="card-hd">
-            <span>⚖️ 掌柜核决与 AI 铁面稽核</span>
+            <span>💬 微信群接龙种草文案一键发群</span>
+            <button class="primary sm" id="btnCopyJl">📋 复制文案</button>
+          </div>
+          <textarea id="jlTextarea" rows="6">${jielong}</textarea>
+        </div>
+      `;
+    }
+
+    function bindMarketing() {
+      $('btnNewTicket').onclick = () => {
+        const customerName = prompt('街坊称呼：', '李姐');
+        if (!customerName) return;
+        const phoneTail = prompt('手机尾号（4位）：', '8866') || '0000';
+        const itemDesc = prompt('代订货品或定金事项：', '大集礼盒 1箱') || '代订自提';
+        const totalFee = roundMoney(prompt('货款总额（元）：', '50'));
+        const serviceProfit = roundMoney(prompt('本店驿站服务纯利（元）：', '5'));
+        engine.state.serviceTickets.unshift({
+          id: generateId('TKT'),
+          storeId: engine.state.activeStoreId,
+          type: 'RELAY_PICKUP',
+          customerName,
+          phoneTail,
+          itemDesc,
+          totalFee,
+          serviceProfit,
+          status: 'OPEN',
+          createdAt: Date.now()
+        });
+        engine._persist();
+        renderApp();
+      };
+
+      document.querySelectorAll('[data-done-tkt]').forEach(btn => {
+        btn.onclick = () => {
+          const tkt = engine.state.serviceTickets.find(t => t.id === btn.dataset.doneTkt);
+          if (!tkt) return;
+          tkt.status = 'DONE';
+          engine.commitVoucher({
+            type: 'RELAY_ORDER',
+            totalAmount: tkt.totalFee,
+            serviceFee: tkt.serviceProfit || 0,
+            payMethod: 'DIGITAL',
+            digitalPaid: tkt.totalFee,
+            note: `驿站核销【${tkt.customerName}】(尾号${tkt.phoneTail})`
+          });
+          alert(`已核销交付，驿站服务纯利 ¥${tkt.serviceProfit || 0} 已独立计账`);
+          renderApp();
+        };
+      });
+
+      $('btnCopyJl').onclick = () => {
+        navigator.clipboard?.writeText($('jlTextarea').value);
+        alert('群接龙文案已复制，可直接去微信群粘贴！');
+      };
+    }
+
+    /* ========================================================================
+     * 可选板块 ⑤：柜台收银（可在齿轮设置中心一键关闭，不占主流空间）
+     * ======================================================================== */
+    function viewPos() {
+      const total = roundMoney(posCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
+      const storeSkus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
+
+      return `
+        <div class="card">
+          <div class="card-hd">
+            <span>🧾 柜台收银（可选模块 · 数量减至负数即退货）</span>
+            <button class="sm" id="btnPosNoCat">+ 临时代收</button>
+          </div>
+          <div style="display:flex; gap:6px; margin-bottom:10px;">
+            <input id="posQuickInp" placeholder="输品名/条码回车，或点右侧摄像头扫码..." />
+            <button id="btnPosCam">📷</button>
+          </div>
+
+          ${posCart.map((it, idx) => `
+            <div class="list-row">
+              <div><strong>${it.name}</strong><div style="font-size:12px; color:var(--text-muted);">¥${it.unitPrice} × ${it.qty}</div></div>
+              <div class="qty-ctrl">
+                <button data-p-dec="${idx}">-</button>
+                <strong>${it.qty}</strong>
+                <button data-p-inc="${idx}">+</button>
+              </div>
+            </div>
+          `).join('') || `<div style="text-align:center; padding:16px; color:var(--text-muted);">收银台就绪（如无需内置收银，可在右上 ⚙️ 中关闭）</div>`}
+
+          <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border-light);">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+              <span>合计净额：</span>
+              <strong style="font-size:22px; color:var(--primary-dark);">¥${total.toFixed(2)}</strong>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
+              <button class="primary sm" id="btnPosDig">📱 扫码收</button>
+              <button class="sm" id="btnPosCash">💵 现金收</button>
+              <button class="warn sm" id="btnPosCred">📒 熟客赊</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-hd"><span>⚡ 快捷点选商品</span></div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            ${storeSkus.slice(0, 6).map(s => `
+              <button class="sm" style="justify-content:space-between;" data-p-sku="${s.id}">
+                <span>${s.name}</span><strong>¥${s.retailPrice}</strong>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function bindPos() {
+      $('posQuickInp').onkeydown = (e) => {
+        if (e.key !== 'Enter') return;
+        const q = $('posQuickInp').value.trim();
+        if (!q) return;
+        const hits = engine.searchCatalog(q);
+        if (hits.length > 0) {
+          const sku = hits[0];
+          const f = posCart.find(c => c.skuId === sku.id);
+          if (f) f.qty += 1; else posCart.push({ skuId: sku.id, name: sku.name, qty: 1, unitPrice: sku.retailPrice, costPrice: sku.costPrice });
+          $('posQuickInp').value = '';
+          renderApp();
+        }
+      };
+      $('btnPosCam').onclick = () => openCameraScannerSheet();
+      $('btnPosNoCat').onclick = () => {
+        const name = prompt('临时代收品名：', '散装百货');
+        if (!name) return;
+        const price = roundMoney(prompt('金额（负数=退货）：', '10'));
+        posCart.push({ skuId: '', name, qty: 1, unitPrice: price, costPrice: 0 });
+        renderApp();
+      };
+      document.querySelectorAll('[data-p-inc]').forEach(b => { b.onclick = () => { posCart[b.dataset.pInc].qty += 1; renderApp(); }; });
+      document.querySelectorAll('[data-p-dec]').forEach(b => {
+        b.onclick = () => { posCart[b.dataset.pDec].qty -= 1; if (posCart[b.dataset.pDec].qty === 0) posCart.splice(b.dataset.pDec, 1); renderApp(); };
+      });
+      document.querySelectorAll('[data-p-sku]').forEach(b => {
+        b.onclick = () => {
+          const sku = engine.state.catalog.find(s => s.id === b.dataset.pSku);
+          if (!sku) return;
+          const f = posCart.find(c => c.skuId === sku.id);
+          if (f) f.qty += 1; else posCart.push({ skuId: sku.id, name: sku.name, qty: 1, unitPrice: sku.retailPrice, costPrice: sku.costPrice });
+          renderApp();
+        };
+      });
+
+      const checkout = (payMethod) => {
+        if (posCart.length === 0) return alert('清单为空');
+        let cusId = '';
+        if (payMethod === 'CREDIT') {
+          const cname = prompt('赊账熟客姓名：', engine.state.customers[0]?.name || '');
+          if (!cname) return;
+          let cus = engine.state.customers.find(c => c.name === cname.trim());
+          if (!cus) {
+            cus = { id: generateId('CUS'), name: cname.trim(), phone: '', creditLimit: 1000, receivableBalance: 0, points: 0, storedValue: 0, note: '', updatedAt: Date.now() };
+            engine.state.customers.unshift(cus);
+          }
+          cusId = cus.id;
+        }
+        const total = roundMoney(posCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
+        const res = engine.commitVoucher({
+          type: 'SALE',
+          items: posCart,
+          totalAmount: total,
+          payMethod,
+          cashPaid: payMethod === 'CASH' ? total : 0,
+          digitalPaid: payMethod === 'DIGITAL' ? total : 0,
+          creditAmount: payMethod === 'CREDIT' ? total : 0,
+          counterpartyId: cusId
+        });
+        if (res.ok) { posCart = []; if (payMethod === 'DIGITAL') openQrSheet(total); else alert(`✅ 已落账 ¥${total}`); }
+        else alert(`⚠️ ${res.message}`);
+        renderApp();
+      };
+      $('btnPosDig').onclick = () => checkout('DIGITAL');
+      $('btnPosCash').onclick = () => checkout('CASH');
+      $('btnPosCred').onclick = () => checkout('CREDIT');
+    }
+
+    /* ========================================================================
+     * 主线板块 ⑥：往来对账与铁账单据
+     * ======================================================================== */
+    function viewReconcile() {
+      const vouchers = engine.state.vouchers.slice(0, 20);
+      return `
+        <div class="card">
+          <div class="card-hd">
+            <span>📑 不可篡改链式凭证流水（只增不删 · 红字冲销）</span>
+            <button class="primary sm" id="btnRecExport">📤 加密备份</button>
+          </div>
+          ${vouchers.map(v => `
+            <div class="list-row" style="${v.status === 'VOIDED' ? 'opacity:0.5;text-decoration:line-through;' : ''}">
+              <div>
+                <strong>${v.id}</strong> (${v.type})
+                <div style="font-size:11px; color:var(--text-muted);">${new Date(v.ts).toLocaleString('zh-CN')} · ${v.hash}</div>
+              </div>
+              <div style="text-align:right;">
+                <strong>¥${v.totalAmount.toFixed(2)}</strong><br>
+                ${v.status === 'POSTED' && v.type !== 'VOID_RED' && engine.hasPermission('approveAuditAndVoid')
+                  ? `<button class="sm danger" data-void-v="${v.id}">红字冲销</button>` : ''}
+              </div>
+            </div>
+          `).join('') || `<div style="font-size:13px; color:var(--text-muted);">暂无凭证记录</div>`}
+        </div>
+      `;
+    }
+
+    function bindReconcile() {
+      $('btnRecExport').onclick = exportBackupFile;
+      document.querySelectorAll('[data-void-v]').forEach(btn => {
+        btn.onclick = () => {
+          const reason = prompt('输入红字冲销原因：', '录错更正');
+          if (!reason) return;
+          const res = engine.voidVoucherWithRedEntry(btn.dataset.voidV, reason);
+          alert(res.message);
+          renderApp();
+        };
+      });
+    }
+
+    /* ========================================================================
+     * 主线板块 ⑦：经营总账与掌柜最终核决台
+     * ======================================================================== */
+    function viewFinance(metrics) {
+      const audit = engine.runIronAbacusAudit();
+      return `
+        <div class="kpi-grid">
+          <div class="kpi-box"><div class="kpi-label">在库商品货值</div><div class="kpi-num">${engine.formatSensitiveMoney(metrics.inventoryCostValue)}</div></div>
+          <div class="kpi-box"><div class="kpi-label">钱箱实有现金</div><div class="kpi-num">¥${metrics.currentCash.toFixed(2)}</div></div>
+          <div class="kpi-box"><div class="kpi-label">熟客待收赊账</div><div class="kpi-num" style="color:var(--accent);">¥${metrics.totalReceivable.toFixed(2)}</div></div>
+          <div class="kpi-box"><div class="kpi-label">上游供货应付</div><div class="kpi-num">¥${metrics.totalPayable.toFixed(2)}</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-hd">
+            <span>⚖️ 掌柜最终核决中心 & AI 铁面稽核</span>
             <span class="badge ${audit.passed ? 'ok' : 'danger'}">${audit.passed ? '四方吻合' : '有待核疑点'}</span>
           </div>
           ${metrics.pendingApprovals.map(item => `
@@ -875,268 +1165,269 @@
               <strong>${item.title}</strong>
               <div style="font-size:12px; color:var(--text-muted); margin:4px 0;">${item.reason}</div>
               <div style="display:flex; gap:8px;">
-                <button class="primary sm" data-m-approve="${item.id}">✅ 核准执行</button>
-                <button class="sm" data-m-dismiss="${item.id}">放行归档</button>
+                <button class="primary sm" data-apr-ok="${item.id}">✅ 核准执行</button>
+                <button class="sm" data-apr-no="${item.id}">放行归档</button>
               </div>
             </div>
-          `).join('') || '<div style="color:var(--text-muted); font-size:13px;">当前无待拍板草案，账目清白稳健。</div>'}
+          `).join('') || `<div style="font-size:13px; color:var(--text-muted);">当前无待核决草案，工具为您所用，一切尽在掌控。</div>`}
+        </div>
+      `;
+    }
+
+    function bindFinance() {
+      document.querySelectorAll('[data-apr-ok]').forEach(btn => {
+        btn.onclick = () => { const res = engine.decideApprovalItem(btn.dataset.aprOk, 'APPROVED', '掌柜核准'); alert(res.message); renderApp(); };
+      });
+      document.querySelectorAll('[data-apr-no]').forEach(btn => {
+        btn.onclick = () => { engine.decideApprovalItem(btn.dataset.aprNo, 'DISMISSED', '掌柜放行'); renderApp(); };
+      });
+    }
+
+    /* ========================================================================
+     * ⚙️ 齿轮设置中心（模块自由选配/显隐、自定义策略、多店、动态角色与家业备忘）
+     * ======================================================================== */
+    function openGearSettingsSheet() {
+      const store = engine.getActiveStore();
+      const acc = engine.getCurrentAccount();
+      const enabledMods = engine.state.meta.enabledModules || {};
+
+      $('modalBody').innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h3 style="margin:0;">⚙️ 设置与主权中心</h3>
+          <button class="sm" id="btnCloseGear">完成</button>
         </div>
 
-        <div class="card">
-          <div class="card-hd"><span>📒 熟客往来欠款与还款核销</span></div>
-          ${engine.state.customers.filter(c => c.receivableBalance > 0).map(c => `
-            <div class="cart-row">
-              <div><strong>${c.name}</strong><div style="font-size:12px; color:var(--accent);">待还：¥${c.receivableBalance.toFixed(2)}</div></div>
-              <button class="sm primary" data-m-settle-cus="${c.id}">收款核销</button>
+        <div style="font-weight:700; color:var(--primary-dark); margin:12px 0 6px;">1. 业务模块自由选配（关闭后彻底隐身，零干扰）</div>
+        ${MODULE_CATALOG.map(m => `
+          <div class="setting-row">
+            <div>
+              <strong>${m.icon} ${m.name}</strong> <span class="badge">${m.pillar}</span>
+              <div style="font-size:12px; color:var(--text-muted);">${m.desc}</div>
             </div>
-          `).join('') || '<div style="color:var(--text-muted); font-size:13px;">当前无熟客挂账欠款</div>'}
-        </div>
-      `;
-    }
-
-    function bindLedgerTab() {
-      document.querySelectorAll('[data-m-approve]').forEach(btn => {
-        btn.onclick = () => {
-          const res = engine.decideApprovalItem(btn.dataset.mApprove, 'APPROVED', '掌中宝掌柜核准');
-          alert(res.message);
-          renderMobile();
-        };
-      });
-      document.querySelectorAll('[data-m-dismiss]').forEach(btn => {
-        btn.onclick = () => {
-          engine.decideApprovalItem(btn.dataset.mDismiss, 'DISMISSED', '掌柜放行');
-          renderMobile();
-        };
-      });
-      document.querySelectorAll('[data-m-settle-cus]').forEach(btn => {
-        btn.onclick = () => {
-          const cus = engine.state.customers.find(c => c.id === btn.dataset.mSettleCus);
-          if (!cus) return;
-          const amt = roundMoney(prompt(`【${cus.name}】当前欠款 ¥${cus.receivableBalance}，输入本次还款金额：`, cus.receivableBalance));
-          if (amt > 0) {
-            engine.commitVoucher({
-              type: 'CREDIT_SETTLE',
-              totalAmount: amt,
-              payMethod: 'DIGITAL',
-              digitalPaid: amt,
-              counterpartyId: cus.id,
-              counterpartyName: cus.name,
-              note: `熟客【${cus.name}】还款入账`
-            });
-            engine.speakFeedback(`收到${cus.name}还款${amt}元`);
-            renderMobile();
-          }
-        };
-      });
-    }
-
-    function renderMoreTab() {
-      return `
-        <div class="card">
-          <div class="card-hd"><span>🧭 掌中宝全域协同与主权百宝箱</span></div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <button onclick="location.href='store.html'">🖥️ 切至电脑调度台</button>
-            <button onclick="location.href='mall.html'">🛒 逛大集源头拼单</button>
-            <button id="btnMAddBranch">+ 新增分店</button>
-            <button id="btnMOtpGen">🔑 远程放行码</button>
-            <button id="btnMShareJielong">💬 复制群接龙文案</button>
-            <button id="btnMFamilyDraw">🏠 记一笔家庭支取</button>
-            <button id="btnMExportBackup">📤 导出铁账备份包</button>
-            <button id="btnMElderToggle">${engine.state.meta.elderLargeMode ? '✅ 已开大字版' : '👓 长辈大字模式'}</button>
-            <button id="btnMSandbox">${engine.sandboxMode ? '退出模拟舱' : '🎓 练手模拟舱'}</button>
-            <button class="danger" id="btnMLock">🔒 立即锁屏</button>
+            <input type="checkbox" data-mod-toggle="${m.id}" ${enabledMods[m.id] !== false ? 'checked' : ''} style="width:20px; height:20px;" />
           </div>
+        `).join('')}
+
+        <div style="font-weight:700; color:var(--primary-dark); margin:16px 0 6px;">2. 自定义策略、行当基因与多门店管理</div>
+        <div class="setting-row">
+          <div><strong>当前门店行当基因</strong></div>
+          <select id="gearGeneSelect" style="width:180px;">
+            ${Object.values(INDUSTRY_GENES).map(g => `<option value="${g.id}" ${store.geneId === g.id ? 'selected' : ''}>${g.name.split('/')[0]}</option>`).join('')}
+          </select>
+        </div>
+        <div class="setting-row">
+          <div><strong>新增分店（独立货钱账单）</strong><div style="font-size:12px; color:var(--text-muted);">现有 ${engine.state.stores.length} 家门店</div></div>
+          <button class="sm primary" id="btnGearAddBranch">+ 新增分店</button>
+        </div>
+        <div class="setting-row">
+          <div><strong>👓 长辈关怀大字模式</strong></div>
+          <button class="sm" id="btnGearElder">${engine.state.meta.elderLargeMode ? '✅ 已开启' : '开启大字'}</button>
+        </div>
+        <div class="setting-row">
+          <div><strong>👆 指纹/面容秒解（自主可选）</strong></div>
+          <button class="sm" id="btnGearBio">${acc.biometricEnabled ? '✅ 已绑定' : '去开启'}</button>
+        </div>
+
+        <div style="font-weight:700; color:var(--primary-dark); margin:16px 0 6px;">3. 人尽其才 · 岗位账号与家业常青主权</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+          <button class="sm" id="btnGearAddStaff">+ 新增岗位账号</button>
+          <button class="sm warn" id="btnGearOtp">🔑 远程放行码</button>
+          <button class="sm" id="btnGearSuccession">🏮 副掌柜交接备忘</button>
+          <button class="sm" id="btnGearPaperBook">🖨️ 应急纸质兜底册</button>
+          <button class="sm" id="btnGearCustomForm">🧩 自定义白纸表单</button>
+          <button class="sm" id="btnGearFamilyDraw">🏠 记家庭私人支取</button>
         </div>
       `;
-    }
 
-    function bindMoreTab() {
-      $('btnMAddBranch').onclick = () => {
-        const name = prompt('输入新分店名称（如：二店 · 城南店）：');
+      $('modalMask').classList.add('show');
+      $('btnCloseGear').onclick = () => { closeModal(); renderApp(); };
+
+      $('modalBody').querySelectorAll('[data-mod-toggle]').forEach(chk => {
+        chk.onchange = () => {
+          engine.toggleModuleVisibility(chk.dataset.modToggle, chk.checked);
+        };
+      });
+
+      $('gearGeneSelect').onchange = (e) => {
+        store.geneId = e.target.value;
+        engine._persist();
+      };
+
+      $('btnGearAddBranch').onclick = () => {
+        const name = prompt('输入新分店名称（如：二店 · 城南驿站）：');
         if (!name || !name.trim()) return;
         const res = engine.addBranchStore({ name: name.trim() });
-        if (res.ok) {
-          mCart = [];
-          mOrderCart = [];
-          alert(`已创建并切换至新分店【${res.store.name}】`);
-          renderMobile();
-        } else {
-          alert(res.message);
+        alert(res.ok ? `已新增并切换至【${res.store.name}】` : res.message);
+        openGearSettingsSheet();
+      };
+
+      $('btnGearElder').onclick = () => {
+        engine.state.meta.elderLargeMode = !engine.state.meta.elderLargeMode;
+        engine._persist();
+        openGearSettingsSheet();
+      };
+
+      $('btnGearBio').onclick = async () => {
+        const res = await engine.toggleBiometricForCurrentAccount();
+        alert(res.message);
+        openGearSettingsSheet();
+      };
+
+      $('btnGearAddStaff').onclick = async () => {
+        const name = prompt('新店员/合伙人姓名：');
+        if (!name) return;
+        const roles = engine.state.rbac.roles;
+        const menu = roles.map((r, i) => `${i + 1}=${r.name}`).join('\n');
+        const idx = (Number(prompt(`选择角色：\n${menu}`, '2')) || 2) - 1;
+        const role = roles[idx] || roles[0];
+        const pin = prompt('设置4位数字口令（留空免密）：', '');
+        const accId = generateId('ACC');
+        const pinHash = pin ? await sha256Hex(`${accId}:${pin.trim()}`) : '';
+        engine.state.rbac.accounts.push({
+          id: accId,
+          name: name.trim(),
+          phoneOrCode: String(1000 + engine.state.rbac.accounts.length + 1),
+          avatar: '🙂',
+          roleId: role.id,
+          storeIds: ['*'],
+          pinHash,
+          biometricEnabled: false,
+          webAuthnId: '',
+          active: true,
+          extraPermissions: {}
+        });
+        engine._persist();
+        alert(`已添加【${name}】`);
+      };
+
+      $('btnGearOtp').onclick = () => {
+        const c = prompt('输入分店报出的4位挑战码：', '1001');
+        if (c) alert(`🔑 一次性远程放行码：【 ${engine.generateOneTimePasscode(c.trim())} 】（5分钟内有效）`);
+      };
+
+      $('btnGearSuccession').onclick = () => {
+        const person = prompt('输入家业接力副掌柜/家人称呼：', engine.state.rbac.successionMemo.successorName);
+        if (person === null) return;
+        const note = prompt('交接嘱托备忘：', engine.state.rbac.successionMemo.handoverNote);
+        engine.state.rbac.successionMemo = { enabled: true, successorName: person, successorRelation: '', handoverNote: note || '', unlockCodeHash: '' };
+        engine._persist();
+        alert('家业常青副掌柜备忘已保存');
+      };
+
+      $('btnGearPaperBook').onclick = () => {
+        const book = engine.generateEmergencyPaperBook();
+        alert(`《${book.title}》已就绪，共收录在售商品 ${book.priceList.length} 款、往来熟客 ${book.receivables.length} 户（电脑端可直接打印成册）`);
+      };
+
+      $('btnGearCustomForm').onclick = () => {
+        const title = prompt('创建自定义白纸业务卡片（如：农资地块登记 / 维修工单）：', '便民服务登记卡');
+        if (title) {
+          engine.state.community.customForms.push({ id: generateId('FRM'), title: title.trim(), fields: ['对象', '事项', '金额'], records: [] });
+          engine._persist();
+          alert(`已创建【${title}】`);
         }
       };
-      $('btnMOtpGen').onclick = () => {
-        const challenge = prompt('输入分店店员屏幕报出的4位挑战码：', '1001');
-        if (!challenge) return;
-        const code = engine.generateOneTimePasscode(challenge.trim());
-        alert(`🔑 一次性远程放行码：【 ${code} 】（5分钟内有效）`);
-      };
-      $('btnMShareJielong').onclick = () => {
-        const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId).slice(0, 6);
-        const txt = `🏮【${engine.getActiveStore().name} · 街坊福利接龙】\n` +
-          skus.map((s, i) => `${i + 1}. ${s.name} —— ¥${s.retailPrice}/${s.unit}`).join('\n') +
-          `\n👉 群里直接回复“序号+数量”即可到店自提！`;
-        navigator.clipboard?.writeText(txt);
-        alert('群接龙文案已复制，可直接去微信群粘贴！');
-      };
-      $('btnMFamilyDraw').onclick = () => {
+
+      $('btnGearFamilyDraw').onclick = () => {
         const amt = roundMoney(prompt('输入老板私人/家庭支取现金金额（只扣钱箱，不污染经营利润）：', '100'));
         if (amt > 0) {
           engine.commitVoucher({ type: 'FAMILY_DRAW', totalAmount: amt, payMethod: 'CASH', note: '家庭日常支取' });
           alert(`已独立记录家庭支取 ¥${amt}`);
-          renderMobile();
         }
       };
-      $('btnMExportBackup').onclick = exportMobileBackup;
-      $('btnMElderToggle').onclick = () => {
-        engine.state.meta.elderLargeMode = !engine.state.meta.elderLargeMode;
-        engine._persist();
-        renderMobile();
-      };
-      $('btnMSandbox').onclick = () => {
-        if (engine.sandboxMode) engine.exitSandbox();
-        else engine.enterSandbox();
-        renderMobile();
-      };
-      $('btnMLock').onclick = () => engine.lockScreen();
-    }
-
-    async function exportMobileBackup() {
-      const pkg = await engine.exportIronBackup('');
-      const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `掌中宝铁账备份_${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      alert('铁账备份包已导出，建议转发到微信“文件传输助手”永久留底！');
     }
 
     function openQrSheet(paidAmount = null) {
       const store = engine.getActiveStore();
-      $('mSheetBody').innerHTML = `
+      $('modalBody').innerHTML = `
         <div style="text-align:center;">
           <h3 style="margin-top:0;">🛡️ ${store.name} · 官方收款码</h3>
-          ${paidAmount !== null ? `<div style="font-size:24px; font-weight:800; color:var(--primary); margin-bottom:10px;">本单应收：¥${paidAmount.toFixed(2)}</div>` : ''}
+          ${paidAmount !== null ? `<div style="font-size:22px; font-weight:800; color:var(--primary); margin-bottom:8px;">本单应收：¥${paidAmount.toFixed(2)}</div>` : ''}
           ${store.paymentQrUrl
-            ? `<img src="${store.paymentQrUrl}" style="max-width:240px; border-radius:12px; border:1px solid var(--border-light);" />`
-            : `<div style="padding:30px; background:var(--bg-subtle); border-radius:12px; color:var(--text-muted);">尚未上传收款码（掌柜可在电脑调度台上传锁定）</div>`
+            ? `<img src="${store.paymentQrUrl}" style="max-width:230px; border-radius:12px;" />`
+            : `<div style="padding:26px; background:var(--bg-subtle); border-radius:12px; color:var(--text-muted);">尚未上传收款码（掌柜可在电脑端上传锁定）</div>`
           }
-          <button class="primary block" style="margin-top:16px;" id="btnCloseSheet">完成并关闭</button>
+          <button class="primary block" style="margin-top:14px;" id="btnCloseQr">关闭</button>
         </div>
       `;
-      $('mSheetMask').classList.add('show');
-      $('btnCloseSheet').onclick = closeSheet;
+      $('modalMask').classList.add('show');
+      $('btnCloseQr').onclick = closeModal;
     }
 
-    function openAccountSheet(isLocked = false) {
-      $('mSheetBody').innerHTML = `
+    function openAccountSwitchSheet(isLocked = false) {
+      $('modalBody').innerHTML = `
         <div>
           <h3 style="margin-top:0;">🔐 切换值班岗位</h3>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0;">
             ${engine.state.rbac.accounts.filter(a => a.active).map(acc => `
-              <button style="flex-direction:column; padding:14px;" data-m-acc="${acc.id}">
+              <button style="flex-direction:column; padding:14px;" data-sw-acc="${acc.id}">
                 <span style="font-size:26px;">${acc.avatar}</span>
                 <span>${acc.name}</span>
               </button>
             `).join('')}
           </div>
-          ${!isLocked ? `<button class="block" id="btnCloseSheet">取消</button>` : ''}
+          ${!isLocked ? `<button class="block" id="btnCancelSw">取消</button>` : ''}
         </div>
       `;
-      $('mSheetMask').classList.add('show');
-      if ($('btnCloseSheet')) $('btnCloseSheet').onclick = closeSheet;
-
-      $('mSheetBody').querySelectorAll('[data-m-acc]').forEach(btn => {
+      $('modalMask').classList.add('show');
+      if ($('btnCancelSw')) $('btnCancelSw').onclick = closeModal;
+      $('modalBody').querySelectorAll('[data-sw-acc]').forEach(btn => {
         btn.onclick = async () => {
-          const accId = btn.dataset.mAcc;
-          let res = await engine.switchAccount(accId, '');
+          let res = await engine.switchAccount(btn.dataset.swAcc, '');
           if (res.needPin) {
             const pin = prompt(res.message, '');
-            if (pin !== null) res = await engine.switchAccount(accId, pin);
+            if (pin !== null) res = await engine.switchAccount(btn.dataset.swAcc, pin);
           }
-          if (res.ok) { closeSheet(); renderMobile(); }
-          else alert(res.message);
+          if (res.ok) { closeModal(); renderApp(); } else alert(res.message);
         };
       });
     }
 
     async function openCameraScannerSheet() {
-      $('mSheetBody').innerHTML = `
+      $('modalBody').innerHTML = `
         <div style="text-align:center;">
-          <h3 style="margin-top:0;">📷 连续扫码收银</h3>
-          <video id="mScanVideo" autoplay playsinline style="width:100%; max-height:260px; background:#000; border-radius:12px;"></video>
-          <p id="mScanHint" style="font-size:13px; color:var(--text-muted);">请将商品条码对准取景框...</p>
-          <button class="block" id="btnCloseScan">结束扫码</button>
+          <h3 style="margin-top:0;">📷 连续扫码</h3>
+          <video id="scanVid" autoplay playsinline style="width:100%; max-height:240px; background:#000; border-radius:12px;"></video>
+          <p id="scanTip" style="font-size:13px; color:var(--text-muted);">对准商品条码自动识别...</p>
+          <button class="block" id="btnStopScan">完成扫码</button>
         </div>
       `;
-      $('mSheetMask').classList.add('show');
-      $('btnCloseScan').onclick = closeSheet;
-
+      $('modalMask').classList.add('show');
+      $('btnStopScan').onclick = closeModal;
       try {
         cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        const video = $('mScanVideo');
-        video.srcObject = cameraStream;
-        if ('BarcodeDetector' in window) {
-          const detector = new BarcodeDetector();
-          let lastCode = '';
-          let lastTs = 0;
-          const loop = async () => {
-            if (!cameraStream) return;
-            try {
-              const codes = await detector.detect(video);
-              if (codes.length > 0) {
-                const code = codes[0].rawValue;
-                if (code && (code !== lastCode || Date.now() - lastTs > 2000)) {
-                  lastCode = code;
-                  lastTs = Date.now();
-                  const matches = engine.searchCatalog(code);
-                  if (matches.length > 0) {
-                    const sku = matches[0];
-                    const found = mCart.find(c => c.skuId === sku.id);
-                    if (found) found.qty += 1;
-                    else mCart.push({ skuId: sku.id, name: sku.name, qty: 1, unitPrice: sku.retailPrice, costPrice: sku.costPrice });
-                    engine.speakFeedback(sku.name);
-                    $('mScanHint').textContent = `✅ 已扫入：${sku.name} (¥${sku.retailPrice})`;
-                    renderMobile();
-                  } else {
-                    $('mScanHint').textContent = `识别到新条码 ${code}，请关闭相机后直接建档`;
-                  }
-                }
-              }
-            } catch (_) {}
-            requestAnimationFrame(loop);
-          };
-          requestAnimationFrame(loop);
-        } else {
-          $('mScanHint').textContent = '当前浏览器不支持原生连续解码，可使用外部扫码枪或直接输入条码';
-        }
+        $('scanVid').srcObject = cameraStream;
       } catch (_) {
-        $('mScanHint').textContent = '无法调起摄像头，请检查浏览器相机权限';
+        $('scanTip').textContent = '无法调起相机，请检查浏览器权限';
       }
     }
 
-    function closeSheet() {
-      if (cameraStream) {
-        cameraStream.getTracks().forEach(t => t.stop());
-        cameraStream = null;
-      }
-      $('mSheetMask').classList.remove('show');
+    async function exportBackupFile() {
+      const pkg = await engine.exportIronBackup('');
+      const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `商道相通铁账备份_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      alert('铁账备份包已导出，建议转发微信“文件传输助手”永久留底！');
     }
 
-    $('mPrivacyBtn').onclick = () => { engine.togglePrivacyShield(); renderMobile(); };
-    $('mHeader').ondblclick = () => { engine.togglePrivacyShield(); renderMobile(); };
-    $('mAccBtn').onclick = () => openAccountSheet(false);
-    $('mCloudStatus').onclick = () => {
-      engine.state.meta.cloudSyncEnabled = !engine.state.meta.cloudSyncEnabled;
-      engine._persist();
-      updateCloudBadge();
+    $('btnOpenDrawer').onclick = openDrawer;
+    $('drawerMask').onclick = closeDrawer;
+    $('btnOpenGearSettings').onclick = openGearSettingsSheet;
+    $('btnOpenMoreMenu').onclick = (e) => {
+      e.stopPropagation();
+      $('moreMenu').classList.toggle('show');
     };
-    $('btnMExitSandbox').onclick = () => { engine.exitSandbox(); renderMobile(); };
+    document.addEventListener('click', (e) => {
+      if (!$('moreMenu').contains(e.target) && e.target !== $('btnOpenMoreMenu')) {
+        $('moreMenu').classList.remove('show');
+      }
+    });
+    $('btnExitSandbox').onclick = () => { engine.exitSandbox(); renderApp(); };
 
-    window.addEventListener('online', updateCloudBadge);
-    window.addEventListener('offline', updateCloudBadge);
-
-    engine.subscribe(() => renderMobile());
-    renderMobile();
+    engine.subscribe(() => renderApp());
+    renderApp();
   </script>
 </body>
 </html>
