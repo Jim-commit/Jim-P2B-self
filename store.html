@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>商道相通 · 百工商业全域智慧工作台（电脑全面调度台）</title>
+  <title>商道相通 · 电脑宽屏全面调度台</title>
   <style>
     :root {
       --bg-page: #f4f6f8;
@@ -22,12 +22,10 @@
       --success: #15803d;
       --success-bg: #dcfce7;
       --radius: 10px;
-      --shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
       --font-scale: 1;
     }
 
-    body.elder-mode { --font-scale: 1.25; }
-
+    body.elder-mode { --font-scale: 1.24; }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -35,7 +33,6 @@
       background: var(--bg-page);
       color: var(--text-main);
       font-size: calc(14px * var(--font-scale));
-      line-height: 1.5;
       display: flex;
       flex-direction: column;
       height: 100vh;
@@ -43,2128 +40,276 @@
     }
 
     .topbar {
-      background: #ffffff;
+      background: #fff;
       border-bottom: 1px solid var(--border-light);
       padding: 10px 18px;
       display: flex;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
-      z-index: 20;
     }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 700;
-      font-size: calc(16px * var(--font-scale));
-      color: var(--primary-dark);
-      white-space: nowrap;
-    }
-    .store-select {
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-weight: 700;
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-light);
-      color: var(--primary-dark);
-      cursor: pointer;
-    }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 3px 9px;
-      border-radius: 999px;
-      font-size: calc(12px * var(--font-scale));
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-light);
-      color: var(--text-main);
-    }
+    .brand { font-weight: 800; font-size: 16px; color: var(--primary-dark); display: flex; align-items: center; gap: 8px; }
+    .store-select { padding: 4px 10px; border-radius: 999px; font-weight: 700; border: 1px solid var(--border-light); background: var(--bg-subtle); color: var(--primary-dark); }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: var(--bg-subtle); border: 1px solid var(--border-light); }
     .badge.warn { background: var(--accent-bg); color: var(--accent); border-color: #fde68a; }
     .badge.danger { background: var(--danger-bg); color: var(--danger); border-color: #fecdd3; }
     .badge.ok { background: var(--success-bg); color: var(--success); border-color: #bbf7d0; }
 
-    .omni-capsule {
-      flex: 1;
-      min-width: 240px;
-      max-width: 460px;
-      display: flex;
-      align-items: center;
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-light);
-      border-radius: 999px;
-      padding: 4px 12px;
-      gap: 6px;
-    }
-    .omni-capsule:focus-within {
-      border-color: var(--primary);
-      background: #fff;
-      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
-    }
-    .omni-capsule input { border: none; background: transparent; outline: none; flex: 1; font-size: inherit; color: var(--text-main); }
-
-    .topbar-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-wrap: wrap; }
-
-    button, .btn {
+    button {
       border: 1px solid var(--border-light);
       background: #fff;
       color: var(--text-main);
       padding: 6px 12px;
       border-radius: 7px;
       cursor: pointer;
-      font-size: calc(13px * var(--font-scale));
       font-weight: 500;
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      transition: all 0.15s;
     }
-    button:hover { background: var(--bg-subtle); border-color: #cbd5e1; }
+    button:hover { background: var(--bg-subtle); }
     button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-    button.primary:hover { background: var(--primary-dark); }
     button.warn { background: var(--accent-bg); color: var(--accent); border-color: #fcd34d; }
     button.danger { background: var(--danger-bg); color: var(--danger); border-color: #fda4af; }
-    button.sm { padding: 4px 8px; font-size: calc(12px * var(--font-scale)); }
-
-    .sandbox-banner {
-      background: #fef3c7;
-      color: #92400e;
-      padding: 6px 18px;
-      font-size: 13px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #fde68a;
-    }
+    button.sm { padding: 4px 8px; font-size: 12px; }
 
     .workspace { display: flex; flex: 1; overflow: hidden; }
-    .sidebar {
-      width: 236px;
-      background: #ffffff;
-      border-right: 1px solid var(--border-light);
-      padding: 12px 10px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .stage-label { font-size: 11px; color: var(--text-muted); padding: 10px 10px 4px; letter-spacing: 0.5px; }
-    .nav-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 9px 11px;
-      border-radius: 8px;
-      cursor: pointer;
-      color: var(--text-main);
-      font-weight: 500;
-      transition: background 0.15s;
-    }
+    .sidebar { width: 240px; background: #fff; border-right: 1px solid var(--border-light); padding: 12px 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+    .stage-label { font-size: 11px; color: var(--text-muted); padding: 10px 10px 4px; }
+    .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 11px; border-radius: 8px; cursor: pointer; font-weight: 500; }
     .nav-item:hover { background: var(--bg-subtle); }
     .nav-item.active { background: var(--primary-light); color: var(--primary-dark); font-weight: 700; }
 
     .main-stage { flex: 1; overflow-y: auto; padding: 18px 22px 60px; }
-
-    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 16px; }
     .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; margin-bottom: 16px; }
-    .card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius);
-      padding: 16px;
-      box-shadow: var(--shadow);
-      margin-bottom: 16px;
-    }
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--bg-subtle);
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .card-title { font-weight: 700; font-size: calc(15px * var(--font-scale)); }
-    .stat-val { font-size: calc(22px * var(--font-scale)); font-weight: 700; color: var(--primary-dark); margin: 4px 0; }
-    .stat-sub { font-size: calc(12px * var(--font-scale)); color: var(--text-muted); }
+    .card { background: #fff; border: 1px solid var(--border-light); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--bg-subtle); }
+    .card-title { font-weight: 700; font-size: 15px; }
 
-    .progress-bar { height: 8px; background: var(--bg-subtle); border-radius: 999px; overflow: hidden; border: 1px solid var(--border-light); margin-top: 6px; }
-    .progress-fill { height: 100%; background: var(--primary); transition: width 0.3s; }
-
-    .form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px; }
-    .field { display: flex; flex-direction: column; gap: 4px; min-width: 130px; flex: 1; }
-    .field label { font-size: calc(12px * var(--font-scale)); color: var(--text-muted); }
-    input, select, textarea {
-      padding: 7px 10px;
-      border: 1px solid var(--border-light);
-      border-radius: 6px;
-      font-size: inherit;
-      font-family: inherit;
-      background: #fff;
-      color: var(--text-main);
-    }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
-
-    table { width: 100%; border-collapse: collapse; font-size: calc(13px * var(--font-scale)); }
+    input, select, textarea { padding: 7px 10px; border: 1px solid var(--border-light); border-radius: 6px; font-size: inherit; width: 100%; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border-light); }
-    th { background: var(--bg-subtle); color: var(--text-muted); font-weight: 600; }
-    tr.voided-row { opacity: 0.55; text-decoration: line-through; background: #fff1f2; }
-
-    .decision-card {
-      border-left: 4px solid var(--accent);
-      background: #fffbeb;
-      padding: 12px 14px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .decision-card.danger { border-left-color: var(--danger); background: #fff1f2; }
-
-    /* 供货商标签栏与开放货盘网格 */
-    .supplier-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-    .sup-tab {
-      padding: 7px 14px;
-      border-radius: 999px;
-      border: 1px solid var(--border-light);
-      background: var(--bg-subtle);
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 13px;
-    }
-    .sup-tab.active {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-    .offer-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-      gap: 10px;
-      max-height: 360px;
-      overflow-y: auto;
-      padding: 2px;
-    }
-    .offer-card {
-      border: 1px solid var(--border-light);
-      border-radius: 9px;
-      padding: 10px 12px;
-      background: #fff;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 8px;
-      transition: border-color 0.15s;
-    }
-    .offer-card:hover { border-color: var(--primary); }
-
-    .check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 8px; margin: 8px 0; }
-    .check-item { display: flex; align-items: center; gap: 6px; font-size: 13px; background: var(--bg-subtle); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-light); cursor: pointer; }
-
-    .overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.65);
-      backdrop-filter: blur(4px);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      padding: 20px;
-    }
-    .overlay.show { display: flex; }
-    .modal-box {
-      background: #fff;
-      border-radius: 14px;
-      max-width: 620px;
-      width: 100%;
-      padding: 22px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-    .avatar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 16px 0; }
-    .avatar-card {
-      border: 1px solid var(--border-light);
-      border-radius: 10px;
-      padding: 14px 10px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .avatar-card:hover { border-color: var(--primary); background: var(--primary-light); }
-
-    .signage-screen {
-      position: fixed;
-      inset: 0;
-      background: linear-gradient(135deg, #0f766e 0%, #115e59 100%);
-      color: #fff;
-      z-index: 200;
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      padding: 40px;
-    }
-    .signage-screen.show { display: flex; }
-
-    .toast {
-      position: fixed;
-      bottom: 22px;
-      right: 22px;
-      background: #1e293b;
-      color: #fff;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      z-index: 300;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.25s;
-    }
-    .toast.show { opacity: 1; }
-
-    @media print {
-      .topbar, .sidebar, .no-print { display: none !important; }
-      .workspace, .main-stage { overflow: visible !important; height: auto !important; }
-    }
+    th { background: var(--bg-subtle); color: var(--text-muted); }
   </style>
 </head>
 <body>
 
-  <header class="topbar no-print" id="topbar" title="提示：双击顶部空白处可一键开启/关闭防窥脱敏掩护">
+  <header class="topbar">
     <div class="brand">
-      <span>🏮 商道相通</span>
-      <select class="store-select" id="storeSelector" title="切换当前查看的总店/分店"></select>
-      <span class="badge ok" id="geneBadge">社区便利</span>
+      <span>🏮 商道相通 · 电脑宽屏调度台</span>
+      <select class="store-select" id="pcStoreSelect"></select>
+      <span class="badge ok">人尽其才 · 物尽其用 · 地尽其利 · 货畅其流</span>
     </div>
-
-    <div class="omni-capsule">
-      <span>🔍</span>
-      <input type="text" id="omniInput" placeholder="扫条码 / 搜货号 / 指令如“老王赊账48元”或“家用拿走200”..." />
-      <button class="sm" id="btnOmniVoice">🎙️ 解析</button>
-    </div>
-
-    <div class="topbar-actions">
-      <button class="sm" id="btnAccountSwitch">👑 <span id="activeAccName">本机掌柜</span></button>
-      <button class="sm" id="btnToggleUiMode">🌿 极简白纸态</button>
-      <button class="sm" id="btnPrivacyShield">👁️ 防窥</button>
-      <button class="sm" id="btnCustomerScreen">📺 副屏客显</button>
-      <button class="sm" id="btnLockScreen">🔒 锁屏</button>
+    <div style="margin-left:auto; display:flex; gap:8px;">
+      <button class="sm" onclick="location.href='index.html'">📱 返回掌中宝</button>
+      <button class="sm" id="btnPcPrivacy">👁️ 防窥</button>
+      <button class="sm primary" id="btnPcGear">⚙️ 设置与模块选配</button>
     </div>
   </header>
 
-  <div class="sandbox-banner no-print" id="sandboxBanner" style="display:none;">
-    <span>🎓 <strong>当前处于【练手模拟舱】</strong>：所有开单、改价、冲销操作均在内存沙盒演练，绝不写入正式账本。</span>
-    <button class="sm warn" id="btnExitSandbox">退出模拟舱并还原正式账本</button>
-  </div>
-
   <div class="workspace">
-    <aside class="sidebar no-print" id="sidebarNav"></aside>
-    <main class="main-stage" id="mainStage"></main>
+    <aside class="sidebar" id="pcSidebar"></aside>
+    <main class="main-stage" id="pcMain"></main>
   </div>
-
-  <div class="overlay" id="lockOverlay">
-    <div class="modal-box">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="margin:0;">🔐 岗位值班切换与安全锁</h3>
-        <button class="sm" id="btnCloseLockModal">关闭</button>
-      </div>
-      <p style="color:var(--text-muted); font-size:13px;">点击对应值班头像即可切换岗位（受手电筒权限自动隔离视野）：</p>
-      <div class="avatar-grid" id="avatarGrid"></div>
-      <div id="pinVerifyBox" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--border-light);">
-        <div class="form-row">
-          <div class="field">
-            <label id="pinPromptLabel">请输入 4 位数字上岗口令</label>
-            <input type="password" id="pinInput" maxlength="8" placeholder="输入口令..." />
-          </div>
-          <button class="primary" id="btnConfirmPin">确认上岗</button>
-        </div>
-      </div>
-      <div style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--border-light); display:flex; justify-content:space-between; align-items:center;">
-        <span style="font-size:12px; color:var(--text-muted);">新店员学徒练手？进入全真隔离沙盒：</span>
-        <button class="sm warn" id="btnEnterSandbox">🎓 进入练手模拟舱</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="overlay" id="roleModalOverlay">
-    <div class="modal-box" id="roleModalBody"></div>
-  </div>
-
-  <div class="signage-screen" id="signageScreen">
-    <div style="font-size:22px; opacity:0.85; margin-bottom:12px;" id="signageStoreTitle">本店今日街坊特惠</div>
-    <div style="font-size:56px; font-weight:800; margin-bottom:18px;" id="signageHeadline">新鲜直达 · 诚实守信</div>
-    <div style="font-size:28px; max-width:860px; line-height:1.6;" id="signageBody">欢迎光临！支持微信群接龙预订、到店自提，老街坊享专属熟客价。</div>
-    <button style="margin-top:40px; background:rgba(255,255,255,0.2); color:#fff; border-color:rgba(255,255,255,0.4);" id="btnExitSignage">退出大屏展示 (ESC)</button>
-  </div>
-
-  <div class="toast" id="toastBox"></div>
 
   <script type="module">
     import {
       StoreCoreEngine,
       MODULE_CATALOG,
       INDUSTRY_GENES,
-      PERMISSION_CATALOG,
       roundMoney,
-      generateId,
-      sha256Hex
+      generateId
     } from './src/modules/store/storeCoreEngine.js';
 
     const engine = new StoreCoreEngine();
-    window.__STORE_ENGINE__ = engine;
-
-    let activeModule = 'pos';
-    let posCart = [];
-    let selectedSupplierId = ''; // 当前正在浏览其开放货盘的已绑定供货商ID
-    let orderCart = [];          // 当前选中的订货清单
-    let offerSearchKeyword = '';
-    let pendingSwitchAccId = null;
-    let customerDisplayWin = null;
+    let activeMod = 'procurement';
+    let selectedSupId = '';
+    let orderCart = [];
 
     const $ = (id) => document.getElementById(id);
 
-    function showToast(msg) {
-      const box = $('toastBox');
-      box.textContent = msg;
-      box.classList.add('show');
-      clearTimeout(box._t);
-      box._t = setTimeout(() => box.classList.remove('show'), 2800);
-    }
-
-    function renderAll() {
+    function renderPc() {
       const store = engine.getActiveStore();
-      const gene = engine.getActiveGene();
-      const acc = engine.getCurrentAccount();
       const metrics = engine.getDashboardMetrics();
-
       document.body.classList.toggle('elder-mode', Boolean(engine.state.meta.elderLargeMode));
 
-      const visibleStores = engine.getVisibleStores();
-      const sel = $('storeSelector');
-      sel.innerHTML = visibleStores.map(s => `<option value="${s.id}" ${s.id === store.id ? 'selected' : ''}>🏪 ${s.name}</option>`).join('');
-      sel.onchange = () => {
-        const res = engine.switchStore(sel.value);
-        if (res.ok) {
-          posCart = [];
-          orderCart = [];
-          showToast(`已切换至【${res.store.name}】`);
-        } else {
-          showToast(res.message);
-        }
-      };
+      const sel = $('pcStoreSelect');
+      sel.innerHTML = engine.getVisibleStores().map(s => `<option value="${s.id}" ${s.id === store.id ? 'selected' : ''}>🏪 ${s.name}</option>`).join('');
+      sel.onchange = () => { engine.switchStore(sel.value); orderCart = []; };
 
-      $('geneBadge').textContent = gene.name.split('/')[0].trim();
-      $('activeAccName').textContent = acc.name;
-      $('btnToggleUiMode').textContent = engine.state.meta.uiMode === 'simple' ? '🌿 极简白纸态' : '🧭 全面调度态';
-      $('btnPrivacyShield').textContent = engine.privacyShieldActive ? '🙈 已开启防窥' : '👁️ 防窥';
-      $('sandboxBanner').style.display = engine.sandboxMode ? 'flex' : 'none';
+      const allowed = MODULE_CATALOG.filter(m => engine.canAccessModule(m.id));
+      if (allowed.length > 0 && !allowed.some(m => m.id === activeMod)) activeMod = allowed[0].id;
 
-      if (engine.state.rbac.locked) openAccountModal(true);
+      $('pcSidebar').innerHTML = `
+        <div class="stage-label">全域平台五大节点</div>
+        <div class="nav-item" onclick="location.href='hq.html'"><span>🏛️ 总控联盟 (hq)</span></div>
+        <div class="nav-item" onclick="location.href='suppliers.html'"><span>🏭 供需名录 (suppliers)</span></div>
+        <div class="nav-item" onclick="location.href='mall.html'"><span>🛒 源头大集 (mall)</span></div>
+        <div class="nav-item" onclick="location.href='driver.html'"><span>🚛 物流配送 (driver)</span></div>
+        <div class="stage-label">本店业务主线（⚙️ 可选配）</div>
+        ${allowed.map(m => `
+          <div class="nav-item ${activeMod === m.id ? 'active' : ''}" data-pc-mod="${m.id}">
+            <span>${m.icon} ${m.name}</span>
+            <span class="badge">${m.pillar}</span>
+          </div>
+        `).join('')}
+      `;
 
-      const allowedModules = MODULE_CATALOG.filter(m => engine.canAccessModule(m.id));
-      if (allowedModules.length > 0 && !allowedModules.some(m => m.id === activeModule)) {
-        activeModule = allowedModules[0].id;
-      }
+      $('pcSidebar').querySelectorAll('[data-pc-mod]').forEach(el => {
+        el.onclick = () => { activeMod = el.dataset.pcMod; renderPc(); };
+      });
 
-      renderSidebar(allowedModules, metrics);
-      renderMainStage(metrics);
-      syncCustomerDisplayWindow();
+      if (activeMod === 'gear') renderGearView();
+      else renderModuleView(metrics);
     }
 
-    function renderSidebar(allowedModules, metrics) {
-      const nav = $('sidebarNav');
-      let lastStage = '';
-      let html = '';
-
-      for (const mod of allowedModules) {
-        if (mod.stage !== lastStage) {
-          html += `<div class="stage-label">${mod.stage}</div>`;
-          lastStage = mod.stage;
-        }
-        let badgeHtml = '';
-        if (mod.id === 'receiving' && metrics.pendingPurchaseOrders.length > 0) {
-          badgeHtml = `<span class="badge warn">${metrics.pendingPurchaseOrders.length}待签收</span>`;
-        } else if (mod.id === 'finance' && metrics.pendingApprovals.length > 0) {
-          badgeHtml = `<span class="badge warn">${metrics.pendingApprovals.length}待核决</span>`;
-        } else if (mod.id === 'catalog' && metrics.lowStockSkus.length > 0) {
-          badgeHtml = `<span class="badge danger">${metrics.lowStockSkus.length}缺货</span>`;
-        }
-        html += `
-          <div class="nav-item ${activeModule === mod.id ? 'active' : ''}" data-mod="${mod.id}">
-            <span>${mod.icon} ${mod.name}</span>
-            ${badgeHtml}
+    function renderGearView() {
+      const enabled = engine.state.meta.enabledModules || {};
+      $('pcMain').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">⚙️ 设置中心 · 业务模块自由选配（POS收银等模块可按需开关）</span>
+            <button class="primary sm" id="btnBackMain">返回业务工作台</button>
           </div>
-        `;
-      }
-
-      html += `
-        <div class="stage-label">全域平台协同</div>
-        <div class="nav-item" onclick="location.href='index.html'"><span>📱 掌中宝随身作战舱</span></div>
-        <div class="nav-item" onclick="window.open('mall.html','_blank')"><span>🛒 逛大集源头拼单</span></div>
-        <div class="nav-item" onclick="window.open('suppliers.html','_blank')"><span>🏭 百业供需名录</span></div>
+          <table>
+            <thead><tr><th>业务模块</th><th>商道定位</th><th>功能说明</th><th>启用状态</th></tr></thead>
+            <tbody>
+              ${MODULE_CATALOG.map(m => `
+                <tr>
+                  <td><strong>${m.icon} ${m.name}</strong></td>
+                  <td><span class="badge">${m.pillar}</span></td>
+                  <td>${m.desc}</td>
+                  <td><input type="checkbox" data-pc-toggle="${m.id}" ${enabled[m.id] !== false ? 'checked' : ''} style="width:18px;height:18px;" /></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
       `;
-      nav.innerHTML = html;
-
-      nav.querySelectorAll('[data-mod]').forEach(el => {
-        el.onclick = () => { activeModule = el.dataset.mod; renderAll(); };
+      $('btnBackMain').onclick = () => { activeMod = 'procurement'; renderPc(); };
+      $('pcMain').querySelectorAll('[data-pc-toggle]').forEach(chk => {
+        chk.onchange = () => { engine.toggleModuleVisibility(chk.dataset.pcToggle, chk.checked); renderPc(); };
       });
     }
 
-    function renderMainStage(metrics) {
-      const stage = $('mainStage');
-      const isSimple = engine.state.meta.uiMode === 'simple';
-
-      switch (activeModule) {
-        case 'procurement': stage.innerHTML = viewProcurement(metrics); bindProcurementEvents(); break;
-        case 'receiving':   stage.innerHTML = viewReceiving(metrics); bindReceivingEvents(); break;
-        case 'catalog':     stage.innerHTML = viewCatalog(metrics); bindCatalogEvents(); break;
-        case 'pos':         stage.innerHTML = viewPos(metrics, isSimple); bindPosEvents(); break;
-        case 'marketing':   stage.innerHTML = viewMarketing(); bindMarketingEvents(); break;
-        case 'finance':     stage.innerHTML = viewFinance(metrics); bindFinanceEvents(); break;
-        case 'reconcile':   stage.innerHTML = viewReconcile(); bindReconcileEvents(); break;
-        case 'governance':  stage.innerHTML = viewGovernance(); bindGovernanceEvents(); break;
-        default:            stage.innerHTML = viewPos(metrics, isSimple); bindPosEvents();
-      }
-    }
-
-    /* ------------------------------------------------------------------------
-     * 模块 ①：【原设计全面恢复】绑定供货商 -> 查看供货商开放货盘 -> 交互式点选订货
-     * ------------------------------------------------------------------------ */
-    function viewProcurement(metrics) {
+    function renderModuleView(metrics) {
       const canCost = engine.hasPermission('viewCostAndProfit');
-      const suppliers = engine.state.suppliers;
+      if (activeMod === 'procurement') {
+        const sups = engine.state.suppliers;
+        if (sups.length > 0 && !sups.some(s => s.id === selectedSupId)) selectedSupId = sups[0].id;
+        const activeSup = sups.find(s => s.id === selectedSupId) || null;
+        const offers = activeSup?.openCatalog || [];
 
-      // 默认选中第一个已绑定供货商
-      if (suppliers.length > 0 && !suppliers.some(s => s.id === selectedSupplierId)) {
-        selectedSupplierId = suppliers[0].id;
-      }
-      const activeSup = suppliers.find(s => s.id === selectedSupplierId) || null;
-      const openOffers = activeSup?.openCatalog || [];
-      const filteredOffers = offerSearchKeyword
-        ? openOffers.filter(o => o.name.toLowerCase().includes(offerSearchKeyword.toLowerCase()) || (o.spec && o.spec.toLowerCase().includes(offerSearchKeyword.toLowerCase())))
-        : openOffers;
-
-      const orderTotal = roundMoney(orderCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
-      const storeOrders = (engine.state.purchaseOrders || []).filter(o => o.storeId === engine.state.activeStoreId);
-
-      return `
-        <!-- 顶部：绑定供货商工作条（输入供货商绑定码即拉取其对本店开放的专属货盘） -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">🔗 绑定上游供货商（绑定后自动读取供货商对本店开放的专属货盘）</span>
-            <div style="display:flex; gap:6px;">
-              <button class="sm warn" id="btnAutoSplitRestock">⚡ 缺货自动拆单(${metrics.lowStockSkus.length})</button>
-              <button class="sm" onclick="window.open('suppliers.html','_blank')">🏭 去百业供需名录找供货商</button>
+        $('pcMain').innerHTML = `
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">🔗 绑定上游供货商 -> 查看开放货盘交互订货</span>
+              <button class="primary sm" id="btnPcBindSup">+ 绑定供货商</button>
             </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+              ${sups.map(s => `<button class="${s.id === activeSup?.id ? 'primary' : ''}" data-pc-sup="${s.id}">🏭 ${s.name} (${s.openCatalog?.length || 0}款)</button>`).join('') || '<span style="color:var(--text-muted);">点击右上角绑定供货商</span>'}
+            </div>
+            ${activeSup ? `
+              <div class="grid-2">
+                <div>
+                  <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <strong>【${activeSup.name}】向本店开放的货盘</strong>
+                    <button class="sm" id="btnPcAddOffer">+ 录入供货商品</button>
+                  </div>
+                  <table>
+                    <thead><tr><th>货品</th><th>规格</th>${canCost ? '<th>供货价</th>' : ''}<th>操作</th></tr></thead>
+                    <tbody>
+                      ${offers.map(o => `<tr><td>${o.name}</td><td>${o.spec || o.unit}</td>${canCost ? `<td>¥${o.supplyPrice}</td>` : ''}<td><button class="sm primary" data-pc-pick="${o.offerId}">+ 订货</button></td></tr>`).join('') || '<tr><td colspan="4">暂无开放条目</td></tr>'}
+                    </tbody>
+                  </table>
+                </div>
+                <div>
+                  <strong>当前交互订货单</strong>
+                  <table>
+                    <thead><tr><th>品名</th><th>数量</th><th>小计</th></tr></thead>
+                    <tbody>
+                      ${orderCart.map(it => `<tr><td>${it.name}</td><td>${it.qty}${it.unit}</td><td>${canCost ? `¥${roundMoney(it.qty * it.unitPrice)}` : '***'}</td></tr>`).join('') || '<tr><td colspan="3">在左侧点选货品加入</td></tr>'}
+                    </tbody>
+                  </table>
+                  ${orderCart.length > 0 ? `<button class="primary" style="margin-top:10px;" id="btnPcSendOrder">📤 发出正式订货单</button>` : ''}
+                </div>
+              </div>
+            ` : ''}
           </div>
-          <div class="form-row">
-            <div class="field">
-              <label>供货商绑定码 / 编号 *</label>
-              <input id="bindSupCode" placeholder="输入供货商专属绑定码（如 SUP888）" />
-            </div>
-            <div class="field">
-              <label>供货商名称（可选补充）</label>
-              <input id="bindSupName" placeholder="如：宏发饮品批发部" />
-            </div>
-            <div class="field">
-              <label>业务员/送货电话</label>
-              <input id="bindSupPhone" placeholder="选填" />
-            </div>
-            <button class="primary" id="btnBindSupplier">+ 绑定并同步开放货盘</button>
+        `;
+        $('btnPcBindSup').onclick = () => {
+          const code = prompt('输入供货商绑定码：');
+          if (!code) return;
+          const name = prompt('输入供货商名称：', '');
+          const res = engine.bindSupplier({ supplierCode: code, name: name || '' });
+          if (res.ok) { selectedSupId = res.supplier.id; orderCart = []; renderPc(); }
+        };
+        document.querySelectorAll('[data-pc-sup]').forEach(b => { b.onclick = () => { selectedSupId = b.dataset.pcSup; orderCart = []; renderPc(); }; });
+        if ($('btnPcAddOffer')) {
+          $('btnPcAddOffer').onclick = () => {
+            const name = prompt('商品名称：');
+            if (!name) return;
+            const supplyPrice = roundMoney(prompt('供货价：', '24'));
+            engine.upsertSupplierOpenOffers(activeSup.id, [{ name, unit: '箱', supplyPrice, minOrderQty: 1 }]);
+            renderPc();
+          };
+        }
+        document.querySelectorAll('[data-pc-pick]').forEach(b => {
+          b.onclick = () => {
+            const of = activeSup.openCatalog.find(o => o.offerId === b.dataset.pcPick);
+            if (!of) return;
+            const f = orderCart.find(c => c.offerId === of.offerId);
+            if (f) f.qty += 1; else orderCart.push({ offerId: of.offerId, name: of.name, unit: of.unit, qty: of.minOrderQty || 1, unitPrice: of.supplyPrice });
+            renderPc();
+          };
+        });
+        if ($('btnPcSendOrder')) {
+          $('btnPcSendOrder').onclick = () => {
+            const res = engine.createPurchaseOrder({ supplierId: selectedSupId, items: orderCart });
+            alert(res.message);
+            orderCart = [];
+            renderPc();
+          };
+        }
+      } else if (activeMod === 'receiving') {
+        const pending = metrics.pendingPurchaseOrders;
+        $('pcMain').innerHTML = `
+          <div class="card">
+            <div class="card-header"><span class="card-title">🚚 在途订货单随车一键核对签收（${pending.length}单）</span></div>
+            <table>
+              <thead><tr><th>订货单号</th><th>供货方</th><th>明细</th><th>操作</th></tr></thead>
+              <tbody>
+                ${pending.map(po => `<tr><td>${po.id}</td><td>${po.supplierName}</td><td>${po.items.map(i => `${i.name}×${i.qty}`).join('、')}</td><td><button class="primary sm" data-pc-rcv="${po.id}">✅ 核对签收入库</button></td></tr>`).join('') || '<tr><td colspan="4">暂无在途订货单</td></tr>'}
+              </tbody>
+            </table>
           </div>
-
-          <!-- 已绑定供货商切换标签 -->
-          <div class="supplier-tabs">
-            ${suppliers.length === 0 ? `<span class="stat-sub">尚未绑定供货商，请在上方输入绑定码或供货商名称即可开始交互订货</span>` : ''}
-            ${suppliers.map(s => `
-              <div class="sup-tab ${s.id === activeSup?.id ? 'active' : ''}" data-select-sup="${s.id}">
-                🏭 ${s.name}（开放货盘 ${s.openCatalog?.length || 0} 款）
+        `;
+        document.querySelectorAll('[data-pc-rcv]').forEach(b => {
+          b.onclick = () => { const res = engine.receivePurchaseOrder(b.dataset.pcRcv); alert(res.message); renderPc(); };
+        });
+      } else {
+        $('pcMain').innerHTML = `
+          <div class="card">
+            <div class="card-header"><span class="card-title">📊 ${MODULE_CATALOG.find(m => m.id === activeMod)?.name || ''}（与掌中宝实时同源同步）</span></div>
+            <p>在库商品总数：<strong>${engine.state.catalog.length}</strong> 款 ｜ 在库总货值：<strong>${engine.formatSensitiveMoney(metrics.inventoryCostValue)}</strong> ｜ 待掌柜核决草案：<strong>${metrics.pendingApprovals.length}</strong> 项</p>
+            ${metrics.pendingApprovals.map(a => `
+              <div style="padding:10px; background:#fffbeb; border-left:4px solid var(--accent); margin-bottom:8px; display:flex; justify-content:space-between;">
+                <span><strong>${a.title}</strong>：${a.reason}</span>
+                <button class="primary sm" data-pc-apr="${a.id}">✅ 掌柜核准</button>
               </div>
             `).join('')}
           </div>
-        </div>
-
-        <!-- 核心双栏：左侧【供货商向本店开放的专属货盘】 ｜ 右侧【当前交互式订货单】 -->
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">📦 ${activeSup ? `【${activeSup.name}】开放给本店的供货货盘` : '供货商开放货盘区'}</span>
-              ${activeSup ? `
-                <div style="display:flex; gap:6px;">
-                  <button class="sm" id="btnImportSupOffers">📥 录入/导入货盘条目</button>
-                </div>
-              ` : ''}
-            </div>
-
-            ${activeSup ? `
-              <div class="form-row">
-                <div class="field">
-                  <input type="text" id="offerSearchInput" value="${offerSearchKeyword}" placeholder="在【${activeSup.name}】开放货盘中搜品名/规格..." />
-                </div>
-              </div>
-
-              <div class="offer-grid">
-                ${filteredOffers.length === 0 ? `
-                  <div style="grid-column:span 2; padding:24px; text-align:center; background:var(--bg-subtle); border-radius:8px;">
-                    <p class="stat-sub" style="margin:0 0 10px;">【${activeSup.name}】暂未同步开放货盘条目到本机</p>
-                    <button class="primary sm" id="btnAddOfferItemEmpty">+ 录入该供货商供货商品</button>
-                  </div>
-                ` : filteredOffers.map(of => {
-                  const inCart = orderCart.find(c => c.offerId === of.offerId || c.name === of.name);
-                  return `
-                    <div class="offer-card">
-                      <div>
-                        <div style="font-weight:700;">${of.name}</div>
-                        <div class="stat-sub">${of.spec || of.unit} · 起订 ${of.minOrderQty}${of.unit}</div>
-                        ${canCost ? `<div style="color:var(--primary-dark); font-weight:700; margin-top:4px;">供货价 ¥${of.supplyPrice}/${of.unit}</div>` : ''}
-                      </div>
-                      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--bg-subtle); padding-top:6px;">
-                        <span class="badge ${inCart ? 'ok' : ''}">${inCart ? `已选 ${inCart.qty}${of.unit}` : '未选'}</span>
-                        <button class="primary sm" data-pick-offer="${of.offerId}">+ 加入订货</button>
-                      </div>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            ` : `<div style="padding:36px; text-align:center; color:var(--text-muted);">请先在上方绑定供货商，绑定后即可在此看到其向本店开放的所有货品并直接点选订货</div>`}
-          </div>
-
-          <!-- 右侧：实时交互订货车 -->
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">📝 当前订货单（发往：${activeSup ? activeSup.name : '未指定'}）</span>
-              <button class="sm" id="btnClearOrderCart">清空</button>
-            </div>
-
-            ${activeSup ? `
-              <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
-                往来账况：周期应付 <strong>¥${roundMoney(activeSup.payableBalance).toFixed(2)}</strong> · 在店周转载具 <strong>${activeSup.carrierBalance || 0}</strong> 个
-              </div>
-            ` : ''}
-
-            <table>
-              <thead>
-                <tr>
-                  <th>货品名称</th>
-                  <th style="width:86px;">订货数量</th>
-                  ${canCost ? '<th style="width:90px;">供货单价</th>' : ''}
-                  <th style="width:52px;">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${orderCart.length === 0 ? `<tr><td colspan="${canCost ? 4 : 3}" style="text-align:center;color:var(--text-muted);padding:24px;">在左侧供货商开放货盘中点击“+ 加入订货”即可生成订货清单</td></tr>` : ''}
-                ${orderCart.map((it, idx) => `
-                  <tr>
-                    <td><strong>${it.name}</strong><br><span class="stat-sub">${it.spec || it.unit}</span></td>
-                    <td><input type="number" min="1" value="${it.qty}" data-ord-qty="${idx}" style="width:74px;" /></td>
-                    ${canCost ? `<td><input type="number" step="0.01" value="${it.unitPrice}" data-ord-price="${idx}" style="width:80px;" /></td>` : ''}
-                    <td><button class="sm danger" data-ord-del="${idx}">删</button></td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-
-            <div class="form-row" style="margin-top:12px;">
-              <div class="field">
-                <input type="text" id="orderNoteInput" placeholder="订货备注（如：明早8点随车送到、带2个空筐）" />
-              </div>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px solid var(--border-light); flex-wrap:wrap; gap:8px;">
-              <div>
-                ${canCost ? `<span class="stat-sub">本单供货总额：</span><strong style="font-size:18px; color:var(--primary-dark);">¥${orderTotal.toFixed(2)}</strong>` : `<span class="stat-sub">共 ${orderCart.length} 款货品</span>`}
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button class="warn sm" id="btnGenJointOrder">🤝 导出脱敏联采单</button>
-                <button class="primary" id="btnSubmitPurchaseOrder">📤 发出电子订货单</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 历史订货单追踪 -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">📋 本店历史订货单（支持“照上次再来一单”自动剔除积压货）</span>
-          </div>
-          <table>
-            <thead>
-              <tr><th>订货单号 / 时间</th><th>供货方</th><th>货品明细摘要</th><th>状态</th><th>快捷操作</th></tr>
-            </thead>
-            <tbody>
-              ${storeOrders.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">暂无历史订货单</td></tr>` : ''}
-              ${storeOrders.slice(0, 15).map(po => `
-                <tr>
-                  <td><strong>${po.id}</strong><br><span class="stat-sub">${new Date(po.createdAt).toLocaleString('zh-CN')}</span></td>
-                  <td>${po.supplierName}</td>
-                  <td>${po.items.map(i => `${i.name}×${i.qty}${i.unit}`).join('、')}</td>
-                  <td>
-                    <span class="badge ${po.status === 'PENDING_DELIVERY' ? 'warn' : 'ok'}">
-                      ${po.status === 'PENDING_DELIVERY' ? '🚚 待随车到货' : '✅ 已核对签收'}
-                    </span>
-                  </td>
-                  <td style="display:flex; gap:6px; flex-wrap:wrap;">
-                    <button class="sm" data-copy-po="${po.id}">💬 复制发微信</button>
-                    <button class="sm" data-clone-po="${po.id}">🔁 照此再来一单</button>
-                    ${po.status === 'PENDING_DELIVERY' ? `<button class="sm primary" data-goto-rcv="${po.id}">📥 去验收签收</button>` : ''}
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-    }
-
-    function bindProcurementEvents() {
-      if ($('btnBindSupplier')) {
-        $('btnBindSupplier').onclick = () => {
-          const code = $('bindSupCode').value.trim();
-          const name = $('bindSupName').value.trim();
-          const phone = $('bindSupPhone').value.trim();
-          const res = engine.bindSupplier({ supplierCode: code, name, phone });
-          if (res.ok) {
-            selectedSupplierId = res.supplier.id;
-            orderCart = [];
-            showToast(res.message);
-            renderAll();
-          } else {
-            showToast(res.message);
-          }
-        };
-      }
-
-      document.querySelectorAll('[data-select-sup]').forEach(tab => {
-        tab.onclick = () => {
-          if (tab.dataset.selectSup !== selectedSupplierId) {
-            selectedSupplierId = tab.dataset.selectSup;
-            orderCart = [];
-            renderAll();
-          }
-        };
-      });
-
-      const addOfferToActiveSupplier = () => {
-        const activeSup = engine.state.suppliers.find(s => s.id === selectedSupplierId);
-        if (!activeSup) return;
-        const name = prompt(`为【${activeSup.name}】录入开放供货品名：`);
-        if (!name) return;
-        const spec = prompt('包装规格（如：1×24瓶/箱）：', '整箱');
-        const supplyPrice = roundMoney(prompt('供货商给本店的供货价（元）：', '24'));
-        const minOrderQty = Math.max(1, Number(prompt('起订数量：', '1')) || 1);
-        engine.upsertSupplierOpenOffers(activeSup.id, [{
-          name: name.trim(),
-          spec: spec || '',
-          unit: engine.getActiveGene().packUnitDefault,
-          supplyPrice,
-          minOrderQty
-        }]);
-        showToast(`已添加到【${activeSup.name}】开放货盘`);
-        renderAll();
-      };
-
-      if ($('btnImportSupOffers')) $('btnImportSupOffers').onclick = addOfferToActiveSupplier;
-      if ($('btnAddOfferItemEmpty')) $('btnAddOfferItemEmpty').onclick = addOfferToActiveSupplier;
-
-      if ($('offerSearchInput')) {
-        $('offerSearchInput').oninput = (e) => {
-          offerSearchKeyword = e.target.value;
-          renderAll();
-          const inp = $('offerSearchInput');
-          if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
-        };
-      }
-
-      document.querySelectorAll('[data-pick-offer]').forEach(btn => {
-        btn.onclick = () => {
-          const activeSup = engine.state.suppliers.find(s => s.id === selectedSupplierId);
-          const of = activeSup?.openCatalog?.find(o => o.offerId === btn.dataset.pickOffer);
-          if (!of) return;
-          const existing = orderCart.find(c => c.offerId === of.offerId);
-          if (existing) existing.qty += 1;
-          else {
-            orderCart.push({
-              offerId: of.offerId,
-              barcode: of.barcode,
-              name: of.name,
-              spec: of.spec,
-              unit: of.unit,
-              qty: of.minOrderQty || 1,
-              unitPrice: of.supplyPrice,
-              suggestRetailPrice: of.suggestRetailPrice
-            });
-          }
-          renderAll();
-        };
-      });
-
-      document.querySelectorAll('[data-ord-qty]').forEach(inp => {
-        inp.onchange = () => { orderCart[inp.dataset.ordQty].qty = Math.max(1, Number(inp.value) || 1); renderAll(); };
-      });
-      document.querySelectorAll('[data-ord-price]').forEach(inp => {
-        inp.onchange = () => { orderCart[inp.dataset.ordPrice].unitPrice = roundMoney(inp.value); renderAll(); };
-      });
-      document.querySelectorAll('[data-ord-del]').forEach(btn => {
-        btn.onclick = () => { orderCart.splice(btn.dataset.ordDel, 1); renderAll(); };
-      });
-      if ($('btnClearOrderCart')) $('btnClearOrderCart').onclick = () => { orderCart = []; renderAll(); };
-
-      if ($('btnSubmitPurchaseOrder')) {
-        $('btnSubmitPurchaseOrder').onclick = () => {
-          if (orderCart.length === 0) return showToast('请先在左侧供货商货盘中点选商品');
-          const res = engine.createPurchaseOrder({
-            supplierId: selectedSupplierId,
-            items: orderCart,
-            note: $('orderNoteInput')?.value.trim() || ''
-          });
-          if (res.ok) {
-            orderCart = [];
-            showToast(`✅ ${res.message}`);
-            renderAll();
-          }
-        };
-      }
-
-      if ($('btnAutoSplitRestock')) {
-        $('btnAutoSplitRestock').onclick = () => {
-          const res = engine.autoSplitRestockOrders();
-          showToast(res.message);
-          renderAll();
-        };
-      }
-
-      document.querySelectorAll('[data-copy-po]').forEach(btn => {
-        btn.onclick = () => {
-          const text = engine.formatPurchaseOrderText(btn.dataset.copyPo);
-          navigator.clipboard?.writeText(text);
-          alert(`已复制电子订货单（可直接发微信给供货商）：\n\n${text}`);
-        };
-      });
-
-      document.querySelectorAll('[data-clone-po]').forEach(btn => {
-        btn.onclick = () => {
-          const res = engine.cloneLastPurchaseOrder(btn.dataset.clonePo);
-          showToast(res.message);
-          renderAll();
-        };
-      });
-
-      document.querySelectorAll('[data-goto-rcv]').forEach(btn => {
-        btn.onclick = () => { activeModule = 'receiving'; renderAll(); };
-      });
-
-      if ($('btnGenJointOrder')) {
-        $('btnGenJointOrder').onclick = () => {
-          const lines = orderCart.length > 0
-            ? orderCart.map((s, i) => `${i + 1}. ${s.name} × ${s.qty}${s.unit}`).join('\n')
-            : '1. 畅销饮品/粮油常规补货 20箱';
-          const text = `🤝【片区邻里联采拼单需求单（已脱敏底价与库存）】\n发起门店：${engine.getActiveStore().name}\n${lines}\n欢迎同片区同行接龙凑大单向源头厂家压价！`;
-          navigator.clipboard?.writeText(text);
-          alert(`已生成并复制脱敏联采单：\n\n${text}`);
-        };
-      }
-    }
-
-    /* ------------------------------------------------------------------------
-     * 模块 ②：到货验收与载具
-     * ------------------------------------------------------------------------ */
-    function viewReceiving(metrics) {
-      const gene = engine.getActiveGene();
-      const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
-      const pendingOrders = metrics.pendingPurchaseOrders;
-
-      return `
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">🚚 待到货订货单随车一键签收（共 ${pendingOrders.length} 单在途）</span>
-          </div>
-          ${pendingOrders.length === 0 ? `<div class="stat-sub">当前暂无在途订货单，您可在“① 订货与供货方”绑定供货商并从其开放货盘下单</div>` : `
-            <table>
-              <thead><tr><th>订货单号</th><th>供货方</th><th>订购货品清单</th><th>操作</th></tr></thead>
-              <tbody>
-                ${pendingOrders.map(po => `
-                  <tr>
-                    <td><strong>${po.id}</strong><br><span class="stat-sub">验真码:${po.verifyCode}</span></td>
-                    <td>${po.supplierName}</td>
-                    <td>${po.items.map(i => `${i.name}×${i.qty}${i.unit}`).join('、')}</td>
-                    <td style="display:flex; gap:6px;">
-                      <button class="primary sm" data-rcv-po="${po.id}" data-pay="CREDIT">✅ 核对入库(挂账)</button>
-                      <button class="sm" data-rcv-po="${po.id}" data-pay="CASH">💵 随车现结入库</button>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          `}
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">📦 零星随车到货快速签收与载具台账（${gene.carrierName}）</span>
-          </div>
-          <div class="form-row">
-            <div class="field">
-              <label>供货商</label>
-              <select id="rcvSupplier">
-                <option value="">临时现结供货方</option>
-                ${engine.state.suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
-              </select>
-            </div>
-            <div class="field" style="flex:2;">
-              <label>到货商品</label>
-              <select id="rcvSku">
-                ${skus.map(s => `<option value="${s.id}">${s.name} (当前库存:${s.stock}${s.unit})</option>`).join('')}
-              </select>
-            </div>
-            <div class="field"><label>实收数量</label><input type="number" id="rcvQty" value="20" /></div>
-            <div class="field"><label>搭赠数量(0成本)</label><input type="number" id="rcvBonus" value="0" /></div>
-            <div class="field"><label>本次进货单价</label><input type="number" step="0.01" id="rcvPrice" value="1.5" /></div>
-            <div class="field"><label>载具净增减(+借/-还)</label><input type="number" id="rcvCarrier" value="0" /></div>
-            <div class="field">
-              <label>结算方式</label>
-              <select id="rcvPayMethod">
-                <option value="CREDIT">挂入周期应付账</option>
-                <option value="CASH">随车现金结清</option>
-              </select>
-            </div>
-            <button class="primary" id="btnConfirmReceive">✅ 确认签收入库</button>
-          </div>
-        </div>
-      `;
-    }
-
-    function bindReceivingEvents() {
-      document.querySelectorAll('[data-rcv-po]').forEach(btn => {
-        btn.onclick = () => {
-          const carrierDelta = Number(prompt('本次随车周转筐/水桶净增减（借入填正数，归还填负数，无则填0）：', '0')) || 0;
-          const res = engine.receivePurchaseOrder(btn.dataset.rcvPo, { payMethod: btn.dataset.pay, carrierDelta });
-          showToast(res.message);
-          renderAll();
-        };
-      });
-
-      if ($('btnConfirmReceive')) {
-        $('btnConfirmReceive').onclick = () => {
-          const sku = engine.state.catalog.find(s => s.id === $('rcvSku')?.value);
-          if (!sku) return showToast('请先在商品库建立至少一款商品');
-          const qty = Number($('rcvQty').value) || 0;
-          const bonusQty = Number($('rcvBonus').value) || 0;
-          const unitPrice = roundMoney($('rcvPrice').value);
-          const carrierDelta = Number($('rcvCarrier').value) || 0;
-          const payMethod = $('rcvPayMethod').value;
-          const total = roundMoney(qty * unitPrice);
-
-          const res = engine.commitVoucher({
-            type: 'RECEIVE',
-            items: [{ skuId: sku.id, name: sku.name, qty, bonusQty, unitPrice, costPrice: unitPrice }],
-            totalAmount: total,
-            payMethod,
-            cashPaid: payMethod === 'CASH' ? total : 0,
-            creditAmount: payMethod === 'CREDIT' ? total : 0,
-            carrierDelta,
-            counterpartyId: $('rcvSupplier').value,
-            note: `随车签收入库（含赠${bonusQty}）`
-          });
-          if (res.ok) {
-            showToast(`✅ 已签收入库【${sku.name}】共 ${qty + bonusQty} ${sku.unit}`);
-            renderAll();
-          }
-        };
-      }
-    }
-
-    /* ------------------------------------------------------------------------
-     * 模块 ③：商品库与库存
-     * ------------------------------------------------------------------------ */
-    function viewCatalog(metrics) {
-      const canCost = engine.hasPermission('viewCostAndProfit');
-      const gene = engine.getActiveGene();
-      const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
-
-      return `
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">🏷️ 新增 / 录入商品（支持拆箱反推单件底价）</span>
-            <span class="badge">当前库存总成本：${engine.formatSensitiveMoney(metrics.inventoryCostValue)}</span>
-          </div>
-          <div class="form-row">
-            <div class="field"><label>条码 / 货号</label><input id="skuCode" placeholder="选填" /></div>
-            <div class="field" style="flex:2;"><label>商品名称 *</label><input id="skuName" placeholder="如：农夫山泉550ml" /></div>
-            <div class="field"><label>整箱进价(元)</label><input type="number" id="skuPackCost" value="24" /></div>
-            <div class="field"><label>每箱拆零数(${gene.unitDefault})</label><input type="number" id="skuPackSize" value="24" /></div>
-            <div class="field"><label>零售单价(元)</label><input type="number" id="skuRetail" value="2" /></div>
-            <div class="field"><label>初始库存</label><input type="number" id="skuStock" value="48" /></div>
-            <button class="primary" id="btnAddSku">+ 保存商品</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">📦 本店商品库存明细（共 ${skus.length} 款）</span>
-            <div style="display:flex; gap:8px;">
-              ${engine.state.stores.length > 1 ? `<button class="sm" id="btnTransferStore">🔄 跨分店调拨</button>` : ''}
-              <button class="sm warn" id="btnLossGift">📉 登记报损 / 自用 / 人情赠品</button>
-            </div>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>品名 / 条码</th>
-                <th>库存状态</th>
-                ${canCost ? '<th>进货底价(手电筒锁)</th>' : ''}
-                <th>零售价</th>
-                <th>保质期</th>
-                <th>快捷操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${skus.map(s => `
-                <tr>
-                  <td><strong>${s.name}</strong><br><span class="stat-sub">${s.barcode || '无条码'} · ${s.category}</span></td>
-                  <td><span class="badge ${s.stock <= s.minStock ? 'danger' : 'ok'}">${s.stock} ${s.unit}</span></td>
-                  ${canCost ? `<td>${engine.formatSensitiveMoney(s.costPrice)}</td>` : ''}
-                  <td><strong>¥${s.retailPrice.toFixed(2)}</strong></td>
-                  <td>${s.expiryDate || '-'}</td>
-                  <td><button class="sm" data-add-pos="${s.id}">+ 收银</button></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-    }
-
-    function bindCatalogEvents() {
-      if ($('btnAddSku')) {
-        $('btnAddSku').onclick = () => {
-          const name = $('skuName').value.trim();
-          if (!name) return showToast('请填写商品名称');
-          const packCost = Number($('skuPackCost').value) || 0;
-          const packSize = Math.max(1, Number($('skuPackSize').value) || 1);
-          const unitCost = roundMoney(packCost / packSize);
-          const retail = roundMoney($('skuRetail').value);
-          const stock = Number($('skuStock').value) || 0;
-          const gene = engine.getActiveGene();
-
-          engine.state.catalog.unshift({
-            id: generateId('SKU'),
-            storeId: engine.state.activeStoreId,
-            barcode: $('skuCode').value.trim(),
-            scaleCode: '',
-            name,
-            category: gene.quickTags[0] || '主营商品',
-            unit: gene.unitDefault,
-            packUnit: gene.packUnitDefault,
-            packSize,
-            costPrice: unitCost,
-            retailPrice: retail,
-            memberPrice: retail,
-            wholesalePrice: retail,
-            tierPrices: [],
-            stock,
-            minStock: 5,
-            maxStock: 100,
-            supplierId: '',
-            expiryDate: '',
-            location: '',
-            isBundle: false,
-            bundleItems: [],
-            updatedAt: Date.now()
-          });
-          engine._persist();
-          showToast(`已保存【${name}】，拆零单件底价 ¥${unitCost}`);
-          renderAll();
-        };
-      }
-
-      if ($('btnLossGift')) {
-        $('btnLossGift').onclick = () => {
-          const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId);
-          if (skus.length === 0) return showToast('请先添加商品');
-          const name = prompt('输入报损或自用商品名称：', skus[0].name);
-          const sku = skus.find(s => s.name.includes(name));
-          if (!sku) return showToast('未找到匹配商品');
-          const qty = Number(prompt(`输入减少数量（${sku.unit}）：`, '1')) || 0;
-          const reason = prompt('选择用途备注（如：破损报损 / 店内自用 / 试吃人情往来）：', '破损报损');
-          if (qty > 0) {
-            engine.commitVoucher({
-              type: 'LOSS_GIFT',
-              items: [{ skuId: sku.id, name: sku.name, qty, unitPrice: sku.costPrice, costPrice: sku.costPrice }],
-              note: reason
-            });
-            showToast(`已登记【${sku.name}】${qty}${sku.unit}（${reason}）`);
-            renderAll();
-          }
-        };
-      }
-
-      if ($('btnTransferStore')) {
-        $('btnTransferStore').onclick = () => {
-          const otherStores = engine.state.stores.filter(s => s.id !== engine.state.activeStoreId);
-          if (otherStores.length === 0) return showToast('暂无其他分店可调拨');
-          const target = otherStores[0];
-          const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId);
-          if (skus.length === 0) return showToast('当前门店暂无可调拨商品');
-          const name = prompt(`调往【${target.name}】，输入商品名称：`, skus[0].name);
-          const sku = skus.find(s => s.name.includes(name));
-          if (!sku) return showToast('未找到商品');
-          const qty = Number(prompt(`输入调出数量（${sku.unit}）：`, '5')) || 0;
-          if (qty > 0) {
-            engine.commitVoucher({
-              type: 'TRANSFER_STORE',
-              targetStoreId: target.id,
-              items: [{ skuId: sku.id, name: sku.name, qty, unitPrice: sku.costPrice, costPrice: sku.costPrice }],
-              note: `调拨至【${target.name}】`
-            });
-            showToast(`已调出 ${qty}${sku.unit} 至【${target.name}】`);
-            renderAll();
-          }
-        };
-      }
-
-      document.querySelectorAll('[data-add-pos]').forEach(btn => {
-        btn.onclick = () => {
-          const sku = engine.state.catalog.find(s => s.id === btn.dataset.addPos);
-          if (sku) {
-            posCart.push({ skuId: sku.id, name: sku.name, qty: 1, unitPrice: sku.retailPrice, costPrice: sku.costPrice });
-            activeModule = 'pos';
-            renderAll();
-          }
-        };
-      });
-    }
-
-    /* ------------------------------------------------------------------------
-     * 模块 ④：柜台收银与履约
-     * ------------------------------------------------------------------------ */
-    function viewPos(metrics, isSimple) {
-      const cartTotal = roundMoney(posCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
-      const hint = engine.getCrossSellHint(posCart.map(i => i.skuId));
-      const store = engine.getActiveStore();
-      const openTickets = (engine.state.serviceTickets || []).filter(t => t.storeId === store.id && t.status === 'OPEN');
-
-      return `
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">🧾 柜台收银台（正负混合一单清 · 数量填负数即退货/退空桶）</span>
-              <button class="sm" id="btnQuickNoCatalog">+ 无档临时代收开单</button>
-            </div>
-
-            <div class="form-row">
-              <div class="field" style="flex:2;">
-                <label>扫码 / 输入品名 / 18位称重码 / 价格反查</label>
-                <input type="text" id="posSearchInput" placeholder="扫描条码或输入关键词回车加入..." autofocus />
-              </div>
-              <div class="field">
-                <label>熟客/会员（赊账或积分必选）</label>
-                <select id="posCustomerSelect">
-                  <option value="">散客现结</option>
-                  ${engine.state.customers.map(c => `<option value="${c.id}">${c.name} (欠¥${c.receivableBalance})</option>`).join('')}
-                </select>
-              </div>
-            </div>
-
-            ${hint ? `<div class="badge ok" style="margin-bottom:10px; cursor:pointer;" id="btnAcceptCrossSell">💡 顺口带货提示：${hint.text}（点击加入）</div>` : ''}
-
-            <table>
-              <thead>
-                <tr>
-                  <th>商品名称</th>
-                  <th style="width:90px;">数量(负=退)</th>
-                  <th style="width:100px;">成交单价</th>
-                  <th>小计</th>
-                  <th style="width:60px;">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${posCart.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">白纸收银台就绪，扫描条码或点击上方“无档临时代收开单”即可开始</td></tr>` : ''}
-                ${posCart.map((it, idx) => `
-                  <tr>
-                    <td><strong>${it.name}</strong></td>
-                    <td><input type="number" step="1" value="${it.qty}" data-cart-qty="${idx}" style="width:76px;" /></td>
-                    <td><input type="number" step="0.01" value="${it.unitPrice}" data-cart-price="${idx}" style="width:88px;" ${engine.hasPermission('editRetailPrice') ? '' : 'disabled'} /></td>
-                    <td><strong>¥${roundMoney(it.qty * it.unitPrice).toFixed(2)}</strong></td>
-                    <td><button class="sm danger" data-cart-del="${idx}">删</button></td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid var(--border-light); flex-wrap:wrap; gap:10px;">
-              <div>
-                <span style="color:var(--text-muted);">本单应收/应退净额：</span>
-                <span style="font-size:26px; font-weight:800; color:var(--primary-dark);">¥${cartTotal.toFixed(2)}</span>
-              </div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button class="primary" id="btnPayDigital">📱 扫码收款落账</button>
-                <button id="btnPayCash">💵 现金收款落账</button>
-                <button class="warn" id="btnPayCredit">📒 熟客先记账(赊)</button>
-                <button class="sm" id="btnClearCart">清空</button>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div class="card">
-              <div class="card-header">
-                <span class="card-title">🛡️ 店内收款码（受掌柜安全锁保护）</span>
-                ${engine.hasPermission('managePaymentQr') ? `<button class="sm" id="btnUploadQr">更换收款码</button>` : `<span class="badge">已锁定防掉包</span>`}
-              </div>
-              <div style="text-align:center; padding:12px; background:var(--bg-subtle); border-radius:8px;">
-                ${store.paymentQrUrl
-                  ? `<img src="${store.paymentQrUrl}" alt="收款码" style="max-width:190px; max-height:190px; border-radius:8px;" />`
-                  : `<div style="padding:24px; color:var(--text-muted);">尚未上传收款码图片（掌柜可点击右上角上传锁定）</div>`
-                }
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <span class="card-title">🎫 定金工单 / 质保凭证 / 驿站自提尾号核销</span>
-                <button class="primary sm" id="btnAddServiceTicket">+ 登记工单/代订自提</button>
-              </div>
-              ${openTickets.length === 0 ? `<div class="stat-sub">暂无待取货/待核销工单</div>` : `
-                <table>
-                  <thead><tr><th>类型 / 尾号</th><th>客户与事项</th><th>金额/纯利</th><th>操作</th></tr></thead>
-                  <tbody>
-                    ${openTickets.map(t => `
-                      <tr>
-                        <td><span class="badge warn">${t.type === 'RELAY_PICKUP' ? '驿站自提' : '定金/质保'}</span><br><strong>尾号 ${t.phoneTail}</strong></td>
-                        <td>${t.customerName} · ${t.itemDesc}</td>
-                        <td>¥${t.totalFee} (润¥${t.serviceProfit || 0})</td>
-                        <td><button class="sm primary" data-done-ticket="${t.id}">核销交付</button></td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              `}
-            </div>
-
-            ${!isSimple ? `
-            <div class="card">
-              <div class="card-header">
-                <span class="card-title">🔒 当班交接班封账清点</span>
-                <span class="badge">账面钱箱：¥${metrics.currentCash.toFixed(2)}</span>
-              </div>
-              <div class="form-row">
-                <div class="field">
-                  <label>实盘钱箱现金（元）</label>
-                  <input type="number" id="shiftCountedCash" value="${metrics.currentCash}" />
-                </div>
-                <div class="field">
-                  <label>交班备注</label>
-                  <input type="text" id="shiftNote" placeholder="如：晚班交接正常" />
-                </div>
-                <button class="primary" id="btnCloseShift">确认封账交班</button>
-              </div>
-            </div>` : ''}
-          </div>
-        </div>
-      `;
-    }
-
-    function bindPosEvents() {
-      const searchEl = $('posSearchInput');
-      if (searchEl) {
-        searchEl.onkeydown = (e) => {
-          if (e.key !== 'Enter') return;
-          const q = searchEl.value.trim();
-          if (!q) return;
-          const matches = engine.searchCatalog(q);
-          if (matches.length > 0) {
-            const sku = matches[0];
-            const existing = posCart.find(c => c.skuId === sku.id);
-            if (existing) existing.qty += 1;
-            else posCart.push({ skuId: sku.id, name: sku.name, qty: 1, unitPrice: sku.retailPrice, costPrice: sku.costPrice });
-            searchEl.value = '';
-            renderAll();
-          } else {
-            const priceStr = prompt(`商品库暂无【${q}】，请输入零售单价（元）直接边卖边建档：`, '10');
-            if (priceStr !== null && !isNaN(Number(priceStr))) {
-              const price = roundMoney(priceStr);
-              const newSku = {
-                id: generateId('SKU'),
-                storeId: engine.state.activeStoreId,
-                barcode: /^\d+$/.test(q) ? q : '',
-                scaleCode: '',
-                name: q,
-                category: engine.getActiveGene().quickTags[0] || '主营商品',
-                unit: engine.getActiveGene().unitDefault,
-                packUnit: engine.getActiveGene().packUnitDefault,
-                packSize: 1,
-                costPrice: 0,
-                retailPrice: price,
-                memberPrice: price,
-                wholesalePrice: price,
-                tierPrices: [],
-                stock: 0,
-                minStock: 5,
-                maxStock: 100,
-                supplierId: '',
-                expiryDate: '',
-                location: '',
-                isBundle: false,
-                bundleItems: [],
-                updatedAt: Date.now()
-              };
-              engine.state.catalog.push(newSku);
-              posCart.push({ skuId: newSku.id, name: newSku.name, qty: 1, unitPrice: price, costPrice: 0 });
-              searchEl.value = '';
-              showToast(`已自动建档【${q}】并加入收银台`);
-              renderAll();
-            }
-          }
-        };
-      }
-
-      if ($('btnQuickNoCatalog')) {
-        $('btnQuickNoCatalog').onclick = () => {
-          const name = prompt('输入临时代收品名：', '散装百货');
-          if (!name) return;
-          const price = roundMoney(prompt('输入金额（元，负数代表退货/退押金）：', '10'));
-          posCart.push({ skuId: '', name, qty: 1, unitPrice: price, costPrice: 0 });
-          renderAll();
-        };
-      }
-
-      if ($('btnAcceptCrossSell')) {
-        $('btnAcceptCrossSell').onclick = () => {
-          const hint = engine.getCrossSellHint(posCart.map(i => i.skuId));
-          if (hint) {
-            posCart.push({ skuId: hint.sku.id, name: hint.sku.name, qty: 1, unitPrice: hint.sku.retailPrice, costPrice: hint.sku.costPrice });
-            renderAll();
-          }
-        };
-      }
-
-      if ($('btnAddServiceTicket')) {
-        $('btnAddServiceTicket').onclick = () => {
-          const typeChoice = prompt('选择工单类型：1=街坊代订自提(剥离驿站服务纯利)  2=定金取货/售后质保凭证', '1');
-          const customerName = prompt('街坊/客户称呼：', '李姐');
-          if (!customerName) return;
-          const phoneTail = prompt('手机尾号（4位，方便到店核销）：', '8866') || '0000';
-          const itemDesc = prompt('登记事项或代订货品名称：', '大集拼单礼盒 1箱') || '代订包裹';
-          const totalFee = roundMoney(prompt('货款总额（元）：', '50'));
-          const serviceProfit = typeChoice === '1' ? roundMoney(prompt('其中本店驿站服务纯利（元）：', '5')) : 0;
-
-          engine.state.serviceTickets.unshift({
-            id: generateId('TKT'),
-            storeId: engine.state.activeStoreId,
-            type: typeChoice === '1' ? 'RELAY_PICKUP' : 'DEPOSIT',
-            customerName,
-            phoneTail,
-            itemDesc,
-            totalFee,
-            serviceProfit,
-            status: 'OPEN',
-            createdAt: Date.now()
-          });
-          engine._persist();
-          showToast(`已登记工单（尾号 ${phoneTail}）`);
-          renderAll();
-        };
-      }
-
-      document.querySelectorAll('[data-done-ticket]').forEach(btn => {
-        btn.onclick = () => {
-          const tkt = engine.state.serviceTickets.find(t => t.id === btn.dataset.doneTicket);
-          if (!tkt) return;
-          tkt.status = 'DONE';
-          engine.commitVoucher({
-            type: 'RELAY_ORDER',
-            totalAmount: tkt.totalFee,
-            serviceFee: tkt.serviceProfit || 0,
-            payMethod: 'DIGITAL',
-            digitalPaid: tkt.totalFee,
-            note: `核销交付【${tkt.customerName}】(尾号${tkt.phoneTail})：${tkt.itemDesc}`
-          });
-          showToast(`已核销交付，驿站服务纯利 ¥${tkt.serviceProfit || 0} 已独立入账`);
-          renderAll();
-        };
-      });
-
-      document.querySelectorAll('[data-cart-qty]').forEach(inp => {
-        inp.onchange = () => { posCart[inp.dataset.cartQty].qty = Number(inp.value) || 0; renderAll(); };
-      });
-      document.querySelectorAll('[data-cart-price]').forEach(inp => {
-        inp.onchange = () => { posCart[inp.dataset.cartPrice].unitPrice = roundMoney(inp.value); renderAll(); };
-      });
-      document.querySelectorAll('[data-cart-del]').forEach(btn => {
-        btn.onclick = () => { posCart.splice(btn.dataset.cartDel, 1); renderAll(); };
-      });
-
-      const checkout = (payMethod) => {
-        if (posCart.length === 0) return showToast('收银台当前为空');
-        const cusId = $('posCustomerSelect')?.value || '';
-        if (payMethod === 'CREDIT' && !cusId) return showToast('熟客记账请先在上方选择对应熟客');
-        const total = roundMoney(posCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
-        const res = engine.commitVoucher({
-          type: 'SALE',
-          typeName: '柜台收银单',
-          items: posCart,
-          totalAmount: total,
-          payMethod,
-          cashPaid: payMethod === 'CASH' ? total : 0,
-          digitalPaid: payMethod === 'DIGITAL' ? total : 0,
-          creditAmount: payMethod === 'CREDIT' ? total : 0,
-          counterpartyId: cusId
-        });
-        if (res.ok) {
-          posCart = [];
-          engine.speakFeedback(`收款${total}元，已入账`);
-          showToast(`✅ 收银落账成功（单号 ${res.voucher.id}）`);
-        } else {
-          showToast(`⚠️ ${res.message}`);
-        }
-        renderAll();
-      };
-
-      if ($('btnPayDigital')) $('btnPayDigital').onclick = () => checkout('DIGITAL');
-      if ($('btnPayCash')) $('btnPayCash').onclick = () => checkout('CASH');
-      if ($('btnPayCredit')) $('btnPayCredit').onclick = () => checkout('CREDIT');
-      if ($('btnClearCart')) $('btnClearCart').onclick = () => { posCart = []; renderAll(); };
-
-      if ($('btnUploadQr')) {
-        $('btnUploadQr').onclick = () => {
-          const url = prompt('请输入收款码图片地址或粘贴 DataURL：', engine.getActiveStore().paymentQrUrl);
-          if (url !== null) {
-            engine.getActiveStore().paymentQrUrl = url.trim();
-            engine._persist();
-            showToast('收款码已更新并加锁保护');
-            renderAll();
-          }
-        };
-      }
-
-      if ($('btnCloseShift')) {
-        $('btnCloseShift').onclick = () => {
-          const counted = Number($('shiftCountedCash').value);
-          const note = $('shiftNote').value;
-          const res = engine.closeShiftAndLock(counted, note);
-          showToast(`交接班封账完成，现金长短款差额：¥${res.shiftRecord.cashDiff}`);
-          renderAll();
-        };
-      }
-    }
-
-    /* ------------------------------------------------------------------------
-     * 模块 ⑤：拓客与邻里驿站
-     * ------------------------------------------------------------------------ */
-    function viewMarketing() {
-      const skus = engine.state.catalog.filter(s => s.storeId === engine.state.activeStoreId || !s.storeId).slice(0, 6);
-      const jielongText = `🏮【${engine.getActiveStore().name} · 今日街坊福利接龙】\n` +
-        (skus.length > 0
-          ? skus.map((s, i) => `${i + 1}. ${s.name} —— 街坊价 ¥${s.retailPrice}/${s.unit}`).join('\n')
-          : '1. 时令新鲜好货到店，欢迎群里接龙预留！') +
-        `\n👉 群里直接回复“序号+数量”即可，到店报手机尾号秒提！`;
-
-      return `
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">💬 微信群接龙 & 零库存预售凑团文案</span>
-              <button class="primary sm" id="btnCopyJielong">📋 复制发微信群</button>
-            </div>
-            <textarea id="jielongBox" rows="7" style="width:100%;">${jielongText}</textarea>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">🖥️ 电脑端专享：A4 促销传单 & 16:9 店内大屏广告</span>
-            </div>
-            <p class="stat-sub">将店里闲置电脑或外接显示器面向门口，一键开启全屏轮播海报；或直接打印 A4 门口特价单。</p>
-            <div style="display:flex; gap:10px; margin-top:16px;">
-              <button class="primary" id="btnLaunchSignage">🎬 启动 16:9 店内大屏轮播</button>
-              <button id="btnPrintA4">🖨️ 打印 A4 门店特惠传单</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function bindMarketingEvents() {
-      if ($('btnCopyJielong')) {
-        $('btnCopyJielong').onclick = () => {
-          navigator.clipboard?.writeText($('jielongBox').value);
-          showToast('接龙文案已复制，可直接去微信群粘贴');
-        };
-      }
-      if ($('btnLaunchSignage')) {
-        $('btnLaunchSignage').onclick = () => {
-          $('signageStoreTitle').textContent = `${engine.getActiveStore().name} · 今日街坊特惠`;
-          $('signageBody').textContent = $('jielongBox').value.replace(/\n/g, '  |  ');
-          $('signageScreen').classList.add('show');
-        };
-      }
-      if ($('btnPrintA4')) $('btnPrintA4').onclick = () => window.print();
-    }
-
-    /* ------------------------------------------------------------------------
-     * 模块 ⑥：经营状况与财务
-     * ------------------------------------------------------------------------ */
-    function viewFinance(metrics) {
-      const auditReport = engine.runIronAbacusAudit();
-      const quarantineRaw = localStorage.getItem('shd_store_quarantine_box');
-      const quarantine = quarantineRaw ? JSON.parse(quarantineRaw) : null;
-
-      return `
-        <div class="grid-4">
-          <div class="card">
-            <div class="stat-sub">今日实收营业额（${metrics.todayOrderCount}笔）</div>
-            <div class="stat-val">¥${metrics.todayRevenue.toFixed(2)}</div>
-            <div class="stat-sub">今日毛利：${engine.formatSensitiveMoney(metrics.todayGrossProfit)}</div>
-          </div>
-          <div class="card">
-            <div class="stat-sub">钱箱实有现金（已隔离家庭支取）</div>
-            <div class="stat-val">¥${metrics.currentCash.toFixed(2)}</div>
-            <div class="stat-sub">累计家庭私人支取：¥${metrics.familyDrawTotal.toFixed(2)}</div>
-          </div>
-          <div class="card">
-            <div class="stat-sub">下游熟客应收赊账</div>
-            <div class="stat-val" style="color:var(--accent);">¥${metrics.totalReceivable.toFixed(2)}</div>
-            <div class="stat-sub">上游供货应付：¥${metrics.totalPayable.toFixed(2)}</div>
-          </div>
-          <div class="card">
-            <div class="stat-sub">今日保本毛利线达成度</div>
-            <div class="stat-val">${metrics.breakevenProgress}%</div>
-            <div class="progress-bar"><div class="progress-fill" style="width:${metrics.breakevenProgress}%;"></div></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">⚖️ 掌柜最终核决中心 & AI 铁面无私稽核台</span>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <button class="sm" id="btnGenCreditBrief">📜 生成脱敏经营信用简报</button>
-              <span class="badge ${auditReport.passed ? 'ok' : 'danger'}">
-                ${auditReport.passed ? '🛡️ 货钱账单四方 100% 吻合' : `⚠️ 发现 ${auditReport.anomalies.length} 处稽核疑点`}
-              </span>
-            </div>
-          </div>
-
-          ${quarantine ? `
-            <div class="decision-card danger">
-              <div>
-                <strong>🛑 隔离区待裁决账本包：</strong><br>
-                <span style="font-size:13px;">${quarantine.auditRes?.anomalies?.join('；') || '总封签校验不一致'}</span>
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button class="danger sm" id="btnQuarantineDiscard">丢弃异常包</button>
-                <button class="primary sm" id="btnQuarantineAccept">掌柜核准接管入账</button>
-              </div>
-            </div>
-          ` : ''}
-
-          ${metrics.pendingApprovals.length === 0 && auditReport.passed ? `
-            <p style="color:var(--text-muted); margin:8px 0;">当前无待拍板草案，账目清白，所有规则均在您的掌控之中。</p>
-          ` : ''}
-
-          ${metrics.pendingApprovals.map(item => `
-            <div class="decision-card">
-              <div>
-                <strong>${item.title}</strong>
-                <div style="font-size:13px; color:var(--text-muted); margin-top:2px;">${item.reason} · ${item.impactSummary}</div>
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button class="primary sm" data-approve-id="${item.id}">✅ 掌柜核准执行</button>
-                <button class="sm" data-dismiss-id="${item.id}">放行归档</button>
-              </div>
-            </div>
-          `).join('')}
-
-          ${!auditReport.passed ? `
-            <div style="margin-top:10px; padding:10px; background:#fff1f2; border-radius:8px; font-size:13px; color:var(--danger);">
-              <strong>铁面判官巡检提示：</strong> ${auditReport.anomalies.join(' ｜ ')}
-            </div>
-          ` : ''}
-        </div>
-      `;
-    }
-
-    function bindFinanceEvents() {
-      if ($('btnGenCreditBrief')) {
-        $('btnGenCreditBrief').onclick = () => {
-          const b = engine.generateCreditBrief();
-          alert(`📜【${b.storeName} · 脱敏经营稳健度信用简报】\n（已自动剔除进货底价与客户隐私，供申请月结账期）\n\n• 持续规范记账天数：${b.activeOperatingDays} 天\n• 铁账防篡改累计凭证：${b.totalVerifiedVouchers} 笔\n• 货钱账单四方勾稽状态：${b.ledgerIntegrityPassed ? '100% 吻合无异常' : '存在待核对项'}\n• 铁账验真短码：${b.verifyShortCode}\n• 出具时间：${b.generatedAt}`);
-        };
-      }
-      document.querySelectorAll('[data-approve-id]').forEach(btn => {
-        btn.onclick = () => {
-          const note = prompt('可输入一句掌柜核准批注（选填）：', '核实无误，特批执行');
-          if (note === null) return;
-          const res = engine.decideApprovalItem(btn.dataset.approveId, 'APPROVED', note);
-          showToast(res.message);
-          renderAll();
-        };
-      });
-      document.querySelectorAll('[data-dismiss-id]').forEach(btn => {
-        btn.onclick = () => {
-          engine.decideApprovalItem(btn.dataset.dismissId, 'DISMISSED', '掌柜已阅放行');
-          showToast('已按掌柜意见放行归档');
-          renderAll();
-        };
-      });
-      if ($('btnQuarantineDiscard')) {
-        $('btnQuarantineDiscard').onclick = () => {
-          const res = engine.bossResolveQuarantine('DISCARD');
-          showToast(res.message);
-          renderAll();
-        };
-      }
-      if ($('btnQuarantineAccept')) {
-        $('btnQuarantineAccept').onclick = () => {
-          const note = prompt('请输入掌柜接管原因留痕：', '线下核对实物无误，特批入账');
-          if (note === null) return;
-          const res = engine.bossResolveQuarantine('ACCEPT', note);
-          showToast(res.message);
-          renderAll();
-        };
-      }
-    }
-
-    /* ------------------------------------------------------------------------
-     * 模块 ⑦：往来对账与单据
-     * ------------------------------------------------------------------------ */
-    function viewReconcile() {
-      const vouchers = engine.state.vouchers.slice(0, 30);
-      return `
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">🔐 铁账绝对主权 · 加密备份导出、铁算盘重算导入与实物冲抵</span>
-          </div>
-          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-            <button class="primary" id="btnExportIron">📤 导出铁账加密备份包 (JSON)</button>
-            <label class="btn" style="cursor:pointer;">
-              📥 导入账本备份包（自动四方验真）
-              <input type="file" id="fileImportIron" accept=".json" style="display:none;" />
-            </label>
-            <button class="warn" id="btnBarterOffset">⚖️ 登记厂家返利/实物轧差冲抵单</button>
-            <button class="sm" id="btnCompactCold">🧹 90天冷热账本自动瘦身</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">📑 不可篡改链式凭证流水（只增不删 · 错单红字冲销）</span>
-          </div>
-          <table>
-            <thead>
-              <tr><th>单号 / 时间</th><th>业务类型</th><th>金额</th><th>经手人</th><th>防篡改指纹链</th><th>状态 / 操作</th></tr>
-            </thead>
-            <tbody>
-              ${vouchers.map(v => `
-                <tr class="${v.status === 'VOIDED' ? 'voided-row' : ''}">
-                  <td><strong>${v.id}</strong><br><span class="stat-sub">${new Date(v.ts).toLocaleString('zh-CN')}</span></td>
-                  <td>${v.type} ${v.note ? `<br><span class="stat-sub">${v.note}</span>` : ''}</td>
-                  <td><strong>¥${v.totalAmount.toFixed(2)}</strong></td>
-                  <td>${v.operatorName}</td>
-                  <td><code style="font-size:11px;">${v.hash}</code></td>
-                  <td>
-                    ${v.status === 'POSTED' && v.type !== 'VOID_RED' && engine.hasPermission('approveAuditAndVoid')
-                      ? `<button class="sm danger" data-void-id="${v.id}">红字冲销</button>`
-                      : `<span class="badge">${v.status === 'VOIDED' ? '已红字冲销' : '已落账封存'}</span>`
-                    }
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-    }
-
-    function bindReconcileEvents() {
-      if ($('btnExportIron')) {
-        $('btnExportIron').onclick = async () => {
-          const pass = prompt('可选：输入微信转发加密口令（留空则导出明文防篡改封签包）：', '');
-          if (pass === null) return;
-          const pkg = await engine.exportIronBackup(pass.trim());
-          const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' });
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = `商道铁账备份_${new Date().toISOString().slice(0, 10)}.json`;
-          a.click();
-          showToast('铁账备份包已导出，可发微信永久留底');
-        };
-      }
-
-      if ($('fileImportIron')) {
-        $('fileImportIron').onchange = (e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = async () => {
-            let res = await engine.importWithIronJudge(reader.result);
-            if (res.needPassphrase) {
-              const pass = prompt('该账本受 AES 加密信封保护，请输入解密口令：', '');
-              if (pass) res = await engine.importWithIronJudge(reader.result, pass);
-            }
-            alert(res.message);
-            renderAll();
-          };
-          reader.readAsText(file);
-        };
-      }
-
-      if ($('btnBarterOffset')) {
-        $('btnBarterOffset').onclick = () => {
-          if (engine.state.suppliers.length === 0) return showToast('请先在①订货与供货方中添加供货方');
-          const sup = engine.state.suppliers[0];
-          const amt = roundMoney(prompt(`登记与【${sup.name}】的返利/实物折价冲抵金额（元）：`, '100'));
-          const note = prompt('冲抵说明（如：年底陈列返利货抵货款）：', '厂家返利实物冲抵应付货款');
-          if (amt > 0) {
-            engine.commitVoucher({
-              type: 'BARTER_OFFSET',
-              totalAmount: amt,
-              payMethod: 'OFFSET',
-              counterpartyId: sup.id,
-              counterpartyName: sup.name,
-              note
-            });
-            showToast(`已生成实物轧差冲抵单 ¥${amt}`);
-            renderAll();
-          }
-        };
-      }
-
-      if ($('btnCompactCold')) {
-        $('btnCompactCold').onclick = () => {
-          const res = engine.compactColdData(90);
-          showToast(`冷热分层完成，已归档 ${res.archivedCount} 条 90 天前历史流水`);
-          renderAll();
-        };
-      }
-
-      document.querySelectorAll('[data-void-id]').forEach(btn => {
-        btn.onclick = () => {
-          const reason = prompt('请输入红字冲销原因（将永久记入审计链）：', '录错更正');
-          if (!reason) return;
-          const res = engine.voidVoucherWithRedEntry(btn.dataset.voidId, reason);
-          showToast(res.message);
-          renderAll();
-        };
-      });
-    }
-
-    /* ------------------------------------------------------------------------
-     * 模块 ⑧：策略、角色与主权
-     * ------------------------------------------------------------------------ */
-    function viewGovernance() {
-      const store = engine.getActiveStore();
-      const acc = engine.getCurrentAccount();
-      const snapshots = engine.getSnapshots();
-      return `
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">🏪 门店与分店档案管理（共 ${engine.state.stores.length} 家 · 货钱账单独立隔离）</span>
-            <button class="primary sm" id="btnAddBranchStore">+ 新增分店</button>
-          </div>
-          <table>
-            <thead>
-              <tr><th>门店名称</th><th>行当基因</th><th>月固定摊销</th><th>当前状态 / 切换</th></tr>
-            </thead>
-            <tbody>
-              ${engine.state.stores.map(st => {
-                const g = INDUSTRY_GENES[st.geneId] || INDUSTRY_GENES.convenience;
-                const isCurrent = st.id === engine.state.activeStoreId;
-                return `
-                  <tr>
-                    <td><strong>${st.name}</strong></td>
-                    <td>${g.name.split('/')[0].trim()}</td>
-                    <td>¥${roundMoney(st.monthlyFixedCost || 0).toFixed(2)}</td>
-                    <td>
-                      ${isCurrent ? `<span class="badge ok">当前正在查看</span>` : `<button class="sm" data-switch-store="${st.id}">切至此店</button>`}
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-header"><span class="card-title">🧬 行当基因、长辈关怀与可选安全增强</span></div>
-            <div class="form-row">
-              <div class="field">
-                <label>切换行当基因</label>
-                <select id="govGeneSelect">
-                  ${Object.values(INDUSTRY_GENES).map(g => `<option value="${g.id}" ${store.geneId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}
-                </select>
-              </div>
-              <div class="field">
-                <label>月固定摊销成本（算保本线）</label>
-                <input type="number" id="govFixedCost" value="${store.monthlyFixedCost || 0}" />
-              </div>
-            </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-              <button class="sm" id="btnToggleElder">${engine.state.meta.elderLargeMode ? '✅ 已开大字版' : '👓 长辈关怀大字模式'}</button>
-              <button class="sm" id="btnToggleVoice">${engine.state.meta.voiceFeedback ? '🔊 语音回执：开' : '🔇 语音回执：关'}</button>
-              <button class="sm" id="btnToggleBiometric">${acc.biometricEnabled ? '✅ 指纹/刷脸秒解：已开' : '👆 开启指纹/刷脸秒解(可选)'}</button>
-              <button class="sm warn" id="btnGenOtp">🔑 生成一次性远程放行码</button>
-              <button class="primary sm" id="btnSaveStoreCfg">保存门店设置</button>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">👥 岗位账号与动态角色手电筒工厂</span>
-              <div style="display:flex; gap:6px;">
-                <button class="sm" id="btnManageRoles">🎛️ 角色权限工坊</button>
-                <button class="primary sm" id="btnAddStaff">+ 新增店员账号</button>
-              </div>
-            </div>
-            <table>
-              <thead><tr><th>姓名</th><th>角色</th><th>管辖范围</th><th>口令状态</th></tr></thead>
-              <tbody>
-                ${engine.state.rbac.accounts.map(a => {
-                  const r = engine.state.rbac.roles.find(role => role.id === a.roleId);
-                  const scopeLabel = a.storeIds.includes('*') ? '全部门店' : `${a.storeIds.length}家指定门店`;
-                  return `<tr><td>${a.avatar} <strong>${a.name}</strong></td><td>${r?.name || '-'}</td><td>${scopeLabel}</td><td>${a.pinHash ? '🔒 4位口令' : '🌿 免密直进'}</td></tr>`;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">🏮 家业常青 · 副掌柜授权备忘 & 应急纸质兜底册 & 自定义白纸表单</span>
-          </div>
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="primary" id="btnExportPaperBook">🖨️ 导出《应急纸质兜底册》</button>
-            <button class="warn" id="btnConfigSuccession">🔑 设置副掌柜接力交接备忘</button>
-            <button class="sm" id="btnCustomFormBuilder">🧩 自定义白纸业务小卡片</button>
-            ${snapshots.map(s => `<button class="sm" data-snap-id="${s.id}">⏪ 恢复快照：${s.label}</button>`).join('')}
-          </div>
-        </div>
-      `;
-    }
-
-    function openRoleWorkshopModal() {
-      const roles = engine.state.rbac.roles;
-      $('roleModalBody').innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="margin:0;">🎛️ 动态角色与手电筒权限工坊</h3>
-          <button class="sm" id="btnCloseRoleModal">关闭</button>
-        </div>
-        <p class="stat-sub">自由新建角色并勾选可见业务板块与敏感动作锁，未勾选模块在界面彻底隐身：</p>
-        <div class="form-row">
-          <div class="field"><label>新角色名称</label><input id="newRoleName" placeholder="如：晚班看店合伙人" /></div>
-          <div class="field"><label>职责简述</label><input id="newRoleDesc" placeholder="负责晚间收银与盘点" /></div>
-        </div>
-        <label style="font-size:12px; color:var(--text-muted);">可见业务生命线板块（8选N）：</label>
-        <div class="check-grid" id="roleModChecks">
-          ${MODULE_CATALOG.map(m => `<label class="check-item"><input type="checkbox" value="${m.id}" ${['pos', 'catalog'].includes(m.id) ? 'checked' : ''} /> ${m.icon} ${m.name}</label>`).join('')}
-        </div>
-        <label style="font-size:12px; color:var(--text-muted);">手电筒敏感动作锁（5选N）：</label>
-        <div class="check-grid" id="rolePermChecks">
-          ${PERMISSION_CATALOG.map(p => `<label class="check-item"><input type="checkbox" value="${p.key}" /> ${p.label}</label>`).join('')}
-        </div>
-        <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:8px;">
-          <button class="primary" id="btnSaveNewRole">✅ 保存并创建该角色</button>
-        </div>
-        <hr style="margin:16px 0; border:none; border-top:1px solid var(--border-light);" />
-        <div style="font-size:13px; font-weight:700; margin-bottom:6px;">现有角色列表（共 ${roles.length} 个）：</div>
-        ${roles.map(r => `<div class="badge" style="margin:3px;">${r.name} (${r.modules.length}板块)</div>`).join('')}
-      `;
-      $('roleModalOverlay').classList.add('show');
-      $('btnCloseRoleModal').onclick = () => $('roleModalOverlay').classList.remove('show');
-      $('btnSaveNewRole').onclick = () => {
-        const name = $('newRoleName').value.trim();
-        if (!name) return showToast('请输入角色名称');
-        const modules = Array.from($('roleModChecks').querySelectorAll('input:checked')).map(i => i.value);
-        const permissions = {};
-        $('rolePermChecks').querySelectorAll('input').forEach(i => { permissions[i.value] = i.checked; });
-        const res = engine.upsertCustomRole({ name, desc: $('newRoleDesc').value.trim(), modules, permissions });
-        showToast(res.message);
-        $('roleModalOverlay').classList.remove('show');
-        renderAll();
-      };
-    }
-
-    function bindGovernanceEvents() {
-      if ($('btnAddBranchStore')) {
-        $('btnAddBranchStore').onclick = () => {
-          const name = prompt('请输入新分店名称（如：二店 · 城南社区店）：');
-          if (!name || !name.trim()) return;
-          const geneChoice = prompt('选择分店行当编号：\n1=社区便利百货  2=生鲜果蔬  3=五金建材  4=农资合作社  5=餐饮茶饮', '1');
-          const geneMap = { '1': 'convenience', '2': 'fresh', '3': 'hardware', '4': 'agri', '5': 'tea_food' };
-          const fixedCost = roundMoney(prompt('输入该分店月固定摊销成本（房租/人工，元）：', '3000'));
-          const res = engine.addBranchStore({
-            name: name.trim(),
-            geneId: geneMap[geneChoice] || 'convenience',
-            monthlyFixedCost: fixedCost
-          });
-          if (res.ok) {
-            posCart = [];
-            orderCart = [];
-            showToast(`已创建并切换至新分店【${res.store.name}】`);
-          } else {
-            showToast(res.message);
-          }
-        };
-      }
-
-      document.querySelectorAll('[data-switch-store]').forEach(btn => {
-        btn.onclick = () => {
-          const res = engine.switchStore(btn.dataset.switchStore);
-          if (res.ok) { posCart = []; orderCart = []; showToast(`已切换至【${res.store.name}】`); }
-        };
-      });
-
-      if ($('btnSaveStoreCfg')) {
-        $('btnSaveStoreCfg').onclick = () => {
-          const store = engine.getActiveStore();
-          store.geneId = $('govGeneSelect').value;
-          store.monthlyFixedCost = roundMoney($('govFixedCost').value);
-          engine._persist();
-          showToast('门店行当基因与保本线设置已生效');
-          renderAll();
-        };
-      }
-      if ($('btnToggleElder')) {
-        $('btnToggleElder').onclick = () => { engine.state.meta.elderLargeMode = !engine.state.meta.elderLargeMode; engine._persist(); renderAll(); };
-      }
-      if ($('btnToggleVoice')) {
-        $('btnToggleVoice').onclick = () => { engine.state.meta.voiceFeedback = !engine.state.meta.voiceFeedback; engine._persist(); renderAll(); };
-      }
-      if ($('btnToggleBiometric')) {
-        $('btnToggleBiometric').onclick = async () => {
-          const res = await engine.toggleBiometricForCurrentAccount();
-          alert(res.message);
-          renderAll();
-        };
-      }
-      if ($('btnGenOtp')) {
-        $('btnGenOtp').onclick = () => {
-          const challenge = prompt('请输入分店店员屏幕报出的4位挑战码（如 3921）：', '1001');
-          if (!challenge) return;
-          const code = engine.generateOneTimePasscode(challenge.trim());
-          alert(`🔑 一次性远程放行码：【 ${code} 】\n（5分钟内有效、用完即废，报给店员即可放行本次特殊业务）`);
-        };
-      }
-      if ($('btnManageRoles')) $('btnManageRoles').onclick = () => openRoleWorkshopModal();
-
-      if ($('btnAddStaff')) {
-        $('btnAddStaff').onclick = async () => {
-          const name = prompt('输入新店员姓名（如：前台小王）：');
-          if (!name) return;
-          const roles = engine.state.rbac.roles;
-          const roleMenu = roles.map((r, i) => `${i + 1}=${r.name}`).join('  ');
-          const idx = (Number(prompt(`选择岗位角色编号：\n${roleMenu}`, '3')) || 3) - 1;
-          const chosenRole = roles[idx] || roles[0];
-          const scopeAll = confirm('是否授权该账号查看全部门店？（确定=全部门店，取消=仅限当前门店）');
-          const pin = prompt('设置4位数字上岗口令（留空则支持点头像免密上岗）：', '');
-          const accId = generateId('ACC');
-          const pinHash = pin ? await sha256Hex(`${accId}:${pin.trim()}`) : '';
-          engine.state.rbac.accounts.push({
-            id: accId,
-            name: name.trim(),
-            phoneOrCode: String(1000 + engine.state.rbac.accounts.length + 1),
-            avatar: chosenRole.isSystemBoss ? '👑' : '🙂',
-            roleId: chosenRole.id,
-            storeIds: scopeAll ? ['*'] : [engine.state.activeStoreId],
-            pinHash,
-            biometricEnabled: false,
-            webAuthnId: '',
-            active: true,
-            extraPermissions: {}
-          });
-          engine._persist();
-          showToast(`已新增岗位账号【${name}】`);
-          renderAll();
-        };
-      }
-
-      if ($('btnCustomFormBuilder')) {
-        $('btnCustomFormBuilder').onclick = () => {
-          const title = prompt('捏造一张白纸专属业务小卡片（如：农资地块施肥登记 / 电器维修单 / 洗衣登记）：', '街坊便民登记卡');
-          if (!title) return;
-          engine.state.community.customForms.push({
-            id: generateId('FRM'),
-            title: title.trim(),
-            fields: ['客户/联系人', '具体事项/规格', '约定金额'],
-            records: []
-          });
-          engine._persist();
-          showToast(`已创建白纸专属业务卡片【${title}】`);
-        };
-      }
-
-      if ($('btnExportPaperBook')) {
-        $('btnExportPaperBook').onclick = () => {
-          const book = engine.generateEmergencyPaperBook();
-          const win = window.open('', '_blank');
-          win.document.write(`
-            <html><head><title>${book.title}</title><style>body{font-family:sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{border:1px solid #999;padding:6px;text-align:left;}</style></head>
-            <body><h2>${book.title}</h2><p>生成时间：${book.generatedAt}</p>
-            <h3>一、在售商品零售价目表</h3>
-            <table><tr><th>编码</th><th>品名</th><th>单位</th><th>零售价</th><th>熟客价</th><th>货架位</th></tr>
-            ${book.priceList.map(p => `<tr><td>${p.code}</td><td>${p.name}</td><td>${p.unit}</td><td>¥${p.retailPrice}</td><td>¥${p.memberPrice}</td><td>${p.location}</td></tr>`).join('')}
-            </table>
-            <h3>二、熟客往来欠款备忘</h3>
-            <table><tr><th>姓名</th><th>电话</th><th>待结金额</th></tr>
-            ${book.receivables.map(r => `<tr><td>${r.name}</td><td>${r.phone}</td><td>¥${r.balance}</td></tr>`).join('')}
-            </table><script>window.print();<\/script></body></html>
-          `);
-        };
-      }
-
-      if ($('btnConfigSuccession')) {
-        $('btnConfigSuccession').onclick = () => {
-          const person = prompt('输入家业接力副掌柜/家人称呼（外出进货或旅游时交接）：', engine.state.rbac.successionMemo.successorName);
-          if (person === null) return;
-          const note = prompt('输入交接嘱托备忘（如常用进货渠道与账期提示）：', engine.state.rbac.successionMemo.handoverNote);
-          engine.state.rbac.successionMemo.enabled = true;
-          engine.state.rbac.successionMemo.successorName = person;
-          engine.state.rbac.successionMemo.handoverNote = note || '';
-          engine._persist();
-          showToast('家业常青副掌柜接力备忘已保存');
-        };
-      }
-
-      document.querySelectorAll('[data-snap-id]').forEach(btn => {
-        btn.onclick = () => {
-          if (!confirm('确认恢复至此时间点快照？当前之后的新增流水将被回退。')) return;
-          const res = engine.restoreSnapshot(btn.dataset.snapId);
-          showToast(res.message);
-          renderAll();
-        };
-      });
-    }
-
-    function openAccountModal(isLocked = false) {
-      $('lockOverlay').classList.add('show');
-      $('btnCloseLockModal').style.display = isLocked ? 'none' : 'inline-flex';
-      $('pinVerifyBox').style.display = 'none';
-      const grid = $('avatarGrid');
-      grid.innerHTML = engine.state.rbac.accounts.filter(a => a.active).map(acc => {
-        const role = engine.state.rbac.roles.find(r => r.id === acc.roleId);
-        return `
-          <div class="avatar-card" data-acc-id="${acc.id}">
-            <div style="font-size:28px;">${acc.avatar}</div>
-            <div style="font-weight:700; margin-top:4px;">${acc.name}</div>
-            <div style="font-size:11px; color:var(--text-muted);">${role?.name || ''}</div>
-          </div>
         `;
-      }).join('');
-
-      grid.querySelectorAll('[data-acc-id]').forEach(card => {
-        card.onclick = async () => {
-          const accId = card.dataset.accId;
-          const res = await engine.switchAccount(accId, '');
-          if (res.ok) {
-            $('lockOverlay').classList.remove('show');
-            showToast(`已切换至【${res.account.name}】视角`);
-            renderAll();
-          } else if (res.needPin) {
-            pendingSwitchAccId = accId;
-            $('pinPromptLabel').textContent = res.message;
-            $('pinVerifyBox').style.display = 'block';
-            $('pinInput').value = '';
-            $('pinInput').focus();
-          }
-        };
-      });
+        document.querySelectorAll('[data-pc-apr]').forEach(b => {
+          b.onclick = () => { const res = engine.decideApprovalItem(b.dataset.pcApr, 'APPROVED'); alert(res.message); renderPc(); };
+        });
+      }
     }
 
-    $('btnConfirmPin').onclick = async () => {
-      if (!pendingSwitchAccId) return;
-      const res = await engine.switchAccount(pendingSwitchAccId, $('pinInput').value);
-      if (res.ok) {
-        $('lockOverlay').classList.remove('show');
-        showToast(`口令验证通过，欢迎【${res.account.name}】`);
-        renderAll();
-      } else {
-        showToast(res.message);
-      }
-    };
+    $('btnPcPrivacy').onclick = () => { engine.togglePrivacyShield(); renderPc(); };
+    $('btnPcGear').onclick = () => { activeMod = 'gear'; renderPc(); };
 
-    $('btnAccountSwitch').onclick = () => openAccountModal(false);
-    $('btnCloseLockModal').onclick = () => $('lockOverlay').classList.remove('show');
-    $('btnLockScreen').onclick = () => engine.lockScreen();
-    $('btnToggleUiMode').onclick = () => {
-      engine.state.meta.uiMode = engine.state.meta.uiMode === 'simple' ? 'full' : 'simple';
-      engine._persist();
-      renderAll();
-    };
-    $('btnPrivacyShield').onclick = () => {
-      const on = engine.togglePrivacyShield();
-      showToast(on ? '已开启防窥掩护，敏感底价已脱敏' : '已恢复正常显示');
-    };
-    $('topbar').ondblclick = (e) => { if (e.target === $('topbar')) $('btnPrivacyShield').click(); };
-
-    $('btnEnterSandbox').onclick = () => { engine.enterSandbox(); $('lockOverlay').classList.remove('show'); renderAll(); };
-    $('btnExitSandbox').onclick = () => { engine.exitSandbox(); showToast('已退出练手模拟舱，正式账本分毫未动'); renderAll(); };
-    $('btnExitSignage').onclick = () => $('signageScreen').classList.remove('show');
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('signageScreen').classList.remove('show'); });
-
-    $('btnOmniVoice').onclick = () => {
-      const cmd = engine.parseVoiceOrQuickCommand($('omniInput').value);
-      if (cmd.intent === 'FAMILY_DRAW' || cmd.intent === 'EXPENSE') {
-        if (!cmd.amount) return showToast('请在指令中包含具体金额，如“家用拿走200元”');
-        if (confirm(`识别为【${cmd.label}】，金额 ¥${cmd.amount}，确认核准落账吗？`)) {
-          engine.commitVoucher({ type: cmd.intent, totalAmount: cmd.amount, payMethod: 'CASH', note: cmd.note });
-          $('omniInput').value = '';
-          engine.speakFeedback(`已记录${cmd.amount}元`);
-          showToast(`✅ ${cmd.label} 已落账`);
-          renderAll();
-        }
-      } else if (cmd.matchedSkus?.length > 0) {
-        const sku = cmd.matchedSkus[0];
-        posCart.push({ skuId: sku.id, name: sku.name, qty: 1, unitPrice: sku.retailPrice, costPrice: sku.costPrice });
-        activeModule = 'pos';
-        $('omniInput').value = '';
-        showToast(`已将【${sku.name}】加入收银台`);
-        renderAll();
-      } else {
-        showToast(cmd.label || '未匹配到指令');
-      }
-    };
-    $('omniInput').onkeydown = (e) => { if (e.key === 'Enter') $('btnOmniVoice').click(); };
-
-    $('btnCustomerScreen').onclick = () => {
-      customerDisplayWin = window.open('', 'CustomerDisplay', 'width=800,height=600');
-      syncCustomerDisplayWindow();
-      showToast('已开启副屏客显窗口，可拖至面向顾客的副屏');
-    };
-
-    function syncCustomerDisplayWindow() {
-      if (!customerDisplayWin || customerDisplayWin.closed) return;
-      const store = engine.getActiveStore();
-      const total = roundMoney(posCart.reduce((s, it) => s + it.qty * it.unitPrice, 0));
-      customerDisplayWin.document.open();
-      customerDisplayWin.document.write(`
-        <!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>客显屏 - ${store.name}</title>
-        <style>body{font-family:sans-serif;background:#0f172a;color:#fff;margin:0;padding:30px;display:flex;flex-direction:column;height:100vh;box-sizing:border-box;}
-        .header{font-size:24px;color:#5eead4;border-bottom:1px solid #334155;padding-bottom:14px;}
-        .list{flex:1;overflow:auto;font-size:22px;padding:16px 0;}
-        .row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px dashed #334155;}
-        .footer{font-size:44px;font-weight:800;text-align:right;color:#fde047;padding-top:16px;border-top:2px solid #475569;}</style></head>
-        <body>
-          <div class="header">🏮 欢迎光临 ${store.name} · 诚实守信</div>
-          <div class="list">
-            ${posCart.length === 0 ? '<div style="text-align:center;margin-top:80px;color:#94a3b8;">祝您生活愉快，欢迎选购！</div>' :
-              posCart.map(it => `<div class="row"><span>${it.name} × ${it.qty}</span><span>¥${roundMoney(it.qty * it.unitPrice).toFixed(2)}</span></div>`).join('')}
-          </div>
-          <div class="footer">合计：¥${total.toFixed(2)}</div>
-        </body></html>
-      `);
-      customerDisplayWin.document.close();
-    }
-
-    engine.subscribe(() => renderAll());
-    renderAll();
+    engine.subscribe(() => renderPc());
+    renderPc();
   </script>
 </body>
 </html>
