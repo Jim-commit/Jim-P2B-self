@@ -2,11 +2,15 @@
  * ============================================================================
  * 商道相通 · 百工商业全域智慧工作台 —— 共享核心大脑 (storeCoreEngine.js)
  * ============================================================================
- * 全量向后兼容导出版（确保 Vite / Rollup 打包零报错）：
- * 同时导出 MODULE_CATALOG、INDUSTRY_GENES、OPTIONAL_UI_MODULES、PERMISSION_CATALOG、DEFAULT_ROLES
+ * 顶层使命：人尽其才 · 物尽其用 · 地尽其利 · 货畅其流
+ * 1. 全量向后兼容导出版：同时导出 MODULE_CATALOG、INDUSTRY_GENES、STORE_MODES、
+ *    OPTIONAL_UI_MODULES、PERMISSION_CATALOG、DEFAULT_ROLES，确保 Vite 打包零报错。
+ * 2. 千人千面自适应：门店(store) × 经营模式(normal/member/wholesale/station) × 角色(role)。
+ * 3. 货钱账单四位并立、链式防篡改哈希、只增不删、红字冲销、家庭支取物理隔离。
+ * 4. 工具为人所用 · 唯老板保留最终核决权。
  */
 
-export const ENGINE_VERSION = '6.3.0-vite-safe';
+export const ENGINE_VERSION = '7.1.0-final-harmony';
 
 export const STORAGE_KEYS = {
   MAIN_STATE: 'shd_store_workbench_v3',
@@ -17,9 +21,65 @@ export const STORAGE_KEYS = {
   LEGACY_KEYS: ['store_data', 'my_store_v1', 'my_store_v2', 'shop_ledger', 'pos_state']
 };
 
-/**
- * 兼容旧版与新版引用：全量业务模块目录
- */
+export const STORE_MODES = {
+  normal: {
+    id: 'normal',
+    name: '普通零售',
+    badge: '🏪 普通零售',
+    desc: '兼顾供货商补货、邻里自提与轻量收银，白纸极简',
+    defaultModules: {
+      counter_pos: true,
+      local_pool: true,
+      community_hub: true,
+      demand_plan: true,
+      cloud_shelf: true,
+      marketing_flyer: true
+    }
+  },
+  member: {
+    id: 'member',
+    name: '熟客会员制',
+    badge: '👑 熟客会员',
+    desc: '突出会员价、熟客信用记账、积分回馈与社群接龙',
+    defaultModules: {
+      counter_pos: true,
+      local_pool: true,
+      community_hub: true,
+      demand_plan: true,
+      cloud_shelf: true,
+      marketing_flyer: true
+    }
+  },
+  wholesale: {
+    id: 'wholesale',
+    name: '批发集采',
+    badge: '🏭 批发集采',
+    desc: '隐藏零售收银图标，专注大宗货盘订货、余缺互调与月度对账',
+    defaultModules: {
+      counter_pos: false,
+      local_pool: true,
+      community_hub: false,
+      demand_plan: true,
+      cloud_shelf: false,
+      marketing_flyer: false
+    }
+  },
+  station: {
+    id: 'station',
+    name: '邻里自提驿站',
+    badge: '🏮 邻里驿站',
+    desc: '零库存扩充云货架、街坊代订自提核销、公器共享与拼单',
+    defaultModules: {
+      counter_pos: false,
+      local_pool: true,
+      community_hub: true,
+      demand_plan: true,
+      cloud_shelf: true,
+      marketing_flyer: true
+    }
+  }
+};
+
 export const MODULE_CATALOG = [
   { id: 'procurement', code: '01', name: '订货与供货货盘', pillar: '货畅其流', icon: '📦', optional: false, desc: '绑定供货商、查看开放货盘交互订货、缺货拆单与再来一单' },
   { id: 'receiving',   code: '02', name: '到货验收与载具', pillar: '货畅其流', icon: '🚚', optional: false, desc: '订货单一键核对签收、随车入库与周转筐押金台账' },
@@ -30,11 +90,8 @@ export const MODULE_CATALOG = [
   { id: 'finance',     code: '07', name: '经营总账与核决', pillar: '人尽其才', icon: '💰', optional: false, desc: '三联总账、保本线、家庭支取隔离、AI铁面稽核与老板核决台' }
 ];
 
-/**
- * 门店可选配UI模块目录（在 ⚙️ 设置中心可自由勾选显隐）
- */
 export const OPTIONAL_UI_MODULES = [
-  { id: 'counter_pos',     name: '柜台随手收银与亮码', pillar: '地尽其利', desc: '已有独立收银机或纯批发模式可关闭此入口' },
+  { id: 'counter_pos',     name: '柜台随手收银与亮码', pillar: '地尽其利', desc: '控制顶栏 💰 收银图标显隐，批发模式可关闭' },
   { id: 'local_pool',      name: '同城余缺互调池',     pillar: '物尽其用', desc: '余货挂池调剂 · 同行互助减损' },
   { id: 'community_hub',   name: '邻里公器共享 & 置换', pillar: '物尽其用', desc: '闲置工具借用 · 实物劳务互换' },
   { id: 'demand_plan',     name: '真实用度计划单',     pillar: '货畅其流', desc: '提前报备用量 · 产区按需排产' },
@@ -42,70 +99,15 @@ export const OPTIONAL_UI_MODULES = [
   { id: 'marketing_flyer', name: '邻里便民画报定制',   pillar: '地尽其利', desc: '源头好货海报 · 街坊群拼单' }
 ];
 
-/**
- * 百业行当基因预设（保留导出以兼容所有引用）
- */
 export const INDUSTRY_GENES = {
-  convenience: {
-    id: 'convenience',
-    name: '社区便利 / 烟酒百货',
-    unitDefault: '件',
-    packUnitDefault: '箱',
-    carrierName: '周转筐/水桶',
-    quickTags: ['饮料酒水', '休闲零食', '粮油调味', '日用百货', '烟草代售'],
-    enableExpiry: true,
-    enableCarrier: true
-  },
-  fresh: {
-    id: 'fresh',
-    name: '生鲜果蔬 / 肉禽水产',
-    unitDefault: '斤',
-    packUnitDefault: '筐',
-    carrierName: '塑料周转筐',
-    quickTags: ['时令鲜果', '叶菜根茎', '鲜肉禽蛋', '水产冻品', '干货调料'],
-    enableExpiry: true,
-    enableCarrier: true
-  },
-  hardware: {
-    id: 'hardware',
-    name: '五金建材 / 水暖电料',
-    unitDefault: '个',
-    packUnitDefault: '盒',
-    carrierName: '托盘/线盘',
-    quickTags: ['水暖管件', '电工电料', '五金工具', '油漆辅料', '劳保用品'],
-    enableExpiry: false,
-    enableCarrier: true
-  },
-  agri: {
-    id: 'agri',
-    name: '农资化肥 / 供销服务站',
-    unitDefault: '袋',
-    packUnitDefault: '吨',
-    carrierName: '吨袋/周转桶',
-    quickTags: ['复合肥', '种子种苗', '农用物资', '农机配件', '农产品代收'],
-    enableExpiry: true,
-    enableCarrier: true
-  },
-  tea_food: {
-    id: 'tea_food',
-    name: '餐饮小吃 / 茶饮烘焙',
-    unitDefault: '份',
-    packUnitDefault: '提',
-    carrierName: '保温箱/奶桶',
-    quickTags: ['招牌现制', '鲜萃茶饮', '烘焙点心', '原料辅料', '包装耗材'],
-    enableExpiry: true,
-    enableCarrier: false
-  },
-  custom: {
-    id: 'custom',
-    name: '自由白纸 · 自定义行当',
-    unitDefault: '件',
-    packUnitDefault: '箱',
-    carrierName: '周转载具',
-    quickTags: ['主营商品', '配套服务', '代订代购'],
-    enableExpiry: true,
-    enableCarrier: true
-  }
+  convenience: { id: 'convenience', name: '社区便利', unitDefault: '件', packUnitDefault: '箱', carrierName: '周转筐/水桶', quickTags: ['饮料酒水', '休闲零食', '粮油调味', '日用百货'], enableExpiry: true, enableCarrier: true },
+  catering:    { id: 'catering',    name: '餐饮饭庄', unitDefault: '份', packUnitDefault: '提', carrierName: '保温箱/周转筐', quickTags: ['生鲜食材', '粮油干货', '酒水饮料'], enableExpiry: true, enableCarrier: true },
+  supermarket: { id: 'supermarket', name: '精品商超', unitDefault: '件', packUnitDefault: '箱', carrierName: '周转筐/托盘', quickTags: ['名品烟酒', '生鲜果蔬', '日用百货'], enableExpiry: true, enableCarrier: true },
+  hardware:    { id: 'hardware',    name: '五金机电', unitDefault: '个', packUnitDefault: '盒', carrierName: '托盘/线盘', quickTags: ['水暖管件', '电工电料', '五金工具'], enableExpiry: false, enableCarrier: true },
+  auto:        { id: 'auto',        name: '汽修配件', unitDefault: '件', packUnitDefault: '箱', carrierName: '周转箱', quickTags: ['机油滤芯', '易损配件', '养护用品'], enableExpiry: false, enableCarrier: true },
+  agri:        { id: 'agri',        name: '农资农具', unitDefault: '袋', packUnitDefault: '吨', carrierName: '吨袋/周转桶', quickTags: ['复合肥', '种子种苗', '农用物资'], enableExpiry: true, enableCarrier: true },
+  pharma:      { id: 'pharma',      name: '医药日化', unitDefault: '盒', packUnitDefault: '箱', carrierName: '周转箱', quickTags: ['日化洗护', '消杀防护', '家庭常备'], enableExpiry: true, enableCarrier: true },
+  stationery:  { id: 'stationery',  name: '文体劳保', unitDefault: '件', packUnitDefault: '箱', carrierName: '周转箱', quickTags: ['办公文具', '劳保防护', '生活用纸'], enableExpiry: false, enableCarrier: true }
 };
 
 export const PERMISSION_CATALOG = [
@@ -119,7 +121,7 @@ export const PERMISSION_CATALOG = [
 export const DEFAULT_ROLES = [
   {
     id: 'role_boss',
-    name: '掌柜（最高核决）',
+    name: '掌柜',
     isSystemBoss: true,
     desc: '拥有全部视野、底价知情权、红字冲销与最终核决拍板权',
     modules: ['procurement', 'receiving', 'catalog', 'marketing', 'pos', 'reconcile', 'finance'],
@@ -133,7 +135,7 @@ export const DEFAULT_ROLES = [
   },
   {
     id: 'role_manager',
-    name: '副掌柜 / 店长',
+    name: '副掌柜/店长',
     isSystemBoss: false,
     desc: '协助日常订货、验收、同城互调与店务管理',
     modules: ['procurement', 'receiving', 'catalog', 'marketing', 'pos', 'reconcile'],
@@ -147,7 +149,7 @@ export const DEFAULT_ROLES = [
   },
   {
     id: 'role_staff',
-    name: '当班店员 / 驿站专员',
+    name: '当班店员',
     isSystemBoss: false,
     desc: '负责前台收银亮码、街坊自提核销与日常理货，严守底价与总账隔离',
     modules: ['marketing', 'pos'],
@@ -292,6 +294,8 @@ export class StoreCoreEngine {
         {
           id: defaultStoreId,
           name: '厚德便民门店',
+          storeMode: 'normal',
+          tradeLabel: '社区便利',
           geneId: 'convenience',
           monthlyFixedCost: 0,
           paymentQrUrl: ''
@@ -400,6 +404,50 @@ export class StoreCoreEngine {
     return this.state.stores.find(s => s.id === this.state.activeStoreId) || this.state.stores[0];
   }
 
+  getActiveStoreMode() {
+    const store = this.getActiveStore();
+    return STORE_MODES[store?.storeMode] || STORE_MODES.normal;
+  }
+
+  setActiveStoreMode(modeId) {
+    const mode = STORE_MODES[modeId];
+    if (!mode) return { ok: false, message: '未知门店模式' };
+    const store = this.getActiveStore();
+    store.storeMode = mode.id;
+    this.state.meta.enabledUiModules = { ...mode.defaultModules };
+    this._persist(this.state, true, 'STORE_MODE_CHANGED', { store, mode });
+    return { ok: true, mode };
+  }
+
+  setActiveTradeLabel(tradeLabel) {
+    const store = this.getActiveStore();
+    store.tradeLabel = String(tradeLabel || '社区便利').trim();
+    this._persist(this.state, true, 'TRADE_CHANGED', { store });
+  }
+
+  syncBranchByName(branchName, storeMode = 'normal') {
+    const clean = String(branchName || '').trim();
+    if (!clean) return this.getActiveStore();
+    let found = this.state.stores.find(s => s.name === clean);
+    if (!found) {
+      found = {
+        id: generateId('STORE'),
+        name: clean,
+        storeMode,
+        tradeLabel: '社区便利',
+        geneId: 'convenience',
+        monthlyFixedCost: 0,
+        paymentQrUrl: ''
+      };
+      this.state.stores.push(found);
+    }
+    this.state.activeStoreId = found.id;
+    const modeObj = STORE_MODES[found.storeMode] || STORE_MODES.normal;
+    this.state.meta.enabledUiModules = { ...modeObj.defaultModules };
+    this._persist(this.state, true, 'STORE_SWITCHED', found);
+    return found;
+  }
+
   getActiveGene() {
     const store = this.getActiveStore();
     return INDUSTRY_GENES[store?.geneId] || INDUSTRY_GENES.convenience;
@@ -448,6 +496,16 @@ export class StoreCoreEngine {
     return `¥${roundMoney(amount).toFixed(2)}`;
   }
 
+  switchRoleDirectly(roleId) {
+    const acc = this.getCurrentAccount();
+    const targetRole = this.state.rbac.roles.find(r => r.id === roleId);
+    if (!targetRole) return;
+    acc.roleId = targetRole.id;
+    acc.name = targetRole.isSystemBoss ? '本机掌柜' : targetRole.name;
+    acc.avatar = targetRole.isSystemBoss ? '👑' : (roleId === 'role_manager' ? '🧭' : '🙂');
+    this._persist(this.state, true, 'ROLE_SWITCHED', targetRole);
+  }
+
   async switchAccount(accountId, pin = '') {
     const target = this.state.rbac.accounts.find(a => a.id === accountId && a.active);
     if (!target) return { ok: false, message: '账号不存在' };
@@ -487,12 +545,14 @@ export class StoreCoreEngine {
 
   commitVoucher(draft) {
     const acc = this.getCurrentAccount();
+    const store = this.getActiveStore();
     const now = Date.now();
     const id = generateId(draft.type || 'VCH');
     const amount = roundMoney(draft.totalAmount || 0);
 
     const voucher = {
       id,
+      storeId: store.id,
       type: draft.type,
       ts: now,
       operatorId: acc.id,
