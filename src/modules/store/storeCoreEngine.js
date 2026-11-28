@@ -2,35 +2,36 @@
  * ============================================================================
  * 商道相通 · 百工商业全域智慧工作台 —— 共享核心大脑 (storeCoreEngine.js)
  * ============================================================================
- * 原设计全部保留 + 全域无损增强融合版：
- * 1. 【上下游贯通原设计】：门店绑定供货商 -> 自动获取供货商开放给本店的专属货盘
- *    (openCatalog / shd_supplier_offers) -> 在供货商货盘上直接交互式点选数量订货 -> 随车签收。
- * 2. 【遵循大道 · 流水无痕】：白纸开箱、渐进呈现、未授权模块彻底隐身。
- * 3. 【工具为人所用 · 唯老板保留最终核决权】：AI与审计只出草案，绝不擅自卡死或改账。
- * 4. 【货钱账单四位并立】：只增不删、红字冲销、交班时间锁、AES加密信封与四方重算。
+ * 顶层使命：人尽其才 · 物尽其用 · 地尽其利 · 货畅其流
+ * 1. 全域生态主线：贯通 hq.html(总控) / suppliers.html(供需名录) / mall.html(大集拼单)
+ *    / driver.html(物流履约) / store.html(电脑调度) / index.html(掌中宝)。
+ * 2. 绑定供货商 -> 查看开放货盘交互订货 -> 随车签收 -> 往来对账。
+ * 3. 模块自由选配：POS收银等模块均可在齿轮设置中心一键开启或关闭，关闭后彻底隐身。
+ * 4. 铁账护航与老板最终核决权：货钱账单四位并立、链式防篡改、唯老板拍板核决。
  */
 
-export const ENGINE_VERSION = '5.0.0-original-preserved';
+export const ENGINE_VERSION = '6.0.0-ecosystem-harmony';
 
 export const STORAGE_KEYS = {
   MAIN_STATE: 'shd_store_workbench_v3',
   SNAPSHOTS: 'shd_store_snapshots_v3',
   ARCHIVE_COLD: 'shd_store_cold_archive_v3',
   QUARANTINE: 'shd_store_quarantine_box',
-  // 平台级共享键：厂商端/大集端/云端同步写入的“供货商向门店开放的货盘”
   SHARED_SUPPLIER_OFFERS: ['shd_supplier_offers', 'supplier_catalog', 'mall_supplier_goods', 'suppliers_data'],
   LEGACY_KEYS: ['store_data', 'my_store_v1', 'my_store_v2', 'shop_ledger', 'pos_state']
 };
 
+/**
+ * 全域协同业务模块（支持门店按需勾选启用/隐藏，POS收银等均可选）
+ */
 export const MODULE_CATALOG = [
-  { id: 'procurement', code: '01', name: '订货与供货方', stage: '上游供应链线', icon: '📦', desc: '绑定供货商、查看供货商开放货盘交互订货、缺货拆单与再来一单' },
-  { id: 'receiving',   code: '02', name: '到货验收与载具', stage: '上游供应链线', icon: '🚚', desc: '订货单一键核对签收、随车入库、拆零搭赠折算与周转筐押金' },
-  { id: 'catalog',     code: '03', name: '商品库与库存', stage: '店内经营线', icon: '🏷️', desc: '边卖边建、拆箱反推、临期雷达、报损与跨店调拨' },
-  { id: 'pos',         code: '04', name: '柜台收银与履约', stage: '店内经营线', icon: '🧾', desc: '正负一单清、防掉包收款码、熟客赊账、定金工单与驿站核销' },
-  { id: 'marketing',   code: '05', name: '拓客与邻里驿站', stage: '店内经营线', icon: '📣', desc: '群接龙文案、零库存预售凑团、A4传单与16:9大屏轮播' },
-  { id: 'finance',     code: '06', name: '经营状况与财务', stage: '资金与总控线', icon: '💰', desc: '三联总账、保本线、家庭支取隔离、经营信用简报与铁面稽核' },
-  { id: 'reconcile',   code: '07', name: '往来对账与单据', stage: '资金与总控线', icon: '📑', desc: '链式防伪凭证、周期对账、实物返利冲抵与AES加密备份' },
-  { id: 'governance',  code: '08', name: '策略角色与主权', stage: '资金与总控线', icon: '🛡️', desc: '多店档案、动态角色工厂、可选刷脸/远程口令、自定义表单与家业备忘' }
+  { id: 'procurement', code: '01', name: '订货与供货货盘', pillar: '货畅其流', icon: '📦', optional: false, desc: '绑定供货商、查看开放货盘交互订货、缺货拆单与再来一单' },
+  { id: 'receiving',   code: '02', name: '到货验收与载具', pillar: '货畅其流', icon: '🚚', optional: false, desc: '订货单一键核对签收、随车入库与周转筐押金台账' },
+  { id: 'catalog',     code: '03', name: '商品库与余缺调拨', pillar: '物尽其用', icon: '🏷️', optional: false, desc: '边卖边建、拆箱反推、临期折让与同城/跨店余缺互调' },
+  { id: 'marketing',   code: '04', name: '邻里驿站与云货架', pillar: '地尽其利', icon: '📣', optional: true,  desc: '群接龙自提核销、云端扩充货架码、联采拼单与大屏海报' },
+  { id: 'pos',         code: '05', name: '柜台收银(可选)',   pillar: '地尽其利', icon: '🧾', optional: true,  desc: '已有独立收银机或纯批发店可关闭此模块，保持界面极简' },
+  { id: 'reconcile',   code: '06', name: '往来对账与单据', pillar: '货畅其流', icon: '📑', optional: false, desc: '链式防伪凭证、周期电子对账、实物返利冲抵与加密备份' },
+  { id: 'finance',     code: '07', name: '经营总账与核决', pillar: '人尽其才', icon: '💰', optional: false, desc: '三联总账、保本线、家庭支取隔离、AI铁面稽核与老板核决台' }
 ];
 
 export const INDUSTRY_GENES = {
@@ -101,7 +102,7 @@ export const PERMISSION_CATALOG = [
   { key: 'editRetailPrice',      label: '修改零售价与特批折扣' },
   { key: 'approveAuditAndVoid',  label: '红字冲销与铁面稽核最终核决权' },
   { key: 'managePaymentQr',      label: '更换/锁定店内收款码' },
-  { key: 'manageStaffAndExport', label: '管理多店/角色与导出加密账本' }
+  { key: 'manageStaffAndExport', label: '管理齿轮设置、多店与导出备份' }
 ];
 
 export const DEFAULT_ROLES = [
@@ -110,7 +111,7 @@ export const DEFAULT_ROLES = [
     name: '掌柜（最高核决）',
     isSystemBoss: true,
     desc: '拥有全部业务视野、底价知情权、红字冲销与最终核决拍板权',
-    modules: ['procurement', 'receiving', 'catalog', 'pos', 'marketing', 'finance', 'reconcile', 'governance'],
+    modules: ['procurement', 'receiving', 'catalog', 'marketing', 'pos', 'reconcile', 'finance'],
     permissions: {
       viewCostAndProfit: true,
       editRetailPrice: true,
@@ -123,8 +124,8 @@ export const DEFAULT_ROLES = [
     id: 'role_manager',
     name: '副掌柜 / 店长',
     isSystemBoss: false,
-    desc: '协助日常订货、验收、盘点、理货与当班收银，按授权查看店务',
-    modules: ['procurement', 'receiving', 'catalog', 'pos', 'marketing', 'reconcile'],
+    desc: '协助日常订货、验收、调拨、驿站履约与当班店务',
+    modules: ['procurement', 'receiving', 'catalog', 'marketing', 'pos', 'reconcile'],
     permissions: {
       viewCostAndProfit: false,
       editRetailPrice: true,
@@ -135,10 +136,10 @@ export const DEFAULT_ROLES = [
   },
   {
     id: 'role_cashier',
-    name: '前台收银员',
+    name: '前台 / 驿站专员',
     isSystemBoss: false,
-    desc: '专注柜台扫码收银、熟客记账、自提核销与交接班，严守底价与总账隔离',
-    modules: ['pos', 'marketing'],
+    desc: '专注街坊自提核销、群接龙履约与前台收银，严守底价与总账隔离',
+    modules: ['marketing', 'pos'],
     permissions: {
       viewCostAndProfit: false,
       editRetailPrice: false,
@@ -149,9 +150,9 @@ export const DEFAULT_ROLES = [
   },
   {
     id: 'role_stocker',
-    name: '理货采购员',
+    name: '理货采购专员',
     isSystemBoss: false,
-    desc: '负责对接供货商货盘订货、随车签收、入库上架与报损登记',
+    desc: '负责对接供货商开放货盘订货、随车签收、入库上架与余缺调拨',
     modules: ['procurement', 'receiving', 'catalog'],
     permissions: {
       viewCostAndProfit: false,
@@ -289,8 +290,17 @@ export class StoreCoreEngine {
         elderLargeMode: false,
         voiceFeedback: true,
         autoIdleLockMinutes: 5,
-        independentPosMode: false,
-        cloudSyncEnabled: true
+        cloudSyncEnabled: true,
+        // 门店级模块自由选配（POS收银等均可在齿轮设置中心一键开关，关闭即彻底隐身）
+        enabledModules: {
+          procurement: true,
+          receiving: true,
+          catalog: true,
+          marketing: true,
+          pos: true,
+          reconcile: true,
+          finance: true
+        }
       },
       stores: [
         {
@@ -336,10 +346,7 @@ export class StoreCoreEngine {
       },
 
       catalog: [],
-
-      // 已绑定供货商名册（每位供货商自带 openCatalog：向本店开放的专属供货货盘！）
-      suppliers: [], // { id, supplierCode, name, contact, phone, category, creditNote, payableBalance, carrierBalance, openCatalog: [{ offerId, barcode, name, spec, unit, supplyPrice, suggestRetailPrice, minOrderQty, carrierPerUnit, note }], updatedAt }
-
+      suppliers: [],
       customers: [],
       purchaseOrders: [],
       serviceTickets: [],
@@ -402,7 +409,11 @@ export class StoreCoreEngine {
       ...def,
       ...saved,
       suppliers,
-      meta: { ...def.meta, ...(saved.meta || {}) },
+      meta: {
+        ...def.meta,
+        ...(saved.meta || {}),
+        enabledModules: { ...def.meta.enabledModules, ...(saved.meta?.enabledModules || {}) }
+      },
       rbac: {
         ...def.rbac,
         ...(saved.rbac || {}),
@@ -489,12 +500,8 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 2. 【核心原设计保留】：供货商绑定 & 自动拉取供货商向本店开放的专属货盘
+   * 2. 上下游供货商绑定 & 供货商开放货盘交互订货
    * -------------------------------------------------------------------------- */
-
-  /**
-   * 同步平台级共享存储（厂商端/大集端/云端）推送给已绑定供货商的开放货盘
-   */
   _syncSharedSupplierCatalogs() {
     try {
       for (const sharedKey of STORAGE_KEYS.SHARED_SUPPLIER_OFFERS) {
@@ -532,22 +539,15 @@ export class StoreCoreEngine {
     };
   }
 
-  /**
-   * 门店绑定上游供货商（支持输入供货商绑定码/手机号，自动探测平台共享货盘或接收 JSON 货盘包）
-   */
   bindSupplier({ supplierCode = '', name = '', contact = '', phone = '', category = '综合供货', initialOffers = [] }) {
     const cleanCode = String(supplierCode || '').trim();
     const cleanName = String(name || '').trim();
-    if (!cleanCode && !cleanName) {
-      return { ok: false, message: '请输入供货商绑定码或名称' };
-    }
+    if (!cleanCode && !cleanName) return { ok: false, message: '请输入供货商绑定码或名称' };
 
-    // 1. 先检查是否已绑定过该供货商
     let existing = this.state.suppliers.find(
       s => (cleanCode && s.supplierCode === cleanCode) || (cleanName && s.name === cleanName)
     );
 
-    // 2. 自动检索平台本地/云端缓存中该供货商开放的专属货盘
     let discoveredOffers = Array.isArray(initialOffers) ? initialOffers.map(o => this._normalizeOfferItem(o)) : [];
     let discoveredSupplierMeta = null;
 
@@ -572,7 +572,6 @@ export class StoreCoreEngine {
       }
     }
 
-    // 3. 若外部同步回调已挂载，通知云端按供货商绑定码拉取最新开放货盘
     if (typeof window !== 'undefined' && typeof window.onBindSupplierRequest === 'function') {
       try {
         window.onBindSupplierRequest({ storeId: this.state.activeStoreId, supplierCode: cleanCode, name: cleanName });
@@ -583,7 +582,7 @@ export class StoreCoreEngine {
       if (discoveredOffers.length > 0) existing.openCatalog = discoveredOffers;
       existing.updatedAt = Date.now();
       this._persist(this.state, true, 'SUPPLIER_BOUND', existing);
-      return { ok: true, supplier: existing, message: `已更新供货商【${existing.name}】开放货盘（共 ${existing.openCatalog.length} 款供货商品）` };
+      return { ok: true, supplier: existing, message: `已更新供货商【${existing.name}】开放货盘（共 ${existing.openCatalog.length} 款商品）` };
     }
 
     const newSupplier = {
@@ -607,34 +606,24 @@ export class StoreCoreEngine {
       supplier: newSupplier,
       message: discoveredOffers.length > 0
         ? `已成功绑定【${newSupplier.name}】，自动同步其开放货盘共 ${discoveredOffers.length} 款商品！`
-        : `已绑定供货商【${newSupplier.name}】，可立即导入或维护其开放给本店的供货货盘`
+        : `已绑定供货商【${newSupplier.name}】，可直接录入或拉取其开放给本店的供货商品`
     };
   }
 
-  /**
-   * 接收供货商发来的开放货盘（支持供货商端推送、或导入供货商发在微信里的货盘 JSON/条目）
-   */
   upsertSupplierOpenOffers(supplierId, offers = []) {
     const sup = this.state.suppliers.find(s => s.id === supplierId);
     if (!sup) return { ok: false, message: '未找到对应已绑定供货商' };
     const normalized = offers.map(o => this._normalizeOfferItem(o));
     const map = new Map((sup.openCatalog || []).map(item => [item.name + '|' + item.spec, item]));
-    for (const item of normalized) {
-      map.set(item.name + '|' + item.spec, item);
-    }
+    for (const item of normalized) map.set(item.name + '|' + item.spec, item);
     sup.openCatalog = Array.from(map.values());
     sup.updatedAt = Date.now();
     this._persist(this.state, true, 'SUPPLIER_OFFERS_UPDATED', sup);
     return { ok: true, supplier: sup, count: sup.openCatalog.length };
   }
 
-  /**
-   * 交互式采购订货单生成（直接基于供货商开放货盘下单，下单时自动在店内商品库建立/关联对应货品档案）
-   */
   createPurchaseOrder({ supplierId = '', items = [], note = '' }) {
-    if (!Array.isArray(items) || items.length === 0) {
-      return { ok: false, message: '订货清单不能为空' };
-    }
+    if (!Array.isArray(items) || items.length === 0) return { ok: false, message: '订货清单不能为空' };
     const acc = this.getCurrentAccount();
     const store = this.getActiveStore();
     const sup = this.state.suppliers.find(s => s.id === supplierId);
@@ -644,7 +633,6 @@ export class StoreCoreEngine {
       const qty = Number(it.qty) || 1;
       const unitPrice = roundMoney(it.unitPrice ?? it.supplyPrice ?? 0);
 
-      // 若来自供货商开放货盘且本店商品库尚无此商品，自动无缝建档关联，确保到货签收时 100% 落入库存！
       let targetSkuId = it.skuId || '';
       if (!targetSkuId) {
         let matchedSku = this.state.catalog.find(
@@ -720,31 +708,19 @@ export class StoreCoreEngine {
   autoSplitRestockOrders() {
     const storeId = this.state.activeStoreId;
     const lowSkus = this.state.catalog.filter(s => (s.storeId === storeId || !s.storeId) && s.stock <= s.minStock);
-    if (lowSkus.length === 0) {
-      return { ok: false, message: '当前所有商品库存充足，暂无低于安全库存线的商品' };
-    }
+    if (lowSkus.length === 0) return { ok: false, message: '当前所有商品库存充足，暂无低于安全库存线的商品' };
 
     const grouped = new Map();
     for (const s of lowSkus) {
       const key = s.supplierId || '__UNASSIGNED__';
       if (!grouped.has(key)) grouped.set(key, []);
       const suggestQty = Math.max(10, (s.maxStock || 50) - Math.max(0, s.stock));
-      grouped.get(key).push({
-        skuId: s.id,
-        name: s.name,
-        unit: s.unit,
-        qty: suggestQty,
-        unitPrice: s.costPrice || 0
-      });
+      grouped.get(key).push({ skuId: s.id, name: s.name, unit: s.unit, qty: suggestQty, unitPrice: s.costPrice || 0 });
     }
 
     let createdCount = 0;
     grouped.forEach((items, supKey) => {
-      this.createPurchaseOrder({
-        supplierId: supKey === '__UNASSIGNED__' ? '' : supKey,
-        items,
-        note: '缺货智能按默认供货方自动拆单'
-      });
+      this.createPurchaseOrder({ supplierId: supKey === '__UNASSIGNED__' ? '' : supKey, items, note: '缺货智能按默认供货方自动拆单' });
       createdCount++;
     });
 
@@ -766,9 +742,7 @@ export class StoreCoreEngine {
       filteredItems.push({ ...it });
     }
 
-    if (filteredItems.length === 0) {
-      return { ok: false, message: '原单商品当前库存均已充足，已为您拦截重复囤货' };
-    }
+    if (filteredItems.length === 0) return { ok: false, message: '原单商品当前库存均已充足，已为您拦截重复囤货' };
 
     const res = this.createPurchaseOrder({
       supplierId: orig.supplierId,
@@ -856,10 +830,20 @@ export class StoreCoreEngine {
     if (emit) this._notify(eventType, detail);
   }
 
-  addBranchStore({ name, geneId = 'convenience', monthlyFixedCost = 0, address = '', phone = '' }) {
+  /**
+   * 齿轮设置中心：一键开启/关闭任意可选业务模块（如 POS 收银台）
+   */
+  toggleModuleVisibility(moduleId, enabled) {
     if (!this.hasPermission('manageStaffAndExport')) {
-      return { ok: false, message: '仅掌柜可新增分店' };
+      return { ok: false, message: '仅掌柜可调整业务模块显隐' };
     }
+    this.state.meta.enabledModules[moduleId] = Boolean(enabled);
+    this._persist(this.state, true, 'MODULE_VISIBILITY_CHANGED', { moduleId, enabled });
+    return { ok: true };
+  }
+
+  addBranchStore({ name, geneId = 'convenience', monthlyFixedCost = 0, address = '', phone = '' }) {
+    if (!this.hasPermission('manageStaffAndExport')) return { ok: false, message: '仅掌柜可新增分店' };
     const newId = generateId('STORE');
     const branch = {
       id: newId,
@@ -962,8 +946,14 @@ export class StoreCoreEngine {
     return INDUSTRY_GENES[store?.geneId] || INDUSTRY_GENES.convenience;
   }
 
+  /**
+   * 双重门禁判定：既需门店启用了该模块，又需当前值班角色拥有该手电筒视野
+   */
   canAccessModule(moduleId) {
     if (this.state.rbac.locked) return false;
+    if (this.state.meta.enabledModules && this.state.meta.enabledModules[moduleId] === false) {
+      return false;
+    }
     const role = this.getCurrentRole();
     return Array.isArray(role?.modules) && role.modules.includes(moduleId);
   }
@@ -990,9 +980,7 @@ export class StoreCoreEngine {
   }
 
   upsertCustomRole({ id, name, desc = '', modules = [], permissions = {} }) {
-    if (!this.hasPermission('manageStaffAndExport')) {
-      return { ok: false, message: '仅掌柜有权配置角色与手电筒权限' };
-    }
+    if (!this.hasPermission('manageStaffAndExport')) return { ok: false, message: '仅掌柜有权配置角色与手电筒权限' };
     const existing = id ? this.state.rbac.roles.find(r => r.id === id) : null;
     if (existing) {
       if (existing.isSystemBoss) return { ok: false, message: '系统最高掌柜角色不可削减权限' };
@@ -1637,7 +1625,7 @@ export class StoreCoreEngine {
   }
 
   /* --------------------------------------------------------------------------
-   * 8. 双向语音指令解析、AI 本地参谋与经营指标看板
+   * 8. 双向语音指令解析、检索与经营指标看板
    * -------------------------------------------------------------------------- */
   parseVoiceOrQuickCommand(rawText) {
     const text = String(rawText || '').trim();
@@ -1654,14 +1642,6 @@ export class StoreCoreEngine {
     }
     if (/(报损|破损|过期|自用|试吃|送人)/.test(text)) {
       return { intent: 'LOSS_GIFT', label: '📉 报损 / 自用 / 人情往来登记', raw: text, needConfirm: true };
-    }
-    if (/(赊账|挂账|先记账)/.test(text)) {
-      const matchedCustomer = this.state.customers.find(c => text.includes(c.name));
-      return { intent: 'CREDIT_SALE', label: '📒 熟客赊账开单', customer: matchedCustomer || null, amount, raw: text, needConfirm: true };
-    }
-    if (/(还钱|还款|结账)/.test(text)) {
-      const matchedCustomer = this.state.customers.find(c => text.includes(c.name));
-      return { intent: 'CREDIT_SETTLE', label: '🤝 熟客还款入账', customer: matchedCustomer || null, amount, raw: text, needConfirm: true };
     }
 
     const matchedSkus = this.searchCatalog(text);
